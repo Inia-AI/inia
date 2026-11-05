@@ -1,0 +1,51 @@
+﻿@using IniaAi.Domain.Entities.Workflows
+
+<MudStack Spacing="3">
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Page Number Adjustment Template"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          @bind-Value="RagSettings.PageAdjustmentInput" />
+        </MudItem>
+
+        @if (RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Label="Page Number Adjustment After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.PageAdjustmentInput" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Table Of Contents Input"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          @bind-Value="RagSettings.TableOfContentsInput" />
+        </MudItem>
+
+        @if (RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Label="Table Of Contents After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.TableOfContentsInput"
+                              Sizing="InputSizing.Auto"
+                              Lines="5"
+                              MaxLines="20" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+}

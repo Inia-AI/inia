@@ -1,0 +1,534 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+@inject ILogger<WorkflowMap> Logger
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
+
+<MudCard Outlined="true" Class="workflow-map-sticky">
+    <MudCardContent>
+        <MudTextField @bind-Value="_searchQuery"
+                      Immediate="true"
+                      DebounceInterval="250"
+                      Placeholder="Search sections, blocks & tags"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Outlined.Search"
+                      Clearable="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Class="mb-3" />
+        <MudStack Row="true" Spacing="2" Justify="Justify.FlexStart" Wrap="Wrap.Wrap" Class="mb-2">
+            <MudTooltip Text="Expand all">
+                <MudIconButton Icon="@Icons.Material.Outlined.UnfoldMore"
+                               Class="editor-soft-button"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               aria-label="Expand all"
+                               OnClick="ExpandAllSections" />
+            </MudTooltip>
+
+            <MudTooltip Text="Collapse all">
+                <MudIconButton Icon="@Icons.Material.Outlined.UnfoldLess"
+                               Class="editor-soft-button"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               aria-label="Collapse all"
+                               OnClick="CollapseAllSections" />
+            </MudTooltip>
+
+            <MudTooltip Text="Execute all">
+                <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow"
+                               Class="editor-soft-button"
+                               Size="Size.Small"
+                               Color="Color.Success"
+                               aria-label="Execute all"
+                               OnClick="async () => await ExecuteAllSectionsCallback.InvokeAsync()" />
+            </MudTooltip>
+        </MudStack>
+        <MudExpansionPanels @ref="_expansionPanels"
+                            Elevation="0"
+                            MultiExpansion="true"
+                            Dense="true"
+                            Gutters="false">
+            @if (EditorContext?.Workflow?.Sections is not null)
+            {
+                foreach (Section child_ in EditorContext.Workflow.Sections.OrderBy(s => s.Order))
+                {
+                    if (child_.IsSeparator)
+                    {
+                        if (!IsSearching)
+                        {
+                            <MudExpansionPanel @key="@($"sep_{child_.Id}")"
+                                               Disabled="true"
+                                               HideIcon="true"
+                                               Dense="true"
+                                               Gutters="false"
+                                               Class="workflow-separator-panel">
+                                <TitleContent>
+                                    <div class="workflow-separator"></div>
+                                </TitleContent>
+                                <ChildContent></ChildContent>
+                            </MudExpansionPanel>
+                        }
+                        continue;
+                    }
+
+                    var section_ = child_;
+
+                    if (!SectionVisible(section_))
+                    {
+                        continue;
+                    }
+
+                    <DisclosurePanel @key="@($"panel_{section_.Id}")"
+                                     Expanded="@(IsSearching || _sectionExpandedStates.GetValueOrDefault(section_.Id, false))"
+                                     ExpandedChanged="@((isExpanded) => _sectionExpandedStates[section_.Id] = isExpanded)"
+                                     Dense="true"
+                                     Gutters="false"
+                                     Class="my-0">
+                        <TitleContent>
+                            <div class="@($"map-section-title{LibraryAccent.ClassSuffix(LinkIndex, section_)}")">
+                                @if (SectionHasRun(section_))
+                                {
+                                    ExecutionStatus sectionStatus_ = SectionStatus(section_);
+                                    <MudTooltip Text="@SectionStatusTooltip(section_)">
+                                        <span class="map-status mr-1">
+                                            @if (sectionStatus_ is ExecutionStatus.Running)
+                                            {
+                                                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                                            }
+                                            else if (sectionStatus_ is ExecutionStatus.NotExecuted)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Outlined.IncompleteCircle"
+                                                         Color="Color.Info"
+                                                         Size="Size.Small" />
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@ExecutionStatusVisuals.Icon(sectionStatus_)"
+                                                         Color="@ExecutionStatusVisuals.Color(sectionStatus_)"
+                                                         Size="Size.Small" />
+                                            }
+                                        </span>
+                                    </MudTooltip>
+                                }
+                                @if (section_.HasOutputBlocks)
+                                {
+                                    <span class="map-output-dot mr-1" title="Has output blocks"></span>
+                                }
+                                <MudText Typo="Typo.subtitle1"
+                                         Style="@($"color: {EditorHues.Group(section_.GroupColor)}; cursor: pointer; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;")"
+                                         @onclick="@(() => ScrollToWorkflow(section_.Id))">
+                                    @section_.Order. @TruncateTag(section_.Title)
+                                </MudText>
+                            </div>
+                        </TitleContent>
+                        <Actions>
+                            <div class="position-relative d-flex align-center">
+                                <MudTooltip Text="Select section title color">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Palette"
+                                                   aria-label="Select section title color"
+                                                   Size="Size.Small"
+                                                   Style="@($"color: {EditorHues.Group(section_.GroupColor)};")"
+                                                   OnClick="@(() => ToggleColorPicker(section_.Id))" />
+                                </MudTooltip>
+                                @if (IsColorPickerOpen(section_.Id))
+                                {
+                                    <div class="editor-popover-dismiss"
+                                         @onclick="@(() => ToggleColorPicker(section_.Id))"></div>
+                                    <MudPaper Elevation="8"
+                                              Class="pa-2"
+                                              Style="position: absolute; top: calc(100% + 6px); right: 0; z-index: 1000;">
+                                        <MudGrid Spacing="1">
+                                            @foreach (var option in _colorOptions)
+                                            {
+                                                <MudItem xs="3">
+                                                    <MudTooltip Text="@option.Label">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Circle"
+                                                                       aria-label="@option.Label"
+                                                                       Style="@($"color: {EditorHues.Group(option.Value)};")"
+                                                                       OnClick="@(() => SelectColor(section_, option.Value))" />
+                                                    </MudTooltip>
+                                                </MudItem>
+                                            }
+                                        </MudGrid>
+                                    </MudPaper>
+                                }
+                            </div>
+                        </Actions>
+
+                        <ChildContent>
+                            @{
+                                var loopBodyIds_ = section_.GetLoopBodyBlockIds();
+                            }
+                            @foreach (Block block in VisibleBlocks(section_))
+                            {
+                                <MudPaper Outlined="true"
+                                          @key="block.Id"
+                                          Class="@($"px-2 py-1 my-1{(loopBodyIds_.Contains(block.Id) ? " editor-in-loop" : "")}{LibraryAccent.ClassSuffix(LinkIndex, block)}")">
+                                    <MudStack Spacing="1">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="min-width: 0;">
+                                            @if (block.ExecutionState is not null)
+                                            {
+                                                ExecutionStatus blockStatus_ = block.ExecutionState.Status;
+                                                <span class="map-status" title="@BlockStatusTooltip(block)">
+                                                    @if (blockStatus_ is ExecutionStatus.Running)
+                                                    {
+                                                        <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudIcon Icon="@ExecutionStatusVisuals.Icon(blockStatus_)"
+                                                                 Color="@ExecutionStatusVisuals.Color(blockStatus_)"
+                                                                 Size="Size.Small" />
+                                                    }
+                                                </span>
+                                            }
+                                            <span class="block-type-chip block-type-chip--mini" style="--chip-hue: @EditorHues.Block(block.Type);">
+                                                @BlockTypeVisuals.ShortLabel(block.Type)
+                                            </span>
+
+                                            <BlockBadgeStrip Block="block" Display="BlockBadgeDisplay.Icon" />
+
+                                            <MudLink Typo="Typo.subtitle1"
+                                                     Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: 1 1 auto; min-width: 0;"
+                                                     Color="Color.Inherit"
+                                                     OnClick="@(() => ScrollToBlock(block, block.Id))">
+                                                @block.Order. @block.Name
+                                            </MudLink>
+                                        </MudStack>
+
+                                        @if (!string.IsNullOrWhiteSpace(block.ReplacementTag))
+                                        {
+                                            <MudStack Row="true"
+                                                      AlignItems="AlignItems.Center"
+                                                      Class="workflow-chip-row">
+                                                <MudChip T="string"
+                                                         Variant="Variant.Filled"
+                                                         Color="Color.Secondary"
+                                                         Size="Size.Small"
+                                                         Class="chip"
+                                                         title="@block.ReplacementTag">
+                                                    <span class="chip-text">
+                                                        @TruncateTag(block.ReplacementTag)
+                                                    </span>
+                                                </MudChip>
+
+                                                <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                                               Size="Size.Small"
+                                                               Color="Color.Secondary"
+                                                               title="Copy replacement tag"
+                                                               aria-label="Copy replacement tag"
+                                                               OnClick="@(() => CopyTagAsync(block.ReplacementTag))" />
+                                            </MudStack>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </ChildContent>
+                    </DisclosurePanel>
+                }
+            }
+        </MudExpansionPanels>
+
+        @if (IsSearching && !AnyMatches())
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary pa-2">
+                No sections or blocks match &ldquo;@_searchQuery&rdquo;.
+            </MudText>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private const int DEFAULT_TAG_TRUNCATION_LENGTH = 30;
+
+    private static readonly (ExecutionStatus Status, string Label)[] _statusTooltipParts = new[]
+    {
+        (ExecutionStatus.Completed, "completed"),
+        (ExecutionStatus.Running, "running"),
+        (ExecutionStatus.Failed, "failed"),
+        (ExecutionStatus.Skipped, "skipped"),
+        (ExecutionStatus.NotExecuted, "not run"),
+    };
+
+    private MudExpansionPanels _expansionPanels = default!;
+    private Dictionary<string, bool> _sectionExpandedStates = new();
+    private HashSet<string> _openColorPickers = new();
+    private string _searchQuery = string.Empty;
+
+    private bool IsSearching => !string.IsNullOrWhiteSpace(_searchQuery);
+
+    private bool MatchesQuery(string? text)
+    {
+        return MapSearch.Matches(text, _searchQuery);
+    }
+
+    private bool BlockMatches(Block block)
+    {
+        return MatchesQuery(block.Name)
+            || MatchesQuery(block.ReplacementTag)
+            || MatchesQuery(BlockTypeVisuals.Label(block.Type))
+            || MatchesQuery(BlockTypeVisuals.ShortLabel(block.Type));
+    }
+
+    private IEnumerable<Block> VisibleBlocks(Section section)
+    {
+        var ordered = section.Blocks.OrderBy(b => b.Order);
+        if (!IsSearching || MatchesQuery(section.Title))
+        {
+            return ordered;
+        }
+
+        return ordered.Where(BlockMatches);
+    }
+
+    private bool SectionVisible(Section section)
+    {
+        if (!IsSearching)
+        {
+            return true;
+        }
+
+        return MatchesQuery(section.Title) || section.Blocks.Any(BlockMatches);
+    }
+
+    private bool AnyMatches()
+    {
+        if (EditorContext?.Workflow?.Sections is null)
+        {
+            return false;
+        }
+
+        return EditorContext.Workflow.Sections.Any(s => !s.IsSeparator && SectionVisible(s));
+    }
+
+    private static bool SectionHasRun(Section section)
+    {
+        return section.Blocks.Any(b => b.ExecutionState is not null);
+    }
+
+    private static ExecutionStatus SectionStatus(Section section)
+    {
+        return ExecutionStatusVisuals.Aggregate(
+            section.Blocks.Select(b => b.ExecutionState?.Status ?? ExecutionStatus.NotExecuted));
+    }
+
+    private static string BlockStatusTooltip(Block block)
+    {
+        ExecutionStatus status = block.ExecutionState?.Status ?? ExecutionStatus.NotExecuted;
+        string? error = block.ExecutionState?.Error;
+
+        if (status is ExecutionStatus.Failed && !string.IsNullOrWhiteSpace(error))
+        {
+            return $"Failed: {error}";
+        }
+
+        if (status is ExecutionStatus.Skipped && !string.IsNullOrWhiteSpace(error))
+        {
+            return $"Skipped: {error}";
+        }
+
+        return ExecutionStatusVisuals.Label(status);
+    }
+
+    private static string SectionStatusTooltip(Section section)
+    {
+        List<string> parts = new();
+
+        foreach ((ExecutionStatus status, string label) in _statusTooltipParts)
+        {
+            int count = section.Blocks.Count(b => (b.ExecutionState?.Status ?? ExecutionStatus.NotExecuted) == status);
+            if (count > 0)
+            {
+                parts.Add($"{count} {label}");
+            }
+        }
+
+        return parts.Count > 0 ? string.Join(" · ", parts) : "Not executed";
+    }
+
+    private readonly (string Label, Domain.Enums.GroupColor Value)[] _colorOptions = new[]
+    {
+        ("Default (Deep Orange)", Domain.Enums.GroupColor.Default),
+        ("Pink", Domain.Enums.GroupColor.Color1),
+        ("White", Domain.Enums.GroupColor.Color2),
+        ("Purple", Domain.Enums.GroupColor.Color3),
+        ("Indigo", Domain.Enums.GroupColor.Color4),
+        ("Light Blue", Domain.Enums.GroupColor.Color5),
+        ("Yellow", Domain.Enums.GroupColor.Color6),
+        ("Green", Domain.Enums.GroupColor.Color7),
+    };
+
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    [CascadingParameter(Name = "LibraryLinkIndex")]
+    public LibraryLinkIndex? LinkIndex { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback WorkflowChangedCallBack { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<string> ScrollToWorkflowCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<(Block, string)> ScrollToBlockCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback ExecuteAllSectionsCallback { get; set; }
+
+    public async Task UpdateWorkflowStateAsync()
+    {
+        InitializeSectionStates();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnParametersSet()
+    {
+        InitializeSectionStates();
+        base.OnParametersSet();
+    }
+
+    private void InitializeSectionStates()
+    {
+        if (EditorContext?.Workflow?.Sections is null)
+        {
+            return;
+        }
+
+        var currentIds = EditorContext.Workflow.Sections
+            .Where(s => !s.IsSeparator)
+            .Select(s => s.Id)
+            .ToHashSet();
+
+        var staleIds = _sectionExpandedStates.Keys.Where(id => !currentIds.Contains(id)).ToList();
+        foreach (var id in staleIds)
+        {
+            _sectionExpandedStates.Remove(id);
+            _openColorPickers.Remove(id);
+        }
+
+        foreach (var section in EditorContext.Workflow.Sections.Where(s => !s.IsSeparator))
+        {
+            _sectionExpandedStates.TryAdd(section.Id, false);
+        }
+    }
+
+    private async Task ScrollToBlock(Block block, string elementId)
+    {
+        if (string.IsNullOrEmpty(elementId))
+        {
+            return;
+        }
+
+        await ScrollToBlockCallback.InvokeAsync((block, elementId));
+    }
+
+    private async Task ScrollToWorkflow(string elementId)
+    {
+        if (string.IsNullOrEmpty(elementId))
+        {
+            return;
+        }
+
+        await ScrollToWorkflowCallback.InvokeAsync(elementId);
+    }
+
+    private async Task CopyTagAsync(string? tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return;
+        }
+
+        try
+        {
+            bool success = await JsRuntime.InvokeAsync<bool>("copyText", tag);
+
+            if (success)
+            {
+                Snackbar.Add("Copied to clipboard", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to copy tag to clipboard.");
+            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+        }
+    }
+
+    private static string TruncateTag(string? value, int max = DEFAULT_TAG_TRUNCATION_LENGTH)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        if (value.Length <= max)
+        {
+            return value;
+        }
+
+        return value.Substring(0, max - 1) + "…";
+    }
+
+    private void ExpandAllSections()
+    {
+        UpdateAllSectionStates(true);
+    }
+
+    private void CollapseAllSections()
+    {
+        UpdateAllSectionStates(false);
+    }
+
+    private void UpdateAllSectionStates(bool expanded)
+    {
+        if (EditorContext?.Workflow?.Sections is null)
+        {
+            return;
+        }
+
+        var newStates = new Dictionary<string, bool>();
+        foreach (var section in EditorContext.Workflow.Sections.Where(s => !s.IsSeparator))
+        {
+            newStates[section.Id] = expanded;
+        }
+
+        _sectionExpandedStates = newStates;
+        StateHasChanged();
+    }
+
+    private void ToggleColorPicker(string sectionId)
+    {
+        if (_openColorPickers.Contains(sectionId))
+        {
+            _openColorPickers.Remove(sectionId);
+        }
+        else
+        {
+            _openColorPickers.Add(sectionId);
+        }
+    }
+
+    private bool IsColorPickerOpen(string sectionId) => _openColorPickers.Contains(sectionId);
+
+    private async Task SelectColor(Section section, Domain.Enums.GroupColor? color)
+    {
+        section.GroupColor = color;
+        if (!string.IsNullOrEmpty(section.Id))
+        {
+            _openColorPickers.Remove(section.Id);
+        }
+        await WorkflowChangedCallBack.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+}

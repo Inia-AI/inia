@@ -1,0 +1,22 @@
+- python3 (CLI): Python 3.13 from the toolbelt venv, with every Python package below importable.
+- bun (CLI): runs JavaScript and TypeScript files; types are stripped, never checked.
+- node (CLI): Bun's node shim, for scripts that call node.
+- pdftotext (CLI): extracts the text layer of a PDF; -layout keeps columns and table alignment.
+- pdftoppm (CLI): renders PDF pages to PNG or JPEG images.
+- pdfinfo (CLI): prints a PDF's page count, page size and metadata.
+- pdfimages (CLI): lists or extracts the images embedded in a PDF.
+- qpdf (CLI): splits, merges, decrypts and repairs PDF files.
+- pandoc (CLI): converts between DOCX, Markdown, HTML and other text formats.
+- soffice (CLI): LibreOffice is installed but cannot convert documents inside this sandbox; read .xls with xlrd or pandas and .docx with python-docx or pandoc.
+- jq (CLI): queries and reshapes JSON, including docs/manifest.json.
+- git (CLI): version control for files in the workspace; no remote is reachable.
+- markitdown (Python): converts PDF, DOCX, XLSX and XLS files to Markdown text; also a markitdown command.
+- openpyxl (Python): reads and writes .xlsx workbooks, including formulas and cell formats.
+- pandas (Python): data frames for tabular data; read_excel reads .xlsx and .xls.
+- pdf2image (Python): renders PDF pages to PIL images through poppler.
+- pdfplumber (Python): extracts PDF text, words with positions, and tables.
+- pypdf (Python): reads, splits and merges PDF files and reads their text and metadata.
+- python-docx (Python): reads and writes .docx files; import it as docx.
+- reportlab (Python): generates PDF files.
+- xlrd (Python): reads legacy .xls workbooks.
+- docx (Node): writes .docx files from JavaScript; require("docx") from bun or node.

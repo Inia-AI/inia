@@ -1,0 +1,33 @@
+{
+  "name": "agent-runtime",
+  "version": "0.4.5",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/main.ts",
+    "start": "bun src/main.ts",
+    "test": "bun test",
+    "coverage": "bun test --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome ci --error-on-warnings .",
+    "fix": "biome check --write .",
+    "check": "bun src/check.ts",
+    "eval": "setpriv --inh-caps=-all --ambient-caps=-all -- bun evals/run.ts",
+    "eval:grade": "bun evals/grade.ts",
+    "smoke": "setpriv --inh-caps=-all --ambient-caps=-all -- bun evals/smoke.ts",
+    "drift": "setpriv --inh-caps=-all --ambient-caps=-all -- bun evals/drift/run.ts",
+    "drift:stamp": "bun evals/drift/stamp.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.308",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
+    "@biomejs/biome": "2.5.15",
+    "@types/bun": "1.4.3",
+    "@types/node": "^26.6.5",
+    "typescript": "7.0.2"
+  }
+}

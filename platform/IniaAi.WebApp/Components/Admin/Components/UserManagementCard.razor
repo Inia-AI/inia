@@ -1,0 +1,378 @@
+﻿@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.Admin.Dialogs
+@using IniaAi.WebApp.Services
+
+@using Microsoft.AspNetCore.Identity
+
+@inject NavigationManager Navigation
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IDialogService DialogService
+@inject AppState AppState
+@inject ILogger<UserManagementCard> Logger
+@inject UserAccountAdminService UserAccountAdminService
+
+<MudCard Outlined="true" Elevation="0" Class="admin-card">
+    <div class="admin-card__head">
+        <div class="admin-card__title">
+            Users
+            <span class="admin-card__count">@Users.Count(u => _showDisabled || !u.IsDisabled)</span>
+        </div>
+        <div class="admin-card__head-actions">
+            <MudSwitch T="bool"
+                       @bind-Value="_showDisabled"
+                       Label="Show disabled"
+                       Size="Size.Small"
+                       Color="Color.Primary" />
+            <MudTextField @bind-Value="_search"
+                          Placeholder="Search users"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          IconSize="Size.Small"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          Clearable="true"
+                          Class="admin-search" />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.PersonAdd"
+                       OnClick="RedirectToCreateUser">
+                Add User
+            </MudButton>
+        </div>
+    </div>
+
+    <MudTable Items="_shownUsers"
+              Filter="FilterUser"
+              Dense="true"
+              Hover="true"
+              Elevation="0">
+        <ColGroup>
+            <col style="width: 260px;" />
+            <col />
+            <col />
+            <col style="width: 150px;" />
+        </ColGroup>
+
+        <HeaderContent>
+            <MudTh>
+                <MudTableSortLabel InitialDirection="SortDirection.Ascending" SortBy="new Func<User, object>(x => x.GetFullName())">Name</MudTableSortLabel>
+            </MudTh>
+            <MudTh>
+                <MudTableSortLabel SortBy="new Func<User, object>(x => x.UserName ?? string.Empty)">Username</MudTableSortLabel>
+            </MudTh>
+            <MudTh>Organizations</MudTh>
+            <MudTh Style="text-align: right;">Actions</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Name">
+                @context.GetFullName()
+                @if (context.IsDisabled)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="ml-1">Disabled</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Username">
+                @context.UserName
+            </MudTd>
+            <MudTd DataLabel="Organizations">
+                @{
+                    var organizations = GetUserOrganizations(context);
+                }
+                @if (organizations.Any())
+                {
+                    <div class="admin-chip-row">
+                        @foreach (var org in organizations.Take(3))
+                        {
+                            <span class="admin-chip">
+                                @org.Organization.Name
+                                @if (org.IsDefault)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Star" Class="admin-chip__star" />
+                                }
+                            </span>
+                        }
+                        @if (organizations.Count > 3)
+                        {
+                            <span class="admin-chip-more">+@(organizations.Count - 3) more</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <span class="admin-empty">No organizations</span>
+                }
+            </MudTd>
+
+            <MudTd Style="text-align: right;">
+                @if (UnmanageableUserIds.Contains(context.Id))
+                {
+                    <MudTooltip Text="@UNMANAGEABLE_TOOLTIP">
+                        <MudIcon Icon="@Icons.Material.Outlined.Lock"
+                                 Size="Size.Small"
+                                 Class="mud-text-secondary"
+                                 aria-label="@($"{context.Email}: {UNMANAGEABLE_TOOLTIP}")" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudStack Row="true" Spacing="0" Justify="Justify.FlexEnd">
+                        <MudTooltip Text="Edit User Info">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                           aria-label="@($"Edit user info of {context.Email}")"
+                                           Size="Size.Small"
+                                           OnClick="async () => await EditUserAsync(context)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Manage Organizations">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Business"
+                                           aria-label="@($"Manage organizations of {context.Email}")"
+                                           Size="Size.Small"
+                                           OnClick="async () => await ManageUserOrganizationsAsync(context)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Manage Workflow Types">
+                            <MudIconButton Icon="@Icons.Material.Outlined.FilterList"
+                                           aria-label="@($"Manage workflow types of {context.Email}")"
+                                           Size="Size.Small"
+                                           OnClick="async () => await ManageUserWorkflowTypesAsync(context)" />
+                        </MudTooltip>
+                        <MudTooltip Text="Reset Password">
+                            <MudIconButton Icon="@Icons.Material.Outlined.LockReset"
+                                           aria-label="@($"Reset password of {context.Email}")"
+                                           Size="Size.Small"
+                                           OnClick="async () => await ResetUserPasswordAsync(context)" />
+                        </MudTooltip>
+                        <MudTooltip Text="@(context.IsDisabled ? "Enable User" : "Disable User")">
+                            <MudIconButton Icon="@(context.IsDisabled ? Icons.Material.Outlined.PersonAdd : Icons.Material.Outlined.PersonOff)"
+                                           aria-label="@(context.IsDisabled ? $"Enable user {context.Email}" : $"Disable user {context.Email}")"
+                                           Size="Size.Small"
+                                           Disabled="@(context.Id == AppState.User?.Id)"
+                                           OnClick="async () => await ToggleUserDisabledAsync(context)" />
+                        </MudTooltip>
+                    </MudStack>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudCard>
+
+@code {
+    [Parameter]
+    public IEnumerable<User> Users { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IEnumerable<User>> UsersChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlySet<string> UnmanageableUserIds { get; set; } = new HashSet<string>();
+
+    private const string UNMANAGEABLE_TOOLTIP = "Only a super administrator manages this user";
+
+    private Dictionary<string, List<UserOrganization>> _userOrganizations = new();
+    private IEnumerable<User> _shownUsers = [];
+    private IEnumerable<User>? _usersWithLoadedOrganizations;
+    private string _search = string.Empty;
+    private bool _showDisabled;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!ReferenceEquals(Users, _usersWithLoadedOrganizations))
+        {
+            _usersWithLoadedOrganizations = Users;
+            await LoadUserOrganizations();
+        }
+    }
+
+    private bool FilterUser(User user)
+    {
+        if (!_showDisabled && user.IsDisabled)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            return true;
+        }
+
+        if (user.GetFullName().Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (user.UserName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            return true;
+        }
+
+        return GetUserOrganizations(user)
+            .Any(o => o.Organization.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task LoadUserOrganizations()
+    {
+        IEnumerable<User> users = Users;
+        var userIds = users.Select(u => u.Id).ToList();
+        if (userIds.Any())
+        {
+            // An organization admin sees only the organizations they act in, never another customer's name.
+            var userOrgs = (await UserDataUnitOfWork.Repository<UserOrganization>()
+                .FindAsync(uo => userIds.Contains(uo.UserId) && uo.IsActive))
+                .Where(uo => AppState.CanActIn(uo.OrganizationId))
+                .ToList();
+
+            // Load organizations for each UserOrganization
+            foreach (var userOrg in userOrgs)
+            {
+                userOrg.Organization = await UserDataUnitOfWork.Organizations.GetByIdAsync(userOrg.OrganizationId)
+                    ?? throw new InvalidOperationException($"Organization with ID {userOrg.OrganizationId} not found.");
+            }
+
+            _userOrganizations = userOrgs
+                .GroupBy(uo => uo.UserId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(uo => uo.Organization?.Name).ToList());
+        }
+        else
+        {
+            _userOrganizations = new();
+        }
+
+        _shownUsers = users;
+    }
+
+    private List<UserOrganization> GetUserOrganizations(User user)
+    {
+        return _userOrganizations.TryGetValue(user.Id, out var orgs) ? orgs : new List<UserOrganization>();
+    }
+
+    private void RedirectToCreateUser()
+    {
+        Navigation.NavigateTo(AppRoutes.CREATE_USER);
+    }
+
+    private async Task EditUserAsync(User user)
+    {
+        var parameters = new DialogParameters<UserInfoDialog> { };
+        parameters.Add(x => x.User, user);
+
+        var dialog = await DialogService.ShowAsync<UserInfoDialog>("Edit User", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                await UserDataUnitOfWork.CompleteAsync();
+            }
+            catch (Exception ex)
+            {
+                await UserDataUnitOfWork.UntrackAsync(user);
+
+                Logger.LogError(ex, "Failed to save changes for user '{id}'", user.Id);
+                AppState.Notify("Failed to save user changes. Check the logs for details.", Severity.Error);
+
+                await UsersChanged.InvokeAsync(Users);
+                return;
+            }
+
+            await AppState.ReloadUserAsync();
+
+            await UsersChanged.InvokeAsync(Users);
+        }
+        else
+        {
+            await UserDataUnitOfWork.RevertAsync(user);
+        }
+    }
+
+    private async Task ResetUserPasswordAsync(User user)
+    {
+        var parameters = new DialogParameters<ResetUserPasswordDialog> { };
+        parameters.Add(x => x.User, user);
+
+        _ = await DialogService.ShowAsync<ResetUserPasswordDialog>("Reset Password", parameters);
+    }
+
+    private async Task ToggleUserDisabledAsync(User user)
+    {
+        bool disabling = !user.IsDisabled;
+        string verb = disabling ? "disable" : "enable";
+        string verbCapitalized = disabling ? "Disable" : "Enable";
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            $"{verbCapitalized} User",
+            disabling
+                ? $"Disable {user.GetFullName()} ({user.Email})? They will no longer be able to log in, and their active sessions are invalidated."
+                : $"Enable {user.GetFullName()} ({user.Email})? They will be able to log in again.",
+            yesText: verbCapitalized,
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            IdentityResult result = disabling
+                ? await UserAccountAdminService.DisableAsync(user)
+                : await UserAccountAdminService.EnableAsync(user);
+
+            if (!result.Succeeded)
+            {
+                string details = string.Join(", ", result.Errors.Select(e => e.Description));
+                Logger.LogError("Failed to {Action} user '{id}': {Errors}", verb, user.Id, details);
+                AppState.Notify($"Failed to {verb} user: {details}", Severity.Error);
+            }
+            else
+            {
+                AppState.Notify($"User {verb}d", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            await UserDataUnitOfWork.UntrackAsync(user);
+
+            Logger.LogError(ex, "Failed to {Action} user '{id}'", verb, user.Id);
+            AppState.Notify($"Failed to {verb} user. Check the logs for details.", Severity.Error);
+        }
+
+        await UsersChanged.InvokeAsync(Users);
+    }
+
+    private async Task ManageUserOrganizationsAsync(User user)
+    {
+        var parameters = new DialogParameters<UserOrganizationManagementDialog> { };
+        parameters.Add(x => x.User, user);
+        parameters.Add(x => x.UserOrganizations, GetUserOrganizations(user));
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<UserOrganizationManagementDialog>("Manage User Organizations", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            // No reload here: the parent's new Users list reloads the organizations in OnParametersSetAsync,
+            // and a second load would run on the same DbContext at the same time.
+            await UsersChanged.InvokeAsync(Users);
+        }
+    }
+
+    private async Task ManageUserWorkflowTypesAsync(User user)
+    {
+        var parameters = new DialogParameters<UserWorkflowTypeVisibilityDialog> { };
+        parameters.Add(x => x.User, user);
+        parameters.Add(x => x.UserOrganizations, GetUserOrganizations(user));
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        _ = await DialogService.ShowAsync<UserWorkflowTypeVisibilityDialog>("Manage User Workflow Types", parameters, options);
+    }
+}

@@ -1,0 +1,170 @@
+@using IniaAi.Application.Workflows.EditorAgent
+@using IniaAi.Configuration.Platform
+@using IniaAi.Domain.Entities.UserManagement
+@using Microsoft.Extensions.Options
+
+@inject IOptions<EditorAgentSettings> EditorAgentSettings
+
+<MudDialog>
+    <DialogContent>
+        @if (_isNew)
+        {
+            <MudTextField @bind-Value="@_id"
+                          Label="ID"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Immediate="true"
+                          MaxLength="450"
+                          HelperText="Unique identifier for the tenant (e.g. 'example-bank', 'inia-ai')" />
+        }
+
+        <MudTextField @bind-Value="@_name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true" />
+
+        <MudNumericField T="int"
+                         @bind-Value="_signatureReviewThreshold"
+                         Label="Signature review threshold"
+                         Variant="Variant.Outlined"
+                         Immediate="true"
+                         Min="MIN_SIGNATURE_REVIEW_THRESHOLD"
+                         Required="true"
+                         HelperText="Number of approve (or reject) votes required to resolve a pending signature override. Minimum is 2 — the proposer's submission counts as the first approve." />
+
+        <MudNumericField T="decimal?"
+                         @bind-Value="_editorAgentDailySpendBatchUsd"
+                         Label="@EDITOR_AGENT_DAILY_BATCH_LABEL"
+                         Variant="Variant.Outlined"
+                         Immediate="true"
+                         Min="MIN_EDITOR_AGENT_DAILY_BATCH_USD"
+                         Max="MAX_EDITOR_AGENT_DAILY_BATCH_USD"
+                         Adornment="Adornment.Start"
+                         AdornmentText="$"
+                         Format="F2"
+                         HelperText="@($"Spend per day before the workflow agent warns, and users may continue with another batch. Empty uses the default, {DailySpendText.Usd(EditorAgentSettings.Value.DailySpendBatchUsd)}.")" />
+
+        @if (!_isNew)
+        {
+            <MudSwitch @bind-Value="_isActive"
+                       Label="Active"
+                       Color="Color.Primary"
+                       Class="mt-2" />
+        }
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="my-2">
+                @_errorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit">
+            @(_isNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Organization Organization { get; set; } = default!;
+
+    [Parameter]
+    public bool IsNew { get; set; } = true;
+
+    private const string EDITOR_AGENT_DAILY_BATCH_LABEL = "Workflow agent daily spend (USD)";
+    private const int MIN_SIGNATURE_REVIEW_THRESHOLD = 2;
+    private const decimal MIN_EDITOR_AGENT_DAILY_BATCH_USD = 0.01m;
+    private const decimal MAX_EDITOR_AGENT_DAILY_BATCH_USD = 100000m;
+
+    private string _id = string.Empty;
+    private string _name = string.Empty;
+    private int _signatureReviewThreshold = MIN_SIGNATURE_REVIEW_THRESHOLD;
+    private decimal? _editorAgentDailySpendBatchUsd;
+    private bool _isActive = true;
+    private string _errorMessage = string.Empty;
+    private bool _isNew;
+
+    protected override void OnInitialized()
+    {
+        _isNew = IsNew;
+        _name = Organization.Name;
+        _signatureReviewThreshold = Organization.SignatureReviewThreshold < MIN_SIGNATURE_REVIEW_THRESHOLD
+            ? MIN_SIGNATURE_REVIEW_THRESHOLD
+            : Organization.SignatureReviewThreshold;
+        _editorAgentDailySpendBatchUsd = Organization.EditorAgentDailySpendBatchUsd;
+        _isActive = Organization.IsActive;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        _errorMessage = string.Empty;
+
+        if (_isNew && string.IsNullOrWhiteSpace(_id))
+        {
+            _errorMessage = "ID is required";
+            return;
+        }
+
+        if (_isNew && _id.Trim().Length > 450)
+        {
+            _errorMessage = "ID must be 450 characters or less";
+            return;
+        }
+
+        if (_isNew && !System.Text.RegularExpressions.Regex.IsMatch(_id.Trim(), @"^[a-zA-Z0-9\-_]+$"))
+        {
+            _errorMessage = "ID must contain only letters, numbers, hyphens, and underscores";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "Name is required";
+            return;
+        }
+
+        if (_signatureReviewThreshold < MIN_SIGNATURE_REVIEW_THRESHOLD)
+        {
+            _errorMessage = $"Signature review threshold must be at least {MIN_SIGNATURE_REVIEW_THRESHOLD}";
+            return;
+        }
+
+        if (_editorAgentDailySpendBatchUsd is < MIN_EDITOR_AGENT_DAILY_BATCH_USD or > MAX_EDITOR_AGENT_DAILY_BATCH_USD)
+        {
+            _errorMessage = $"Workflow agent daily spend must be between {DailySpendText.Usd(MIN_EDITOR_AGENT_DAILY_BATCH_USD)} and {DailySpendText.Usd(MAX_EDITOR_AGENT_DAILY_BATCH_USD)}, or empty";
+            return;
+        }
+
+        if (_isNew)
+        {
+            Organization.Id = _id.Trim();
+        }
+
+        Organization.Name = _name.Trim();
+        Organization.SignatureReviewThreshold = _signatureReviewThreshold;
+        Organization.EditorAgentDailySpendBatchUsd = _editorAgentDailySpendBatchUsd is decimal batchUsd
+            ? decimal.Round(batchUsd, 2)
+            : null;
+        Organization.IsActive = _isActive;
+
+        MudDialog.Close(DialogResult.Ok(Organization));
+    }
+}

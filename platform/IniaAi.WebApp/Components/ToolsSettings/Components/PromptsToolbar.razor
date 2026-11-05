@@ -1,0 +1,105 @@
+@using ErrorOr
+@using IniaAi.Common.Serialization
+@typeparam TPrompts where TPrompts : JsonSerializable<TPrompts>
+
+@inject AppState AppState
+@inject IJSRuntime JsRuntime
+@inject ILogger<PromptsToolbar<TPrompts>> Logger
+
+<MudStack Row="true">
+    <MudButton Size="Size.Small"
+               StartIcon="@Icons.Material.Outlined.CloudUpload"
+               Color="Color.Primary"
+               OnClick="SaveChangesAsync">
+        Save Changes
+    </MudButton>
+
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                   FilesChanged="UploadPromptsJsonAsync"
+                   Accept=".json"
+                   MaximumFileCount="1">
+        <CustomContent>
+            <MudButton Variant="Variant.Text"
+                       OnClick="@(() => context.OpenFilePickerAsync())"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.CloudUpload">
+                Upload Prompts JSON
+            </MudButton>
+        </CustomContent>
+        <SelectedTemplate />
+    </MudFileUpload>
+
+    <MudButton Color="Color.Primary"
+               StartIcon="@Icons.Material.Outlined.Download"
+               Size="Size.Small"
+               OnClick="DownloadAsJsonAsync">
+        Download These Prompts as JSON
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public required TPrompts Prompts { get; set; }
+
+    [Parameter]
+    public required string Title { get; set; }
+
+    [Parameter]
+    public required EventCallback SaveChangesCallback { get; set; }
+
+    [Parameter]
+    public required EventCallback<TPrompts> PromptsUploaded { get; set; }
+
+    private async Task SaveChangesAsync()
+    {
+        await SaveChangesCallback.InvokeAsync();
+        AppState.Notify(
+            message: $"{Title} have been saved.",
+            Severity.Success);
+    }
+
+    private async Task DownloadAsJsonAsync()
+    {
+        string json = Prompts.ToJson(pretty: true);
+        var data = Encoding.UTF8.GetBytes(json);
+        var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{typeof(TPrompts).Name}.json";
+        await JsRuntime.InvokeVoidAsync("downloadFile", filename, data);
+        AppState.Notify(
+            message: $"{Title} have been downloaded.",
+            Severity.Success);
+    }
+
+    private async Task UploadPromptsJsonAsync(IReadOnlyList<IBrowserFile>? files)
+    {
+        if (files is null || files.Count == 0)
+        {
+            Logger.LogWarning("No files were selected");
+            return;
+        }
+
+        IBrowserFile file = files[0];
+
+        try
+        {
+            ErrorOr<TPrompts> result = await PromptsUpload.ReadAsync<TPrompts>(file);
+
+            if (AppState.NotifyErrors(result))
+            {
+                Logger.LogError("Upload of {FileName} ({Size} bytes) refused: {Refusal}", file.Name, file.Size, result.FirstError.Description);
+                return;
+            }
+
+            await PromptsUploaded.InvokeAsync(result.Value);
+            AppState.Notify(
+                "JSON uploaded successfully",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e, "Failed to process file");
+            AppState.Notify(
+                "Failed to process JSON file",
+                Severity.Error);
+        }
+    }
+}

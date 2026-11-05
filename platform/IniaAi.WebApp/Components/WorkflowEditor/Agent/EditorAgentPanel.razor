@@ -1,0 +1,1235 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+@implements IDisposable
+
+@using ErrorOr
+@using IniaAi.Application.Workflows.EditorAgent
+@using IniaAi.Common.Interfaces.Services.AgentRuntime.Activity
+@using IniaAi.Domain.Entities.AgentRuntime
+@using IniaAi.Domain.Entities.ReportFeedback
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Proposals
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+
+@inject IWorkflowEditorAgentService AgentService
+@inject IEditorAgentNotifications Notifications
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+@inject ILogger<EditorAgentPanel> Logger
+
+<section class="@($"editor-agent-screen{(_wideReview ? " editor-agent-screen--wide" : string.Empty)}")" aria-label="Workflow agent">
+    <header class="editor-agent-bar">
+        <MudButton Variant="Variant.Text"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.ArrowBack"
+                   OnClick="OnClose">
+            @EditorAgentEntry.BACK_TO_EDITOR
+        </MudButton>
+        <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
+        <MudIcon Icon="@Icons.Material.Outlined.AutoAwesome" Size="Size.Small" Class="editor-agent-bar-icon" aria-hidden="true" />
+        <span class="editor-agent-bar-title">Workflow agent</span>
+        @if (!string.IsNullOrWhiteSpace(WorkflowName))
+        {
+            <span class="editor-agent-bar-subject">@WorkflowName</span>
+        }
+        <MudSpacer />
+        @if (_conversation is not null)
+        {
+            <span class="editor-agent-caption editor-agent-bar-cost"
+                  data-testid="editor-agent-total"
+                  title="What this conversation has cost so far">
+                This conversation: @EditorAgentText.Cost(_conversation.TotalCostUsd)
+            </span>
+            @if (_conversation.OrganizationToday is { } today)
+            {
+                <span class="editor-agent-caption editor-agent-bar-cost"
+                      data-testid="editor-agent-today"
+                      title="What your organization has spent on the workflow agent today (UTC), and today's allowance">
+                    Your organization today: @DailySpendText.Usd(today.SpentUsd) of @DailySpendText.Usd(today.BatchUsd * today.Batches)
+                </span>
+            }
+        }
+        <MudButton Variant="Variant.Text"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.AddComment"
+                   Disabled="@(_conversation is null || InFlightTurn is not null || _isSending)"
+                   OnClick="StartNewConversationAsync">
+            New conversation
+        </MudButton>
+        <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                       Size="Size.Small"
+                       aria-label="Close Agent mode"
+                       OnClick="OnClose" />
+    </header>
+
+    <div class="editor-agent-scroll" @ref="_messagesElement" role="log" aria-live="polite" aria-label="Conversation">
+        <div class="editor-agent-column">
+            @if (_loadError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-6">@_loadError</MudAlert>
+            }
+            else if (_conversation is null)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-6" />
+            }
+            else
+            {
+                @if (_conversation.Turns.Count == 0 && _sendingText is null)
+                {
+                    <div class="editor-agent-empty">
+                        <h2 class="editor-agent-empty-title">What would you like to know about this workflow?</h2>
+                        <p class="editor-agent-muted">
+                            The agent reads the workflow as it is in the editor, unsaved changes and test results included.
+                            It can propose changes for you to review. It never saves or runs anything.
+                        </p>
+                    </div>
+                }
+
+                @foreach (EditorAgentTurnView turn in _conversation.Turns)
+                {
+                    <div class="editor-agent-message editor-agent-message--user" @key="@($"u-{turn.Id}")">
+                        <div class="editor-agent-message-text">@turn.UserMessage</div>
+                        @SentReports(turn.AttachedReports)
+                        @SentFeedback(turn.FeedbackSent)
+                    </div>
+
+                    <div class="editor-agent-message editor-agent-message--agent" @key="@($"a-{turn.Id}")" data-turn-status="@turn.Status">
+                        @if (IsWaitingBehindEarlier(turn))
+                        {
+                            <div class="editor-agent-quiet-line" data-testid="editor-agent-waiting">
+                                <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" aria-hidden="true" />
+                                <span>Waiting to start. It starts when the answer above is finished.</span>
+                                <MudSpacer />
+                                <MudButton Variant="Variant.Text"
+                                           Size="Size.Small"
+                                           Disabled="@_isStopping"
+                                           OnClick="@(() => StopAsync(turn))">
+                                    Don't send
+                                </MudButton>
+                            </div>
+                        }
+                        else if (turn.Status.IsInFlight())
+                        {
+                            <div class="editor-agent-quiet-line editor-agent-quiet-line--live" data-testid="editor-agent-working">
+                                <ActivitySteps Digest="@LiveDigestOf(turn)"
+                                               IsLive="true"
+                                               WorkingLabel="@WorkingLabel(turn)" />
+                                <MudButton Class="editor-agent-stop"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.StopCircle"
+                                           Disabled="@_isStopping"
+                                           OnClick="@(() => StopAsync(turn))">
+                                    Stop
+                                </MudButton>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (turn.Activity is { Beats.Count: > 0 } activity)
+                            {
+                                <ActivitySteps Digest="@activity" />
+                            }
+
+                            @switch (turn.Status)
+                            {
+                                case AgentConversationTurnStatus.Completed:
+                                    <div class="editor-agent-answer">
+                                        @AnswerHtml(turn)
+                                    </div>
+                                    break;
+                                case AgentConversationTurnStatus.Cancelled:
+                                    <div class="editor-agent-muted">Stopped.</div>
+                                    break;
+                                default:
+                                    <MudAlert Severity="Severity.Error" Dense="true">@(turn.Error ?? "The agent could not answer this message.")</MudAlert>
+                                    break;
+                            }
+
+                            @if (_reviews.TryGetValue(turn.Id, out EditorAgentProposalReview? review))
+                            {
+                                <EditorAgentProposalCard Review="@review"
+                                                         CurrentWorkflow="@CurrentWorkflow"
+                                                         WorkflowEdits="@_workflowEdits"
+                                                         Wide="@_wideReview"
+                                                         OnAction="RunReviewAsync"
+                                                         OnOpenBlock="OpenDrawer"
+                                                         OnOpenFull="@(() => _wideReview = !_wideReview)" />
+                            }
+
+                            @if (turn.DismissSuggestions.Count > 0)
+                            {
+                                @Dismissals(turn)
+                            }
+                        }
+                    </div>
+                }
+
+                @if (_sendingText is not null)
+                {
+                    <div class="editor-agent-message editor-agent-message--user">
+                        <div class="editor-agent-message-text">@_sendingText</div>
+                        @SentReports(_sendingReports)
+                    </div>
+                    <div class="editor-agent-message editor-agent-message--agent">
+                        <div class="editor-agent-quiet-line">
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                            <span>Sending your message...</span>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <footer class="editor-agent-composer">
+        <div class="editor-agent-column">
+            <div class="editor-agent-composer-box">
+                @if (_pickedReports.Count > 0)
+                {
+                    <div class="editor-agent-report-chips" data-testid="editor-agent-report-chips" aria-label="Reports used as examples">
+                        @foreach (EditorAgentReportSummary report in _pickedReports)
+                        {
+                            <MudChip T="string"
+                                     @key="report.Id"
+                                     Size="Size.Small"
+                                     Variant="Variant.Outlined"
+                                     Icon="@Icons.Material.Outlined.Description"
+                                     OnClose="@((MudChip<string> _) => Unpick(report))"
+                                     data-testid="editor-agent-report-chip"
+                                     data-report-id="@report.Id">
+                                @EditorAgentText.ReportLabel(report)
+                            </MudChip>
+                        }
+                    </div>
+                }
+                @if (_pickedFeedback.Count > 0)
+                {
+                    <div class="editor-agent-report-chips" aria-label="Feedback for the agent to fix">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 Icon="@Icons.Material.Outlined.RateReview"
+                                 OnClick="UseFeedbackAsync"
+                                 OnClose="@((MudChip<string> _) => _pickedFeedback.Clear())"
+                                 title="Change the chosen feedback"
+                                 data-testid="editor-agent-feedback-chip">
+                            @EditorAgentText.FeedbackCount(_pickedFeedback.Count)
+                        </MudChip>
+                    </div>
+                }
+                <MudTextField T="string"
+                              @bind-Value="_draft"
+                              Immediate="true"
+                              Variant="Variant.Text"
+                              Underline="false"
+                              Lines="3"
+                              Sizing="InputSizing.Auto"
+                              MaxLines="10"
+                              Class="editor-agent-input"
+                              MaxLength="@EditorAgentErrors.MAX_MESSAGE_LENGTH"
+                              Placeholder="Ask about this workflow, or ask for a change"
+                              aria-label="Message to the workflow agent"
+                              Disabled="@(_conversation is null)"
+                              OnKeyDown="OnComposerKeyDown" />
+                <div class="editor-agent-composer-row">
+                    @if (_models.Count > 0)
+                    {
+                        <MudMenu AnchorOrigin="Origin.TopLeft"
+                                 TransformOrigin="Origin.BottomLeft"
+                                 Dense="true"
+                                 AriaLabel="Choose the model"
+                                 Class="editor-agent-model-menu">
+                            <ActivatorContent Context="menu">
+                                <MudButton Variant="Variant.Text"
+                                           OnClick="@menu.ToggleAsync"
+                                           Size="Size.Small"
+                                           EndIcon="@Icons.Material.Outlined.ExpandLess"
+                                           aria-label="@($"Model: {ModelName(_selectedModelId)}. Choose the model")"
+                                           data-testid="editor-agent-model-button">
+                                    @ModelName(_selectedModelId)
+                                </MudButton>
+                            </ActivatorContent>
+                            <ChildContent>
+                                @foreach (EditorAgentModelOption model in _models)
+                                {
+                                    <MudMenuItem OnClick="@(() => OnModelChanged(model.ModelId))"
+                                                 Icon="@(model.ModelId == _selectedModelId ? Icons.Material.Outlined.Check : null)">
+                                        <div class="editor-agent-model-option" data-testid="editor-agent-model-option">
+                                            <span class="editor-agent-model-name">@EditorAgentText.ModelMenuName(model)</span>
+                                            <span class="editor-agent-caption">@model.Capability</span>
+                                            <span class="editor-agent-caption">@EditorAgentText.Price(model)</span>
+                                        </div>
+                                    </MudMenuItem>
+                                }
+                            </ChildContent>
+                        </MudMenu>
+                    }
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Description"
+                               Disabled="@(_conversation is null)"
+                               OnClick="ChooseReportsAsync"
+                               data-testid="editor-agent-reports-button">
+                        Use reports as examples
+                    </MudButton>
+                    @if (_openFeedback > 0)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Outlined.RateReview"
+                                   Disabled="@(_conversation is null)"
+                                   OnClick="UseFeedbackAsync"
+                                   title="Choose open feedback on this workflow's reports for your next message"
+                                   data-testid="editor-agent-feedback-button">
+                            Use feedback (@_openFeedback)
+                        </MudButton>
+                    }
+                    <MudSpacer />
+                    <span class="editor-agent-caption editor-agent-hint">Ctrl+Enter or Cmd+Enter sends</span>
+                    @if (StoppableTurn is { } running)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   DropShadow="false"
+                                   Class="editor-agent-send"
+                                   StartIcon="@Icons.Material.Outlined.StopCircle"
+                                   Disabled="@_isStopping"
+                                   OnClick="@(() => StopAsync(running))"
+                                   data-testid="editor-agent-composer-stop">
+                            Stop
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   DropShadow="false"
+                                   Class="editor-agent-send"
+                                   EndIcon="@Icons.Material.Outlined.ArrowUpward"
+                                   Disabled="@(!CanSend)"
+                                   OnClick="SubmitAsync"
+                                   data-testid="editor-agent-send">
+                            Send
+                        </MudButton>
+                    }
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    @if (_drawer is { } drawer)
+    {
+        <EditorAgentBlockDrawer Block="@drawer"
+                                OnOpenInEditor="OpenInEditorAsync"
+                                OnClose="CloseDrawer" />
+    }
+</section>
+
+@code {
+    private const int SAFETY_POLL_SECONDS = 5;
+
+    private sealed record LiveActivity(int TurnNumber, AgentActivityDigest Digest);
+
+    public const string DAILY_SPEND_TITLE = "Today's agent spend is used";
+    public const string DAILY_SPEND_UNLOCK = "Unlock and send";
+    public const string DAILY_SPEND_NOT_NOW = "Not now";
+    public const string USE_FEEDBACK_MESSAGE = "Fix the feedback I chose on this workflow's reports.";
+    public const string DISMISS = "Dismiss";
+    private const string SCROLL_TO_END_JS = "editorAgent.scrollToEnd";
+    private const string FOLLOW_END_JS = "editorAgent.followEnd";
+    private const string WIRE_LINKS_JS = "editorAgent.wireBlockLinks";
+    private const string NOT_ALLOWED_MESSAGE = "The workflow agent is for workflow editors.";
+    private const string MISSING_BLOCK_MESSAGE = "That block is not in the workflow any more.";
+    private const string REVIEW_FAILED_MESSAGE = "That did not work. Try again.";
+
+    private readonly List<EditorAgentModelOption> _models = [];
+    private readonly List<EditorAgentReportSummary> _pickedReports = [];
+    private readonly List<string> _pickedFeedback = [];
+    private IReadOnlyList<EditorAgentReportSummary> _sendingReports = [];
+    private readonly Dictionary<string, MarkupString> _answers = [];
+    private readonly Dictionary<string, EditorAgentProposalReview> _reviews = new(StringComparer.Ordinal);
+    private DotNetObjectReference<EditorAgentPanel>? _selfReference;
+    private bool _canUse;
+    private bool _isDisposed;
+    private bool _linksWired;
+    private long _readTicket;
+    private long _appliedTicket;
+    private EditorAgentConversationView? _conversation;
+    private LiveActivity? _live;
+    private string? _selectedModelId;
+    private string? _draft;
+    private string? _sendingText;
+    private string? _loadError;
+    private bool _isStopping;
+    private bool _isSending;
+    private bool _isDismissing;
+    private int _openFeedback;
+    private int _renderedMessageCount;
+    private ElementReference _messagesElement;
+    private Timer? _safetyPoll;
+    private Block? _drawer;
+    private int _workflowEdits;
+
+    /// <summary>The conversation spans the screen, so a large proposal reviews side by side.</summary>
+    private bool _wideReview;
+
+    private HashSet<string> _proposed = new(StringComparer.Ordinal);
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? WorkflowName { get; set; }
+
+    /// <summary>The editor's live workflow: sent with each message, and changed in place by an accept.</summary>
+    [Parameter, EditorRequired]
+    public Func<Workflow> CurrentWorkflow { get; set; } = default!;
+
+    /// <summary>Leaves Agent mode and shows the block in the editor.</summary>
+    [Parameter]
+    public EventCallback<Block> OpenBlock { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    /// <summary>Accepted changes landed on the workflow, or were undone: the editor re-renders and marks them.</summary>
+    [Parameter]
+    public EventCallback<EditorAgentWorkflowEdit> OnWorkflowEdited { get; set; }
+
+    /// <summary>
+    /// The blocks and sections, by stable id, with a proposed change nobody has decided yet, so the
+    /// editor marks where the agent proposes to change the workflow. A new block marks its section.
+    /// </summary>
+    [Parameter]
+    public EventCallback<IReadOnlyCollection<string>> OnProposedChanged { get; set; }
+
+    /// <summary>The workflow with the undecided changes applied, for the graph; null once none are left.</summary>
+    [Parameter]
+    public EventCallback<EditorAgentPreview?> OnPreviewChanged { get; set; }
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private EditorAgentTurnView? InFlightTurn => _conversation?.Turns.FirstOrDefault(static turn => turn.Status.IsInFlight());
+
+    /// <summary>
+    /// The turn the composer's Stop ends: shown in place of Send while a turn runs and the box is
+    /// empty. Once the user types, Send comes back and the message waits for the running turn.
+    /// </summary>
+    private EditorAgentTurnView? StoppableTurn => string.IsNullOrWhiteSpace(_draft) && !_isSending ? InFlightTurn : null;
+
+    private bool CanSend => _canUse
+        && _conversation is not null
+        && !_isSending
+        && !string.IsNullOrWhiteSpace(_draft)
+        && _selectedModelId is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? authentication = AuthenticationState is null ? null : await AuthenticationState;
+        _canUse = EditorAgentAccess.CanUse(authentication?.User, AgentService);
+        if (!_canUse)
+        {
+            _loadError = NOT_ALLOWED_MESSAGE;
+            return;
+        }
+
+        Notifications.TurnUpdated += OnTurnUpdated;
+
+        ErrorOr<EditorAgentConversationView> conversation = await AgentService.GetOrStartConversationAsync(
+            OrganizationId, UserId, WorkflowTypeId);
+        if (conversation.IsError)
+        {
+            _loadError = conversation.FirstError.Description;
+            return;
+        }
+
+        _models.AddRange(await AgentService.ListModelsAsync(OrganizationId, conversation.Value.ModelId));
+        ShowConversation(conversation.Value, ++_readTicket);
+        _selectedModelId = SelectedOrDefault(conversation.Value.ModelId);
+        await CountOpenFeedbackAsync();
+
+        await PollAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_linksWired && _canUse)
+        {
+            _linksWired = true;
+            _selfReference = DotNetObjectReference.Create(this);
+            try
+            {
+                await JsRuntime.InvokeVoidAsync(WIRE_LINKS_JS, _messagesElement, _selfReference);
+                await JsRuntime.InvokeVoidAsync(FOLLOW_END_JS, _messagesElement);
+            }
+            catch (JSException exception)
+            {
+                Logger.LogWarning(exception, "Could not wire the block links of the agent conversation");
+            }
+        }
+
+        int count = (_conversation?.Turns.Count ?? 0) + (_sendingText is null ? 0 : 1);
+        if (!firstRender && count == _renderedMessageCount)
+        {
+            return;
+        }
+
+        _renderedMessageCount = count;
+        try
+        {
+            await JsRuntime.InvokeVoidAsync(SCROLL_TO_END_JS, _messagesElement);
+        }
+        catch (JSException exception)
+        {
+            Logger.LogDebug(exception, "Could not scroll the agent conversation");
+        }
+    }
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        Notifications.TurnUpdated -= OnTurnUpdated;
+        _safetyPoll?.Dispose();
+        _safetyPoll = null;
+        _selfReference?.Dispose();
+    }
+
+    /// <summary>
+    /// A block link in an answer was clicked or activated from the keyboard: the drawer shows the
+    /// whole block.
+    /// </summary>
+    [JSInvokable]
+    public Task OpenBlockLinkAsync(string blockId)
+    {
+        if (_isDisposed)
+        {
+            return Task.CompletedTask;
+        }
+
+        Block? block = EditorAgentBlockLinks.Resolve(CurrentWorkflow(), blockId);
+        if (block is null)
+        {
+            Snackbar.Add(MISSING_BLOCK_MESSAGE, Severity.Info);
+            return Task.CompletedTask;
+        }
+
+        _drawer = block;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenDrawer(Block block)
+    {
+        _drawer = block;
+    }
+
+    private void CloseDrawer()
+    {
+        _drawer = null;
+    }
+
+    private async Task OpenInEditorAsync(Block block)
+    {
+        CloseDrawer();
+        await OpenBlock.InvokeAsync(block);
+    }
+
+    private async Task RunReviewAsync(EditorAgentReviewAction action)
+    {
+        if (!_reviews.TryGetValue(action.TurnId, out EditorAgentProposalReview? review))
+        {
+            return;
+        }
+
+        EditorAgentReviewResult result;
+        try
+        {
+            result = await review.RunAsync(action, CurrentWorkflow());
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Reviewing the editor agent's changes failed");
+            Snackbar.Add(REVIEW_FAILED_MESSAGE, Severity.Error);
+            return;
+        }
+
+        if (result.Error is not null)
+        {
+            Snackbar.Add(result.Error, Severity.Warning);
+        }
+
+        if (result.Edit is not null)
+        {
+            _workflowEdits++;
+            await OnWorkflowEdited.InvokeAsync(result.Edit);
+        }
+
+        await ReloadConversationAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// A settled answer never changes, so each is rendered once. A link to an id the workflow has
+    /// no block for, which the agent made up, shows as plain text.
+    /// </summary>
+    private MarkupString AnswerHtml(EditorAgentTurnView turn)
+    {
+        if (!_answers.TryGetValue(turn.Id, out MarkupString html))
+        {
+            HashSet<string> blockIds = EditorAgentBlockLinks.Ids(CurrentWorkflow());
+            html = new MarkupString(EditorAgentMarkdown.ToHtml(turn.AnswerMarkdown, blockIds.Contains));
+            _answers[turn.Id] = html;
+        }
+
+        return html;
+    }
+
+    private string ModelName(string? modelId)
+    {
+        return _models.FirstOrDefault(model => model.ModelId == modelId) is { } model
+            ? EditorAgentText.ModelName(model)
+            : modelId ?? string.Empty;
+    }
+
+    /// <summary>
+    /// A turn waits only behind an earlier turn still in flight; before its own run is dispatched
+    /// it shows as working.
+    /// </summary>
+    private bool IsWaitingBehindEarlier(EditorAgentTurnView turn)
+    {
+        return turn.IsWaiting
+            && _conversation is not null
+            && _conversation.Turns.Any(earlier => earlier.Number < turn.Number && earlier.Status.IsInFlight());
+    }
+
+    /// <summary>An editor save kept accepted changes: the cards show them as saved.</summary>
+    public Task RefreshAsync()
+    {
+        return InvokeAsync(async () =>
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            await ReloadConversationAsync();
+            StateHasChanged();
+        });
+    }
+
+    private string? SelectedOrDefault(string? modelId)
+    {
+        return _models.Any(model => model.ModelId == modelId)
+            ? modelId
+            : _models.FirstOrDefault(static model => model.IsDefault)?.ModelId ?? _models.FirstOrDefault()?.ModelId;
+    }
+
+    private void OnModelChanged(string modelId)
+    {
+        _selectedModelId = modelId;
+    }
+
+    private async Task OnComposerKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && (args.CtrlKey || args.MetaKey))
+        {
+            await SubmitAsync();
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (!CanSend)
+        {
+            return;
+        }
+
+        string text = _draft!.Trim();
+        _draft = string.Empty;
+
+        await SendAsync(text);
+    }
+
+    private async Task UseFeedbackAsync()
+    {
+        var parameters = new DialogParameters<EditorAgentFeedbackDialog>
+        {
+            { dialog => dialog.OrganizationId, OrganizationId },
+            { dialog => dialog.UserId, UserId },
+            { dialog => dialog.WorkflowTypeId, WorkflowTypeId },
+            { dialog => dialog.Chosen, [.. _pickedFeedback] },
+            { dialog => dialog.OnDeleted, EventCallback.Factory.Create<string>(this, FeedbackDeletedAsync) },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+
+        IDialogReference dialog = await DialogService.ShowAsync<EditorAgentFeedbackDialog>(null, parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false, Data: IReadOnlyList<string> chosen })
+        {
+            _pickedFeedback.Clear();
+            _pickedFeedback.AddRange(chosen);
+            if (_pickedFeedback.Count > 0 && string.IsNullOrWhiteSpace(_draft))
+            {
+                _draft = USE_FEEDBACK_MESSAGE;
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>A feedback item deleted in the dialog leaves the chosen set and the open count.</summary>
+    private async Task FeedbackDeletedAsync(string feedbackItemId)
+    {
+        _ = _pickedFeedback.Remove(feedbackItemId);
+        await CountOpenFeedbackAsync();
+        StateHasChanged();
+    }
+
+    private async Task SendAsync(string text)
+    {
+        if (!_canUse || _conversation is null || _selectedModelId is null)
+        {
+            return;
+        }
+
+        _isSending = true;
+        _sendingText = text;
+        _sendingReports = [.. _pickedReports];
+        StateHasChanged();
+
+        ErrorOr<EditorAgentTurnView> sent;
+        try
+        {
+            sent = await AgentService.SendMessageAsync(new EditorAgentMessage(
+                OrganizationId, UserId, _conversation.Id, text, _selectedModelId, CurrentWorkflow())
+            {
+                ReportIds = [.. _pickedReports.Select(static report => report.Id)],
+                FeedbackItemIds = [.. _pickedFeedback],
+            });
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Sending a message to the editor agent failed");
+            sent = Error.Unexpected(description: "The message could not be sent. Try again.");
+        }
+        finally
+        {
+            _isSending = false;
+            _sendingText = null;
+            _sendingReports = [];
+        }
+
+        if (sent.IsError && sent.FirstError.Code == EditorAgentErrors.DAILY_SPEND_USED_CODE)
+        {
+            // The text stays in the box while the warning is open, so closing Agent mode keeps it.
+            _draft = text;
+            if (await UnlockDailySpendAsync(sent.FirstError) && !_isDisposed && _draft == text)
+            {
+                _draft = string.Empty;
+                await SendAsync(text);
+            }
+
+            return;
+        }
+
+        if (sent.IsError)
+        {
+            _draft = text;
+            Snackbar.Add(sent.FirstError.Description, Severity.Warning);
+            if (sent.FirstError.Code == EditorAgentErrors.NO_OPEN_FEEDBACK_CODE)
+            {
+                _pickedFeedback.Clear();
+                await CountOpenFeedbackAsync();
+            }
+
+            return;
+        }
+
+        _pickedReports.Clear();
+        _pickedFeedback.Clear();
+        EditorAgentTurnView turn = sent.Value;
+        if (_conversation.Turns.All(existing => existing.Id != turn.Id))
+        {
+            ShowConversation(_conversation with { Turns = [.. _conversation.Turns, turn] }, ++_readTicket);
+        }
+    }
+
+    /// <summary>
+    /// Warns that the organization used today's agent spend and, when the user continues, unlocks
+    /// another batch for the day. True when the message may be sent again.
+    /// </summary>
+    private async Task<bool> UnlockDailySpendAsync(Error used)
+    {
+        StateHasChanged();
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            DAILY_SPEND_TITLE,
+            used.Description,
+            yesText: DAILY_SPEND_UNLOCK,
+            cancelText: DAILY_SPEND_NOT_NOW);
+
+        if (confirmed != true || _isDisposed || _conversation is null)
+        {
+            return false;
+        }
+
+        ErrorOr<Success> unlocked = await AgentService.UnlockDailySpendAsync(OrganizationId, UserId, _conversation.Id);
+        if (unlocked.IsError)
+        {
+            Snackbar.Add(unlocked.FirstError.Description, Severity.Warning);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>The reports a message was sent with, as small chips under its text.</summary>
+    private static RenderFragment SentReports(IReadOnlyList<EditorAgentReportSummary> reports) => __builder =>
+    {
+        if (reports.Count == 0)
+        {
+            return;
+        }
+
+        <div class="editor-agent-report-chips editor-agent-report-chips--sent" data-testid="editor-agent-sent-reports" aria-label="Reports sent as examples">
+            @foreach (EditorAgentReportSummary report in reports)
+            {
+                <MudChip T="string"
+                         @key="report.Id"
+                         Size="Size.Small"
+                         Variant="Variant.Outlined"
+                         Icon="@Icons.Material.Outlined.Description"
+                         data-testid="editor-agent-sent-report"
+                         data-report-id="@report.Id">
+                    @EditorAgentText.ReportLabel(report)
+                </MudChip>
+            }
+        </div>
+    };
+
+    /// <summary>The count of feedback items a message was sent with, as a chip under its text.</summary>
+    private static RenderFragment SentFeedback(int count) => __builder =>
+    {
+        if (count == 0)
+        {
+            return;
+        }
+
+        <div class="editor-agent-report-chips editor-agent-report-chips--sent" data-testid="editor-agent-sent-feedback">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="Variant.Outlined"
+                     Icon="@Icons.Material.Outlined.RateReview">
+                @EditorAgentText.FeedbackCount(count)
+            </MudChip>
+        </div>
+    };
+
+    /// <summary>The feedback the agent suggests dismissing, each with its Dismiss button while it is open.</summary>
+    private RenderFragment Dismissals(EditorAgentTurnView turn) => __builder =>
+    {
+        <div class="editor-agent-dismissals" data-testid="editor-agent-dismissals">
+            <div class="editor-agent-caption">The agent suggests dismissing this feedback. Dismissing hides it as not a workflow problem.</div>
+            @foreach (EditorAgentDismissSuggestionView suggestion in turn.DismissSuggestions)
+            {
+                <div class="editor-agent-dismissal"
+                     @key="suggestion.FeedbackItemId"
+                     data-testid="editor-agent-dismissal"
+                     data-feedback-id="@suggestion.FeedbackItemId">
+                    <div class="editor-agent-dismissal-text">
+                        <div>&ldquo;@suggestion.Comment&rdquo;</div>
+                        <div class="editor-agent-caption">@suggestion.Reason</div>
+                    </div>
+                    @if (suggestion.Status == ReportFeedbackStatus.Open)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Disabled="@_isDismissing"
+                                   OnClick="@(() => DismissAsync(turn, suggestion))"
+                                   data-testid="editor-agent-dismiss">
+                            @DISMISS
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <span class="editor-agent-caption" data-testid="editor-agent-dismissal-status">@EditorAgentText.FeedbackStatus(suggestion.Status)</span>
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    private async Task DismissAsync(EditorAgentTurnView turn, EditorAgentDismissSuggestionView suggestion)
+    {
+        _isDismissing = true;
+        try
+        {
+            ErrorOr<Success> dismissed = await AgentService.DismissFeedbackAsync(OrganizationId, UserId, turn.Id, suggestion.FeedbackItemId);
+            if (dismissed.IsError)
+            {
+                Snackbar.Add(dismissed.FirstError.Description, Severity.Warning);
+            }
+        }
+        finally
+        {
+            _isDismissing = false;
+        }
+
+        await ReloadConversationAsync();
+    }
+
+    private async Task CountOpenFeedbackAsync()
+    {
+        if (!_canUse || _isDisposed)
+        {
+            return;
+        }
+
+        ErrorOr<int> open = await AgentService.CountOpenFeedbackAsync(OrganizationId, UserId, WorkflowTypeId);
+        _openFeedback = open.IsError ? 0 : open.Value;
+    }
+
+    private async Task ChooseReportsAsync()
+    {
+        var parameters = new DialogParameters<EditorAgentReportsDialog>
+        {
+            { dialog => dialog.OrganizationId, OrganizationId },
+            { dialog => dialog.UserId, UserId },
+            { dialog => dialog.WorkflowTypeId, WorkflowTypeId },
+            { dialog => dialog.Chosen, [.. _pickedReports] },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true };
+
+        IDialogReference dialog = await DialogService.ShowAsync<EditorAgentReportsDialog>(null, parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false, Data: IReadOnlyList<EditorAgentReportSummary> chosen })
+        {
+            _pickedReports.Clear();
+            _pickedReports.AddRange(chosen.Take(EditorAgentReports.MAX_PICKED));
+            StateHasChanged();
+        }
+    }
+
+    private void Unpick(EditorAgentReportSummary report)
+    {
+        _ = _pickedReports.RemoveAll(picked => picked.Id == report.Id);
+    }
+
+    private async Task StopAsync(EditorAgentTurnView turn)
+    {
+        _isStopping = true;
+        try
+        {
+            ErrorOr<Success> stopped = await AgentService.CancelTurnAsync(OrganizationId, UserId, turn.Id);
+            if (stopped.IsError)
+            {
+                Snackbar.Add(stopped.FirstError.Description, Severity.Warning);
+            }
+        }
+        finally
+        {
+            _isStopping = false;
+        }
+    }
+
+    private async Task StartNewConversationAsync()
+    {
+        // A new conversation starts on the default model; the old conversation's model is not carried over.
+        ErrorOr<EditorAgentConversationView> started = await AgentService.StartNewConversationAsync(
+            OrganizationId, UserId, WorkflowTypeId, modelId: null);
+        if (started.IsError)
+        {
+            Snackbar.Add(started.FirstError.Description, Severity.Warning);
+            return;
+        }
+
+        IReadOnlyList<EditorAgentModelOption> models = await AgentService.ListModelsAsync(OrganizationId, started.Value.ModelId);
+        _models.Clear();
+        _models.AddRange(models);
+        _live = null;
+        CloseDrawer();
+        ShowConversation(started.Value, ++_readTicket);
+        _selectedModelId = SelectedOrDefault(started.Value.ModelId);
+    }
+
+    private void OnTurnUpdated(object? sender, EditorAgentTurnUpdate update)
+    {
+        if (update.OrganizationId != OrganizationId || _conversation is null || update.ConversationId != _conversation.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() => ApplyUpdateAsync(update));
+    }
+
+    private async Task ApplyUpdateAsync(EditorAgentTurnUpdate update)
+    {
+        if (_conversation is null || update.ConversationId != _conversation.Id)
+        {
+            return;
+        }
+
+        bool settled = update.Status is AgentConversationTurnStatus status && !status.IsInFlight();
+        if (settled)
+        {
+            await SettleAsync();
+            return;
+        }
+
+        if (update.Activity is not null)
+        {
+            _live = new LiveActivity(update.TurnNumber, update.Activity);
+        }
+
+        if (update.Status is not null && _conversation.Turns.All(turn => turn.Number != update.TurnNumber))
+        {
+            await ReloadConversationAsync();
+        }
+        else if (update.Status is AgentConversationTurnStatus running
+            && _conversation.Turns.Any(turn => turn.Number == update.TurnNumber && turn.Status.IsInFlight()))
+        {
+            // A late notice never takes a settled turn back to running, and it does not void a
+            // read already on its way.
+            ShowConversation(_conversation with
+            {
+                Turns = [.. _conversation.Turns.Select(turn => turn.Number == update.TurnNumber ? turn with { Status = running } : turn)],
+            }, _appliedTicket);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SettleAsync()
+    {
+        _live = null;
+        await ReloadConversationAsync();
+        StateHasChanged();
+    }
+
+    private async Task ReloadConversationAsync()
+    {
+        if (_conversation is null)
+        {
+            return;
+        }
+
+        long ticket = ++_readTicket;
+        ErrorOr<EditorAgentConversationView> reloaded = await AgentService.GetConversationAsync(
+            OrganizationId, UserId, _conversation.Id);
+        if (!reloaded.IsError)
+        {
+            ShowConversation(reloaded.Value, ticket);
+        }
+
+        // A save, a dismissal or another user's feedback changes what is open.
+        await CountOpenFeedbackAsync();
+    }
+
+    /// <summary>
+    /// Shows the conversation and, while a turn runs, checks it every few seconds in case a
+    /// settle notification was missed (a reload during the turn, or a turn another host settled).
+    /// A read that started before the one already shown is dropped, so a slow poll cannot bring
+    /// a settled turn back to running.
+    /// </summary>
+    private void ShowConversation(EditorAgentConversationView conversation, long ticket)
+    {
+        if (_isDisposed || ticket < _appliedTicket)
+        {
+            return;
+        }
+
+        _appliedTicket = ticket;
+        _conversation = conversation;
+        SyncReviews(conversation);
+
+        if (InFlightTurn is null)
+        {
+            _safetyPoll?.Dispose();
+            _safetyPoll = null;
+            return;
+        }
+
+        _safetyPoll ??= new Timer(
+            _ => _ = InvokeAsync(PollAsync),
+            state: null,
+            TimeSpan.FromSeconds(SAFETY_POLL_SECONDS),
+            TimeSpan.FromSeconds(SAFETY_POLL_SECONDS));
+    }
+
+    /// <summary>One review per proposal, kept across re-reads so its conflicts and notes survive.</summary>
+    private void SyncReviews(EditorAgentConversationView conversation)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (EditorAgentTurnView turn in conversation.Turns)
+        {
+            if (turn.Proposal is not { } proposal)
+            {
+                continue;
+            }
+
+            _ = seen.Add(turn.Id);
+            if (_reviews.TryGetValue(turn.Id, out EditorAgentProposalReview? review))
+            {
+                review.Proposal = proposal;
+            }
+            else
+            {
+                _reviews[turn.Id] = new EditorAgentProposalReview(AgentService, OrganizationId, UserId, turn.Id, proposal);
+            }
+        }
+
+        foreach (string gone in _reviews.Keys.Where(turnId => !seen.Contains(turnId)).ToList())
+        {
+            _ = _reviews.Remove(gone);
+        }
+
+        HashSet<string> proposed = [.. _reviews.Values
+            .SelectMany(static review => review.Undecided)
+            .Select(static view => view.Change)
+            .Select(static change => change.Scope switch
+            {
+                ProposedChangeScope.Block when change.Kind == ProposedChangeKind.Added => change.SectionKey,
+                ProposedChangeScope.Block or ProposedChangeScope.Section => change.TargetKey,
+                _ => null,
+            })
+            .OfType<string>()];
+        if (!proposed.SetEquals(_proposed))
+        {
+            _proposed = proposed;
+            _ = OnProposedChanged.InvokeAsync(proposed);
+            _ = OnPreviewChanged.InvokeAsync(proposed.Count == 0 ? null : BuildPreview());
+        }
+    }
+
+    /// <summary>
+    /// A copy of the editor's workflow with every undecided change applied, the agent's value taken
+    /// where the user changed the same field, and which blocks those changes add or change.
+    /// </summary>
+    private EditorAgentPreview? BuildPreview()
+    {
+        if (Workflow.FromJson(CurrentWorkflow().ToExportJson()) is not { } copy)
+        {
+            return null;
+        }
+
+        var marks = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (EditorAgentProposalReview review in _reviews.Values)
+        {
+            List<ProposedChange> changes = [.. review.Proposal.Changes
+                .Where(static view => EditorAgentProposalReview.IsUndecided(view) && view.Change.CanAccept)
+                .Select(static view => view.Change)];
+            if (changes.Count == 0)
+            {
+                continue;
+            }
+
+            Dictionary<string, ProposedChange> byId = changes.ToDictionary(static change => change.Id, StringComparer.Ordinal);
+            ProposalApplyResult result = WorkflowProposalApplier.Apply(
+                copy, changes, new HashSet<string>(byId.Keys, StringComparer.Ordinal));
+            foreach (ProposalAppliedChange applied in result.Applied)
+            {
+                ProposedChange change = byId[applied.ChangeId];
+                foreach (Block block in PreviewBlocks(copy, change, applied.MintedStableId))
+                {
+                    string mark = change.Kind == ProposedChangeKind.Added ? EditorAgentPreview.ADDED : EditorAgentPreview.CHANGED;
+                    if (!marks.ContainsKey(block.Id) || mark == EditorAgentPreview.ADDED)
+                    {
+                        marks[block.Id] = mark;
+                    }
+                }
+            }
+        }
+
+        return new EditorAgentPreview(copy, marks);
+    }
+
+    /// <summary>The blocks of the copy one applied change adds or changes; renumbering touches none.</summary>
+    private static IEnumerable<Block> PreviewBlocks(Workflow copy, ProposedChange change, string? minted)
+    {
+        if (change.Incidental || change.Kind == ProposedChangeKind.Removed)
+        {
+            return [];
+        }
+
+        string? key = minted ?? change.TargetKey;
+        return change.Scope switch
+        {
+            ProposedChangeScope.Block => copy.GetAllBlocks().Where(block => block.StableBlockId == key),
+            ProposedChangeScope.Section when change.Kind == ProposedChangeKind.Added =>
+                copy.Sections.Where(section => section.StableSectionId == key).SelectMany(static section => section.Blocks),
+            _ => [],
+        };
+    }
+
+    /// <summary>
+    /// Reads only the turn in flight: while it is the turn shown, its status and steps are patched
+    /// in; once it settled or another turn took its place, the conversation is read again.
+    /// </summary>
+    private async Task PollAsync()
+    {
+        if (_isDisposed || _conversation is null || InFlightTurn is not { } shown)
+        {
+            return;
+        }
+
+        long ticket = ++_readTicket;
+        ErrorOr<EditorAgentInFlightTurn?> polled = await AgentService.GetInFlightTurnAsync(
+            OrganizationId, UserId, _conversation.Id);
+        if (_isDisposed || polled.IsError || ticket < _appliedTicket || _conversation is null)
+        {
+            return;
+        }
+
+        EditorAgentInFlightTurn? inFlight = polled.Value;
+        if (inFlight is null || inFlight.Number != shown.Number)
+        {
+            _live = null;
+            await ReloadConversationAsync();
+        }
+        else if (inFlight.Status != shown.Status || inFlight.IsWaiting != shown.IsWaiting)
+        {
+            ShowConversation(_conversation with
+            {
+                Turns = [.. _conversation.Turns.Select(turn => turn.Number == inFlight.Number
+                    ? turn with { Status = inFlight.Status, IsWaiting = inFlight.IsWaiting }
+                    : turn)],
+            }, ticket);
+        }
+
+        if (inFlight?.Activity is { } activity && InFlightTurn?.Number == inFlight.Number)
+        {
+            _live = new LiveActivity(inFlight.Number, activity);
+        }
+
+        StateHasChanged();
+    }
+
+    private AgentActivityDigest? LiveDigestOf(EditorAgentTurnView turn)
+    {
+        return _live is { } live && live.TurnNumber == turn.Number ? live.Digest : null;
+    }
+
+    private string WorkingLabel(EditorAgentTurnView turn)
+    {
+        if (turn.Status == AgentConversationTurnStatus.Queued)
+        {
+            return "Getting ready...";
+        }
+
+        AgentActivityDigest? live = LiveDigestOf(turn);
+        if (live?.Beats.LastOrDefault() is { } beat && beat.PhaseIndex >= 0 && beat.PhaseIndex < live.Phases.Count)
+        {
+            return live.Phases[beat.PhaseIndex].GapLabel;
+        }
+
+        return "Reading the workflow...";
+    }
+}

@@ -1,0 +1,52 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="List Title"
+                      Class="editor-mono-field"
+                      @bind-Value="@_props.ListTitle" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="List Title After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@_props.ExecutionState.ListTitle" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="List Values Template"
+                      Class="editor-mono-field"
+                      Lines="4"
+                      @bind-Value="@_props.LoopedListTemplate" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="List Values After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          Lines="4"
+                          ReadOnly="true"
+                          Value="@_props.ExecutionState.LoopedList" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private LoopStartProperties _props => Block.Properties as LoopStartProperties
+        ?? throw new InvalidOperationException("Block properties must be of type LoopStartProperties");
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+}

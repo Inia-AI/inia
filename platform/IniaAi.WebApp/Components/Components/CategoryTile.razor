@@ -1,0 +1,49 @@
+﻿@inject NavigationManager Navigation
+@inject ILogger<CategoryTile> Logger
+
+<MudCard Outlined="true">
+    <MudCardContent Class="pa-0">
+        <MudPaper Height="140px"
+                  Width="220px"
+                  Elevation="0">
+            @* The label repeats the visible title on purpose: an accessibility snapshot that leaves out
+               names taken from a button's content would otherwise list the card as a nameless button. *@
+            <MudButton Style="height: 100%"
+                       FullWidth="true"
+                       aria-label="@Title"
+                       OnClick="async(e) => await OnClickAsync(e)">
+                <div class="d-flex flex-column align-center justify-center gap-3 ma-2">
+                    <MudIcon Icon="@Icon" />
+
+                    <MudText Style="width: 100%; text-align: center;"
+                             Typo="Typo.body1">
+                        @Title
+                    </MudText>
+                </div>
+            </MudButton>
+        </MudPaper>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Dictionary<string, string> HrefInfo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Icon { get; set; } = default!;
+
+    private async Task OnClickAsync(MouseEventArgs e)
+    {
+        if (HrefInfo.Count == 0)
+        {
+            return;
+        }
+
+        Navigation.NavigateTo(HrefInfo.Values.First());
+
+        await Task.CompletedTask;
+    }
+}

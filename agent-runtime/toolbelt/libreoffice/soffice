@@ -1,0 +1,13 @@
+#!/bin/sh
+# A run executes as a uid with no passwd entry, and LibreOffice will not start for one without
+# an explicit profile directory (ADR 0139).
+for arg in "$@"; do
+  case "$arg" in
+    -env:UserInstallation=*) exec /usr/lib/libreoffice/program/soffice.real "$@" ;;
+  esac
+done
+# /tmp, never $TMPDIR: the sandbox /tmp is private to one Bash call and dies with it, while the
+# SDK points TMPDIR at the one directory that outlives the call. mktemp, never a predictable
+# name: outside a sandbox /tmp is shared, and another uid could own a name it can guess.
+profile=$(mktemp -d /tmp/libreoffice-profile-XXXXXXXX) || exit 1
+exec /usr/lib/libreoffice/program/soffice.real "-env:UserInstallation=file://$profile" "$@"

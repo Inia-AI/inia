@@ -1,0 +1,57 @@
+@using IniaAi.Common.Constants
+@using IniaAi.Domain.Tools.Reconciliation
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack>
+            <MudText Typo="Typo.h5">Reconciliation Prompts</MudText>
+            <MudText Typo="Typo.subtitle1">
+                Prompts that are used for reconciling and matching @CounterpartyTerms.SINGULAR_LOWER names.
+            </MudText>
+            <ToolsSettingsScopeNotice />
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Spacing="5">
+            <MudText Typo="Typo.h6">Finding A Match</MudText>
+
+            <MudTextField Variant="Variant.Outlined"
+                         @bind-Value="@Prompts.FindMatchPrompt"
+                         Label="Find Match Prompt"
+                         Class="editor-mono-field"
+                         HelperText="@($"Prompt used for finding matching {CounterpartyTerms.SINGULAR_LOWER} names")"
+                         Sizing="InputSizing.Auto"
+                         Lines="5"
+                         MaxLines="20" />
+
+            <MudDivider />
+
+            <MudText Typo="Typo.h6">Compare Lists</MudText>
+
+            <MudTextField Variant="Variant.Outlined"
+                         @bind-Value="@Prompts.CompareListsPrompt"
+                         Label="Compare Lists Prompt"
+                         Class="editor-mono-field"
+                         HelperText="@($"Prompt used for comparing two lists of {CounterpartyTerms.SINGULAR_LOWER} names")"
+                         Sizing="InputSizing.Auto"
+                         Lines="5"
+                         MaxLines="20" />
+
+            <MudDivider />
+
+            <PromptsToolbar Prompts="@Prompts"
+                            Title="Reconciliation Prompts"
+                            SaveChangesCallback="@SaveChangesCallback"
+                            PromptsUploaded="@((ReconciliationPrompts uploaded) => uploaded.CopyTo(Prompts))" />
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public required ReconciliationPrompts Prompts { get; set; }
+
+    [Parameter]
+    public required EventCallback SaveChangesCallback { get; set; }
+}

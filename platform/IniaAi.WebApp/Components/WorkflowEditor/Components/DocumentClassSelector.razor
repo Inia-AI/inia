@@ -1,0 +1,279 @@
+@using IniaAi.Core.Common.Helpers
+@using IniaAi.Core.Workflows.Strategies
+@using IniaAi.Domain.Entities.Workflows.Blocks
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+@if (_isParameterized)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true" Class="mt-1">
+        Each variant of this parameterized section translates these classes at run time
+        via the class map in the section config.
+    </MudAlert>
+}
+
+@if (IsOutputClasses || IsInputDocumentClass)
+{
+    <MudSelect T="string"
+               Label="@_label"
+               Variant="Variant.Outlined"
+               Clearable="@(!Required)"
+               SelectedValues="@_selectedClasses"
+               SelectedValuesChanged="OnSelectionChanged"
+               Error="@_isMissingRequired"
+               ErrorText="Select an output document class for this block.">
+
+        @DocumentClassItems
+    </MudSelect>
+}
+else
+{
+    @* Each click keeps Any, None and the classes exclusive in the open list itself; the block
+       is written once, when the popover closes. *@
+    <MudSelect T="string"
+               Label="@_label"
+               Variant="Variant.Outlined"
+               MultiSelection="true"
+               SelectedValues="@_liveSelection"
+               SelectedValuesChanged="OnLiveSelectionChanged"
+               @bind-Open="_isOpen"
+               @bind-Open:after="OnOpenStateSettledAsync"
+               MultiSelectionTextFunc="@RenderSelectionText">
+
+        <MudSelectItem Value="@DocumentClass.KEY_ANY">@LABEL_ANY</MudSelectItem>
+        <MudSelectItem Value="@DocumentClass.KEY_NONE">@LABEL_NONE</MudSelectItem>
+
+        @DocumentClassItems
+    </MudSelect>
+}
+
+@if (_availableDocumentClasses.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Class="mt-2">
+        No document classes defined for this workflow. Define document classes at the workflow level to use them here.
+    </MudAlert>
+}
+
+@code {
+    private const string LABEL_ANY = "Any (All document classes)";
+    private const string LABEL_NONE = "None (No documents)";
+
+    private HashSet<string> _selectedClasses = [];
+    private IReadOnlyCollection<string>? _liveSelection;
+    private HashSet<string> _openSnapshot = [];
+    private bool _isOpen;
+    private bool _isParameterized;
+    private List<DocumentClass> _availableDocumentClasses = [];
+    private Dictionary<string, string> _displayNamesByKey = new();
+
+    private RenderFragment DocumentClassItems => @<text>
+        @if (_availableDocumentClasses.Count > 0)
+        {
+            <MudDivider />
+            @foreach (var documentClass in _availableDocumentClasses)
+            {
+                <MudSelectItem Value="@documentClass.Key">
+                    @documentClass.DisplayName
+                </MudSelectItem>
+            }
+        }
+    </text>;
+
+    private string _label => IsOutputClasses
+        ? "Select Output Document Class"
+        : IsInputDocumentClass
+            ? "Input Document Class"
+            : "Select Document Classes";
+
+    [Parameter, EditorRequired]
+    public Block? Block { get; set; }
+
+    [Parameter]
+    public bool IsOutputClasses { get; set; }
+
+    /// <summary>
+    /// When true, single-selects the uploaded document the block reads from or injects into
+    /// (<see cref="Json2XlsxProperties.InputDocumentClass"/>) instead of the block's supported
+    /// document classes.
+    /// </summary>
+    [Parameter]
+    public bool IsInputDocumentClass { get; set; }
+
+    /// <summary>When true (output blocks that always produce a document), an empty selection is invalid.</summary>
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public EventCallback SelectionChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<string>> ClassesReplacedFrom { get; set; }
+
+    private bool _isMissingRequired => Required && IsOutputClasses && _selectedClasses.Count == 0;
+
+    protected override void OnParametersSet()
+    {
+        // Parameterized config does not control the input class property, so that mode
+        // keeps its selector (matching the previous hand-built select's behavior).
+        _isParameterized = !IsInputDocumentClass
+            && !string.IsNullOrWhiteSpace(Block?.Section?.ParameterizedConfig);
+
+        _availableDocumentClasses = GetAvailableDocumentClasses();
+        _displayNamesByKey = _availableDocumentClasses.ToDictionary(static dc => dc.Key, static dc => dc.DisplayName);
+
+        if (Block is null)
+        {
+            return;
+        }
+
+        if (IsOutputClasses)
+        {
+            string? createsDocumentClass = (Block.Properties as IProducesDocumentBlockProperties)?.CreatesDocumentClass;
+
+            _selectedClasses = createsDocumentClass is null
+                ? []
+                : [ createsDocumentClass ];
+        }
+        else if (IsInputDocumentClass)
+        {
+            string? inputDocumentClass = Block.Properties switch
+            {
+                Json2XlsxProperties j2xsp => j2xsp.InputDocumentClass,
+                _ => null
+            };
+
+            _selectedClasses = inputDocumentClass is null
+                ? []
+                : [ inputDocumentClass ];
+        }
+        else if (!_isOpen)
+        {
+            _liveSelection = Block.SupportedDocumentClasses.ToHashSet();
+        }
+    }
+
+    private List<DocumentClass> GetAvailableDocumentClasses()
+    {
+        var documentClasses = new List<DocumentClass>();
+
+        if (Block?.Section?.Workflow?.DocumentClasses is not null)
+        {
+            documentClasses.AddRange(Block.Section.Workflow.DocumentClasses);
+        }
+
+        IEnumerable<DocumentClass> distinctClasses = documentClasses.DistinctBy(dc => dc.Key);
+
+        if (IsOutputClasses)
+        {
+            distinctClasses = distinctClasses.Where(dc => dc.IsOutputDocument);
+        }
+
+        return [.. distinctClasses.OrderBy(dc => dc.DisplayName)];
+    }
+
+    private async Task OnSelectionChanged(IReadOnlyCollection<string> selectedValues)
+    {
+        if (Block is null)
+        {
+            return;
+        }
+
+        if (IsOutputClasses)
+        {
+            string? selectedClass = selectedValues.FirstOrDefault();
+
+            if (Block.Properties is IProducesDocumentBlockProperties producer)
+            {
+                producer.CreatesDocumentClass = string.IsNullOrWhiteSpace(selectedClass)
+                    ? null
+                    : selectedClass;
+            }
+
+            _selectedClasses = string.IsNullOrWhiteSpace(selectedClass)
+                ? []
+                : [ selectedClass ];
+
+            await SelectionChanged.InvokeAsync();
+
+            return;
+        }
+
+        if (IsInputDocumentClass)
+        {
+            string? selectedClass = selectedValues.FirstOrDefault();
+
+            if (Block.Properties is Json2XlsxProperties json2XlsxProps)
+            {
+                json2XlsxProps.InputDocumentClass = string.IsNullOrWhiteSpace(selectedClass)
+                    ? null
+                    : selectedClass;
+            }
+
+            _selectedClasses = string.IsNullOrWhiteSpace(selectedClass)
+                ? []
+                : [ selectedClass ];
+
+            await SelectionChanged.InvokeAsync();
+        }
+    }
+
+    private void OnLiveSelectionChanged(IEnumerable<string> selected)
+    {
+        _liveSelection = DocumentClassSelectionCanonicalizer.ApplyClick(_liveSelection ?? [], [.. selected]);
+    }
+
+    private async Task OnOpenStateSettledAsync()
+    {
+        if (_isOpen)
+        {
+            _openSnapshot = _liveSelection?.ToHashSet() ?? [];
+            return;
+        }
+
+        await CommitMultiSelectionAsync();
+    }
+
+    private async Task CommitMultiSelectionAsync()
+    {
+        if (Block is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<string> saved = DocumentClassSelectionCanonicalizer.Commit(_openSnapshot, [.. _liveSelection ?? []]);
+
+        _liveSelection = saved;
+
+        if (saved.ToHashSet().SetEquals(Block.SupportedDocumentClasses))
+        {
+            return;
+        }
+
+        List<string> previousClasses = [.. Block.SupportedDocumentClasses];
+
+        Block.SupportedDocumentClasses.Clear();
+        foreach (var item in saved)
+        {
+            Block.SupportedDocumentClasses.Add(item);
+        }
+
+        await ClassesReplacedFrom.InvokeAsync(previousClasses);
+        await SelectionChanged.InvokeAsync();
+    }
+
+    private string RenderSelectionText(IReadOnlyList<string> selectedValues)
+    {
+        IEnumerable<string> shownValues = _isOpen
+            ? DocumentClassSelectionCanonicalizer.Commit(_openSnapshot, selectedValues)
+            : selectedValues;
+
+        return string.Join(", ", shownValues.Select(value => value switch
+        {
+            DocumentClass.KEY_ANY => LABEL_ANY,
+            DocumentClass.KEY_NONE => LABEL_NONE,
+            _ => _displayNamesByKey.TryGetValue(value, out string? displayName) ? displayName : value,
+        }));
+    }
+}

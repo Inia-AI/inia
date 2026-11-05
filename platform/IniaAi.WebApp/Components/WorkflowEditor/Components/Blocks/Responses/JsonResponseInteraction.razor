@@ -1,0 +1,26 @@
+@using IniaAi.Domain.Entities.Workflows.Responses
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+@if (!string.IsNullOrWhiteSpace(Response.JsonResponse))
+{
+    <MudTextField T="string"
+                  Variant="Variant.Outlined"
+                  Sizing="InputSizing.Auto"
+                  MaxLines="20"
+                  Class="editor-mono-field"
+                  Value="@_indentMemo.Indent(Response.JsonResponse)"
+                  ValueChanged="@((string? edited) => Response.JsonResponse = edited)" />
+}
+else
+{
+    <MudAlert Severity="Severity.Info">
+        No JSON Response Generated
+    </MudAlert>
+}
+
+@code {
+    private readonly JsonIndentMemo _indentMemo = new();
+
+    [Parameter, EditorRequired]
+    public BlockResponse Response { get; set; } = default!;
+}

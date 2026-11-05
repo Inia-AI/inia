@@ -1,0 +1,193 @@
+﻿@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.Admin.Components
+@using IniaAi.WebApp.Components.Components
+@using IniaAi.WebApp.Components.Admin.Dialogs
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using IniaAi.Domain.Specifications.Users
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IDialogService DialogService
+@inject AppState AppState
+@inject RoleGrants RoleGrants
+@inject IHostApplicationLifetime HostApplicationLifetime;
+@inject ILogger<Administration> Logger
+@implements IDisposable
+
+@attribute [Route(AppRoutes.ADMINISTRATION)]
+@attribute [Authorize(Roles = ROLES)]
+
+<PageTitle>Inia AI - Administration</PageTitle>
+
+<div class="admin-page">
+    <div class="admin-header">
+        <div>
+            <div class="admin-header__title">Administration</div>
+            <div class="admin-header__subtitle">Manage tenants, users, roles and stored keys</div>
+        </div>
+        <MudSpacer />
+        @if (AppState.IsSuperAdmin)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.RestartAlt"
+                       Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       Class="editor-soft-button"
+                       OnClick="RestartApp">
+                Restart Application
+            </MudButton>
+        }
+        <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                 AriaLabel="Administration actions"
+                 AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight">
+            <MudMenuItem OnClick="ShowUserCsvImportDialogAsync">Import Users</MudMenuItem>
+        </MudMenu>
+    </div>
+
+    @* The tabs query this page's unit of work too, the Tenants card as it starts and the Users tab when its
+       users arrive, and the DbContext behind it takes one query at a time. So the tabs render only after
+       this page's own queries finish. *@
+    @if (_loaded)
+    {
+        <MudTabs ApplyEffectsToContainer="false"
+                 Class="admin-tabs"
+                 TabPanelsClass="pt-5">
+            @if (AppState.IsSuperAdmin)
+            {
+                <MudTabPanel Text="Tenants">
+                    <TenantManagementCard />
+                </MudTabPanel>
+            }
+
+            <MudTabPanel Text="Users">
+                <UserManagementCard @bind-Users="Users"
+                                    @bind-Users:after="UpdateUsersAsync"
+                                    UnmanageableUserIds="UnmanageableUserIds" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Roles">
+                <RoleManagementCard Users="RoleAssignableUsers"
+                                    Roles="Roles"
+                                    UserRoles="UserRoles"
+                                    UnmanageableUserIds="UnmanageableUserIds" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Stored keys">
+                <StoredKeysCard />
+            </MudTabPanel>
+        </MudTabs>
+    }
+    else
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-5" />
+    }
+</div>
+
+@code {
+    public const string ROLES = IniaAi.Domain.Entities.UserManagement.Roles.ADMIN_ROLES;
+
+    protected IEnumerable<User> Users { get; set; } = [];
+
+    // Separate from Users (the Users tab, which hides system users): for a super admin this also
+    // includes per-tenant system/service users so their WorkflowEditor role can be assigned by hand.
+    protected IEnumerable<User> RoleAssignableUsers { get; set; } = [];
+
+    protected IEnumerable<IdentityRole> Roles { get; set; } = [];
+    protected IEnumerable<IdentityUserRole<string>> UserRoles { get; set; } = [];
+
+    // Users who hold a role that reaches every organization; an organization admin takes no action on them.
+    protected IReadOnlySet<string> UnmanageableUserIds { get; set; } = new HashSet<string>();
+
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserRoles = await UserDataUnitOfWork.Repository<IdentityUserRole<string>>().GetAllAsync();
+        Roles = await UserDataUnitOfWork.Repository<IdentityRole>().GetAllAsync();
+        await UpdateUsersAsync();
+        UnmanageableUserIds = await FindUnmanageableUserIdsAsync();
+        _loaded = true;
+    }
+
+    private async Task<IReadOnlySet<string>> FindUnmanageableUserIdsAsync()
+    {
+        if (AppState.IsSuperAdmin)
+        {
+            return new HashSet<string>();
+        }
+
+        Dictionary<string, string?> roleNames = Roles.ToDictionary(r => r.Id, r => r.Name);
+        List<string> userIds = [.. Users.Concat(RoleAssignableUsers).Select(u => u.Id).Distinct()];
+        IEnumerable<UserOrganization> memberships = await UserDataUnitOfWork.Repository<UserOrganization>()
+            .FindAsync(uo => userIds.Contains(uo.UserId) && uo.IsActive && uo.Organization.IsActive);
+
+        return RoleGrants.Unmanageable(
+            managerIsSuperAdmin: false,
+            AppState.User?.Id ?? string.Empty,
+            AppState.UserOrganizations.Select(o => o.Id).ToHashSet(),
+            UserRoles.Select(ur => (ur.UserId, roleNames.GetValueOrDefault(ur.RoleId))),
+            memberships.Select(m => (m.UserId, m.OrganizationId)));
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
+
+    private async Task RestartApp()
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Restart application?",
+            "Everyone will be disconnected while the application restarts. This can take a moment to come back up.",
+            yesText: "Restart",
+            cancelText: "Cancel");
+
+        if (confirmed is not true)
+        {
+            return;
+        }
+
+        Logger.LogInformation("\n================================================\nShutting down application...\n================================================");
+        HostApplicationLifetime.StopApplication();
+    }
+
+    private async Task ShowUserCsvImportDialogAsync()
+    {
+        var dialog = await DialogService.ShowAsync<UserCsvImportDialog>("Import Users");
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await UpdateUsersAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task UpdateUsersAsync()
+    {
+        if (AppState.User is User user)
+        {
+            if (AppState.IsSuperAdmin)
+            {
+                // The Roles tab also surfaces system/service users so their roles can be managed by hand.
+                RoleAssignableUsers = [.. await UserDataUnitOfWork.Users.GetAllAsync()];
+                Users = [.. RoleAssignableUsers.Where(u => !u.IsSystem)];
+            }
+            else
+            {
+                // Regular admins never manage system users. Each tab gets its own list, so this guarantee
+                // does not depend on whatever the Users tab field holds later.
+                List<User> organizationUsers = [.. await UserDataUnitOfWork.Users.GetAllAsync(new NonSystemUsersByOrganizationSpec(user.OrganizationId))];
+                Users = organizationUsers;
+                RoleAssignableUsers = [.. organizationUsers];
+            }
+        }
+        else
+        {
+            Users = [];
+            RoleAssignableUsers = [];
+        }
+    }
+
+}

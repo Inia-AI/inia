@@ -1,0 +1,89 @@
+From: reporting@fund-admin.example
+To: hf-monitoring@bank.example
+Subject: pasted-table
+Date: Thu, 01 Oct 2026 09:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="==b=="
+
+--==b==
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+<html><body><p>Dear investor, please see this month's performance below.</p><p><img src="cid:table" width="860" height="320"/></p><p>Kind regards,<br/>Fund Reporting Team</p><p><img src="cid:logo" width="180" height="60"/> <img src="cid:icon" width="24" height="24"/> <img src="cid:icon2" width="24" height="24"/></p><img src="cid:pixel" width="1" height="1"/></body></html>
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <table>
+Content-Disposition: inline; filename="table.png"
+
+iVBORw0KGgoAAAANSUhEUgAAA1wAAAFACAAAAACNBSLRAAAGtklEQVR42u3dMY7kMAwEQD7M//+W
+FjqPd3YAXyZq3EAxZWK0VKQzVSmlmuqYNf5Tx6O69civuu/Wo5P87FbE6V+5HjE3Fi644IILLrjg
+ggsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCCy644ILrE5dge4KNYHU/CJ78zRWy
+COCCCy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCCy644IILru/h
+EuySYMeIGQUVcfpnt0IWwezCBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xw
+wQUXXHDF4lJKNZXNZXPZXP2/hYJdGGzM8xZXrhmjoEIWwezCBRdccMEFF1xwwQUXXHDBBRdccMEF
+F1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1z7cAl2ebARrF65xjxv8c414cbCBRdccMEF
+F1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xbcAm2J9gIVme3
+Ik7/yvWIubFwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDB9QeXUqqpbC6by+by
+WwgXXHDBBRdcnw8xCHZhsBGs7gfBk7+5Yp63gAsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjg
+ggsuuOCCCy644IILLrjgggsuuOCCCy64voVLsEuCHSNmFFTE6Z/dClkEswsXXHDBBRdccMEFF1xw
+wQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccO3GJdiFwcY8b3HlmjEKKmQR
+zC5ccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDB1YxLKdVUNpfNZXP5LYQLLrjgggsuuOCCCy64
+4MrEJdjlwUaweuUa87zFO9eEGwsXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdc
+cMEFF1xwwQUXXHDBBRdccG3BJdieYCNYnd2KOP0r1yPmxsIFF1xwwQUXXHDBBRdccMEFF1xwwQUX
+XHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXFtwCbYn2AhW94Pgyd9cMc9bwAUXXHDBBRdc
+cMEFF1xwwQUXXHBF4lJKNZXNZXPZXH4L4YILLrjgggsuuOCCCy644IILLrjggguuvbgEuyTYMWJG
+QUWc/tmtkEUwu3DBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDB
+BRdccMEF125cgl0YbMzzFleuGaOgQhbB7MIFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEF
+F1xwwQUXXHDBBRdccMEFF1xwwQUXXPtwCXZ5sBGsXrnGPG/xzjXhxsIFF1xwwQUXXHDBBdc/XEqp
+prK5bC6by28hXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHD94hJsT7ARrM5uRZz+lesR
+c2PhggsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCC64t
+uATbE2wEq/tB8ORvrpjnLeCCCy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjg
+ggsuuOCCCy644IILrm/hEuySYMeIGQUVcfpnt0IWwezCBRdcbbiUUk1lc9lcNpffQrjgggsuuOCC
+Cy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCC658XIJdGGzM8xZXrhmjoEIWwezCBRdccMEF
+F1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1z7cAl2ebARrF65
+xjxv8c414cbCBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdc
+cMEFF1xbcCmlmsrU6plaETvr7FbE6V+5HjE3Fi644IILLrjgggsuuOCCCy644IILLrjgggsuuOCC
+Cy644IILLrjgggsuuOCCCy644ILrE5dge4KNYHU/CJ78zRXzvAVccMEFF1xwwQUXXHDBBRdccMEF
+F1xwwQUXXHDBBRdccMEFF1xwwQUXXHDBBRdccMEFF1xwwfUtXIJdEuwYMaOgIk7/7FbIIphduOCC
+Cy644IILLrjgggsuuOCCCy644IILLrjgggsuuOCCCy644IILLrjggguuUFw/ZT+TZGZLOU8AAAAA
+SUVORK5CYII=
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <logo>
+Content-Disposition: inline; filename="logo.png"
+
+iVBORw0KGgoAAAANSUhEUgAAALQAAAA8CAAAAADqRc9bAAAATUlEQVR42u3ZQREAAAQAQUn0b8lf
+AsZegv1f1MECGhoaGhoaeqBzd9DQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ19HmJzQ0NDT0X3QD
+VIi85NLxoYwAAAAASUVORK5CYII=
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <icon>
+Content-Disposition: inline; filename="icon.png"
+
+iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAAAAADFHGIkAAAAE0lEQVR42mMIwAEYRiVGJciXAAD+
+prQBy4q7kQAAAABJRU5ErkJggg==
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <icon2>
+Content-Disposition: inline; filename="icon2.png"
+
+iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAAAAADFHGIkAAAAE0lEQVR42mMIwAEYRiVGJciXAAD+
+prQBy4q7kQAAAABJRU5ErkJggg==
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <pixel>
+Content-Disposition: inline; filename="pixel.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mP4DwABAQEAHLCMmQAA
+AABJRU5ErkJggg==
+
+--==b==--

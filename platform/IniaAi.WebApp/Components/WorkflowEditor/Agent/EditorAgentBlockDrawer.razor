@@ -1,0 +1,77 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@using IniaAi.Configuration.Platform
+@using IniaAi.Core.Services.AgentRuntime
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+
+@inject IOptions<AgentRuntimeSettings> AgentRuntimeSettingsOptions
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+@inject AppState AppState
+
+<div class="editor-agent-detail-scrim" @onclick="OnClose"></div>
+<aside class="editor-agent-detail"
+       role="dialog"
+       aria-modal="false"
+       aria-label="@Block.Name"
+       data-testid="editor-agent-detail"
+       @onkeydown="OnKeyDown">
+    <header class="editor-agent-detail-head">
+        <div class="flex-grow-1">
+            <div class="editor-agent-detail-title">@Block.Name</div>
+            <div class="editor-agent-caption">@EditorAgentChangeText.BlockSubtitle(Block)</div>
+        </div>
+        <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                       Size="Size.Small"
+                       aria-label="Close and return to the conversation"
+                       OnClick="OnClose" />
+    </header>
+
+    <button type="button" class="editor-agent-link" @onclick="@(() => OnOpenInEditor.InvokeAsync(Block))">
+        Open in editor
+    </button>
+
+    <div class="editor-agent-detail-facts" data-testid="editor-agent-block-facts">
+        @if (EditorAgentBlockFacts.InstructionsExcerpt(Block) is { } instructions)
+        {
+            <div>
+                <div class="editor-agent-caption">Instructions</div>
+                <div class="editor-agent-value" data-testid="editor-agent-block-instructions">@instructions</div>
+            </div>
+        }
+        @if (EditorAgentBlockFacts.ModelSettings(Block, AgentTiers()) is { Count: > 0 } settings)
+        {
+            <dl class="editor-agent-detail-settings" data-testid="editor-agent-block-model">
+                @foreach (EditorAgentBlockFact fact in settings)
+                {
+                    <dt class="editor-agent-caption">@fact.Label</dt>
+                    <dd>@fact.Value</dd>
+                }
+            </dl>
+        }
+    </div>
+</aside>
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    private AgentModelTiers AgentTiers()
+    {
+        return AgentModelTiers.For(
+            AgentRuntimeSettingsOptions.Value, PlatformSettingsOptions.Value.ModelRouting, AppState.CurrentOrganizationId);
+    }
+
+    [Parameter]
+    public EventCallback<Block> OnOpenInEditor { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

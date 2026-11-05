@@ -1,0 +1,33 @@
+name: Tests
+description: >-
+  Installs one tree's packages and runs one shard of its tests. PR Validation runs it on the
+  checkout, and the public-tree workflow on the exported public tree.
+
+inputs:
+  tree:
+    description: The folder that holds the tree, relative to the workspace.
+    required: false
+    default: "."
+  shard:
+    description: The shard to run, such as 1/4.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: ${{ inputs.tree }}/.nvmrc
+        cache: 'npm'
+        cache-dependency-path: ${{ inputs.tree }}/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm ci --legacy-peer-deps
+
+    - name: Run tests
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm test -- --shard=${{ inputs.shard }}

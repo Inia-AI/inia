@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="ClosedXML" />
+        <PackageReference Include="DocumentFormat.OpenXml" />
+        <PackageReference Include="OpenMcdf" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.FileFormats\IniaAi.FileFormats.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Update="TestDocuments\*" CopyToOutputDirectory="PreserveNewest" />
+        <EmbeddedResource Include="Resources\*" />
+    </ItemGroup>
+</Project>

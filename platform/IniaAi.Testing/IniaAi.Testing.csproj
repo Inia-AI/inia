@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
+        <PackageReference Include="AWSSDK.SSO" />
+        <PackageReference Include="AWSSDK.SSOOIDC" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit.v3.extensibility.core" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Configuration\IniaAi.Configuration.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="TestResources\**" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>IniaAi.Common.Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+</Project>

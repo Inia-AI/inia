@@ -1,0 +1,63 @@
+@using IniaAi.Services.CsvImport
+
+<MudAlert Severity="Severity.Error" Class="mt-2">
+    Found @Errors.Count validation errors. Please fix the CSV and try again.
+</MudAlert>
+
+<MudExpansionPanels Class="mt-2">
+    <MudExpansionPanel Text="View Error Details">
+        <MudTable Items="@Errors" Dense="true" Hover="true" Striped="true">
+            <HeaderContent>
+                <MudTh>Row</MudTh>
+                <MudTh>Entity</MudTh>
+                <MudTh>Error</MudTh>
+                <MudTh>Action</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Row">@context.RowNumber</MudTd>
+                <MudTd DataLabel="Entity">
+                    @if (!string.IsNullOrEmpty(context.EntityId))
+                    {
+                        <MudText Typo="Typo.caption">ID: @context.EntityId</MudText>
+                    }
+                    <MudText>@context.EntityName</MudText>
+                </MudTd>
+                <MudTd DataLabel="Error">
+                    <MudChip T="string" Size="Size.Small" Color="@GetErrorColor(context.ErrorType)">
+                        @context.ErrorType
+                    </MudChip>
+                    <MudTooltip Text="@context.ErrorMessage">
+                        <MudText Typo="Typo.body2">@TruncateText(context.ErrorMessage, 50)</MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Action">
+                    <MudText Typo="Typo.caption">@context.SuggestedAction</MudText>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<CsvImportError> Errors { get; set; } = [];
+
+    private static Color GetErrorColor(CsvImportErrorType errorType) => errorType switch
+    {
+        CsvImportErrorType.NameConflict => Color.Warning,
+        CsvImportErrorType.DuplicateInCsv => Color.Error,
+        CsvImportErrorType.InvalidReference => Color.Error,
+        CsvImportErrorType.ValidationError => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+        {
+            return text;
+        }
+
+        return text.Substring(0, maxLength) + "...";
+    }
+}

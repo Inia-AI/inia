@@ -1,0 +1,30 @@
+{
+  "id": "pricing-1",
+  "provider": "aws-bedrock",
+  "family": "anthropic",
+  "modelId": "claude-sonnet",
+  "modelAlias": "sonnet",
+  "displayName": "Claude Sonnet",
+  "pricingType": "Llm",
+  "effectiveFrom": "2026-09-07T08:00:00Z",
+  "effectiveTo": "2027-09-07T08:00:00Z",
+  "isActive": true,
+  "longPromptThresholdTokens": null,
+  "regionalEndpointMultiplier": null,
+  "components": [
+    {
+      "id": "component-input",
+      "componentType": "Input",
+      "cost": 3,
+      "unit": "PerMillion",
+      "currency": "USD"
+    },
+    {
+      "id": "component-output",
+      "componentType": "Output",
+      "cost": 15,
+      "unit": "PerMillion",
+      "currency": "USD"
+    }
+  ]
+}

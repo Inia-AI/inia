@@ -1,0 +1,45 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+
+@inject AppState AppState
+@inject IJSRuntime JsRuntime
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudStack Justify="Justify.Center">
+            <MudText>
+                @Message
+            </MudText>
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm">
+            @ConfirmButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ConfirmButtonText { get; set; } = "Confirm";
+
+    private void Cancel(MouseEventArgs e)
+        => MudDialog?.Cancel();
+
+    private void Confirm(MouseEventArgs e)
+        => MudDialog?.Close(DialogResult.Ok(true));
+}

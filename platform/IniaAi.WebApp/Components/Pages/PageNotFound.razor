@@ -1,0 +1,16 @@
+@attribute [Route(AppRoutes.NOT_FOUND)]
+@layout Layout.MainLayout
+
+@inject NavigationManager Navigation
+
+<PageTitle>Inia AI - Page not found</PageTitle>
+
+<MudStack Spacing="3" AlignItems="AlignItems.Start" Class="pt-6">
+    <MudText Typo="Typo.h5" HtmlTag="h1">Page not found</MudText>
+    <MudText Typo="Typo.body1">No page lives at this address: <code>@Address</code></MudText>
+    <MudButton Href="@AppRoutes.HOME" Variant="Variant.Filled" Color="Color.Primary">Go to the Dashboard</MudButton>
+</MudStack>
+
+@code {
+    private string Address => "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+}

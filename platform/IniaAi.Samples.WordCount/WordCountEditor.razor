@@ -1,0 +1,26 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using MudBlazor
+
+<MudTextField T="string"
+              Variant="Variant.Outlined"
+              Label="Text to count"
+              HelperText="Counts the words in this text. Name an earlier block as {its replacement tag} to count its output."
+              Lines="4"
+              Value="@Properties.TextTemplate"
+              ValueChanged="@OnTextChanged" />
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    private WordCountProperties Properties => (WordCountProperties)Block.Properties;
+
+    private async Task OnTextChanged(string? text)
+    {
+        Properties.TextTemplate = text;
+        await BlockChanged.InvokeAsync();
+    }
+}

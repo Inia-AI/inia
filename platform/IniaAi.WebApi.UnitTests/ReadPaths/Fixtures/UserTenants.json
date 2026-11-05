@@ -1,0 +1,44 @@
+[
+  {
+    "id": "org-alpha",
+    "name": "Alpha Partners",
+    "capabilities": [
+      "admin-app",
+      "baselines",
+      "explore",
+      "monitoring",
+      "refine",
+      "report-templates",
+      "run",
+      "run-evidence",
+      "run-logs",
+      "signatures",
+      "standalone-processing",
+      "team-view",
+      "upload",
+      "usage-cost",
+      "validation"
+    ]
+  },
+  {
+    "id": "org-beta",
+    "name": "Beta Capital",
+    "capabilities": [
+      "admin-app",
+      "baselines",
+      "explore",
+      "monitoring",
+      "refine",
+      "report-templates",
+      "run",
+      "run-evidence",
+      "run-logs",
+      "signatures",
+      "standalone-processing",
+      "team-view",
+      "upload",
+      "usage-cost",
+      "validation"
+    ]
+  }
+]

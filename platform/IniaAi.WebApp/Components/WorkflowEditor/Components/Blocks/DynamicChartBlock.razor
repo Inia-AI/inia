@@ -1,0 +1,213 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+
+<MudStack>
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Data Source JSON"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          @bind-Value="@_props.DataSourceJson"
+                          @onblur="async () => await BlockChanged.InvokeAsync()" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Variant="Variant.Outlined"
+                              Label="Data Source JSON After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              Value="@_props.ExecutionState.DataSourceJson" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <div class="editor-eyebrow mt-4 mb-2">Chart</div>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudSelect T="string"
+                       Label="Chart Type"
+                       Variant="Variant.Outlined"
+                       @bind-Value="@_props.ChartType"
+                       @onblur="async () => await BlockChanged.InvokeAsync()">
+                <MudSelectItem Value="@("line")">Line Chart</MudSelectItem>
+                <MudSelectItem Value="@("bar")">Bar Chart</MudSelectItem>
+                <MudSelectItem Value="@("column")">Column Chart</MudSelectItem>
+                <MudSelectItem Value="@("area")">Area Chart</MudSelectItem>
+                <MudSelectItem Value="@("scatter")">Scatter Plot</MudSelectItem>
+                <MudSelectItem Value="@("pie")">Pie Chart</MudSelectItem>
+                <MudSelectItem Value="@("donut")">Donut Chart</MudSelectItem>
+                <MudSelectItem Value="@("bubble")">Bubble Chart</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Chart Title"
+                          Class="editor-mono-field"
+                          @bind-Value="@_props.ChartTitle"
+                          @onblur="async () => await BlockChanged.InvokeAsync()" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="editor-eyebrow mt-4 mb-2">Axes</div>
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="X-Axis Field"
+                          Class="editor-mono-field"
+                          @bind-Value="@_props.XAxisField"
+                          @onblur="async () => await BlockChanged.InvokeAsync()" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Y-Axis Field"
+                          Class="editor-mono-field"
+                          @bind-Value="@_props.YAxisField"
+                          @onblur="async () => await BlockChanged.InvokeAsync()" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="X-Axis Label"
+                          Class="editor-mono-field"
+                          @bind-Value="@_props.XAxisLabel"
+                          @onblur="async () => await BlockChanged.InvokeAsync()" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Y-Axis Label"
+                          Class="editor-mono-field"
+                          @bind-Value="@_props.YAxisLabel"
+                          @onblur="async () => await BlockChanged.InvokeAsync()" />
+        </MudItem>
+    </MudGrid>
+
+    <MudExpansionPanels Elevation="0" Class="mt-4">
+        <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+            <TitleContent>
+                <span class="editor-card-title">Chart styling</span>
+            </TitleContent>
+
+            <ChildContent>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Series Group Field (Optional)"
+                                      Class="editor-mono-field"
+                                      @bind-Value="@_props.SeriesGroupField"
+                                      @onblur="async () => await BlockChanged.InvokeAsync()" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string"
+                                   Label="Color Scheme"
+                                   Variant="Variant.Outlined"
+                                   @bind-Value="@_props.ColorScheme"
+                                   @onblur="async () => await BlockChanged.InvokeAsync()">
+                            <MudSelectItem Value="@("default")">Default</MudSelectItem>
+                            <MudSelectItem Value="@("professional")">Professional</MudSelectItem>
+                            <MudSelectItem Value="@("vibrant")">Vibrant</MudSelectItem>
+                            <MudSelectItem Value="@("earth")">Earth Tones</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    @if (_props.ChartType == "bar" || _props.ChartType == "column")
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="string"
+                                       Label="Stacking Mode"
+                                       Variant="Variant.Outlined"
+                                       @bind-Value="@_props.Stacking"
+                                       @onblur="async () => await BlockChanged.InvokeAsync()">
+                                <MudSelectItem Value="@("none")">Side-by-Side (None)</MudSelectItem>
+                                <MudSelectItem Value="@("normal")">Stacked</MudSelectItem>
+                                <MudSelectItem Value="@("percent")">Percentage Stacked</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    }
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Chart Height"
+                                      @bind-Value="@_props.ChartHeight"
+                                      @onblur="async () => await BlockChanged.InvokeAsync()" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Chart Width"
+                                      @bind-Value="@_props.ChartWidth"
+                                      @onblur="async () => await BlockChanged.InvokeAsync()" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Data Filters (JSON Array, Optional)"
+                                      Class="editor-mono-field"
+                                      Sizing="InputSizing.Auto"
+                                      @bind-Value="@_props.DataFilters"
+                                      @onblur="async () => await BlockChanged.InvokeAsync()" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <div class="editor-eyebrow mt-4 mb-2">Display options</div>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudCheckBox T="bool"
+                                   @bind-Value="@_props.ShowLegend"
+                                   Label="Show Legend"
+                                   Color="Color.Primary"
+                                   @onchange="async () => await BlockChanged.InvokeAsync()" />
+                        <MudText Typo="Typo.caption" Class="ml-8">
+                            Display legend for multi-series charts
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudCheckBox T="bool"
+                                   @bind-Value="@_props.ShowGridLines"
+                                   Label="Show Grid Lines"
+                                   Color="Color.Primary"
+                                   @onchange="async () => await BlockChanged.InvokeAsync()" />
+                        <MudText Typo="Typo.caption" Class="ml-8">
+                            Display reference grid lines for easier value reading
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="4">
+                        <MudCheckBox T="bool"
+                                   @bind-Value="@_props.EnableAnimations"
+                                   Label="Enable Animations"
+                                   Color="Color.Primary"
+                                   @onchange="async () => await BlockChanged.InvokeAsync()" />
+
+                        <MudText Typo="Typo.caption" Class="ml-8">
+                            Animate chart on load/update
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</MudStack>
+
+@code {
+    private DynamicChartProperties _props => Block.Properties as DynamicChartProperties
+        ?? throw new InvalidOperationException("Block properties must be of type DynamicChartProperties");
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback BlockChanged { get; set; }
+}

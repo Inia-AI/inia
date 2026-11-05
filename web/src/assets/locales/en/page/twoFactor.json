@@ -1,0 +1,85 @@
+{
+  "title": "Two-Factor Authentication",
+  "description": "Enter the verification code to complete sign in",
+  "selectMethod": "Select verification method",
+  "methods": {
+    "totp": "Authenticator App",
+    "email": "Email Code",
+    "recovery": "Recovery Code"
+  },
+  "enterTotpCode": "Enter code from your authenticator app",
+  "enterEmailCode": "Enter code sent to your email",
+  "enterRecoveryCode": "Enter a recovery code",
+  "codePlaceholder": "000000",
+  "recoveryPlaceholder": "XXXXX-XXXXX",
+  "sendCode": "Send Code",
+  "resendCode": "Resend Code",
+  "emailHint": "Code will be sent to {email}",
+  "emailSent": "Verification code sent to your email",
+  "emailSendFailed": "Failed to send verification code",
+  "recoveryHint": "Recovery codes can only be used once",
+  "trustDevice": "Trust this device for 30 days",
+  "verify": "Verify",
+  "invalidCode": "Invalid verification code",
+  "tooManyAttempts": "Too many attempts from your network. Wait a minute, then try again.",
+  "lockedOut": "Too many wrong codes. Your account is locked for a few minutes. Sign in again after that.",
+  "expired": "This sign-in timed out. Sign in again.",
+  "codeRequired": "Please enter a verification code",
+  "settings": {
+    "title": "Two-Factor Authentication",
+    "description": "Add an extra layer of security to your account",
+    "status": {
+      "enabled": "2FA is enabled",
+      "disabled": "2FA is not enabled"
+    },
+    "setup": {
+      "title": "Set up authenticator app",
+      "step1": "Download an authenticator app like Google Authenticator or Authy",
+      "step2": "Scan the QR code below or enter the secret key manually",
+      "step3": "Enter the 6-digit code from your app to verify",
+      "secretKey": "Secret Key",
+      "verificationCode": "Verification Code"
+    },
+    "enable": "Enable 2FA",
+    "disable": "Disable 2FA",
+    "recoveryCodes": {
+      "title": "Recovery Codes",
+      "description": "Save these codes in a safe place. You can use them to access your account if you lose your authenticator device.",
+      "remaining": "{count} code remaining | {count} codes remaining",
+      "regenerate": "Regenerate Codes",
+      "regenerateWarning": "Regenerating will invalidate all existing recovery codes",
+      "copy": "Copy Codes",
+      "copied": "Recovery codes copied to clipboard"
+    },
+    "trustedDevices": {
+      "title": "Trusted Devices",
+      "description": "Devices that won't require 2FA verification",
+      "current": "Current device",
+      "removeAll": "Remove All",
+      "removeDevice": "Remove",
+      "noDevices": "No trusted devices",
+      "unknownDevice": "Unknown Device",
+      "trustedUntil": "Trusted until {date}"
+    },
+    "disableDialog": {
+      "title": "Disable Two-Factor Authentication",
+      "description": "Enter your authenticator code to disable 2FA. This will make your account less secure.",
+      "confirm": "Disable 2FA"
+    },
+    "success": {
+      "enabled": "Two-factor authentication enabled",
+      "disabled": "Two-factor authentication disabled",
+      "regenerated": "Recovery codes regenerated",
+      "deviceRemoved": "Device removed",
+      "allDevicesRemoved": "All devices removed"
+    },
+    "error": {
+      "setup": "Failed to set up 2FA",
+      "enable": "Failed to enable 2FA",
+      "disable": "Failed to disable 2FA",
+      "regenerate": "Failed to regenerate recovery codes",
+      "removeDevice": "Failed to remove device",
+      "clipboard": "Failed to copy to clipboard"
+    }
+  }
+}

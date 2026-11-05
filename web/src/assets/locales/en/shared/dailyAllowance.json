@@ -1,0 +1,8 @@
+{
+  "explore": "You have used your {count} daily explore question. You can ask more from {time} {day}. | You have used your {count} daily explore questions. You can ask more from {time} {day}.",
+  "refine": "You have used your {count} daily refine request. You can refine again from {time} {day}. | You have used your {count} daily refine requests. You can refine again from {time} {day}.",
+  "helpRequest": "You have filed your {count} daily help request. You can file another from {time} {day}, or reply to the request you filed. | You have filed your {count} daily help requests. You can file more from {time} {day}, or reply to a request you filed.",
+  "helpRequestReply": "You have sent your {count} daily reply to support. You can reply again from {time} {day}. | You have sent your {count} daily replies to support. You can reply again from {time} {day}.",
+  "today": "today",
+  "tomorrow": "tomorrow"
+}

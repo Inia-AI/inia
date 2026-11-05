@@ -1,0 +1,38 @@
+{
+  "workflowTypeId": "SampleBlockShowcase",
+  "document": "../annual-report/annual-report.pdf",
+  "outputs": [
+    { "tag": "pageTwoText", "says": ["Chair's review", "Revenue for the year rose to EUR 48.6 million"], "lacks": ["<page", "Page 2"] },
+    { "tag": "revenueGrowth", "says": ["10.2"] },
+    { "tag": "netMargin", "says": ["12.1"] },
+    {
+      "tag": "figuresChart",
+      "chart": [
+        { "x": "2024", "series": "Revenue", "y": 44.1 },
+        { "x": "2025", "series": "Revenue", "y": 48.6 },
+        { "x": "2024", "series": "Net profit", "y": 4.7 },
+        { "x": "2025", "series": "Net profit", "y": 5.9 }
+      ]
+    },
+    {
+      "tag": "summary",
+      "says": [
+        "LARKSPUR FREIGHT LTD grew its revenue by 10.2% in 2025, and its net margin was 12.1%.",
+        "The report states its figures in euros.",
+        "Revenue: 44.1 million in 2024, 48.6 million in 2025",
+        "Net profit: 4.7 million in 2024, 5.9 million in 2025"
+      ]
+    }
+  ],
+  "data": {
+    "figures_and_ratios": {
+      "currency": "EUR",
+      "revenue_2024": 44.1,
+      "revenue_2025": 48.6,
+      "net_profit_2024": 4.7,
+      "net_profit_2025": 5.9,
+      "revenue_growth_percent": 10.2,
+      "net_margin_percent": 12.1
+    }
+  }
+}

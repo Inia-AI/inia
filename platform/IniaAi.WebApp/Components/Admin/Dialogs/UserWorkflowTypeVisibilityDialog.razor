@@ -1,0 +1,294 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.UserData.Interfaces
+@using Microsoft.EntityFrameworkCore
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject ICoreUnitOfWork CoreUnitOfWork
+@inject ISnackbar Snackbar
+@inject ILogger<UserWorkflowTypeVisibilityDialog> Logger
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Outlined.FilterList" />
+            <MudText Typo="Typo.h6">Workflow Types for @User.GetFullName()</MudText>
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudSwitch T="bool"
+                               @bind-Value="_showOnlySelected"
+                               Color="Color.Primary"
+                               Label="Show only selected workflow types" />
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        @(_showOnlySelected
+                            ? "This user sees only the workflow types listed below."
+                            : "This user sees every workflow type their organizations have access to.")
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+
+            @if (_showOnlySelected)
+            {
+                <MudCard Outlined="true">
+                    <MudCardHeader>
+                        <MudText Typo="Typo.h6">Selected Workflow Types</MudText>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (SelectedTypes.Any())
+                        {
+                            <MudStack Spacing="2">
+                                @foreach (var type in SelectedTypes)
+                                {
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Text">
+                                            @type.Name
+                                        </MudChip>
+
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Error"
+                                                   StartIcon="@Icons.Material.Filled.RemoveCircle"
+                                                   OnClick="() => RemoveType(type)">
+                                            Remove
+                                        </MudButton>
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                No workflow types selected yet.
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+
+                <MudCard Outlined="true">
+                    <MudCardHeader>
+                        <MudText Typo="Typo.h6">Add Workflow Type</MudText>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (AvailableTypes.Any())
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+                                <MudSelect T="string"
+                                           @bind-Value="_selectedTypeId"
+                                           Label="Select Workflow Type"
+                                           Variant="Variant.Outlined"
+                                           Dense="true"
+                                           Clearable="true"
+                                           Style="flex: 1;">
+                                    @foreach (var type in AvailableTypes)
+                                    {
+                                        <MudSelectItem @key="type.Id" Value="@type.Id">@type.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="AddType"
+                                           Disabled="string.IsNullOrEmpty(_selectedTypeId)">
+                                    Add
+                                </MudButton>
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                Every workflow type available to this user is already selected.
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
+
+            @if (HasChanges)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body2">
+                            <strong>Changes will be saved when you click Save:</strong>
+                        </MudText>
+                        @foreach (var change in ChangesSummary())
+                        {
+                            <MudText Typo="Typo.caption">• @change</MudText>
+                        }
+                    </MudStack>
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="!HasChanges">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public User User { get; set; } = default!;
+
+    [Parameter]
+    public List<UserOrganization> UserOrganizations { get; set; } = new();
+
+    private List<WorkflowType> _accessibleTypes = new();
+    private HashSet<string> _selectedTypeIds = new();
+    private HashSet<string> _initialTypeIds = new();
+    private string? _selectedTypeId;
+    private bool _showOnlySelected;
+
+    private IEnumerable<WorkflowType> SelectedTypes => _accessibleTypes.Where(t => _selectedTypeIds.Contains(t.Id));
+
+    private IEnumerable<WorkflowType> AvailableTypes => _accessibleTypes.Where(t => !_selectedTypeIds.Contains(t.Id));
+
+    private bool HasChanges => !DesiredTypeIds().SetEquals(_initialTypeIds);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var organizationIds = UserOrganizations
+            .Where(uo => uo.IsActive)
+            .Select(uo => uo.OrganizationId)
+            .ToHashSet();
+
+        if (organizationIds.Count == 0)
+        {
+            _ = organizationIds.Add(User.OrganizationId);
+        }
+
+        var accessibleTypeIds = (await CoreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
+            .FindAsync(a => organizationIds.Contains(a.OrganizationId)))
+            .Select(a => a.WorkflowTypeId)
+            .ToHashSet();
+
+        _accessibleTypes = await CoreUnitOfWork.Repository<WorkflowType>()
+            .GetAll()
+            .AsNoTracking()
+            .Where(wt => accessibleTypeIds.Contains(wt.Id)
+                && wt.Id != WorkflowType.GENERIC
+                && wt.Id != WorkflowType.TEST_WORKFLOW_TYPE)
+            .OrderBy(wt => wt.Name)
+            .ToListAsync();
+
+        _initialTypeIds = (await UserDataUnitOfWork.Repository<UserWorkflowTypeVisibility>()
+            .FindAsync(v => v.UserId == User.Id))
+            .Select(v => v.WorkflowTypeId)
+            .ToHashSet();
+
+        // Only types the user can still reach populate the picker, so chosen rows for types
+        // an organization change has since revoked drop out here and are cleaned up on the next
+        // save rather than lingering invisibly.
+        HashSet<string> accessibleIds = [.. _accessibleTypes.Select(t => t.Id)];
+        _selectedTypeIds = [.. _initialTypeIds.Where(accessibleIds.Contains)];
+        _showOnlySelected = _initialTypeIds.Count > 0;
+    }
+
+    private void AddType()
+    {
+        if (!string.IsNullOrEmpty(_selectedTypeId))
+        {
+            _ = _selectedTypeIds.Add(_selectedTypeId);
+        }
+
+        _selectedTypeId = null;
+    }
+
+    private void RemoveType(WorkflowType type)
+    {
+        _ = _selectedTypeIds.Remove(type.Id);
+    }
+
+    private HashSet<string> DesiredTypeIds()
+    {
+        return _showOnlySelected ? _selectedTypeIds : [];
+    }
+
+    private IEnumerable<string> ChangesSummary()
+    {
+        if (!_showOnlySelected)
+        {
+            yield return "Show every workflow type this user's organizations have access to";
+            yield break;
+        }
+
+        foreach (var type in SelectedTypes.Where(t => !_initialTypeIds.Contains(t.Id)))
+        {
+            yield return $"Show {type.Name}";
+        }
+
+        foreach (var type in AvailableTypes.Where(t => _initialTypeIds.Contains(t.Id)))
+        {
+            yield return $"Hide {type.Name}";
+        }
+    }
+
+    private async Task Save()
+    {
+        if (_showOnlySelected && _selectedTypeIds.Count == 0)
+        {
+            Snackbar.Add(
+                "Select at least one workflow type, or turn off \"Show only selected workflow types\".",
+                Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            HashSet<string> desiredTypeIds = DesiredTypeIds();
+
+            var existingRows = (await UserDataUnitOfWork.Repository<UserWorkflowTypeVisibility>()
+                .FindAsync(v => v.UserId == User.Id))
+                .ToList();
+
+            foreach (var row in existingRows.Where(r => !desiredTypeIds.Contains(r.WorkflowTypeId)))
+            {
+                UserDataUnitOfWork.Repository<UserWorkflowTypeVisibility>().Remove(row);
+            }
+
+            var existingTypeIds = existingRows.Select(r => r.WorkflowTypeId).ToHashSet();
+
+            foreach (var typeId in desiredTypeIds.Where(id => !existingTypeIds.Contains(id)))
+            {
+                await UserDataUnitOfWork.Repository<UserWorkflowTypeVisibility>().AddAsync(new UserWorkflowTypeVisibility
+                {
+                    UserId = User.Id,
+                    WorkflowTypeId = typeId,
+                });
+            }
+
+            _ = await UserDataUnitOfWork.CompleteAsync();
+
+            Snackbar.Add($"Successfully updated workflow types for {User.GetFullName()}", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update workflow types for user {UserId}", User.Id);
+            Snackbar.Add("Failed to update workflow types. Please try again.", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

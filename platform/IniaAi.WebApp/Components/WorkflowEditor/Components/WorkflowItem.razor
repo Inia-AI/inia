@@ -1,0 +1,268 @@
+﻿@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Constants
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+@inject ILogger<WorkflowItem> Logger
+@inject AppState AppState
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="section-edit-shell" @ref="_shell" id="@($"sectiontop_{Section.Id}")">
+    <div class="section-stuck-sentinel" @ref="_sentinel"></div>
+
+    <MudCard Outlined="true" Elevation="0" Class="@($"py-2 pl-5 pr-2 section-edit-card{(Section.HasOutputBlocks ? " editor-output-source" : "")}{LibraryAccent.ClassSuffix(LinkIndex, Section)}")" id="@(Section.Id)">
+        <div class="section-sticky-bar">
+            <SectionActionsMenu Section="@Section"
+                                OnOpenLibrarySync="@(() => OpenLibrarySyncCallback.InvokeAsync())"
+                                OnGoBack="OnHideBlocks"
+                                OnScrollToTop="ScrollSectionToTop"
+                                OnTitleChanged="@UpdateWorkflowStateAsync"
+                                OnRun="ExecuteSection"
+                                OnDuplicate="DuplicateSection"
+                                OnMove="MoveSection"
+                                OnCopyToWorkflow="CopySectionToCoreWorkflow"
+                                OnCopyAsText="CopySectionAsText"
+                                OnToggleCitations="@(() => ToggleCitationsCallback.InvokeAsync(Section))"
+                                OnRemove="RemoveSection"
+                                OnShareToLibrary="ShareSectionToLibrary" />
+        </div>
+
+        <div class="section-template">
+            <MudGrid Spacing="2" Class="editor-twin-grid">
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Section Text Input Template"
+                                  HelperText="@_sectionTextInputHelperText"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  Lines="1"
+                                  MaxLines="20"
+                                  @bind-Value="@Section.TextInputTemplate" />
+                </MudItem>
+
+                @if (Section.ExecutionState is not null)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Section Text Input After Execution"
+                                      HelperText="The final version of the text input that is used during execution."
+                                      ReadOnly="true"
+                                      Class="editor-mono-field editor-resolved"
+                                      Sizing="InputSizing.Auto"
+                                      Lines="1"
+                                      MaxLines="20"
+                                      Value="@Section.ExecutionState.TextInput" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </div>
+    </MudCard>
+
+    <SectionInteraction @ref="_sectionItem"
+                        Section="@Section"
+                        ExecuteBlockCallback="@ExecuteBlock"
+                        MoveBlockCallback="@MoveBlock"
+                        CopyBlockToCoreWorkflowCallback="@CopyBlockToCoreWorkflow"
+                        CopyBlockAsTextCallback="@CopyBlockAsTextCallback"
+                        OnGoBack="OnHideBlocks"
+                        IsolateBlockCallback="@IsolateBlockCallback"
+                        ShareBlockToLibraryCallback="@ShareBlockToLibraryCallback"
+                        RemoveLinkedEntryCallback="@RemoveLinkedEntryCallback"
+                        InsertBlockFromLibraryCallback="@InsertBlockFromLibraryCallback"/>
+</div>
+
+@code {
+    private SectionInteraction _sectionItem = default!;
+    private User _user = default!;
+    private ElementReference _shell;
+    private ElementReference _sentinel;
+    private bool _stickyObserved;
+
+    private readonly string _sectionTextInputHelperText = "Stores text during a run and can contain {{placeholders}}. " +
+        $"If the filled-in text ends up containing the skip marker {StopMarker.VALUE} as a separate word at runtime, this section is skipped. Inside a longer word, id or code it does not count.";
+
+    [Parameter, EditorRequired]
+    public Section Section { get; set; } = default!;
+
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    [CascadingParameter(Name = "LibraryLinkIndex")]
+    public LibraryLinkIndex? LinkIndex { get; set; }
+
+    [Parameter, EditorRequired]
+    public WorkflowMap WorkflowMap { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> ExecuteSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<Block> ExecuteBlockCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> RemoveSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> DuplicateSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<Block> MoveBlockCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> MoveSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> CopySectionToCoreWorkflowCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<Block> CopyBlockToCoreWorkflowCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<Block> CopyBlockAsTextCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> CopySectionAsTextCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<string> HideBlocksCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> IsolateBlockCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Section> ToggleCitationsCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> ShareBlockToLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> RemoveLinkedEntryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OpenLibrarySyncCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ShareSectionToLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<int> InsertBlockFromLibraryCallback { get; set; }
+
+    public async Task UpdateWorkflowStateAsync()
+    {
+        await WorkflowMap.UpdateWorkflowStateAsync();
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User, nameof(AppState.User));
+
+        _user = AppState.User;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("iniaStickyHeaders.observeSection", _sentinel, _shell);
+            _stickyObserved = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_stickyObserved)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("iniaStickyHeaders.unobserve", _sentinel);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private async Task ExecuteSection()
+    {
+        int index = Section.Order;
+
+        await ExecuteSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task ExecuteBlock(Block block)
+    {
+        await ExecuteBlockCallback.InvokeAsync(block);
+    }
+
+    private async Task MoveSection()
+    {
+        int index = Section.Order;
+
+        await MoveSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task MoveBlock(Block block)
+    {
+        await MoveBlockCallback.InvokeAsync(block);
+    }
+
+    private async Task RemoveSection()
+    {
+        int index = Section.Order;
+
+        await RemoveSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task DuplicateSection()
+    {
+        int index = Section.Order;
+
+        await DuplicateSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task OnHideBlocks()
+    {
+        await HideBlocksCallback.InvokeAsync();
+    }
+
+    private async Task ScrollSectionToTop()
+    {
+        await JS.InvokeVoidAsync("scrollToElement", $"sectiontop_{Section.Id}");
+    }
+
+    private async Task CopySectionToCoreWorkflow()
+    {
+        int index = Section.Order;
+
+        await CopySectionToCoreWorkflowCallback.InvokeAsync(index);
+    }
+
+    private async Task CopyBlockToCoreWorkflow(Block block)
+    {
+        await CopyBlockToCoreWorkflowCallback.InvokeAsync(block);
+    }
+
+    private async Task CopySectionAsText()
+    {
+        int index = Section.Order;
+
+        await CopySectionAsTextCallback.InvokeAsync(index);
+    }
+
+    private async Task ShareSectionToLibrary()
+    {
+        int index = Section.Order;
+
+        await ShareSectionToLibraryCallback.InvokeAsync(index);
+    }
+}

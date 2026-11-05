@@ -1,0 +1,98 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Counterparties
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.Components
+@using IniaAi.WebApp.Components.WorkflowTypes.Components
+@using Microsoft.AspNetCore.Authorization
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDialogService DialogService
+@inject AppState AppState
+@inject ILogger<WorkflowTypeManagement> Logger
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+
+@implements IDisposable
+
+@attribute [Route(AppRoutes.WORKFLOW_TYPE_MANAGEMENT)]
+@attribute [Authorize(Roles = ROLES)]
+
+<PageTitle>Inia AI - Workflow Type Management</PageTitle>
+
+<MudGrid Spacing="2" Class="my-2">
+    <MudItem xs="12">
+        <MudTabs Elevation="4" Rounded="true" TabPanelsClass="mt-6">
+            <MudTabPanel Text="Workflow Types"
+                         Icon="@Icons.Material.Filled.AccountTree">
+                <WorkflowTypeManagementCard
+                    @bind-WorkflowTypes="WorkflowTypes"
+                    @bind-WorkflowTypes:after="UpdateWorkflowTypesAsync"
+                    Categories="Categories"
+                    CounterpartyTypes="CounterpartyTypes"
+                    IsLoading="_isLoading"
+                    CoreUnitOfWork="_coreUnitOfWork"/>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Categories"
+                         Icon="@Icons.Material.Filled.Category">
+                <WorkflowTypeCategoryManagementCard
+                    @bind-Categories="Categories"
+                    @bind-Categories:after="UpdateCategoriesAsync"
+                    CoreUnitOfWork="_coreUnitOfWork"/>
+            </MudTabPanel>
+        </MudTabs>
+    </MudItem>
+</MudGrid>
+
+@code {
+    public const string ROLES = $"{Roles.EDITOR_ROLES},{Roles.OPERATOR}";
+
+    private ICoreUnitOfWork _coreUnitOfWork = default!;
+    private IServiceScope _serviceScope = default!;
+    private bool _isLoading = true;
+
+    protected IEnumerable<WorkflowType> WorkflowTypes { get; set; } = [];
+    protected IEnumerable<WorkflowTypeCategory> Categories { get; set; } = [];
+    protected IEnumerable<CounterpartyType> CounterpartyTypes { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _serviceScope = ServiceScopeFactory.CreateScope();
+        _coreUnitOfWork = _serviceScope
+            .ServiceProvider
+            .GetRequiredService<ICoreUnitOfWork>();
+
+        await LoadDataAsync();
+        _isLoading = false;
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        _serviceScope?.Dispose();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        WorkflowTypes = await _coreUnitOfWork.WorkflowTypes.GetAllAsync();
+        Categories = await _coreUnitOfWork.Repository<WorkflowTypeCategory>().GetAllAsync();
+
+        CounterpartyTypes = (await UserDataUnitOfWork
+            .Repository<CounterpartyType>()
+            .GetAllAsync())
+            .OrderBy(ct => ct.Name);
+    }
+
+    private async Task UpdateWorkflowTypesAsync()
+    {
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task UpdateCategoriesAsync()
+    {
+        await LoadDataAsync();
+        StateHasChanged();
+    }
+}

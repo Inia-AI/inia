@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MudBlazor" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Core\IniaAi.Core.csproj" />
+    </ItemGroup>
+</Project>

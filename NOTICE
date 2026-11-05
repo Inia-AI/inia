@@ -1,0 +1,6 @@
+Inia
+Copyright 2024-2026 INIA AI LTD
+
+This repository holds three parts, each in its own folder: platform/, web/ and agent-runtime/.
+Each folder carries its own NOTICE and THIRD-PARTY-NOTICES.md, which name the software that other
+people and organizations wrote, where it comes from, its version and its licence.

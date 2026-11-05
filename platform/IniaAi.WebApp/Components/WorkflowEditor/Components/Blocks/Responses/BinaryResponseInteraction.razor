@@ -1,0 +1,52 @@
+@using IniaAi.Common.Enums
+@using IniaAi.Common.Extensions
+@using IniaAi.Domain.Entities.Workflows.Responses
+
+@if (Response.BinaryResponse is not null)
+{
+    @if (_isImageMediaType && _imageSrc is not null)
+    {
+        <img src="@_imageSrc" alt="Binary Response Image" style="max-width: 100%; height: auto;" />
+    }
+    else if (_base64BinaryResponse is not null && _mediaType is not null)
+    {
+        <a href="data:@_mediaType;base64,@_base64BinaryResponse" download="response">
+            Download Binary Response
+        </a>
+    }
+}
+else
+{
+    <MudAlert Severity="Severity.Info">
+        No Binary Response Generated
+    </MudAlert>
+}
+
+@code {
+    string? _base64BinaryResponse;
+    bool _isImageMediaType;
+    string? _mediaType;
+    string? _imageSrc => _isImageMediaType && _base64BinaryResponse is not null && _mediaType is not null
+        ? $"data:{_mediaType};base64,{_base64BinaryResponse}"
+        : null;
+
+    [Parameter, EditorRequired]
+    public BlockResponse Response { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        if (Response.BinaryResponse is null)
+        {
+            return;
+        }
+
+        _base64BinaryResponse = Convert.ToBase64String(Response.BinaryResponse);
+        _mediaType = Response.MediaType.GetEnumMember();
+        _isImageMediaType = Response.MediaType is MediaType.ImageJpeg
+            or MediaType.ImagePng
+            or MediaType.ImageGif
+            or MediaType.ImageBmp
+            or MediaType.ImageWebp
+            or MediaType.ImageTiff;
+    }
+}

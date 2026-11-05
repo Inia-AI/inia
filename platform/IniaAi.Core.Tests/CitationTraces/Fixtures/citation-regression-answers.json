@@ -1,0 +1,298 @@
+{
+  "AnswersByStep": {
+    "web-profiles": [
+      {
+        "Request": "D6659DB6FC2AC296BF7F359BDB23DE813C2C30D1760DDB899F9E109251F8B27E",
+        "Contents": [
+          {
+            "Text": "Based on the web pages:\n\n",
+            "References": []
+          },
+          {
+            "Text": "Alex Rivera, Managing Partner, took their current role on May 2011",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(northwind-web-research)",
+                "CitedText": "\u003Cpage1(northwind-web-research)-text\u003E\nSource URL: https://example.org/northwind/team\n\nOur team\n\nAlex Rivera | Managing Partner | start date: 2011-05-01\nMorgan Lee | Partner | start date: 2016-01-15\n\u003C/page1(northwind-web-research)-text\u003E"
+              }
+            ]
+          },
+          {
+            "Text": ".\n\n",
+            "References": []
+          },
+          {
+            "Text": "Morgan Lee, Partner, took their current role on January 2016",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(northwind-web-research)",
+                "CitedText": "\u003Cpage1(northwind-web-research)-text\u003E\nSource URL: https://example.org/northwind/team\n\nOur team\n\nAlex Rivera | Managing Partner | start date: 2011-05-01\nMorgan Lee | Partner | start date: 2016-01-15\n\u003C/page1(northwind-web-research)-text\u003E"
+              }
+            ]
+          },
+          {
+            "Text": ".",
+            "References": []
+          }
+        ],
+        "StopReason": "EndTurn"
+      }
+    ],
+    "fund-facts": [
+      {
+        "Request": "C71D4988E0B38079164B0A7E97AF2F697FD455EA5D4E9658FEB91076C8D09602",
+        "Contents": [
+          {
+            "Text": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: ",
+            "References": []
+          },
+          {
+            "Text": "$89,997,355",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(northwind-factsheet.pdf)",
+                "CitedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+              }
+            ]
+          },
+          {
+            "Text": "\n\nAssets under management as at 31 December 2025: ",
+            "References": []
+          },
+          {
+            "Text": "$96,159,302",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(northwind-factsheet.pdf)",
+                "CitedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+              }
+            ]
+          },
+          {
+            "Text": "\n\nManagement fee: ",
+            "References": []
+          },
+          {
+            "Text": "1.5% of net asset value per year",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(northwind-factsheet.pdf)",
+                "CitedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+              }
+            ]
+          },
+          {
+            "Text": "\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947",
+            "References": []
+          }
+        ],
+        "StopReason": "EndTurn"
+      }
+    ],
+    "summary": [
+      {
+        "Request": "D2DBA96FD18615E5ACA89FC4332E8EF57B8068092DB5B2CE43C30EA3F052592E",
+        "Contents": [
+          {
+            "Text": "The fund has a net asset value of $89,997,355 as at 31 December 2025",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Fund facts",
+                "CitedText": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: $89,997,355\n\nAssets under management as at 31 December 2025: $96,159,302\n\nManagement fee: 1.5% of net asset value per year\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947"
+              }
+            ]
+          },
+          {
+            "Text": ", with ",
+            "References": []
+          },
+          {
+            "Text": "assets under management of $96,159,302 as at 31 December 2025",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Fund facts",
+                "CitedText": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: $89,997,355\n\nAssets under management as at 31 December 2025: $96,159,302\n\nManagement fee: 1.5% of net asset value per year\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947"
+              }
+            ]
+          },
+          {
+            "Text": ". ",
+            "References": []
+          },
+          {
+            "Text": "The excess of assets under management over net asset value is $6,161,947",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Fund facts",
+                "CitedText": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: $89,997,355\n\nAssets under management as at 31 December 2025: $96,159,302\n\nManagement fee: 1.5% of net asset value per year\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947"
+              }
+            ]
+          },
+          {
+            "Text": ". ",
+            "References": []
+          },
+          {
+            "Text": "Alex Rivera became Managing Partner in May 2011",
+            "References": [
+              {
+                "Index": 1,
+                "Title": "Web profiles",
+                "CitedText": "Based on the web pages:\n\nAlex Rivera, Managing Partner, took their current role on May 2011.\n\n"
+              }
+            ]
+          },
+          {
+            "Text": ".",
+            "References": []
+          }
+        ],
+        "StopReason": "EndTurn"
+      }
+    ],
+    "statement-figures": [
+      {
+        "Request": "999B228EBF180EF31E33F7167CA3EFEDE1CF586B9AE87F4E81FB90B0D78200A6",
+        "Contents": [
+          {
+            "Text": "Revenue for the year was \u00A341.5m",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(harbour-media-annual-report.pdf)",
+                "CitedText": "\u003Cpage1(harbour-media-annual-report.pdf)-text\u003E\nHarbour Media Group plc\n\nAnnual report for the year ended 31 December 2025\n\nFinancial review\n\nRevenue for the year was \u00A341.5m (2024: \u00A336.6m). "
+              }
+            ]
+          },
+          {
+            "Text": ", ",
+            "References": []
+          },
+          {
+            "Text": "the operating loss for the year was \u00A32.4m",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(harbour-media-annual-report.pdf)",
+                "CitedText": "The operating loss for the year was \u00A32.4m (2024: \u00A30.6m). "
+              }
+            ]
+          },
+          {
+            "Text": ", and ",
+            "References": []
+          },
+          {
+            "Text": "cash at the year end was \u00A33.5m",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "page1(harbour-media-annual-report.pdf)",
+                "CitedText": "Cash at the year end was \u00A33.5m.\n"
+              }
+            ]
+          },
+          {
+            "Text": ".\n\n",
+            "References": []
+          },
+          {
+            "Text": "Contingent consideration was \u00A32.506m",
+            "References": [
+              {
+                "Index": 1,
+                "Title": "page2(harbour-media-annual-report.pdf)",
+                "CitedText": "\u003Cpage2(harbour-media-annual-report.pdf)-text\u003E\nConsolidated statement of financial position\nAs at 31 December 2025\n\n                                   2025      2024\n                                  \u00A3\u0027000     \u00A3\u0027000\nContingent consideration           2,506     1,230\nTrade and other payables           4,120     3,875\n\n\u003C/page2(harbour-media-annual-report.pdf)-text\u003E"
+              }
+            ]
+          },
+          {
+            "Text": ".",
+            "References": []
+          }
+        ],
+        "StopReason": "EndTurn"
+      }
+    ],
+    "usd-conversion": [
+      {
+        "Request": "47C59F0EFD0752D67CDAECF2A84296D43BE7F3EA5D6018A5B28A055F980FC9E6",
+        "Contents": [
+          {
+            "Text": "Revenue: \u00A341.5m ($55.0m)",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Statement figures",
+                "CitedText": "Revenue for the year was \u00A341.5m, the operating loss for the year was \u00A32.4m, and cash at the year end was \u00A33.5m.\n\n"
+              }
+            ]
+          },
+          {
+            "Text": "\n\n",
+            "References": []
+          },
+          {
+            "Text": "Operating loss: \u00A32.4m ($3.2m)",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Statement figures",
+                "CitedText": "Revenue for the year was \u00A341.5m, the operating loss for the year was \u00A32.4m, and cash at the year end was \u00A33.5m.\n\n"
+              }
+            ]
+          },
+          {
+            "Text": "\n\n",
+            "References": []
+          },
+          {
+            "Text": "Cash at year end: \u00A33.5m ($4.6m)",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Statement figures",
+                "CitedText": "Revenue for the year was \u00A341.5m, the operating loss for the year was \u00A32.4m, and cash at the year end was \u00A33.5m.\n\n"
+              }
+            ]
+          },
+          {
+            "Text": "\n\n",
+            "References": []
+          },
+          {
+            "Text": "Contingent consideration: \u00A32.506m ($3.3m)",
+            "References": [
+              {
+                "Index": 0,
+                "Title": "Statement figures",
+                "CitedText": "Contingent consideration was \u00A32.506m."
+              }
+            ]
+          }
+        ],
+        "StopReason": "EndTurn"
+      }
+    ],
+    "performance-draft": [
+      {
+        "Request": "66CD8CC7A6C794551B6101190C82E5C17CE73F9C7BB00675FD73C388EBB7E638",
+        "Contents": [
+          {
+            "Text": "In 2025, the company generated revenue of $55.0m while recording an operating loss of $3.2m. Year-end cash totaled $4.6m.",
+            "References": []
+          }
+        ],
+        "StopReason": "EndTurn"
+      }
+    ]
+  }
+}

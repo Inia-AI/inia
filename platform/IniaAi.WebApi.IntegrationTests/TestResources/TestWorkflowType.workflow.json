@@ -1,0 +1,47 @@
+{
+  "WorkflowTypeId": "TestWorkflowType",
+  "Sections": [
+    {
+      "WorkflowTypeId": "TestWorkflowType",
+      "Blocks": [
+        {
+          "ReplacementTag": "Test",
+          "Name": "Test",
+          "Order": 0,
+          "Type": "Merge",
+          "Properties": {
+            "TextTemplate": "Test",
+            "Type": "Merge"
+          },
+          "Id": "267c46d3-a7fd-4dc6-be4b-db5ee402641f"
+        },
+        {
+          "ReplacementTag": "TestAI",
+          "Name": "Test AI",
+          "Order": 1,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "Properties": {
+            "UserPromptTemplate": "{Test}",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": false,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "73537dd4-6b10-42da-a8b5-85ae7bbc01d3"
+        }
+      ],
+      "Name": "",
+      "Title": "Test",
+      "Description": null,
+      "Order": 0,
+      "Id": "446a3e57-1e10-40ef-8469-ae7366630534"
+    }
+  ],
+  "Name": "Test",
+  "Title": "Test",
+  "Description": "Test",
+  "Id": "e0f967e8-837c-4629-b20e-61d6d5e57a31"
+}

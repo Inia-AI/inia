@@ -1,0 +1,24 @@
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+@if (Badge is not null)
+{
+    <MudTooltip Text="@Badge.Tooltip">
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Variant="Variant.Outlined"
+                 Color="@Badge.Color"
+                 Icon="@Badge.Icon"
+                 Class="@($"ma-0 {Badge.Accent}")"
+                 aria-label="@Badge.Tooltip">
+            @Badge.Label
+        </MudChip>
+    </MudTooltip>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public LibraryLinkStatus Status { get; set; } = default!;
+
+    private BlockBadge? Badge => BlockBadges.LibraryBadgeFor(Status);
+}

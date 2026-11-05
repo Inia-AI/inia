@@ -1,0 +1,70 @@
+@using IniaAi.Application.Commands.SharedComponents.MaterializeSharedComponent
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2">
+            '@ComponentName' was inserted and linked to the Library.
+        </MudText>
+
+        @if (Result.LandedReplacementTag is not null)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">
+                Inserted block tag: <span class="editor-mono-field">@Result.LandedReplacementTag</span>
+            </MudText>
+        }
+
+        @if (Renames.Count > 0)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">
+                Some tags were already taken in this template, so the inserted copy uses renamed ones:
+            </MudText>
+            <ul class="mud-typography-body2 my-1 ps-5">
+                @foreach ((string slotTag, string instanceTag) in Renames)
+                {
+                    <li>
+                        <span class="editor-mono-field">@slotTag</span>
+                        →
+                        <span class="editor-mono-field">@instanceTag</span>
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (Result.Warnings.Count > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                Review these structural warnings:
+            </MudAlert>
+            <ul class="mud-typography-body2 my-1 ps-5">
+                @foreach (WorkflowStructuralValidationWarning warning in Result.Warnings)
+                {
+                    <li>@warning.Message</li>
+                }
+            </ul>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">Got it</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string ComponentName { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public MaterializeSharedComponentResult Result { get; set; } = default!;
+
+    private List<KeyValuePair<string, string>> Renames => SharedComponentImpactText.SlotRenames(Result.Bindings);
+
+    private void Close()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

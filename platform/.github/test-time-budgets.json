@@ -1,0 +1,13 @@
+{
+  "IniaAi.AiConnection.Tests": 90,
+  "IniaAi.Application.UnitTests": 510,
+  "IniaAi.Common.Tests": 60,
+  "IniaAi.Configuration.Tests": 60,
+  "IniaAi.Core.Tests": 420,
+  "IniaAi.Domain.Tests": 60,
+  "IniaAi.FileFormats.Tests": 260,
+  "IniaAi.Infrastructure.Tests": 150,
+  "IniaAi.Services.Tests": 120,
+  "IniaAi.WebApi.UnitTests": 140,
+  "IniaAi.WebApp.Tests": 270
+}

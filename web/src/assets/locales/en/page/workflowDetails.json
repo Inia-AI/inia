@@ -1,0 +1,128 @@
+{
+  "title": "Report",
+  "actions": {
+    "reRun": "Edit & Re-run",
+    "reRunning": "Starting…",
+    "reRunStarted": "Workflow re-started",
+    "reRunFailed": "Failed to re-run workflow",
+    "reRunStartedChanged": "Workflow re-started. The workflow has changed since the original run.",
+    "reRunRemoved": "Removed from the workflow, so left out: {names}.",
+    "reRunDefaulted": "New to the workflow, filled in with its default: {names}.",
+    "reRunWorkflowChanged": "This workflow has changed since the original run. Fill in the new fields to re-run it.",
+    "reRunMissingWorkflow": "Cannot re-run: workflow definition not found on this execution",
+    "exportWord": "Export as DOCX",
+    "exportMarkdown": "Export as Markdown",
+    "exporting": "Exporting…",
+    "exportFailed": "The report could not be exported. Try again."
+  },
+  "feedback": {
+    "action": "Feedback",
+    "title": "Feedback on this report",
+    "close": "Close",
+    "empty": "No feedback on this report yet.",
+    "loadFailed": "Could not load feedback.",
+    "quoted": "Quoted text",
+    "category": "Category",
+    "categoryPlaceholder": "Select a category",
+    "categories": {
+      "WrongFigure": "Wrong figure",
+      "MissingInformation": "Missing information",
+      "WrongClassification": "Wrong classification",
+      "WordingOrStyle": "Wording or style",
+      "NotRelevant": "Not relevant"
+    },
+    "comment": "Comment",
+    "commentPlaceholder": "What is wrong, and what did you expect?",
+    "submit": "Send feedback",
+    "submitted": "Feedback recorded.",
+    "submitFailed": "Could not send feedback.",
+    "delete": "Delete",
+    "deleteTitle": "Delete this feedback?",
+    "deleteMessage": "It is deleted for good, for everyone in your organization.",
+    "deleteConfirm": "Delete",
+    "deleteCancel": "Cancel",
+    "deleted": "Feedback deleted.",
+    "deleteFailed": "Could not delete the feedback.",
+    "status": "Status",
+    "statuses": {
+      "Open": "Open",
+      "Addressed": "Addressed",
+      "Dismissed": "Dismissed"
+    },
+    "dismissReasonPlaceholder": "Why this is dismissed",
+    "confirmDismiss": "Dismiss",
+    "cancelDismiss": "Cancel",
+    "statusUpdated": "Status updated.",
+    "statusFailed": "Could not update the status."
+  },
+  "credit": {
+    "counterpartyLabel": "@:{'terms.Company'}",
+    "creditAnalystLabel": "Credit Analyst",
+    "createdLabel": "Created",
+    "durationLabel": "Duration"
+  },
+  "documents": {
+    "excludedLabel": "Documents not used",
+    "inputLabel": "Source Documents",
+    "outputLabel": "Generated Documents",
+    "hiddenFromOutput": "hidden from output",
+    "previewFile": "Preview {name}",
+    "downloadFile": "Download {name}",
+    "exclusionReasons": {
+      "Unreadable": "Could not be read",
+      "NotExpectedDocument": "Not a document this report uses",
+      "NotNeeded": "Not needed, another document already covers it",
+      "other": "Not used by this report"
+    }
+  },
+  "variables": {
+    "label": "Settings",
+    "noValuePlaceholder": "—"
+  },
+  "loading": "Loading...",
+  "loadError": "This report could not be loaded",
+  "loadErrorHint": "It may have been deleted, or the link is out of date.",
+  "backToReports": "Back to reports",
+  "subTitle": "Asset Managers",
+  "notInExports": "Not in exports",
+  "notInExportsHint": "This section shows here but is left out of the Word and Markdown exports",
+  "sectionNav": {
+    "label": "Report sections",
+    "expand": "Expand",
+    "collapse": "Collapse"
+  },
+  "dataOutputs": {
+    "title": "Data",
+    "notInExportsHint": "The Word and Markdown exports leave this data out",
+    "sentToSystems": "Sent to other systems",
+    "sentToSystemsHint": "Other systems read this JSON through the API, beside the report. Analyst edits to the report do not change it.",
+    "intro": "The JSON this run returned beside the report, as the workflow produced it. A marked figure opens its sources, as in the report.",
+    "copy": "Copy JSON",
+    "copied": "JSON copied",
+    "copyFailed": "Could not copy the JSON",
+    "download": "Download",
+    "jsonLabel": "JSON of {name}"
+  },
+  "runCost": {
+    "action": "Run cost",
+    "title": "Run cost",
+    "description": "What this run cost, from its stored usage records. Only super admins see this.",
+    "total": "Total",
+    "loading": "Loading cost…",
+    "loadFailed": "Could not load the cost of this run.",
+    "records": "{count} usage records",
+    "unpriced": "{count} records had no matching price and count as $0",
+    "blocks": "By block",
+    "other": "Outside blocks",
+    "empty": "No usage was recorded for this run.",
+    "columns": {
+      "name": "Name",
+      "model": "Model",
+      "input": "Input",
+      "output": "Output",
+      "cache": "Cache read / write",
+      "cost": "Cost"
+    },
+    "close": "Close"
+  }
+}

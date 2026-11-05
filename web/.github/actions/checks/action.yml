@@ -1,0 +1,54 @@
+name: Checks
+description: >-
+  Installs one tree's packages and runs its type check, lint and chart-builder check, then builds
+  it. Last, even after a failure, it checks the tree's third-party notices. PR Validation runs it
+  on the checkout, and the public-tree workflow on the exported public tree.
+
+inputs:
+  tree:
+    description: The folder that holds the tree, relative to the workspace.
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: ${{ inputs.tree }}/.nvmrc
+        cache: 'npm'
+        cache-dependency-path: ${{ inputs.tree }}/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm ci --legacy-peer-deps
+
+    - name: Type check
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm run type-check
+
+    - name: Lint
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm run lint
+
+    - name: Verify chart-builder bundle is in sync
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm run verify:chart-builder
+
+    - name: Build
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: npm run build
+
+    - name: Check the third-party notices
+      if: ${{ !cancelled() }}
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: |
+        python3 -m unittest discover -s scripts/notices -p "test_*.py"
+        python3 scripts/notices/notices.py check

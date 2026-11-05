@@ -1,0 +1,202 @@
+{
+  "aiQueryBlock": {
+    "sections": {
+      "inputSettings": "Input Settings",
+      "prompts": "Prompts",
+      "modelSettings": "Model Settings"
+    },
+    "inputOptions": {
+      "useCaching": "Use Caching",
+      "useOverviews": "Use Page Overviews Instead of Full Text",
+      "includePageImages": "Include Page Images",
+      "processInBatches": "Process Pages in Batches",
+      "chunkingMode": "Chunking Mode",
+      "fixedPageCount": "Fixed Page Count",
+      "optimalByCharacters": "Optimal by Characters",
+      "pagesPerBatch": "Pages per Batch",
+      "maxCharacters": "Max Characters",
+      "preservePageOrder": "Preserve Page Order",
+      "stopTag": "Stop Tag"
+    },
+    "retrievedContent": {
+      "title": "Retrieved Document Content",
+      "description": "Content retrieved from documents based on filter rules."
+    },
+    "prompts": {
+      "systemPromptLabel": "System Prompt Template",
+      "systemPromptHint": "Sets the AI's behavior and context. Supports {'{{'}placeholder{'}}'} syntax.",
+      "systemPromptPlaceholder": "Enter system prompt template...",
+      "systemPromptAfterExecution": "System Prompt (After Execution)",
+      "systemPromptAfterExecutionHint": "Final system prompt sent to the model.",
+      "userPromptLabel": "User Prompt Template",
+      "userPromptHint": "Instructions for the AI. Use {'{{'}placeholder{'}}'} for dynamic values.",
+      "userPromptPlaceholder": "Enter user prompt template...",
+      "userPromptAfterExecution": "User Prompt (After Execution)",
+      "userPromptAfterExecutionHint": "Final user prompt sent to the model."
+    },
+    "modelSettings": {
+      "maxTokens": "Maximum Response Tokens",
+      "useAdvancedModel": "Use Advanced Model",
+      "enableThinking": "Use Thinking Mode",
+      "reasoningDepth": "Thinking Budget",
+      "overrideModel": "Override Model Selection",
+      "provider": "Provider",
+      "model": "Model",
+      "selectProvider": "Select provider",
+      "selectModel": "Select model"
+    },
+    "preview": {
+      "userPromptTemplate": "User Prompt Template:",
+      "systemPromptTemplate": "System Prompt Template:",
+      "detectedVariables": "Detected Variables:"
+    }
+  },
+  "reportCardActions": {
+    "menuAria": "Actions for {title}"
+  },
+  "multiSelect": {
+    "placeholder": "Search...",
+    "emptySearchText": "No results found.",
+    "nSelected": "{n} selected",
+    "clearAll": "Clear {n} selection | Clear {n} selections",
+    "moreResults": "{n} more — keep typing to narrow down"
+  },
+  "listFormField": {
+    "about": "About {list}",
+    "addItem": "Add to {list}",
+    "removeItem": "Remove item {n}"
+  },
+  "peerCompanySelect": {
+    "none": "No peers chosen",
+    "notAnalysed": "No financial analysis yet",
+    "justCreated": "Just created \u2014 run financial analysis before it can be a peer",
+    "loadFailed": "Couldn't load the list of @:{'terms.companies'}. Try again in a moment.",
+    "unreadable": "Its stored financials can't be read \u2014 run the analysis again",
+    "noUsablePeriods": "Its financial analysis has no dated periods to compare",
+    "unavailable": "Not available to compare against",
+    "figuresTo": "Figures to {date}",
+    "figuresToInCurrency": "Figures to {date} in {currency}",
+    "reportedAs": "Reported as \"{name}\""
+  },
+  "counterpartySelect": {
+    "addNew": "Add new @:{'terms.company'}",
+    "searchPrompt": "Type the @:{'terms.company'} name to check for existing matches...",
+    "createNoMatch": "Create \"{name}\" as new @:{'terms.company'}",
+    "createWithMatches": "None of these — Create \"{name}\"",
+    "noResults": "No @:{'terms.companies'} match \"{name}\"",
+    "dialog": {
+      "title": "Create new @:{'terms.company'}",
+      "description": "Add a new @:{'terms.company'} by providing a name, type and reference ID.",
+      "nameLabel": "Name",
+      "namePlaceholder": "@:{'terms.Company'} name",
+      "typeLabel": "@:{'terms.Company'} type",
+      "typePlaceholder": "Select type",
+      "submit": "Create",
+      "cancel": "Cancel"
+    },
+    "editDialog": {
+      "title": "Rename @:{'terms.company'}",
+      "description": "Update the display name of this @:{'terms.company'}.",
+      "nameLabel": "Name",
+      "submit": "Save",
+      "cancel": "Cancel"
+    },
+    "editAriaLabel": "Rename {name}",
+    "referenceId": {
+      "label": "Your Reference ID",
+      "labelEdit": "ID",
+      "placeholder": "e.g., BOEI-US-001",
+      "hint": "Use your organization's identifier for this entity — enables matching across your systems and exports.",
+      "validation": {
+        "minLength": "Reference ID must be at least 3 characters"
+      }
+    },
+    "success": "@:{'terms.Company'} \"{name}\" created successfully",
+    "error": "The @:{'terms.company'} could not be created. Try again in a moment.",
+    "editSuccess": "@:{'terms.Company'} renamed to \"{name}\"",
+    "editError": "The @:{'terms.company'} could not be renamed. Try again in a moment.",
+    "nameForbiddenCharacters": "Double quotes, backslashes, braces, backticks, pipes, and angle brackets are not allowed in names (apostrophes are fine)"
+  },
+  "fileControl": {
+    "uploading": "Uploading",
+    "uploadingFile": "Uploading {name}",
+    "classOf": "Document class of {name}",
+    "removeFile": "Remove {name}",
+    "uploadFiles": "Upload files",
+    "dragOrBrowse": "Drag & drop files here, or",
+    "browse": "browse",
+    "unsupportedDropped": "Skipped {names} — not a supported file type. | Skipped {names} — not supported file types.",
+    "supportedFiles": "Accepts {formats} files",
+    "tagPlaceholder": "Tags...",
+    "emptyClass": "N/A",
+    "retry": "Retry",
+    "dismiss": "Dismiss",
+    "generic": "Upload failed",
+    "refused": "This file was refused: its bytes are not a document the platform reads.",
+    "blockedBeforeServer": "The upload was blocked before it reached the server — usually by security software or a proxy on this device or network. Ask your IT team to allow uploads to this site.",
+    "passwordRequired": "This file is password-protected. Enter its password to upload an unlocked copy.",
+    "passwordIncorrect": "The password was incorrect. Enter the password again to upload an unlocked copy.",
+    "passwordUnsupported": "This file uses certificate- or DRM-based protection that cannot be removed. Ask the sender for an unprotected copy.",
+    "tooManyUploads": "Your organization has uploaded the most files allowed in an hour. You can upload more from {time} {day}.",
+    "copyDetails": "Copy details for IT",
+    "copied": "Copied",
+    "passwordPrompt": {
+      "title": "Unlock {name}",
+      "description": "{name} is password-protected. Enter its password to upload an unlocked copy.",
+      "consent": "The unlocked copy is stored and visible to everyone in your organization. The password is used once to unlock the file and is never stored.",
+      "passwordLabel": "Password",
+      "incorrect": "The password is incorrect. Try again, or skip this file.",
+      "unlock": "Unlock",
+      "skip": "Skip file"
+    }
+  },
+  "workflowElement": {
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit paragraph",
+      "editHeading": "Edit heading",
+      "copy": "Copy paragraph",
+      "terminal": "Run terminal",
+      "remove": "Remove paragraph"
+    },
+    "editor": {
+      "paragraph": "Paragraph text",
+      "heading": "Heading text"
+    },
+    "confidence": "Confidence {value}%",
+    "sources": "No sources | 1 source | {n} sources"
+  },
+  "richTextToolbar": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strike": "Strikethrough",
+    "code": "Code",
+    "bulletList": "Bullet List",
+    "orderedList": "Ordered List",
+    "link": "Link",
+    "image": "Image",
+    "table": "Table",
+    "undo": "Undo",
+    "redo": "Redo"
+  },
+  "blockNameEditor": {
+    "placeholder": "Block name",
+    "validation": {
+      "duplicate": "Name already exists. Try \"{suggestion}\"",
+      "empty": "Name cannot be empty"
+    },
+    "tooltip": {
+      "save": "Save (Enter)",
+      "cancel": "Cancel (Esc)"
+    }
+  },
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "save": "Save",
+  "chart": {
+    "name": "Chart",
+    "saveAsImage": "Save as image"
+  }
+}

@@ -1,0 +1,185 @@
+@page "/Account/Login"
+@attribute [EnableRateLimiting(SignInRateLimitSettings.POLICY_NAME)]
+@layout IniaAi.WebApp.Components.Account.Shared.LoginLayout
+
+@using System.ComponentModel.DataAnnotations
+@using IniaAi.Application.Auditing
+@using IniaAi.Common.Constants
+@using IniaAi.Configuration.Security
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.WebApp.Components.Account.Shared
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
+@using IniaAi.WebApp.Extensions
+@using Microsoft.AspNetCore.RateLimiting
+
+@inject SignInManager<User> SignInManager
+@inject IAuthenticationAuditLog Audit
+@inject IdentityRedirectManager RedirectManager
+@inject IOptions<PasswordAuthSettings> PasswordSettings
+
+<PageTitle>Log in</PageTitle>
+
+<div class="login-card">
+    <div class="login-header">
+        <picture>
+            <source srcset="@Assets["images/inia-wordmark-white.svg"]" media="(prefers-color-scheme: dark)" />
+            <img class="login-logo" src="@Assets["images/inia-wordmark-navy.svg"]" alt="Inia.AI" />
+        </picture>
+        <h1 class="login-title">Welcome back</h1>
+        <p class="login-subtitle">Sign in to your account to continue</p>
+    </div>
+
+    <StatusMessage Message="@errorMessage" />
+
+    @if (passwordEnabled)
+    {
+        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login" class="login-form">
+            <DataAnnotationsValidator />
+            <div class="form-field">
+                <label class="form-label" for="email">Email</label>
+                <InputText id="email" @bind-Value="Input.Email" class="form-input" autocomplete="username" placeholder="Enter your email" />
+                <ValidationMessage For="() => Input.Email" class="form-error" />
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="password">Password</label>
+                <InputText id="password" type="password" @bind-Value="Input.Password" class="form-input" autocomplete="current-password" placeholder="Enter your password" />
+                <ValidationMessage For="() => Input.Password" class="form-error" />
+            </div>
+            <label class="remember-me">
+                <InputCheckbox @bind-Value="Input.RememberMe" />
+                Remember me
+            </label>
+            <button type="submit" class="submit-button">Login</button>
+        </EditForm>
+    }
+
+    @if (externalSchemes.Length > 0)
+    {
+        <div class="external-auth-section">
+            @if (passwordEnabled)
+            {
+                <div class="divider"><span class="divider-text">or continue with</span></div>
+            }
+            <form action="Account/PerformExternalLogin" method="post" class="external-login-form">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+                @foreach (var scheme in externalSchemes)
+                {
+                    @if (scheme.Name == ExternalLoginProviders.GOOGLE)
+                    {
+                        <button type="submit" class="provider-button google-button" name="provider" value="@scheme.Name">
+                            <img class="google-icon" src="@Assets["images/google-g.svg"]" width="18" height="18" alt="" />
+                            Sign in with Google
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="provider-button" name="provider" value="@scheme.Name">
+                            Sign in with @(scheme.DisplayName ?? scheme.Name)
+                        </button>
+                    }
+                }
+            </form>
+        </div>
+    }
+
+    @if (!passwordEnabled && externalSchemes.Length == 0)
+    {
+        <p class="no-methods">No sign-in methods are configured. Please contact your administrator.</p>
+    }
+</div>
+
+@code {
+    private const string INVALID_LOGIN_MESSAGE = "Error: Invalid login attempt.";
+
+    private string? errorMessage;
+    private bool passwordEnabled;
+    private AuthenticationScheme[] externalSchemes = [];
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+# pragma warning disable BL0008
+    private InputModel Input { get; set; } = new();
+# pragma warning restore BL0008
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        passwordEnabled = PasswordSettings.Value.Enabled;
+        externalSchemes = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToArray();
+
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            // Clear the existing external cookie to ensure a clean login process
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        if (!passwordEnabled)
+        {
+            errorMessage = INVALID_LOGIN_MESSAGE;
+            return;
+        }
+
+        var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
+
+        if (user is null || user.IsSystem)
+        {
+            await RecordAsync(AuthenticationAuditKind.SignInRefused, null);
+            errorMessage = INVALID_LOGIN_MESSAGE;
+            return;
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
+        if (result.Succeeded)
+        {
+            await RecordAsync(AuthenticationAuditKind.SignInSucceeded, user.Id);
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            await RecordAsync(AuthenticationAuditKind.SecondFactorRequired, user.Id);
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            await RecordAsync(AuthenticationAuditKind.SignInLockedOut, user.Id);
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            await RecordAsync(AuthenticationAuditKind.SignInRefused, user.Id);
+            errorMessage = INVALID_LOGIN_MESSAGE;
+        }
+    }
+
+    private Task RecordAsync(AuthenticationAuditKind kind, string? userId)
+    {
+        return Audit.RecordAsync(new AuthenticationAuditEvent(kind, userId, AuthenticationAuditMethods.PASSWORD_SIGN_IN, HttpContext.ClientAddress()));
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+}

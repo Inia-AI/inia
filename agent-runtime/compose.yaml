@@ -1,0 +1,130 @@
+# The runtime service shape both model modes share: the sandbox's container controls, the tmpfs
+# mounts and the derived limits. `agent` runs on Bedrock through the imds-mock sidecar
+# (./scripts/dev.sh); `agent-anthropic` runs on a plain Anthropic API key (ADR 0151).
+x-agent: &agent
+  build:
+    context: .
+    target: dev
+  init: true
+  read_only: true
+  security_opt:
+    - seccomp=./sandbox/seccomp-bwrap.json
+    - systempaths=unconfined
+    - apparmor=unconfined
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - SETUID
+    - SETGID
+    - KILL
+  tmpfs:
+    # `exec` is load-bearing, not decoration: Docker mounts a tmpfs noexec by
+    # default. Two things need an exec-capable /tmp. The Claude Code CLI extracts
+    # its embedded native image processor under /tmp and dlopens it from there —
+    # on a noexec /tmp every Read of an over-size image fails "Unable to resize
+    # image" (ADR 0138), which is why boot refuses a noexec /tmp
+    # (src/cli-tmp-exec.ts) and the deployed fragment must carry `exec` too. And
+    # the scripted contract run captures the SDK's bwrap argv with a PATH shim it
+    # writes under /tmp: a noexec /tmp makes execvp skip the shim and fall through
+    # to /usr/bin/bwrap, so the capture silently produces nothing and `bun run
+    # check` fails here while passing in CI (whose plain `docker run` has an
+    # exec-capable /tmp). No other tmpfs here needs it.
+    - /tmp:size=512m,exec
+    - /home/bun:uid=1000,gid=1000,mode=700,size=64m
+    - /workspaces:mode=1777,size=4g
+  # Derived, not chosen: REQUIRED_PIDS_LIMIT = SUPERVISOR_TASK_RESERVE +
+  # UID_POOL_SIZE * RUN_CHILD_TASK_LIMIT. Boot refuses below it.
+  pids_limit: 4352
+  mem_limit: 6g
+  cpus: 2
+  # The drain's 30s forced-shutdown deadline needs longer than Docker's
+  # 10s default stop timeout, which would SIGKILL first.
+  stop_grace_period: 45s
+  ports:
+    - "127.0.0.1:8130:8130"
+  environment: &agent-env
+    PORT: "8130"
+    AUTH_DISABLED: "true"
+    AGENT_RUNTIME_MEMORY_CHECK_DISABLED: "true"
+    CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1"
+  volumes:
+    - ./src:/app/src:ro
+  healthcheck:
+    test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:8130/healthz'); if (!r.ok) { process.exit(1); }"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+
+services:
+  agent:
+    <<: *agent
+    environment:
+      <<: *agent-env
+      AGENT_RUNTIME_METADATA_CREDENTIALS: "true"
+      AWS_EC2_METADATA_SERVICE_ENDPOINT: http://imds-mock:1338
+      PLATFORM_BASE_URL: http://host.docker.internal:5118
+      CLAUDE_CODE_USE_BEDROCK: "1"
+      ANTHROPIC_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0
+      ANTHROPIC_ALLOWED_MODELS: us.anthropic.claude-sonnet-4-6,us.anthropic.claude-haiku-4-5-20251001-v1:0,us.anthropic.claude-sonnet-5,us.anthropic.claude-opus-4-8,us.anthropic.claude-opus-5,us.anthropic.claude-opus-5-5,us.anthropic.claude-sonnet-5-5,us.anthropic.claude-haiku-5-5
+      AWS_REGION: us-west-2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      imds-mock:
+        # Healthy = listening, not credentialed (the token PUT needs none).
+        # The AWS SDK chain gets zero retries, so an agent admitted before
+        # the mock binds fails its run.
+        condition: service_healthy
+
+  # `docker compose up --build agent-anthropic` with ANTHROPIC_API_KEY exported. Naming the
+  # service enables its profile; a plain `docker compose up` never starts it. An unset key
+  # interpolates to empty, and the runtime refuses to boot naming ANTHROPIC_API_KEY.
+  agent-anthropic:
+    <<: *agent
+    profiles: ["anthropic"]
+    # Not `bun --watch`: a watch restart leaves the old key holder on its port, and the new one
+    # then fails to bind and takes the container down.
+    command: ["bun", "src/main.ts"]
+    environment:
+      <<: *agent-env
+      AGENT_RUNTIME_MODEL_PROVIDER: anthropic
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: claude-haiku-4-5
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-4-5
+      ANTHROPIC_ALLOWED_MODELS: claude-haiku-4-5,claude-sonnet-5-5,claude-opus-5-5
+
+  # Compose-network only — never add a host port here, or the credentials it serves leak to the host.
+  imds-mock:
+    build:
+      context: .
+      target: dev
+    init: true
+    read_only: true
+    # The image entrypoint needs SETUID/SETGID for its setpriv privilege
+    # drop; this service deliberately lacks both, so it starts directly
+    # as the unprivileged user instead.
+    user: "1000:1000"
+    entrypoint: ["bun", "src/imds-mock-main.ts"]
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=16m
+    pids_limit: 64
+    mem_limit: 256m
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_CREDENTIAL_EXPIRATION: ${AWS_CREDENTIAL_EXPIRATION:-}
+    volumes:
+      - ./src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:1338/latest/api/token', { method: 'PUT', headers: { 'x-aws-ec2-metadata-token-ttl-seconds': '60' } }); if (!r.ok) { process.exit(1); }"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+      start_interval: 1s

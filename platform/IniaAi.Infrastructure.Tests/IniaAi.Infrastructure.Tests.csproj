@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NSubstitute" />
+        <PackageReference Include="xunit.v3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Infrastructure\IniaAi.Infrastructure.csproj" />
+        <ProjectReference Include="..\IniaAi.Migrations.Mssql\IniaAi.Migrations.Mssql.csproj">
+            <TreatAsUsed>true</TreatAsUsed>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.Migrations.PostgreSql\IniaAi.Migrations.PostgreSql.csproj">
+            <TreatAsUsed>true</TreatAsUsed>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.Testing.DependencyInjection\IniaAi.Testing.DependencyInjection.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="TestData/**" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+</Project>

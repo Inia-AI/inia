@@ -1,0 +1,61 @@
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Tools.RagStrategies
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack>
+            <MudText Typo="Typo.h5">Prompts used by the "Use Auto-Detected Table Of Contents" strategy</MudText>
+            <ToolsSettingsScopeNotice />
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Spacing="5">
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.RelevantSectionsIdentificationPrompt"
+                          Label="User Prompt For Relevant Sections Identification"
+                          Class="editor-mono-field"
+                          HelperText="Pay attention to the placeholders like {0}, {1}, etc.
+                              These will be replaced with the actual content of the document.
+                              For JSON schema MAKE SURE TO USE DOUBLE CURLY BRACKETS"
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.RelevanceAssessmentPrompt"
+                          Label="User Prompt For Section's Relevance Assessment"
+                          Class="editor-mono-field"
+                          HelperText="Pay attention to the placeholders like {0}, {1}, etc.
+                              These will be replaced with the actual content of the document."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.PageSelectionPrompt"
+                          Label="User Prompt For Selection Of Most Relevant Pages"
+                          Class="editor-mono-field"
+                          HelperText="Pay attention to the placeholders like {0}, {1}, etc.
+                            These will be replaced with the actual content of the document."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudDivider />
+
+            <PromptsToolbar Prompts="@Prompts"
+                            Title="@nameof(UseAutoDetectedTableOfContentsPrompts)"
+                            SaveChangesCallback="@SaveChangesCallback"
+                            PromptsUploaded="@((UseAutoDetectedTableOfContentsPrompts uploaded) => uploaded.CopyTo(Prompts))" />
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public UseAutoDetectedTableOfContentsPrompts Prompts { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback SaveChangesCallback { get; set; }
+}

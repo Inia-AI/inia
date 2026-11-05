@@ -1,0 +1,71 @@
+﻿@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+<MudStack>
+    <DocumentClassSelector Block="@Block"
+                           SelectionChanged="@BlockChanged" />
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Topics Template"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="20"
+                          @bind-Value="@_props.TopicsModelTemplate" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Topics After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              MaxLines="20"
+                              Value="@_props.ExecutionState.TopicsModel" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <div class="editor-eyebrow mt-4 mb-2">Document filtering</div>
+
+    @foreach (RagSettings ragSettings in Block.RagSettings)
+    {
+        <MudPaper @key="ragSettings" Elevation="0" Outlined="true" Class="pa-3 mb-2 rounded">
+            <RagSettingsInteraction RagSettings="@ragSettings" />
+
+            <MudButton Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Delete"
+                       Color="Color.Error"
+                       Class="editor-soft-button"
+                       OnClick="() => Block.RagSettings.Remove(ragSettings)">
+                Remove Data Retrieval Settings
+            </MudButton>
+        </MudPaper>
+    }
+
+    <div>
+        <MudButton Size="Size.Small"
+                   Class="editor-soft-button"
+                   Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   Color="Color.Primary"
+                   OnClick="() => { _ = new RagSettings(Block) { Type = RagTypes.WholeDocument }; }">
+            Add Data Retrieval Settings
+        </MudButton>
+    </div>
+</MudStack>
+
+@code {
+    private BuildTopicsProperties _props => Block.Properties as BuildTopicsProperties
+        ?? throw new InvalidOperationException("Block properties must be of type BuildTopicsProperties");
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+}

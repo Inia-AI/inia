@@ -1,0 +1,2124 @@
+@attribute [Route(AppRoutes.LIBRARY)]
+@attribute [Route(AppRoutes.LIBRARY + "/{ComponentId}")]
+@attribute [Authorize(Roles = ROLES)]
+
+@using ErrorOr
+@using IniaAi.WebApp.Components.Components
+@using IniaAi.Application.Commands.SharedComponents.CreateSharedComponent
+@using IniaAi.Application.Commands.SharedComponents.RetireSharedComponent
+@using IniaAi.Application.Commands.SharedComponents.SetSharedComponentCategory
+@using IniaAi.Application.Commands.SharedComponents.UnretireSharedComponent
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentConsumerMatrix
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentConsumers
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentContent
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentVersionContent
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentVersions
+@using IniaAi.Application.Commands.SharedComponents.PromoteSharedComponent
+@using IniaAi.Application.Queries.SharedComponents.ListSharedComponentCategories
+@using IniaAi.Application.Queries.SharedComponents.ListSharedComponents
+@using IniaAi.Application.Queries.SharedComponents.ScanSharedComponentBootstrap
+@using IniaAi.Application.Queries.Workflows.Versions
+@using DomainKind = IniaAi.Domain.Entities.SharedComponents.Enums.SharedComponentKind
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using SharedComponentConsumerChannel = IniaAi.Application.Common.Workflows.SharedComponentConsumerChannel
+@using SectionEntryKind = IniaAi.Domain.Entities.Workflows.Enums.SectionEntryKind
+@using SharedComponentEntryCellState = IniaAi.Application.Queries.SharedComponents.GetSharedComponentConsumerMatrix.SharedComponentEntryCellState
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Components
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.WebApi.Contracts.Enums
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using DomainLinkState = IniaAi.Domain.Entities.SharedComponents.Enums.SharedComponentLinkState
+@using DomainBlockTypes = IniaAi.Domain.Entities.Workflows.Enums.BlockTypes
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.AspNetCore.Authorization
+
+@implements IDisposable
+
+@inject AppState AppState
+@inject IDialogService DialogService
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Inia AI - @AppState.GetName(AppRoutes.LIBRARY)</PageTitle>
+
+<UnsavedChangesGuard IsDirty="_editDirty" IsDirtyNow="() => _editDirty" />
+
+<MudGrid Justify="Justify.FlexStart"
+         Spacing="2"
+         Class="my-2">
+    @if (_viewingSection is not null && _selectedComponent is not null)
+    {
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="editor-soft-button"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick="CloseVersionView">
+                Back to '@_selectedComponent.Name'
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                Viewing version @_viewingVersionCode of '@_selectedComponent.Name'. This preview is never saved.
+            </MudAlert>
+        </MudItem>
+
+        @if (ViewingRefEntries.Count > 0)
+        {
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Referenced Library blocks</MudText>
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2">
+                    @foreach (SectionEntry entry in ViewingRefEntries)
+                    {
+                        SharedComponentSummaryDto? target = entry.SharedComponentId is null
+                            ? null
+                            : _components.FirstOrDefault(c => c.Id == entry.SharedComponentId);
+                        <RefEntryCard SlotTag="@entry.SlotTag"
+                                      ComponentName="@target?.Name"
+                                      HeadContentHash="@target?.HeadContentHash"
+                                      OnOpen="@(target is null
+                                          ? default
+                                          : EventCallback.Factory.Create(this, () => Navigation.NavigateTo($"{AppRoutes.LIBRARY}/{target.Id}")))" />
+                    }
+                </MudStack>
+            </MudItem>
+        }
+
+        <MudItem xs="12">
+            <CascadingValue Value="_surfaceState" IsFixed="true">
+                <SectionInteraction Section="@_viewingSection" />
+            </CascadingValue>
+        </MudItem>
+    }
+    else if (_editComponentSection is not null && _createKind is not null)
+    {
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="editor-soft-button"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick="CloseCreateAsync">
+                Cancel new component
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@SharedComponentKindIcon.For(_createKind.Value)" Color="Color.Primary" />
+                <MudText Typo="Typo.h6">Creating '@_createName'</MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Save"
+                           Disabled="@(_editComponentSection.Blocks.Count == 0)"
+                           OnClick="CreateSaveAsync">
+                    Create
+                </MudButton>
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12">
+            <CascadingValue Value="AuthoringSurfaceState" IsFixed="true">
+                <SectionInteraction Section="@_editComponentSection"
+                                    InsertBlockFromLibraryCallback="InsertRefFromLibraryAsync"
+                                    SwapLinkedEntryCallback="SwapRefAsync"
+                                    ResolveRefEntryDisplay="_resolveRefDisplayFunc" />
+            </CascadingValue>
+        </MudItem>
+    }
+    else if (_editComponentSection is not null && _editComponent is not null)
+    {
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="editor-soft-button"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick="CloseEditAsync">
+                Back to '@_editComponent.Name'
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@SharedComponentKindIcon.For(_editComponent.Kind)" Color="Color.Primary" />
+                <MudText Typo="Typo.h6">Editing '@_editComponent.Name'</MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Save"
+                           OnClick="SaveEditAsync">
+                    Save changes…
+                </MudButton>
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12">
+            <CascadingValue Value="AuthoringSurfaceState" IsFixed="true">
+                <SectionInteraction Section="@_editComponentSection"
+                                    InsertBlockFromLibraryCallback="InsertRefFromLibraryAsync"
+                                    SwapLinkedEntryCallback="SwapRefAsync"
+                                    ResolveRefEntryDisplay="_resolveRefDisplayFunc" />
+            </CascadingValue>
+        </MudItem>
+    }
+    else if (_selectedComponent is not null)
+    {
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="editor-soft-button"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick="CloseDetail">
+                Back to library
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@SharedComponentKindIcon.For(_selectedComponent.Kind)"
+                                 Color="Color.Primary"
+                                 Title="@_selectedComponent.Kind.ToString()" />
+                        <MudText Typo="Typo.h6">@_selectedComponent.Name</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 Color="@(_selectedComponent.State == SharedComponentState.Retired ? Color.Default : Color.Success)">
+                            @_selectedComponent.State
+                        </MudChip>
+                        <MudSpacer />
+                        @if (_selectedComponent.State != SharedComponentState.Retired)
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Class="editor-soft-button"
+                                       StartIcon="@Icons.Material.Outlined.Edit"
+                                       OnClick="StartEditAsync">
+                                Edit
+                            </MudButton>
+                        }
+                        @if (_selectedComponent.State == SharedComponentState.Retired)
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Secondary"
+                                       Class="editor-soft-button"
+                                       StartIcon="@Icons.Material.Outlined.Unarchive"
+                                       OnClick="UnretireAsync">
+                                Unretire
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Error"
+                                       Class="editor-soft-button"
+                                       StartIcon="@Icons.Material.Outlined.Archive"
+                                       Disabled="@(_consumers is null)"
+                                       OnClick="RetireAsync">
+                                Retire…
+                            </MudButton>
+                        }
+                        @if (_selectedComponent.HeadContentHash is not null)
+                        {
+                            <MudText Typo="Typo.body2"
+                                     Class="mud-text-secondary"
+                                     Style="font-family: monospace;">
+                                @WorkflowVersionCode.Short(_selectedComponent.HeadContentHash)
+                            </MudText>
+                        }
+                    </MudStack>
+
+                    @if (!string.IsNullOrEmpty(_selectedComponent.Description))
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-1">@_selectedComponent.Description</MudText>
+                    }
+
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Category:</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 Color="@(_selectedComponent.CategoryName is null ? Color.Warning : Color.Primary)">
+                            @(_selectedComponent.CategoryName ?? "Uncategorized")
+                        </MudChip>
+                        <MudMenu Label="Move to…"
+                                 Size="Size.Small"
+                                 Variant="Variant.Text"
+                                 Dense="true"
+                                 Color="Color.Secondary">
+                            @foreach (SharedComponentCategoryDto category in _categories.Where(c => c.Id != _selectedComponent.CategoryId))
+                            {
+                                <MudMenuItem OnClick="@(() => RecategorizeAsync(category))">@category.Name</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.subtitle1" Class="editor-card-title">Where used</MudText>
+                        @foreach (string domain in ConsumerDomains())
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                @domain
+                            </MudChip>
+                        }
+                    </MudStack>
+                    @if (_consumersError is not null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Error">
+                            Could not load where this component is used: @_consumersError Retiring is
+                            disabled until the consumer list loads.
+                        </MudText>
+                    }
+                    else if (_consumers is null)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    }
+                    else if (_consumers.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            No live template copies are linked to this component yet.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudSimpleTable Dense="true" Elevation="0" Class="mt-1">
+                            <thead>
+                                <tr>
+                                    <th>Workflow type</th>
+                                    <th>How</th>
+                                    <th style="text-align: right;">Linked copies</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (SharedComponentConsumer consumer in _consumers)
+                                {
+                                    <tr>
+                                        <td>@ConsumerLabel(consumer)</td>
+                                        <td>
+                                            @if (consumer.Channel == SharedComponentConsumerChannel.ViaSection)
+                                            {
+                                                <MudChip T="string"
+                                                         Size="Size.Small"
+                                                         Variant="Variant.Text"
+                                                         Color="Color.Primary"
+                                                         Class="ma-0"
+                                                         OnClick="@(() => Navigation.NavigateTo($"{AppRoutes.LIBRARY}/{consumer.ViaSharedComponentId}"))">
+                                                    Via '@(consumer.ViaSharedComponentName ?? consumer.ViaSharedComponentId)'
+                                                </MudChip>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mud-text-secondary">Direct</MudText>
+                                            }
+                                        </td>
+                                        <td style="text-align: right;">@consumer.LinkedInstanceCount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+
+                    @if (_consumerMatrix is { Rows.Count: > 0 })
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mt-4">Entry by entry</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">
+                            How each copy stands on each entry of the current definition.
+                        </MudText>
+
+                        <div style="overflow-x: auto;">
+                            <MudSimpleTable Dense="true" Elevation="0">
+                                <thead>
+                                    <tr>
+                                        <th>Workflow type</th>
+                                        @foreach (SharedComponentMatrixEntry entry in _consumerMatrix.Entries)
+                                        {
+                                            <th>
+                                                @entry.SlotTag
+                                                @if (entry.Kind == SectionEntryKind.ComponentRef)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Outlined.Link"
+                                                             Size="Size.Small"
+                                                             Title="Filled by a Block component" />
+                                                }
+                                                @if (entry.IsLocalOnly)
+                                                {
+                                                    <MudText Typo="Typo.caption" Class="mud-text-secondary">local</MudText>
+                                                }
+                                            </th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (SharedComponentConsumerMatrixRow row in _consumerMatrix.Rows)
+                                    {
+                                        <tr>
+                                            <td>@row.WorkflowTypeName</td>
+                                            @foreach (SharedComponentConsumerMatrixCell cell in row.Cells)
+                                            {
+                                                <td>
+                                                    @if (cell.State == SharedComponentEntryCellState.NotApplicable)
+                                                    {
+                                                        <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudChip T="string"
+                                                                 Size="Size.Small"
+                                                                 Variant="Variant.Text"
+                                                                 Color="@SharedComponentEntryCellVisuals.ColorFor(cell.State)"
+                                                                 Class="ma-0">
+                                                            @cell.State
+                                                        </MudChip>
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </div>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle1" Class="editor-card-title">Version history</MudText>
+                    @if (_versionsError is not null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Error">
+                            Could not load the version history: @_versionsError
+                        </MudText>
+                    }
+                    else if (_detailVersions is null || _organizationId is null || _userId is null)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <SharedComponentHistory OrganizationId="@_organizationId"
+                                                UserId="@_userId"
+                                                Component="_selectedComponent"
+                                                Versions="_detailVersions"
+                                                OnViewVersion="ViewVersionAsync"
+                                                OnHeadChanged="ReloadAfterHeadChangeAsync" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+    else if (_editingSection is not null)
+    {
+        <MudItem xs="12">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="editor-soft-button"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick="CloseSection">
+                Back to library
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTextField @bind-Value="_editingSection.Title"
+                          Variant="Variant.Outlined"
+                          Label="Section name"
+                          Immediate="true"
+                          Style="max-width: 480px;" />
+        </MudItem>
+
+        <MudItem xs="12">
+            <CascadingValue Value="_surfaceState" IsFixed="true">
+                <SectionInteraction Section="@_editingSection" />
+            </CascadingValue>
+        </MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" sm="4" md="3" lg="2">
+            <MudCard Outlined="true">
+                <MudCardContent Class="pa-0">
+                    <MudText Class="editor-eyebrow px-4 pt-3 pb-1">Categories</MudText>
+                    <MudList T="string"
+                             SelectionMode="SelectionMode.SingleSelection"
+                             SelectedValue="SelectedCategoryKey"
+                             SelectedValueChanged="OnCategorySelected"
+                             Dense="true">
+                        @CategoryItem(ALL_CATEGORIES_KEY, "All components", ShownCount(_ => true))
+                        <MudDivider aria-hidden="true" />
+                        @foreach (SharedComponentCategoryDto category in _categories)
+                        {
+                            @CategoryItem(category.Id, category.Name, ShownCount(c => string.Equals(c.CategoryId, category.Id, StringComparison.Ordinal)), category.Description)
+                        }
+                        @if (_uncategorizedCount > 0)
+                        {
+                            <MudDivider aria-hidden="true" />
+                            @CategoryItem(UNCATEGORIZED_KEY, UNCATEGORIZED_LABEL, ShownCount(c => c.CategoryId is null))
+                        }
+                    </MudList>
+                    <MudDivider />
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               Size="Size.Small"
+                               Class="editor-soft-button ma-2"
+                               StartIcon="@Icons.Material.Outlined.Settings"
+                               OnClick="OpenManageCategoriesAsync">
+                        Manage categories
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="8" md="9" lg="10">
+            <MudCard Outlined="true">
+                <MudCardContent>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                <MudTextField @bind-Value="_filter.SearchText"
+                              @ref="_searchField"
+                              Immediate="true"
+                              Clearable="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Placeholder="Search by name or description"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.Search"
+                              IconSize="Size.Small"
+                              Style="min-width: 280px; max-width: 480px; flex-grow: 1;" />
+
+                <MudChip T="string"
+                         Color="@(_filter.Kind is null ? Color.Primary : Color.Default)"
+                         Variant="@(_filter.Kind is null ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => SetKind(null))"
+                         aria-pressed="@(_filter.Kind is null ? "true" : "false")"
+                         Style="cursor: pointer;">
+                    All
+                </MudChip>
+                <MudChip T="string"
+                         Color="@(_filter.Kind == SharedComponentKind.Section ? Color.Primary : Color.Default)"
+                         Variant="@(_filter.Kind == SharedComponentKind.Section ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => SetKind(SharedComponentKind.Section))"
+                         aria-pressed="@(_filter.Kind == SharedComponentKind.Section ? "true" : "false")"
+                         Style="cursor: pointer;">
+                    @SECTIONS_LABEL
+                </MudChip>
+                <MudChip T="string"
+                         Color="@(_filter.Kind == SharedComponentKind.Block ? Color.Primary : Color.Default)"
+                         Variant="@(_filter.Kind == SharedComponentKind.Block ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => SetKind(SharedComponentKind.Block))"
+                         aria-pressed="@(_filter.Kind == SharedComponentKind.Block ? "true" : "false")"
+                         Style="cursor: pointer;">
+                    @BLOCKS_LABEL
+                </MudChip>
+
+                <MudSpacer />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="StartCreateAsync">
+                    New component
+                </MudButton>
+
+                <MudButton Variant="Variant.Text"
+                           Color="@(_showSuggestions ? Color.Primary : Color.Secondary)"
+                           Class="editor-soft-button"
+                           StartIcon="@Icons.Material.Outlined.AutoAwesome"
+                           aria-expanded="@(_showSuggestions ? "true" : "false")"
+                           OnClick="@(() => _showSuggestions = !_showSuggestions)">
+                    Suggestions
+                </MudButton>
+
+                <MudBadge Content="@_filter.SecondaryFilterCount"
+                          Visible="@(_filter.SecondaryFilterCount > 0)"
+                          Color="Color.Primary"
+                          Overlap="true">
+                    <MudButton Variant="Variant.Text"
+                               Color="@(_showFilterPanel ? Color.Primary : Color.Secondary)"
+                               Class="editor-soft-button"
+                               StartIcon="@Icons.Material.Outlined.FilterList"
+                               aria-expanded="@(_showFilterPanel ? "true" : "false")"
+                               OnClick="@(() => _showFilterPanel = !_showFilterPanel)">
+                        Filters
+                    </MudButton>
+                </MudBadge>
+            </MudStack>
+
+            <MudCollapse Expanded="_showFilterPanel">
+                <div class="editor-subpanel pa-3 mt-2"
+                     style="border: 1px solid var(--editor-border); border-radius: var(--editor-radius-control);">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Wrap="Wrap.Wrap">
+                        <MudSelect T="string"
+                                   @bind-Value="ConsumingCategoryKey"
+                                   Label="Workflow type category"
+                                   Clearable="true"
+                                   Dense="true"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Style="min-width: 220px; max-width: 280px;">
+                            @foreach ((string id, string name) in ConsumingTypeCategoryOptions())
+                            {
+                                <MudSelectItem T="string" Value="@id">@name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudSelect T="string"
+                                   @bind-Value="_filter.ConsumingWorkflowTypeId"
+                                   Label="Workflow type"
+                                   Clearable="true"
+                                   Dense="true"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Style="min-width: 220px; max-width: 280px;">
+                            @foreach (ConsumingWorkflowTypeDto type in ConsumingTypeOptions())
+                            {
+                                <MudSelectItem T="string" Value="@type.WorkflowTypeId">@type.WorkflowTypeName</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudSwitch @bind-Value="_filter.ShowRetired"
+                                   T="bool"
+                                   Color="Color.Primary"
+                                   Label="Show retired" />
+                    </MudStack>
+                </div>
+            </MudCollapse>
+
+            @if (_filter.ActiveFilterCount > 0)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-2 library-active-filters" Wrap="Wrap.Wrap">
+                    @if (!string.IsNullOrWhiteSpace(_filter.SearchText))
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 OnClose="@(() => _filter.SearchText = null)">
+                            Search: @_filter.SearchText
+                        </MudChip>
+                    }
+                    @if (_filter.Kind is { } kind)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 OnClose="@(() => SetKind(null))">
+                            Kind: @(kind == SharedComponentKind.Section ? SECTIONS_LABEL : BLOCKS_LABEL)
+                        </MudChip>
+                    }
+                    @if (SelectedCategoryKey != ALL_CATEGORIES_KEY)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 OnClose="@(() => OnCategorySelected(ALL_CATEGORIES_KEY))">
+                            Category: @SelectedCategoryLabel
+                        </MudChip>
+                    }
+                    @if (_filter.ConsumingWorkflowTypeCategoryId is not null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 OnClose="@(() => _filter.ConsumingWorkflowTypeCategoryId = null)">
+                            Type category: @ConsumingTypeCategoryLabel(_filter.ConsumingWorkflowTypeCategoryId)
+                        </MudChip>
+                    }
+                    @if (_filter.ConsumingWorkflowTypeId is not null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 OnClose="@(() => _filter.ConsumingWorkflowTypeId = null)">
+                            Workflow type: @ConsumingTypeLabel(_filter.ConsumingWorkflowTypeId)
+                        </MudChip>
+                    }
+                    @if (_filter.ShowRetired)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 OnClose="@(() => _filter.ShowRetired = false)">
+                            Showing retired
+                        </MudChip>
+                    }
+                    @if (_filter.ActiveFilterCount > 1)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="@(() => _filter.ClearAll())">
+                            Clear all
+                        </MudButton>
+                    }
+                </MudStack>
+            }
+
+            @if (_showSuggestions)
+            {
+                <div class="editor-subpanel pa-3 mt-3"
+                     style="border: 1px solid var(--editor-border); border-radius: var(--editor-radius-control);">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudText Typo="Typo.subtitle1">Promote suggestions</MudText>
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Finds blocks and sections repeated verbatim across templates but not yet in the Library (exact match).
+                        </MudText>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.Search"
+                                   Disabled="@(_scanRunning || _suggestionDispatchRunning)"
+                                   OnClick="RunBootstrapScanAsync">
+                            @(_scanResult is null ? "Scan templates" : "Rescan")
+                        </MudButton>
+                    </MudStack>
+
+                    @if (_scanRunning)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-3">
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <MudText Typo="Typo.body2">
+                                Scanning every template — this loads each one and can take a moment.
+                            </MudText>
+                        </MudStack>
+                    }
+                    else if (_scanError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                            @_scanError
+                        </MudAlert>
+                    }
+                    else if (_scanResult is { } scan)
+                    {
+                        IReadOnlyList<SuggestionGroup> groups = SuggestionGroups;
+
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-2">
+                            Scanned @scan.ScannedWorkflowTypeCount templates in @scan.ElapsedMilliseconds ms.
+                        </MudText>
+                        @if (scan.Suggestions.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                                No repeated unshared content found — nothing to promote.
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap" Class="mt-2">
+                                @foreach ((DomainKind? Kind, string Label) filter in _suggestionKindFilters)
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@(_suggestionKind == filter.Kind ? Color.Primary : Color.Default)"
+                                             Variant="@(_suggestionKind == filter.Kind ? Variant.Filled : Variant.Outlined)"
+                                             OnClick="@(() => _suggestionKind = filter.Kind)"
+                                             Style="cursor: pointer;">
+                                        @filter.Label
+                                    </MudChip>
+                                }
+
+                                <MudSelect T="string"
+                                           MultiSelection="true"
+                                           @bind-SelectedValues="_suggestionWorkflowTypes"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Dense="true"
+                                           Clearable="true"
+                                           Label="Workflows"
+                                           MultiSelectionTextFunc="@SuggestionWorkflowTypeText"
+                                           Style="min-width: 220px; max-width: 320px;">
+                                    @foreach (SuggestionFilterOption option in _suggestionWorkflowTypeOptions)
+                                    {
+                                        <MudSelectItem T="string" Value="@option.Value">@option.Label (@option.Count)</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                <MudSelect T="string"
+                                           MultiSelection="true"
+                                           @bind-SelectedValues="_suggestionCategories"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Dense="true"
+                                           Clearable="true"
+                                           Label="Categories"
+                                           Style="min-width: 200px; max-width: 300px;">
+                                    @foreach (SuggestionFilterOption option in _suggestionCategoryOptions)
+                                    {
+                                        <MudSelectItem T="string" Value="@option.Value">@option.Label (@option.Count)</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                @if (HasSuggestionFilters)
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               OnClick="ClearSuggestionFilters">
+                                        Clear filters
+                                    </MudButton>
+                                }
+                            </MudStack>
+
+                            @if (groups.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                                    Nothing matches these filters.
+                                </MudAlert>
+                            }
+                        }
+
+                        @foreach (SuggestionGroup group in groups)
+                        {
+                        <MudText Typo="Typo.subtitle2" Class="mt-3">
+                            @group.Label · @group.Suggestions.Count
+                        </MudText>
+                        @foreach (SharedComponentBootstrapSuggestion suggestion in group.Suggestions)
+                        {
+                            int checkedCount = suggestion.Nodes.Count(
+                                node => !_uncheckedSuggestionNodes.Contains(BootstrapSuggestionPlanner.NodeKey(node)));
+                            <div class="editor-subpanel pa-3 mt-2"
+                                 style="border: 1px solid var(--editor-border); border-radius: var(--editor-radius-control);">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    <MudIcon Icon="@SharedComponentKindIcon.For(suggestion.Kind)"
+                                             Size="Size.Small"
+                                             Color="Color.Primary" />
+                                    <MudText Typo="Typo.subtitle2">@suggestion.SuggestedName</MudText>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-0">
+                                        @(suggestion.CrossType
+                                            ? $"Across {suggestion.Nodes.Select(n => n.WorkflowTypeId).Distinct(StringComparer.Ordinal).Count()} templates"
+                                            : "Within one template")
+                                    </MudChip>
+                                    @if (suggestion.ExistingComponentId is not null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ma-0">
+                                            Matches Library component '@suggestion.ExistingComponentName'
+                                        </MudChip>
+                                    }
+                                    <MudSpacer />
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               Disabled="@(_suggestionDispatchRunning || checkedCount == 0)"
+                                               OnClick="() => DispatchSuggestionAsync(suggestion)">
+                                        @BootstrapSuggestionPlanner.ActionLabel(suggestion, checkedCount)
+                                    </MudButton>
+                                </MudStack>
+                                <MudStack Spacing="0" Class="mt-1">
+                                    @foreach (SharedComponentBootstrapNode node in suggestion.Nodes)
+                                    {
+                                        string nodeKey = BootstrapSuggestionPlanner.NodeKey(node);
+                                        <MudCheckBox T="bool"
+                                                     Dense="true"
+                                                     Size="Size.Small"
+                                                     Value="@(!_uncheckedSuggestionNodes.Contains(nodeKey))"
+                                                     ValueChanged="isChecked => ToggleSuggestionNode(nodeKey, isChecked)">
+                                            <MudText Typo="Typo.body2" Style="display: inline;">
+                                                @node.WorkflowTypeName — @BootstrapSuggestionPlanner.DescribeLocation(node)
+                                                @if (node.ProvenanceComponentId is not null)
+                                                {
+                                                    <MudText Typo="Typo.caption"
+                                                             Class="mud-text-secondary"
+                                                             Style="display: inline;">
+                                                        &nbsp;· broken out of '@(node.ProvenanceComponentName ?? node.ProvenanceComponentId)'
+                                                    </MudText>
+                                                }
+                                            </MudText>
+                                        </MudCheckBox>
+                                    }
+                                </MudStack>
+                            </div>
+                        }
+                        }
+                    }
+                </div>
+            }
+
+            @{ IReadOnlyList<SharedComponentSummaryDto> filteredComponents = FilteredComponents; }
+            <div role="status">
+                @if (!_isLoading && _components.Any() && filteredComponents.Count == 0)
+                {
+                    int shownWhenCleared = new LibraryListFilter().Apply(_components).Count;
+                    @if (shownWhenCleared == 0 && !_filter.ShowRetired)
+                    {
+                        <MudText Typo="Typo.body1" Class="mud-text-secondary mt-3">
+                            Every component in the library is retired. Turn on Show retired under Filters to see them.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="mud-text-secondary mt-3">
+                            @if (shownWhenCleared == 0)
+                            {
+                                @:No components match the current filters. Every component in the library is retired, so after you clear the filters, turn Show retired on again to see them.
+                            }
+                            else
+                            {
+                                @:No components match the current filters. Clear them to see all @shownWhenCleared @(shownWhenCleared == 1 ? "component" : "components").
+                            }
+                        </MudText>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Class="mt-2"
+                                   StartIcon="@Icons.Material.Outlined.FilterListOff"
+                                   OnClick="ClearFiltersAsync">
+                            Clear filters
+                        </MudButton>
+                    }
+                }
+            </div>
+
+            @if (_isLoading)
+            {
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="mt-3" />
+            }
+            else if (!_components.Any())
+            {
+                <MudText Typo="Typo.body1" Class="mud-text-secondary mt-3">
+                    No shared components yet. Share a block or section from the workflow editor
+                    to publish it here.
+                </MudText>
+            }
+            else if (filteredComponents.Count > 0)
+            {
+                <div class="mt-2">
+                <MudDataGrid T="SharedComponentSummaryDto"
+                             Items="@filteredComponents"
+                             Dense="true"
+                             ReadOnly="true"
+                             Hover="true"
+                             Elevation="0"
+                             SortMode="SortMode.Single"
+                             RowClick="OnRowClicked"
+                             RowStyleFunc="_rowStyleFunc"
+                             Class="w-100">
+                    <Columns>
+                        <TemplateColumn Title="Kind" SortBy="x => x.Kind">
+                            <CellTemplate Context="ctx">
+                                <MudIcon Icon="@SharedComponentKindIcon.For(ctx.Item.Kind)"
+                                         Color="Color.Primary"
+                                         Size="Size.Small"
+                                         Title="@ctx.Item.Kind.ToString()" />
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Name"
+                                        SortBy="x => x.Name"
+                                        InitialDirection="SortDirection.Ascending">
+                            <CellTemplate Context="ctx">
+                                <span @onclick:stopPropagation="true">
+                                    <MudLink Href="@($"{AppRoutes.LIBRARY}/{ctx.Item.Id}")" Typo="Typo.body2" Color="Color.Inherit">
+                                        @ctx.Item.Name
+                                    </MudLink>
+                                </span>
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Description" Sortable="false">
+                            <CellTemplate Context="ctx">
+                                <div style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                     title="@ctx.Item.Description">
+                                    @ctx.Item.Description
+                                </div>
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Category" SortBy="x => x.CategoryName ?? string.Empty">
+                            <CellTemplate Context="ctx">
+                                <MudText Typo="Typo.body2"
+                                         Class="@(ctx.Item.CategoryName is null ? "mud-text-secondary" : null)">
+                                    @(ctx.Item.CategoryName ?? "—")
+                                </MudText>
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Consumers" SortBy="x => x.ConsumerCount">
+                            <CellTemplate Context="ctx">
+                                @if (ctx.Item.ConsumerCount == 0)
+                                {
+                                    <MudTooltip Text="No workflow links to this component yet">
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Variant="Variant.Outlined"
+                                                 Color="Color.Default"
+                                                 Class="ma-0">
+                                            Unused
+                                        </MudChip>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2">
+                                        <strong>@ctx.Item.ConsumerCount</strong>
+                                        @(ctx.Item.ConsumerCount == 1 ? " workflow" : " workflows")
+                                    </MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <PropertyColumn Property="x => x.HeadCreatedAtUtc"
+                                        Title="Updated"
+                                        Format="yyyy-MM-dd HH:mm"
+                                        SortBy="x => x.HeadCreatedAtUtc" />
+
+                        <TemplateColumn Title="Version" Sortable="false">
+                            <CellTemplate Context="ctx">
+                                @if (ctx.Item.HeadContentHash is not null)
+                                {
+                                    <MudText Typo="Typo.body2" Style="font-family: monospace;">
+                                        @WorkflowVersionCode.Short(ctx.Item.HeadContentHash)
+                                    </MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="State" SortBy="x => x.State">
+                            <CellTemplate Context="ctx">
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Outlined"
+                                         Color="@(ctx.Item.State == SharedComponentState.Retired ? Color.Default : Color.Success)">
+                                    @ctx.Item.State
+                                </MudChip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+
+                    <PagerContent>
+                        <MudDataGridPager T="SharedComponentSummaryDto"
+                                          PageSizeOptions="new int[] { 25, 50, 100 }" />
+                    </PagerContent>
+                </MudDataGrid>
+                </div>
+            }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Class="editor-card-title">Scratch composer</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                Preview the shared editing surface without saving.
+                            </MudText>
+                        </div>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Secondary"
+                                   Class="editor-soft-button"
+                                   StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="StartNewSection">
+                            New scratch section
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    public const string ROLES = Roles.EDITOR_ROLES;
+
+    private const string ALL_CATEGORIES_KEY = "__all";
+    private const string UNCATEGORIZED_KEY = "__uncategorized";
+    private const string UNCATEGORIZED_LABEL = "Uncategorized";
+    private const string SECTIONS_LABEL = "Sections";
+    private const string BLOCKS_LABEL = "Blocks";
+    private const string INSERT_REF_DIALOG_TITLE = "Insert a Library block";
+    private const string SWAP_REF_DIALOG_TITLE = "Swap this Library block";
+    private const string REF_TAG_PREFIX = "ref_";
+
+    [Parameter]
+    public string? ComponentId { get; set; }
+
+    private readonly EditorSurfaceState _surfaceState = new(EditorSurfaceCapabilities.Library);
+    private readonly LibraryListFilter _filter = new();
+    private MudTextField<string>? _searchField;
+
+    private readonly Func<SharedComponentSummaryDto, int, string> _rowStyleFunc =
+        (component, _) => component.State == SharedComponentState.Retired ? "opacity: 0.6;" : string.Empty;
+
+    private Func<Block, RefEntryDisplay?> _resolveRefDisplayFunc = default!;
+
+    private readonly EditorSurfaceState _singleBlockSurfaceState =
+        new(EditorSurfaceCapabilities.Library with { IsSingleBlockHost = true });
+
+    private readonly EditorSurfaceState _sectionHostSurfaceState =
+        new(EditorSurfaceCapabilities.Library with { IsComponentDefinitionHost = true });
+
+    private Section? _editingSection;
+    private Section? _viewingSection;
+    private string? _viewingVersionCode;
+    private SharedComponentSummaryDto? _editComponent;
+    private Section? _editComponentSection;
+    private string? _editHeadVersionId;
+    private bool _editDirty;
+    private SharedComponentKind? _createKind;
+    private string _createName = string.Empty;
+    private string? _createDescription;
+    private string? _createCategoryId;
+    private bool _isLoading = true;
+    private List<SharedComponentSummaryDto> _components = [];
+    private List<ConsumingWorkflowTypeDto> _allConsumingTypes = [];
+    private List<SharedComponentCategoryDto> _categories = [];
+    private int _uncategorizedCount;
+    private bool _showFilterPanel;
+    private SharedComponentSummaryDto? _selectedComponent;
+    private List<SharedComponentConsumer>? _consumers;
+    private SharedComponentConsumerMatrix? _consumerMatrix;
+    private List<SharedComponentVersionDto>? _detailVersions;
+    private string? _consumersError;
+    private string? _versionsError;
+    private string? _organizationId;
+    private string? _userId;
+    private bool _showSuggestions;
+    private bool _scanRunning;
+    private bool _suggestionDispatchRunning;
+    private string? _scanError;
+    private SharedComponentBootstrapScanResult? _scanResult;
+    private readonly HashSet<string> _uncheckedSuggestionNodes = new(StringComparer.Ordinal);
+    private static readonly (DomainKind? Kind, string Label)[] _suggestionKindFilters =
+    [
+        (null, "All"),
+        (DomainKind.Section, "Sections"),
+        (DomainKind.Block, "Blocks"),
+    ];
+
+    private DomainKind? _suggestionKind;
+    private IReadOnlyCollection<string> _suggestionWorkflowTypes = [];
+    private IReadOnlyCollection<string> _suggestionCategories = [];
+    private IReadOnlyList<SuggestionFilterOption> _suggestionWorkflowTypeOptions = [];
+    private IReadOnlyList<SuggestionFilterOption> _suggestionCategoryOptions = [];
+
+    private void SetScanResult(SharedComponentBootstrapScanResult? result)
+    {
+        _scanResult = result;
+        _suggestionWorkflowTypeOptions = result is null
+            ? []
+            : BootstrapSuggestionPlanner.WorkflowTypeOptions(result.Suggestions);
+        _suggestionCategoryOptions = result is null
+            ? []
+            : BootstrapSuggestionPlanner.CategoryOptions(result.Suggestions);
+    }
+
+    private IReadOnlyList<SuggestionGroup> SuggestionGroups => _scanResult is null
+        ? []
+        : BootstrapSuggestionPlanner.GroupByKind(
+            BootstrapSuggestionPlanner.Filter(
+                _scanResult.Suggestions,
+                _suggestionKind,
+                new HashSet<string>(_suggestionWorkflowTypes, StringComparer.Ordinal),
+                new HashSet<string>(_suggestionCategories, StringComparer.Ordinal)));
+
+    private bool HasSuggestionFilters =>
+        _suggestionKind is not null || _suggestionWorkflowTypes.Any() || _suggestionCategories.Any();
+
+    private void ClearSuggestionFilters()
+    {
+        _suggestionKind = null;
+        _suggestionWorkflowTypes = [];
+        _suggestionCategories = [];
+    }
+
+    private string SuggestionWorkflowTypeText(IReadOnlyList<string> selected)
+    {
+        if (selected.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(
+            ", ",
+            selected.Select(value =>
+                _suggestionWorkflowTypeOptions.FirstOrDefault(option => option.Value == value)?.Label ?? value));
+    }
+
+    private IReadOnlyList<SharedComponentSummaryDto> FilteredComponents => _filter.Apply(_components);
+
+    private int ShownCount(Func<SharedComponentSummaryDto, bool> inCategory) =>
+        _components.Count(c => _filter.ShowsState(c) && inCategory(c));
+
+    private List<SectionEntry> ViewingRefEntries => _viewingSection is null
+        ? []
+        : [.. _viewingSection.EffectiveEntries().Where(e => e.Kind == SectionEntryKind.ComponentRef)];
+
+    protected override void OnInitialized()
+    {
+        _resolveRefDisplayFunc = ResolveRefDisplay;
+        _surfaceState.SectionChanged += OnSurfaceChanged;
+        _surfaceState.BlockChanged += OnSurfaceBlockChanged;
+        _surfaceState.DocumentClassesChanged += OnSurfaceDocumentClassesChanged;
+        _singleBlockSurfaceState.SectionChanged += OnSurfaceChanged;
+        _singleBlockSurfaceState.BlockChanged += OnSurfaceBlockChanged;
+        _singleBlockSurfaceState.DocumentClassesChanged += OnSurfaceDocumentClassesChanged;
+        _sectionHostSurfaceState.SectionChanged += OnSurfaceChanged;
+        _sectionHostSurfaceState.BlockChanged += OnSurfaceBlockChanged;
+        _sectionHostSurfaceState.DocumentClassesChanged += OnSurfaceDocumentClassesChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _organizationId = AppState.CurrentOrganizationId ?? AppState.User?.OrganizationId;
+        _userId = AppState.User?.Id;
+        await LoadComponentsAsync();
+        await LoadCategoriesAsync();
+        _isLoading = false;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(ComponentId))
+        {
+            ExitEditingSurfaces();
+            _selectedComponent = null;
+            CloseVersionView();
+            return;
+        }
+
+        if (_selectedComponent?.Id == ComponentId)
+        {
+            return;
+        }
+
+        ExitEditingSurfaces();
+        CloseVersionView();
+
+        SharedComponentSummaryDto? match = _components.FirstOrDefault(c => c.Id == ComponentId);
+        if (match is null)
+        {
+            AppState.Notify("That shared component could not be found.", Severity.Warning);
+            Navigation.NavigateTo(AppRoutes.LIBRARY);
+            return;
+        }
+
+        _selectedComponent = match;
+        await LoadDetailAsync(match.Id);
+    }
+
+    public void Dispose()
+    {
+        _surfaceState.SectionChanged -= OnSurfaceChanged;
+        _surfaceState.BlockChanged -= OnSurfaceBlockChanged;
+        _surfaceState.DocumentClassesChanged -= OnSurfaceDocumentClassesChanged;
+        _singleBlockSurfaceState.SectionChanged -= OnSurfaceChanged;
+        _singleBlockSurfaceState.BlockChanged -= OnSurfaceBlockChanged;
+        _singleBlockSurfaceState.DocumentClassesChanged -= OnSurfaceDocumentClassesChanged;
+        _sectionHostSurfaceState.SectionChanged -= OnSurfaceChanged;
+        _sectionHostSurfaceState.BlockChanged -= OnSurfaceBlockChanged;
+        _sectionHostSurfaceState.DocumentClassesChanged -= OnSurfaceDocumentClassesChanged;
+    }
+
+    private async Task LoadComponentsAsync()
+    {
+        if (string.IsNullOrEmpty(_organizationId) || string.IsNullOrEmpty(_userId))
+        {
+            SetComponents([]);
+            return;
+        }
+
+        ErrorOr<List<SharedComponentSummaryDto>> result = await SendAsync(
+            new ListSharedComponentsQuery(_organizationId, _userId));
+
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Failed to load the component library: {result.FirstError.Description}",
+                Severity.Error);
+            SetComponents([]);
+            return;
+        }
+
+        SetComponents(result.Value);
+    }
+
+    private void SetComponents(List<SharedComponentSummaryDto> components)
+    {
+        _components = components;
+        _allConsumingTypes = [.. components.SelectMany(c => c.ConsumingWorkflowTypes)];
+    }
+
+    private async Task LoadDetailAsync(string componentId)
+    {
+        _consumers = null;
+        _detailVersions = null;
+        _consumerMatrix = null;
+        _consumersError = null;
+        _versionsError = null;
+
+        if (string.IsNullOrEmpty(_organizationId) || string.IsNullOrEmpty(_userId))
+        {
+            _consumers = [];
+            _detailVersions = [];
+            return;
+        }
+
+        Task<ErrorOr<List<SharedComponentConsumer>>> consumersTask = SendAsync(
+            new GetSharedComponentConsumersQuery(_organizationId, _userId, componentId));
+        Task<ErrorOr<SharedComponentConsumerMatrix>>? matrixTask =
+            _selectedComponent?.Kind == SharedComponentKind.Section
+                ? SendAsync(new GetSharedComponentConsumerMatrixQuery(_organizationId, _userId, componentId))
+                : null;
+        Task<ErrorOr<List<SharedComponentVersionDto>>> versionsTask = SendAsync(
+            new GetSharedComponentVersionsQuery(_organizationId, _userId, componentId, IncludeNarratives: true));
+
+        List<Task> pendingDetailLoads = [consumersTask, versionsTask];
+        if (matrixTask is not null)
+        {
+            pendingDetailLoads.Add(matrixTask);
+        }
+
+        await Task.WhenAll(pendingDetailLoads);
+
+        ErrorOr<List<SharedComponentConsumer>> consumers = await consumersTask;
+        if (consumers.IsError)
+        {
+            _consumersError = consumers.FirstError.Description;
+        }
+        else
+        {
+            _consumers = consumers.Value;
+        }
+
+        if (matrixTask is not null)
+        {
+            ErrorOr<SharedComponentConsumerMatrix> matrix = await matrixTask;
+            _consumerMatrix = matrix.IsError ? null : matrix.Value;
+        }
+
+        ErrorOr<List<SharedComponentVersionDto>> versions = await versionsTask;
+        if (versions.IsError)
+        {
+            _versionsError = versions.FirstError.Description;
+        }
+        else
+        {
+            _detailVersions = versions.Value;
+        }
+    }
+
+    private async Task ViewVersionAsync(SharedComponentVersionDto version)
+    {
+        if (_selectedComponent is null || _organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        ErrorOr<SharedComponentVersionContentResult> content = await SendAsync(
+            new GetSharedComponentVersionContentQuery(
+                _organizationId, _userId, _selectedComponent.Id, version.VersionId));
+
+        if (content.IsError)
+        {
+            AppState.Notify(
+                $"Could not load this version's definition: {content.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        try
+        {
+            _viewingSection = SharedComponentDefinitionMount.BuildViewSection(
+                _selectedComponent.Kind, _selectedComponent.Name, content.Value.ContentJson);
+            _viewingVersionCode = WorkflowVersionCode.Short(version.ContentHash);
+        }
+        catch (InvalidOperationException)
+        {
+            AppState.Notify("The stored definition of this version could not be read.", Severity.Error);
+        }
+    }
+
+    private void CloseVersionView()
+    {
+        _viewingSection = null;
+        _viewingVersionCode = null;
+    }
+
+    private async Task ReloadAfterHeadChangeAsync()
+    {
+        if (_selectedComponent is null)
+        {
+            return;
+        }
+
+        string componentId = _selectedComponent.Id;
+        await LoadComponentsAsync();
+        _selectedComponent = _components.FirstOrDefault(c => c.Id == componentId);
+        if (_selectedComponent is not null)
+        {
+            await LoadDetailAsync(componentId);
+        }
+    }
+
+    private async Task StartEditAsync()
+    {
+        if (_selectedComponent is null || _organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        ErrorOr<SharedComponentContentResult> content = await SendAsync(
+            new GetSharedComponentContentQuery(_organizationId, _userId, _selectedComponent.Id));
+        if (content.IsError)
+        {
+            AppState.Notify(
+                $"Could not open the component for editing: {content.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        _editComponent = _selectedComponent;
+        _editHeadVersionId = content.Value.HeadVersionId;
+        _editComponentSection = SharedComponentDefinitionMount.BuildEditSection(
+            _selectedComponent.Kind, _selectedComponent.Name, content.Value.ContentJson);
+        _editDirty = false;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editComponent is null || _editComponentSection is null
+            || _editHeadVersionId is null || _organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        if (!TryExtractCandidate(_editComponent.Kind, _editComponentSection, out string candidate))
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<SaveSharedComponentContentDialog>
+        {
+            { dialog => dialog.OrganizationId, _organizationId },
+            { dialog => dialog.UserId, _userId },
+            { dialog => dialog.Component, _editComponent },
+            { dialog => dialog.HeadVersionId, _editHeadVersionId },
+            { dialog => dialog.CandidateDefinitionJson, candidate },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<SaveSharedComponentContentDialog>(
+            $"Save '{_editComponent.Name}'",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        AppState.Notify($"Saved '{_editComponent.Name}'.", Severity.Success);
+        CloseEdit();
+        await ReloadAfterHeadChangeAsync();
+    }
+
+    private EditorSurfaceState AuthoringSurfaceState =>
+        (_createKind ?? _editComponent?.Kind) == SharedComponentKind.Block
+            ? _singleBlockSurfaceState
+            : _sectionHostSurfaceState;
+
+    private bool TryExtractCandidate(SharedComponentKind kind, Section section, out string candidate)
+    {
+        try
+        {
+            candidate = SharedComponentDefinitionMount.ExtractDefinitionJson(kind, section);
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            AppState.Notify(ex.Message, Severity.Error);
+            candidate = string.Empty;
+            return false;
+        }
+    }
+
+    private async Task<bool> ConfirmDiscardAsync(string title, string message)
+    {
+        if (!_editDirty)
+        {
+            return true;
+        }
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            title,
+            message,
+            yesText: "Discard",
+            cancelText: "Keep editing");
+
+        return confirmed is true;
+    }
+
+    private async Task CloseEditAsync()
+    {
+        if (await ConfirmDiscardAsync("Discard changes?", "Your unsaved edits will be lost."))
+        {
+            CloseEdit();
+        }
+    }
+
+    private void CloseEdit()
+    {
+        _editComponent = null;
+        _editComponentSection = null;
+        _editHeadVersionId = null;
+        _editDirty = false;
+    }
+
+    private async Task StartCreateAsync()
+    {
+        var parameters = new DialogParameters<NewSharedComponentDialog>
+        {
+            { dialog => dialog.Categories, _categories },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<NewSharedComponentDialog>(
+            "New shared component",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not NewSharedComponentSpec spec)
+        {
+            return;
+        }
+
+        _createKind = spec.Kind;
+        _createName = spec.Name;
+        _createDescription = spec.Description;
+        _createCategoryId = spec.CategoryId;
+        _editComponentSection = spec.Kind == SharedComponentKind.Block
+            ? SharedComponentDefinitionMount.BuildNewBlockHost(spec.Name)
+            : SharedComponentDefinitionMount.BuildNewSectionHost(spec.Name);
+        _editDirty = false;
+    }
+
+    private async Task RunBootstrapScanAsync()
+    {
+        if (_organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        _scanRunning = true;
+        _scanError = null;
+        StateHasChanged();
+        try
+        {
+            ErrorOr<SharedComponentBootstrapScanResult> result = await SendAsync(
+                new ScanSharedComponentBootstrapQuery(_organizationId, _userId));
+            if (result.IsError)
+            {
+                _scanError = $"The scan failed: {result.FirstError.Description}";
+                SetScanResult(null);
+                return;
+            }
+
+            SetScanResult(result.Value);
+            _uncheckedSuggestionNodes.Clear();
+        }
+        finally
+        {
+            _scanRunning = false;
+        }
+    }
+
+    private void ToggleSuggestionNode(string nodeKey, bool isChecked)
+    {
+        if (isChecked)
+        {
+            _ = _uncheckedSuggestionNodes.Remove(nodeKey);
+        }
+        else
+        {
+            _ = _uncheckedSuggestionNodes.Add(nodeKey);
+        }
+    }
+
+    private async Task DispatchSuggestionAsync(SharedComponentBootstrapSuggestion suggestion)
+    {
+        if (_organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        List<SharedComponentBootstrapNode> checkedNodes =
+            BootstrapSuggestionPlanner.CheckedNodes(suggestion, _uncheckedSuggestionNodes);
+        (SharedComponentBootstrapNode? promoteTarget, IReadOnlyList<SharedComponentBootstrapNode> attachNodes) =
+            BootstrapSuggestionPlanner.SplitDispatch(suggestion, checkedNodes);
+        if (promoteTarget is null && attachNodes.Count == 0)
+        {
+            return;
+        }
+
+        string? attachComponentId = suggestion.ExistingComponentId;
+        string? name = null;
+        string? description = null;
+        string? categoryId = null;
+        if (promoteTarget is not null)
+        {
+            var parameters = new DialogParameters<ShareToLibraryDialog>
+            {
+                { dialog => dialog.SubjectKind, suggestion.Kind == DomainKind.Section ? "section" : "block" },
+                { dialog => dialog.DefaultName, suggestion.SuggestedName },
+                { dialog => dialog.Categories, _categories },
+            };
+            IDialogReference dialog = await DialogService.ShowAsync<ShareToLibraryDialog>(
+                "Promote to Library",
+                parameters,
+                new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+            DialogResult? dialogResult = await dialog.Result;
+            if (dialogResult is null
+                || dialogResult.Canceled
+                || dialogResult.Data is not ShareToLibraryDialog.ShareToLibraryResult spec)
+            {
+                return;
+            }
+
+            name = spec.Name;
+            description = spec.Description;
+            categoryId = spec.CategoryId;
+        }
+
+        _suggestionDispatchRunning = true;
+        int landed = 0;
+        List<string> failures = [];
+        try
+        {
+            if (promoteTarget is not null)
+            {
+                ErrorOr<PromoteSharedComponentResult> promoted = await PromoteSuggestionNodeAsync(
+                    promoteTarget, name, description, categoryId, attachToComponentId: null);
+                if (promoted.IsError)
+                {
+                    failures.Add($"{promoteTarget.WorkflowTypeName}: {promoted.FirstError.Description}");
+                }
+                else
+                {
+                    attachComponentId = promoted.Value.SharedComponentId;
+                    landed++;
+                }
+            }
+
+            if (attachComponentId is not null)
+            {
+                foreach (SharedComponentBootstrapNode node in attachNodes)
+                {
+                    ErrorOr<PromoteSharedComponentResult> attached = await PromoteSuggestionNodeAsync(
+                        node, name: null, description: null, categoryId: null, attachComponentId);
+                    if (attached.IsError)
+                    {
+                        failures.Add($"{node.WorkflowTypeName}: {attached.FirstError.Description}");
+                    }
+                    else
+                    {
+                        landed++;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _suggestionDispatchRunning = false;
+        }
+
+        if (failures.Count == 0)
+        {
+            AppState.Notify(
+                $"Linked {landed} instance{(landed == 1 ? "" : "s")} to the Library.",
+                Severity.Success);
+        }
+        else
+        {
+            AppState.Notify(
+                $"Linked {landed}, {failures.Count} failed: {string.Join("; ", failures)}",
+                Severity.Warning);
+        }
+
+        await LoadComponentsAsync();
+        await RunBootstrapScanAsync();
+    }
+
+    private async Task<ErrorOr<PromoteSharedComponentResult>> PromoteSuggestionNodeAsync(
+        SharedComponentBootstrapNode node,
+        string? name,
+        string? description,
+        string? categoryId,
+        string? attachToComponentId)
+    {
+        ErrorOr<WorkflowHeadVersionResult> head = await SendAsync(
+            new GetWorkflowHeadVersionQuery(_organizationId!, node.WorkflowTypeId));
+        if (head.IsError)
+        {
+            return head.Errors;
+        }
+
+        string? baseVersionId = head.Value.VersionId;
+
+        return await SendAsync(new PromoteSharedComponentCommand(
+            _organizationId!,
+            _userId!,
+            node.WorkflowTypeId,
+            TargetPath: node.TargetStableId is null ? node.TargetPath : null,
+            TargetStableId: node.TargetStableId,
+            Name: name,
+            Description: description,
+            AttachToComponentId: attachToComponentId,
+            BaseVersionId: baseVersionId,
+            CategoryId: categoryId));
+    }
+
+    private async Task CreateSaveAsync()
+    {
+        if (_editComponentSection is null || _createKind is null
+            || _createCategoryId is null || _organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        if (!TryExtractCandidate(_createKind.Value, _editComponentSection, out string candidate))
+        {
+            return;
+        }
+
+        ErrorOr<CreateSharedComponentResult> result = await SendAsync(
+            new CreateSharedComponentCommand(
+                _organizationId,
+                _userId,
+                _createName,
+                _createKind.Value,
+                _createCategoryId,
+                _createDescription,
+                candidate));
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Could not create the component: {result.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        AppState.Notify($"Created '{result.Value.Name}'.", Severity.Success);
+        string newId = result.Value.SharedComponentId;
+        CloseCreate();
+        await LoadComponentsAsync();
+        Navigation.NavigateTo($"{AppRoutes.LIBRARY}/{newId}");
+    }
+
+    private async Task CloseCreateAsync()
+    {
+        if (await ConfirmDiscardAsync("Discard this new component?", "Your unsaved content will be lost."))
+        {
+            CloseCreate();
+        }
+    }
+
+    private void CloseCreate()
+    {
+        _createKind = null;
+        _createName = string.Empty;
+        _createDescription = null;
+        _createCategoryId = null;
+        _editComponentSection = null;
+        _editDirty = false;
+    }
+
+    private void ExitEditingSurfaces()
+    {
+        if (_createKind is not null)
+        {
+            CloseCreate();
+        }
+        else if (_editComponent is not null)
+        {
+            CloseEdit();
+        }
+    }
+
+    private async Task RetireAsync()
+    {
+        if (_selectedComponent is null || _consumers is null
+            || _organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<RetireSharedComponentDialog>
+        {
+            { dialog => dialog.Component, _selectedComponent },
+            { dialog => dialog.Consumers, _consumers },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<RetireSharedComponentDialog>(
+            $"Retire '{_selectedComponent.Name}'",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        ErrorOr<SharedComponentRetireResult> retired = await SendAsync(
+            new RetireSharedComponentCommand(_organizationId, _userId, _selectedComponent.Id));
+
+        if (retired.IsError)
+        {
+            AppState.Notify(
+                $"Could not retire the component: {retired.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        AppState.Notify(RetiredMessage(_selectedComponent.Name, retired.Value.BrokenOutInstanceCount), Severity.Success);
+        await ReloadAfterHeadChangeAsync();
+    }
+
+    private async Task UnretireAsync()
+    {
+        if (_selectedComponent is null || _organizationId is null || _userId is null)
+        {
+            return;
+        }
+
+        ErrorOr<SharedComponentRetireResult> result = await SendAsync(
+            new UnretireSharedComponentCommand(_organizationId, _userId, _selectedComponent.Id));
+
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Could not unretire the component: {result.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        AppState.Notify(
+            $"'{_selectedComponent.Name}' is active again. Previously disconnected copies stay independent.",
+            Severity.Success);
+        await ReloadAfterHeadChangeAsync();
+    }
+
+    private static string RetiredMessage(string componentName, int brokenOutCount)
+    {
+        if (brokenOutCount == 0)
+        {
+            return $"Retired '{componentName}'.";
+        }
+
+        string copies = brokenOutCount == 1 ? "1 linked copy was" : $"{brokenOutCount} linked copies were";
+        return $"Retired '{componentName}'; {copies} disconnected.";
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        if (string.IsNullOrEmpty(_organizationId) || string.IsNullOrEmpty(_userId))
+        {
+            _categories = [];
+            _uncategorizedCount = 0;
+            return;
+        }
+
+        ErrorOr<SharedComponentCategoriesDto> result = await SendAsync(
+            new ListSharedComponentCategoriesQuery(_organizationId, _userId));
+
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Failed to load the Library categories: {result.FirstError.Description}",
+                Severity.Error);
+            _categories = [];
+            _uncategorizedCount = 0;
+            return;
+        }
+
+        _categories = result.Value.Categories;
+        _uncategorizedCount = result.Value.UncategorizedCount;
+    }
+
+    private void OnRowClicked(DataGridRowClickEventArgs<SharedComponentSummaryDto> args)
+    {
+        Navigation.NavigateTo($"{AppRoutes.LIBRARY}/{args.Item.Id}");
+    }
+
+    private void CloseDetail()
+    {
+        Navigation.NavigateTo(AppRoutes.LIBRARY);
+    }
+
+    private string SelectedCategoryKey => _filter.UncategorizedOnly
+        ? UNCATEGORIZED_KEY
+        : _filter.CategoryId ?? ALL_CATEGORIES_KEY;
+
+    private string SelectedCategoryLabel => _filter.UncategorizedOnly
+        ? UNCATEGORIZED_LABEL
+        : _categories.FirstOrDefault(category => category.Id == _filter.CategoryId)?.Name ?? string.Empty;
+
+    private static RenderFragment CategoryItem(string key, string label, int count, string? description = null) =>
+        @<MudListItem T="string" Value="@key" title="@description">
+            <div class="d-flex justify-space-between mud-width-full">
+                <span>@label</span>
+                <span class="mud-text-secondary">@count</span>
+            </div>
+        </MudListItem>;
+
+    private async Task ClearFiltersAsync()
+    {
+        _filter.ClearAll();
+        if (_searchField is not null)
+        {
+            await _searchField.FocusAsync();
+        }
+    }
+
+    private void OnCategorySelected(string? key)
+    {
+        string selected = key ?? ALL_CATEGORIES_KEY;
+        _filter.CategoryId = selected is ALL_CATEGORIES_KEY or UNCATEGORIZED_KEY ? null : selected;
+        _filter.UncategorizedOnly = selected == UNCATEGORIZED_KEY;
+    }
+
+    private async Task RecategorizeAsync(SharedComponentCategoryDto category)
+    {
+        if (_selectedComponent is null || string.IsNullOrEmpty(_organizationId) || string.IsNullOrEmpty(_userId))
+        {
+            return;
+        }
+
+        ErrorOr<SharedComponentSummaryDto> result = await SendAsync(
+            new SetSharedComponentCategoryCommand(_organizationId, _userId, _selectedComponent.Id, category.Id));
+
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Could not move the component: {result.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        _selectedComponent = result.Value;
+        int index = _components.FindIndex(c => c.Id == result.Value.Id);
+        if (index >= 0)
+        {
+            _components[index] = result.Value;
+        }
+
+        await LoadCategoriesAsync();
+        AppState.Notify($"Moved to '{category.Name}'.", Severity.Success);
+    }
+
+    private async Task OpenManageCategoriesAsync()
+    {
+        if (string.IsNullOrEmpty(_organizationId) || string.IsNullOrEmpty(_userId))
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ManageSharedComponentCategoriesDialog>
+        {
+            { dialog => dialog.OrganizationId, _organizationId },
+            { dialog => dialog.UserId, _userId },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<ManageSharedComponentCategoriesDialog>(
+            "Manage categories",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+        DialogResult? result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is true)
+        {
+            await LoadCategoriesAsync();
+            await LoadComponentsAsync();
+        }
+    }
+
+    private void SetKind(SharedComponentKind? kind)
+    {
+        _filter.Kind = kind;
+    }
+
+    private string? ConsumingCategoryKey
+    {
+        get => _filter.ConsumingWorkflowTypeCategoryId;
+        set
+        {
+            _filter.ConsumingWorkflowTypeCategoryId = value;
+            if (_filter.ConsumingWorkflowTypeId is not null
+                && !ConsumingTypeOptions().Any(t =>
+                    string.Equals(t.WorkflowTypeId, _filter.ConsumingWorkflowTypeId, StringComparison.Ordinal)))
+            {
+                _filter.ConsumingWorkflowTypeId = null;
+            }
+        }
+    }
+
+    private IReadOnlyList<ConsumingWorkflowTypeDto> ConsumingTypeOptions()
+    {
+        IEnumerable<ConsumingWorkflowTypeDto> consumingTypes = _allConsumingTypes;
+        if (_filter.ConsumingWorkflowTypeCategoryId is not null)
+        {
+            consumingTypes = consumingTypes.Where(t =>
+                string.Equals(t.CategoryId, _filter.ConsumingWorkflowTypeCategoryId, StringComparison.Ordinal));
+        }
+
+        return [.. consumingTypes
+            .GroupBy(t => t.WorkflowTypeId, StringComparer.Ordinal)
+            .Select(g => g.First())
+            .OrderBy(t => t.WorkflowTypeName, StringComparer.Ordinal)];
+    }
+
+    private IReadOnlyList<(string Id, string Name)> ConsumingTypeCategoryOptions()
+    {
+        return [.. _allConsumingTypes
+            .Where(t => t.CategoryId is not null)
+            .GroupBy(t => t.CategoryId!, StringComparer.Ordinal)
+            .Select(g => (Id: g.Key, Name: g.First().CategoryName ?? g.Key))
+            .OrderBy(o => o.Name, StringComparer.Ordinal)];
+    }
+
+    private string ConsumingTypeLabel(string workflowTypeId)
+    {
+        return _allConsumingTypes
+            .FirstOrDefault(t => string.Equals(t.WorkflowTypeId, workflowTypeId, StringComparison.Ordinal))
+            ?.WorkflowTypeName ?? workflowTypeId;
+    }
+
+    private string ConsumingTypeCategoryLabel(string categoryId)
+    {
+        return _allConsumingTypes
+            .FirstOrDefault(t => string.Equals(t.CategoryId, categoryId, StringComparison.Ordinal))
+            ?.CategoryName ?? categoryId;
+    }
+
+    private IEnumerable<string> ConsumerDomains()
+    {
+        return (_consumers ?? [])
+            .Select(c => c.CategoryName)
+            .Where(d => !string.IsNullOrEmpty(d))
+            .Select(d => d!)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal);
+    }
+
+    private static string ConsumerLabel(SharedComponentConsumer consumer)
+    {
+        return string.IsNullOrWhiteSpace(consumer.WorkflowTypeName)
+            ? consumer.WorkflowTypeId
+            : consumer.WorkflowTypeName;
+    }
+
+    private void StartNewSection()
+    {
+        _editingSection = new Section("New shared section", SharedComponentDefinitionMount.CreateScratchWorkflow());
+    }
+
+    private void CloseSection()
+    {
+        _editingSection = null;
+    }
+
+    private void OnSurfaceChanged(Section section)
+    {
+        MarkEditDirty();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSurfaceBlockChanged(Block block)
+    {
+        MarkEditDirty();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSurfaceDocumentClassesChanged()
+    {
+        MarkEditDirty();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void MarkEditDirty()
+    {
+        if (_editComponentSection is not null)
+        {
+            _editDirty = true;
+        }
+    }
+
+    private RefEntryDisplay? ResolveRefDisplay(Block block)
+    {
+        if (block.SharedComponentId is null)
+        {
+            return null;
+        }
+
+        SharedComponentSummaryDto? target = _components.FirstOrDefault(c => c.Id == block.SharedComponentId);
+        return target is null ? null : new RefEntryDisplay(target.Name, target.HeadContentHash);
+    }
+
+    private async Task InsertRefFromLibraryAsync(int index)
+    {
+        if (_editComponentSection is null)
+        {
+            return;
+        }
+
+        SharedComponentSummaryDto? picked = await DialogService.PickLibraryComponentAsync(
+            SharedComponentKind.Block, INSERT_REF_DIALOG_TITLE);
+        if (picked is null)
+        {
+            return;
+        }
+
+        var inserted = new Block(
+            DomainBlockTypes.AiQuery, _editComponentSection, index, UniqueRefTag(_editComponentSection));
+        StampRef(inserted, picked);
+        AuthoringSurfaceState.NotifySectionChanged(_editComponentSection);
+    }
+
+    private async Task SwapRefAsync(Block block)
+    {
+        SharedComponentSummaryDto? picked = await DialogService.PickLibraryComponentAsync(
+            SharedComponentKind.Block, SWAP_REF_DIALOG_TITLE);
+        if (picked is null)
+        {
+            return;
+        }
+
+        StampRef(block, picked);
+        if (_editComponentSection is not null)
+        {
+            AuthoringSurfaceState.NotifySectionChanged(_editComponentSection);
+        }
+    }
+
+    private static void StampRef(Block block, SharedComponentSummaryDto target)
+    {
+        block.SharedComponentId = target.Id;
+        block.SharedComponentLinkState = DomainLinkState.Linked;
+        block.SharedComponentVersionHash = target.HeadContentHash;
+        block.SharedComponentBindings = null;
+    }
+
+    private static string UniqueRefTag(Section section)
+    {
+        return section.MintFreeReplacementTag(REF_TAG_PREFIX, 1);
+    }
+
+    private Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
+    {
+        return ServiceScopeFactory.SendScopedAsync(request);
+    }
+}

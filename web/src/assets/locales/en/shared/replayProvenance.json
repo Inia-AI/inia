@@ -1,0 +1,6 @@
+{
+  "label": "Replayed",
+  "tooltip": "Replayed external fetches from execution {source}: {replayed} of {eligible} covered, the rest ran live. Test artifact, not a normal report.",
+  "tooltipPending": "Replaying external fetches from execution {source}. Test artifact, not a normal report.",
+  "tooltipUnrecorded": "Replayed external fetches from execution {source}. Coverage was not recorded. Test artifact, not a normal report."
+}

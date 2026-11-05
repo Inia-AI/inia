@@ -1,0 +1,180 @@
+﻿@attribute [Route(AppRoutes.EDITORS + "/{WorkflowTypeId}")]
+@attribute [Authorize(Roles = DesignerPages.GENERIC_ROLES)]
+
+@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Core.Workflows.Interfaces
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.Counterparties.Components
+@using IniaAi.Domain.Entities.Counterparties
+@using IniaAi.Domain.Specifications.Counterparties
+@using IniaAi.Services.Jobs
+
+@inject AppState AppState
+@inject ILogger<WorkflowDesignerPage> Logger
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject DocumentProcessingService DocumentProcessing
+@inject EmailIntakeJobStage EmailIntakeStage
+@inject IJobsService JobService
+@inject IServiceProvider ServiceProvider;
+
+<PageTitle>Inia AI - Workflow Editor</PageTitle>
+
+<MudGrid Justify="Justify.FlexStart"
+         Spacing="2"
+         Class="my-2" >
+    @if (_loadError is not null)
+    {
+        <DesignerLoadError Message="@_loadError" />
+    }
+    else
+    {
+        <MudItem xs="12">
+            <DocumentUploadCard @ref="_documentUploadCard" ContentIsVouchedFor="AppState.IsTrustedEditor" />
+        </MudItem>
+
+        @if (_isLoading)
+        {
+            <MudItem xs="12">
+                <MudProgressCircular Color="Color.Primary"
+                                     Indeterminate="true" />
+            </MudItem>
+        }
+        else
+        {
+            <CascadingValue Value="@_editorContext" Name="EditorContext" IsFixed="true">
+                <MudItem xs="12">
+                    <CascadingValue Value="@_counterparties" Name="Counterparties">
+                        <CounterpartiesSelector />
+                    </CascadingValue>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <ReportInformationPanel @ref="@_reportInformationPanel" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <CreateReportCard ShouldAnonymise="false"
+                                      Job="_job" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <WorkflowEditor DocumentClassesChangedCallBack="@_documentUploadCard.DocumentClassesChanged"
+                                    DocumentProcessingCallback="@(this.AsNonRenderingEventHandler(_editorContext.LoadInputContextToWorkflowAsync))"
+                                    VariablesChangedCallback="@_reportInformationPanel.VariablesChanged" />
+                </MudItem>
+            </CascadingValue>
+        }
+    }
+</MudGrid>
+
+@code {
+    private bool _isLoading = true;
+    private string? _loadError;
+    private ReportInformationPanel _reportInformationPanel = default!;
+    private DocumentUploadCard _documentUploadCard = default!;
+    private List<Counterparty> _counterparties = [];
+    private User _user = default!;
+    private Job _job = default!;
+    private WorkflowEditorContext _editorContext = default!;
+    private WorkflowType _workflowType = default!;
+
+    [Parameter]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Loads after the first render: the upload card it wires in exists only then, and a page
+        // the layout discards on a tenant switch before rendering must not load at all.
+        if (firstRender)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User);
+        _user = AppState.User;
+
+        if (string.IsNullOrEmpty(WorkflowTypeId))
+        {
+            Logger.LogError("WorkflowTypeId parameter is missing or empty");
+            StopLoading("Missing workflow type ID in the URL", Severity.Error);
+            return;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+        _workflowType = await coreUnitOfWork
+            .WorkflowTypes
+            .GetByIdAsync(WorkflowTypeId) ?? null!;
+
+        if (_workflowType is null)
+        {
+            Logger.LogError("WorkflowTypeId '{WorkflowTypeId}' not found", WorkflowTypeId);
+            StopLoading($"Workflow type '{WorkflowTypeId}' not found", Severity.Error);
+            return;
+        }
+
+        Workflow workflow = await WorkflowEditorContext.LoadCoreWorkflowAsync(
+            AppState,
+            Logger,
+            coreUnitOfWork,
+            _workflowType,
+            _user,
+            _documentUploadCard.DocumentClassesChanged);
+
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            StopLoading("Please select an organization to create workflows", Severity.Warning);
+            return;
+        }
+
+        _job = JobService.CreateUserJob(AppState.CurrentOrganizationId, _user.Id, WorkflowTypeId);
+
+        using IServiceScope handlerScope = ServiceScopeFactory.CreateScope();
+        IWorkflowHandler workflowHandler = handlerScope.ServiceProvider.GetKeyedService<IWorkflowHandler>(WorkflowTypeId)
+            ?? handlerScope.ServiceProvider.GetRequiredKeyedService<IWorkflowHandler>(WorkflowType.GENERIC);
+
+        _editorContext = new(WorkflowTypeId, workflow, workflowHandler)
+        {
+            Documents = _documentUploadCard.Documents,
+            EmailIntake = _documentUploadCard.EmailIntake,
+            DocumentServices = new(Logger, AppState, DocumentProcessing, EmailIntakeStage, UserDataUnitOfWork),
+            OnDocumentsChanged = _documentUploadCard.DocumentsChangedAsync,
+        };
+        _documentUploadCard.DocumentRemoved = _editorContext.ForgetDocument;
+
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            _counterparties = [];
+        }
+        else
+        {
+            var allowedTypeIds = _workflowType.CounterpartyTypeMappings?
+                .Select(m => m.CounterpartyTypeId)
+                .ToList();
+
+            var spec = new CounterpartiesWithDetailsByOrganizationSpec(AppState.CurrentOrganizationId, allowedTypeIds);
+            _counterparties = [.. (await UserDataUnitOfWork
+                .Repository<Counterparty>()
+                .GetAllAsync(spec)).OrderBy(c => c.Name)];
+        }
+
+        _isLoading = false;
+
+        StateHasChanged();
+    }
+
+    private void StopLoading(string message, Severity severity)
+    {
+        AppState.Notify(message, severity);
+        _loadError = message;
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,88 @@
+name: Tests
+description: >-
+  First checks the links and paths of the docs and tests the clean-machine check. Then restores
+  the whole solution with nuget.org as the only package source, builds and tests one
+  tree's CI solution filter, and checks each test project against its time budget. Last, even
+  after a failure, it checks that the third-party notices list every resolved package, each under
+  an allowed licence. The public-tree workflow runs it on the exported tree, and the one
+  repository's platform workflow on its platform/ folder.
+
+inputs:
+  tree:
+    description: The folder that holds the tree, relative to the workspace.
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: Check the docs and the clean-machine check
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: |
+        python3 -m unittest discover -s scripts/docs -p "test_*.py"
+        python3 scripts/docs/check_docs.py .
+        python3 -m unittest discover -s scripts/clean-machine -p "test_*.py"
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Install fonts
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: .github/scripts/install_font_twins.sh
+
+    - name: Restore
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: dotnet restore IniaAi.Platform.slnx
+
+    - name: Build
+      id: build
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: dotnet build IniaAi.Platform.CI.slnf --configuration Release --no-restore
+
+    - name: Run tests
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: >-
+        dotnet test
+        --solution IniaAi.Platform.CI.slnf
+        --configuration Release
+        --no-build
+        --results-directory TestResults
+        -p:XunitTrxReport=true
+
+    - name: Check test times
+      if: (success() || failure()) && steps.build.outcome == 'success'
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: python3 .github/scripts/test_times.py TestResults .github/test-time-budgets.json
+
+    # The app's image runs the server as root, and the PDF reader it starts switches to its own
+    # user. Only a root test run checks that switch and that the reader then cannot read the
+    # server's files. The reader must be able to reach the built tree after the switch, so every
+    # folder above it lets other users pass through.
+    - name: Test the PDF reader's sandbox as root
+      if: runner.os == 'Linux'
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: |
+        sudo useradd --system --no-create-home --shell /usr/sbin/nologin pdf-reader
+        folder=$PWD
+        while [ "$folder" != / ]; do sudo chmod o+x "$folder"; folder=$(dirname "$folder"); done
+        sudo env "PATH=$PATH" "DOTNET_ROOT=$DOTNET_ROOT" dotnet test \
+          --project IniaAi.FileFormats.Tests/IniaAi.FileFormats.Tests.csproj \
+          --configuration Release --no-build \
+          -- --filter-class "*PdfiumWorkerSandboxTests*"
+
+    - name: Check the third-party notices
+      if: ${{ !cancelled() }}
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: |
+        python3 -m unittest discover -s scripts/notices -p "test_*.py"
+        python3 scripts/notices/notices.py check

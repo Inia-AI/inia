@@ -1,0 +1,10 @@
+{
+  "label": "Delete",
+  "labelPending": "Deleting…",
+  "title": "Delete report?",
+  "message": "This will permanently remove the report from the list. This can't be undone.",
+  "confirm": "Yes, delete",
+  "dismiss": "Keep it",
+  "success": "Report deleted",
+  "error": "Failed to delete report"
+}

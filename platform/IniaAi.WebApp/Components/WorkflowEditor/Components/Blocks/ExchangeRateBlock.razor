@@ -1,0 +1,206 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Enums
+
+<MudGrid Spacing="2" Class="mt-2">
+    <MudItem xs="3">
+        <MudGrid Spacing="2" Class="editor-twin-grid">
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="From Currency Template"
+                              HelperText="e.g. USD, EUR, GBP"
+                              Class="editor-mono-field"
+                              @bind-Value="@_props.FromCurrency" />
+            </MudItem>
+
+            @if (_props.ExecutionState is not null)
+            {
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="From Currency After Execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Value="@_props.ExecutionState.FromCurrency" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudItem>
+
+    <MudItem xs="3">
+        <MudGrid Spacing="2" Class="editor-twin-grid">
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Target Currencies Template"
+                              HelperText="e.g. EUR or EUR, GBP, CHF. Converts into every target at once."
+                              Class="editor-mono-field"
+                              Value="@_targetCurrenciesTemplate"
+                              ValueChanged="@((string v) => _targetCurrenciesTemplate = v)" />
+            </MudItem>
+
+            @if (_props.ExecutionState is not null && !string.IsNullOrEmpty(_resolvedTargetCurrencies))
+            {
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Resolved Target Currencies"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Value="@_resolvedTargetCurrencies" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudItem>
+
+    <MudItem xs="3">
+        <MudSelect T="ExchangeRateOperationMode"
+                   Label="Operation Mode"
+                   Variant="Variant.Outlined"
+                   @bind-Value="_props.OperationMode">
+            <MudSelectItem Value="ExchangeRateOperationMode.GetRate">
+                Get Rate
+            </MudSelectItem>
+
+            <MudSelectItem Value="ExchangeRateOperationMode.Convert">
+                Convert Value
+            </MudSelectItem>
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="3">
+        <MudGrid Spacing="2" Class="editor-twin-grid">
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Exchange Date Template"
+                              HelperText="ISO 8601 or {placeholder}"
+                              Class="editor-mono-field"
+                              Disabled="@_props.UseCurrentDate"
+                              Value="@(_props.UseCurrentDate ? "Current Date" : _props.ExchangeDate)"
+                              ValueChanged="@((string v) => _props.ExchangeDate = v)" />
+            </MudItem>
+
+            @if (_props.ExecutionState is not null)
+            {
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Exchange Date After Execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Value="@_props.ExecutionState.ExchangeDate" />
+                </MudItem>
+            }
+        </MudGrid>
+
+        <MudCheckBox T="bool"
+                     Label="Use Current Date"
+                     @bind-Value="@_props.UseCurrentDate"
+                     Color="Color.Primary" />
+    </MudItem>
+</MudGrid>
+
+@if (_props.OperationMode is ExchangeRateOperationMode.Convert)
+{
+    <div class="editor-eyebrow mt-4 mb-2">Value to convert</div>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Value(s) to Convert"
+                          HelperText="Single number or JSON with currency fields. Supports {placeholders}."
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="15"
+                          @bind-Value="@_props.InputValue" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Value(s) to Convert After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              MaxLines="15"
+                              Value="@_props.ExecutionState.InputValue" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private ExchangeRateProperties _props => Block.Properties as ExchangeRateProperties
+        ?? throw new InvalidOperationException("Block properties must be of type ExchangeRateProperties");
+
+    /// <summary>
+    /// Single comma-separated editor view over the target currencies. The first code maps to
+    /// <see cref="ExchangeRateProperties.ToCurrency"/>; any remaining codes map to
+    /// <see cref="ExchangeRateProperties.ToCurrencies"/>. Exactly one code (or empty input) leaves
+    /// <see cref="ExchangeRateProperties.ToCurrencies"/> null so single-target serialization stays
+    /// byte-identical; empty/separator-only input leaves <see cref="ExchangeRateProperties.ToCurrency"/>
+    /// untouched.
+    /// </summary>
+    private string _targetCurrenciesTemplate
+    {
+        get
+        {
+            var parts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(_props.ToCurrency))
+            {
+                parts.Add(_props.ToCurrency);
+            }
+
+            if (_props.ToCurrencies is not null)
+            {
+                parts.AddRange(_props.ToCurrencies.Where(c => !string.IsNullOrWhiteSpace(c)));
+            }
+
+            return string.Join(", ", parts);
+        }
+        set
+        {
+            string[] codes = (value ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (codes.Length == 0)
+            {
+                // Empty / whitespace / separators-only: never a non-null empty list; leave ToCurrency as-is.
+                _props.ToCurrencies = null;
+                return;
+            }
+
+            _props.ToCurrency = codes[0];
+            _props.ToCurrencies = codes.Length > 1 ? [.. codes.Skip(1)] : null;
+        }
+    }
+
+    /// <summary>
+    /// Read-only join of all effective resolved targets (primary + additional) from the execution state.
+    /// </summary>
+    private string _resolvedTargetCurrencies
+    {
+        get
+        {
+            if (_props.ExecutionState is null)
+            {
+                return string.Empty;
+            }
+
+            var parts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(_props.ExecutionState.ToCurrency))
+            {
+                parts.Add(_props.ExecutionState.ToCurrency);
+            }
+
+            if (_props.ExecutionState.ToCurrencies is not null)
+            {
+                parts.AddRange(_props.ExecutionState.ToCurrencies.Where(c => !string.IsNullOrWhiteSpace(c)));
+            }
+
+            return string.Join(", ", parts);
+        }
+    }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+}

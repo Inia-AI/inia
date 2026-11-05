@@ -1,0 +1,271 @@
+@using IniaAi.Domain.OutputFormat
+
+<MudStack Class="mt-2">
+    @if (_fields.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            No required fields. Add a field to enforce that the model's response includes specific keys.
+        </MudText>
+    }
+
+    @foreach (SchemaFieldDraft field in _fields)
+    {
+        SchemaFieldDraft current = field;
+        <MudPaper @key="field" Outlined="true" Class="pa-3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="flex-wrap" Spacing="2">
+                <MudTextField T="string"
+                              Label="Field name"
+                              Variant="Variant.Outlined"
+                              Value="@current.Name"
+                              ValueChanged="@((string v) => OnNameChanged(current, v))"
+                              Class="flex-grow-1 editor-mono-field" />
+
+                <MudSelect T="SchemaFieldType"
+                           Label="Type"
+                           Variant="Variant.Outlined"
+                           Value="@current.Type"
+                           ValueChanged="@((SchemaFieldType v) => OnTypeChanged(current, v))"
+                           Class="flex-shrink-0"
+                           Style="min-width: 150px;">
+                    <MudSelectItem Value="@SchemaFieldType.Text">Text</MudSelectItem>
+                    <MudSelectItem Value="@SchemaFieldType.Number">Number</MudSelectItem>
+                    <MudSelectItem Value="@SchemaFieldType.WholeNumber">Whole number</MudSelectItem>
+                    <MudSelectItem Value="@SchemaFieldType.TrueFalse">True / False</MudSelectItem>
+                    <MudSelectItem Value="@SchemaFieldType.List">List</MudSelectItem>
+                </MudSelect>
+
+                <MudCheckBox T="bool"
+                             Label="Required"
+                             Value="@current.Required"
+                             ValueChanged="@((bool v) => OnRequiredChanged(current, v))" />
+
+                <MudTooltip Text="Constraints">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Settings"
+                                   aria-label="Field constraints"
+                                   OnClick="@(() => ToggleConstraints(current))" />
+                </MudTooltip>
+
+                <MudTooltip Text="Remove field">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Class="editor-soft-button"
+                                   aria-label="Remove field"
+                                   OnClick="@(() => RemoveField(current))" />
+                </MudTooltip>
+            </MudStack>
+
+            @if (_constraintsOpen.Contains(current))
+            {
+                <MudStack Class="mt-3 ml-4">
+                    @if (current.Type == SchemaFieldType.Text)
+                    {
+                        <MudTextField T="string"
+                                      Label="Allowed values (optional, comma-separated)"
+                                      HelperText="If set, the field's value must be one of these. Leave blank to allow any text."
+                                      Variant="Variant.Outlined"
+                                      Class="editor-mono-field"
+                                      Value="@current.EnumValues"
+                                      ValueChanged="@((string v) => OnEnumValuesChanged(current, v))" />
+                    }
+                    else if (current.Type is SchemaFieldType.WholeNumber)
+                    {
+                        <MudStack Row="true" Spacing="2">
+                            <MudNumericField T="int?"
+                                             Label="Minimum (optional)"
+                                             Variant="Variant.Outlined"
+                                             Value="@AsInt(current.Min)"
+                                             ValueChanged="@((int? v) => OnMinChanged(current, v))" />
+                            <MudNumericField T="int?"
+                                             Label="Maximum (optional)"
+                                             Variant="Variant.Outlined"
+                                             Value="@AsInt(current.Max)"
+                                             ValueChanged="@((int? v) => OnMaxChanged(current, v))" />
+                        </MudStack>
+                    }
+                    else if (current.Type is SchemaFieldType.Number)
+                    {
+                        <MudStack Row="true" Spacing="2">
+                            <MudNumericField T="double?"
+                                             Label="Minimum (optional)"
+                                             Variant="Variant.Outlined"
+                                             Value="@current.Min"
+                                             ValueChanged="@((double? v) => OnMinChanged(current, v))" />
+                            <MudNumericField T="double?"
+                                             Label="Maximum (optional)"
+                                             Variant="Variant.Outlined"
+                                             Value="@current.Max"
+                                             ValueChanged="@((double? v) => OnMaxChanged(current, v))" />
+                        </MudStack>
+                    }
+                    else if (current.Type == SchemaFieldType.List)
+                    {
+                        <MudSelect T="SchemaFieldType"
+                                   Label="Item type"
+                                   Variant="Variant.Outlined"
+                                   Value="@current.ListItemType"
+                                   ValueChanged="@((SchemaFieldType v) => OnListItemTypeChanged(current, v))">
+                            <MudSelectItem Value="@SchemaFieldType.Text">Text</MudSelectItem>
+                            <MudSelectItem Value="@SchemaFieldType.Number">Number</MudSelectItem>
+                            <MudSelectItem Value="@SchemaFieldType.WholeNumber">Whole number</MudSelectItem>
+                            <MudSelectItem Value="@SchemaFieldType.TrueFalse">True / False</MudSelectItem>
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">No additional constraints for this type.</MudText>
+                    }
+                </MudStack>
+            }
+        </MudPaper>
+    }
+
+    <MudButton StartIcon="@Icons.Material.Outlined.Add"
+               Variant="Variant.Text"
+               Class="editor-soft-button"
+               Color="Color.Primary"
+               Size="Size.Small"
+               OnClick="@AddField">
+        Add Field
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public string? JsonSchema { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> JsonSchemaChanged { get; set; }
+
+    /// <summary>
+    /// Identifier that changes when the parent swaps to a different block. Forces a
+    /// re-parse even if the JSON Schema string happens to be byte-equal across blocks.
+    /// </summary>
+    [Parameter]
+    public string? BlockKey { get; set; }
+
+    /// <summary>
+    /// Fires true when the supplied <see cref="JsonSchema"/> uses features the simple
+    /// builder can't express (pattern, oneOf, nested objects, etc.). The host can
+    /// choose to auto-switch to Advanced mode in that case.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> NotRepresentableDetected { get; set; }
+
+    private readonly List<SchemaFieldDraft> _fields = [];
+    private readonly HashSet<SchemaFieldDraft> _constraintsOpen = [];
+    private string? _lastSeenSchema;
+    private string? _lastSeenBlockKey;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        bool blockChanged = !string.Equals(BlockKey, _lastSeenBlockKey, StringComparison.Ordinal);
+        bool schemaChanged = !string.Equals(JsonSchema, _lastSeenSchema, StringComparison.Ordinal);
+        if (!blockChanged && !schemaChanged)
+        {
+            return;
+        }
+
+        _lastSeenBlockKey = BlockKey;
+        _lastSeenSchema = JsonSchema;
+        SimpleSchemaTranslator.ParseResult result = SimpleSchemaTranslator.FromJsonSchema(JsonSchema);
+
+        _fields.Clear();
+        _constraintsOpen.Clear();
+        _fields.AddRange(result.Fields);
+
+        await NotRepresentableDetected.InvokeAsync(!result.IsFullyRepresentable);
+    }
+
+    private async Task AddField()
+    {
+        SchemaFieldDraft draft = new()
+        {
+            Name = string.Empty,
+            Type = SchemaFieldType.Text,
+            Required = true,
+        };
+        _fields.Add(draft);
+        await SyncToParent();
+    }
+
+    private async Task RemoveField(SchemaFieldDraft field)
+    {
+        _ = _fields.Remove(field);
+        _ = _constraintsOpen.Remove(field);
+        await SyncToParent();
+    }
+
+    private void ToggleConstraints(SchemaFieldDraft field)
+    {
+        if (!_constraintsOpen.Add(field))
+        {
+            _ = _constraintsOpen.Remove(field);
+        }
+    }
+
+    private async Task OnNameChanged(SchemaFieldDraft field, string value)
+    {
+        field.Name = value;
+        await SyncToParent();
+    }
+
+    private async Task OnTypeChanged(SchemaFieldDraft field, SchemaFieldType value)
+    {
+        field.Type = value;
+        await SyncToParent();
+    }
+
+    private async Task OnRequiredChanged(SchemaFieldDraft field, bool value)
+    {
+        field.Required = value;
+        await SyncToParent();
+    }
+
+    private async Task OnEnumValuesChanged(SchemaFieldDraft field, string value)
+    {
+        field.EnumValues = value;
+        await SyncToParent();
+    }
+
+    private async Task OnMinChanged(SchemaFieldDraft field, double? value)
+    {
+        field.Min = value;
+        await SyncToParent();
+    }
+
+    private async Task OnMaxChanged(SchemaFieldDraft field, double? value)
+    {
+        field.Max = value;
+        await SyncToParent();
+    }
+
+    private async Task OnMinChanged(SchemaFieldDraft field, int? value)
+    {
+        field.Min = value;
+        await SyncToParent();
+    }
+
+    private async Task OnMaxChanged(SchemaFieldDraft field, int? value)
+    {
+        field.Max = value;
+        await SyncToParent();
+    }
+
+    private static int? AsInt(double? value)
+    {
+        return value.HasValue ? (int)value.Value : null;
+    }
+
+    private async Task OnListItemTypeChanged(SchemaFieldDraft field, SchemaFieldType value)
+    {
+        field.ListItemType = value;
+        await SyncToParent();
+    }
+
+    private async Task SyncToParent()
+    {
+        string? serialized = SimpleSchemaTranslator.ToJsonSchema(_fields);
+        _lastSeenSchema = serialized;
+        await JsonSchemaChanged.InvokeAsync(serialized);
+    }
+}

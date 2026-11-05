@@ -1,0 +1,84 @@
+@* Shared, theme-aware "who / when / version" byline used by the editor header chip, the
+   per-block last-changed strip, and the saved-versions list, so all three read identically. *@
+
+<span class="d-inline-flex align-center flex-wrap mud-text-secondary @Class" style="gap: 2px 8px; line-height: 1.5;">
+    <MudIcon Icon="@Icon" Color="Color.Inherit" Size="Size.Small" Style="font-size: 1.05rem;" />
+    <MudText Typo="Typo.caption" Color="Color.Inherit" Class="ma-0">@LabelText</MudText>
+    @if (HasCode)
+    {
+        <MudTooltip Text="Version fingerprint — the same content carries this code on every deployment.">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="Variant.Outlined"
+                     Color="Color.Default"
+                     Class="ma-0 editor-mono-field"
+                     Style="height: 18px;">
+                @VersionCode
+            </MudChip>
+        </MudTooltip>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public DateTime When { get; set; }
+
+    [Parameter]
+    public string? Author { get; set; }
+
+    [Parameter]
+    public string? VersionCode { get; set; }
+
+    [Parameter]
+    public string Verb { get; set; } = "Saved";
+
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Outlined.Schedule;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private bool HasAuthor => !string.IsNullOrWhiteSpace(Author);
+
+    private bool HasCode => !string.IsNullOrWhiteSpace(VersionCode);
+
+    private string LabelText
+    {
+        get
+        {
+            string when = Relative(When);
+            string head = string.IsNullOrEmpty(Verb) ? when : $"{Verb} {when}";
+            return HasAuthor ? $"{head} by {Author}" : head;
+        }
+    }
+
+    private static string Relative(DateTime utc)
+    {
+        TimeSpan elapsed = DateTime.UtcNow - utc;
+
+        if (elapsed.TotalMinutes < 1)
+        {
+            return "just now";
+        }
+
+        if (elapsed.TotalMinutes < 60)
+        {
+            int minutes = (int)elapsed.TotalMinutes;
+            return minutes == 1 ? "1 minute ago" : $"{minutes} minutes ago";
+        }
+
+        if (elapsed.TotalHours < 24)
+        {
+            int hours = (int)elapsed.TotalHours;
+            return hours == 1 ? "1 hour ago" : $"{hours} hours ago";
+        }
+
+        if (elapsed.TotalDays < 7)
+        {
+            int days = (int)elapsed.TotalDays;
+            return days == 1 ? "yesterday" : $"{days} days ago";
+        }
+
+        return utc.ToString("d MMM yyyy") + " UTC";
+    }
+}

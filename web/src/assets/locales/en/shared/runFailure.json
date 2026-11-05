@@ -1,0 +1,42 @@
+{
+  "fallbackLabel": "The report did not finish",
+  "fallbackHint": "Something went wrong while the report ran. Run it again. If it fails again, contact support.",
+  "technicalDetails": "Technical details",
+  "actions": {
+    "changeDocuments": "Change the documents",
+    "runAgain": "Run again"
+  },
+  "kinds": {
+    "RejectedAtIntake": {
+      "label": "The report could not use your documents"
+    },
+    "ScreeningUnavailable": {
+      "label": "Your documents could not be checked",
+      "hint": "The report did not start, because our document check is not working right now. This is a problem on our side, not with your documents. Try again in a few minutes."
+    },
+    "CriticalBlockFailure": {
+      "label": "A step of the report failed",
+      "hint": "The report stopped because one of its steps failed. Run it again. If it fails again, contact support."
+    },
+    "ResultsLost": {
+      "label": "Some results were lost",
+      "hint": "Part of the results could not be saved, so the report stopped. Run it again."
+    },
+    "LifetimeExceeded": {
+      "label": "The report took too long",
+      "hint": "It ran past its time limit and was stopped. Run it again."
+    },
+    "HostLost": {
+      "label": "The report was interrupted",
+      "hint": "The server running it stopped before the report finished. This is a problem on our side, not with your documents. Run it again."
+    },
+    "VerificationGroupShape": {
+      "label": "The report's final checks are set up wrong",
+      "hint": "The checks at the end of this report cannot run as they are set up. Ask the person who maintains this report type to fix them."
+    },
+    "VerificationUnsatisfiable": {
+      "label": "The report's final checks cannot pass",
+      "hint": "The checks at the end of this report ask for something the results can never meet. Ask the person who maintains this report type to fix them."
+    }
+  }
+}

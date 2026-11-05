@@ -1,0 +1,26 @@
+<Project>
+    <PropertyGroup>
+        <!-- <AnalysisLevel>latest</AnalysisLevel>
+        <AnalysisMode>All</AnalysisMode> -->
+        <NeutralLanguage>en</NeutralLanguage>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <Nullable>enable</Nullable>
+        <TargetFramework>net10.0</TargetFramework>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors> <!-- DO NOT TURN OFF -->
+        <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors> <!-- DO NOT TURN OFF -->
+        <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild> <!-- Significantly increases build times -->
+        <UseArtifactsOutput>true</UseArtifactsOutput>
+        <CreateHardLinksForCopyLocalIfPossible>true</CreateHardLinksForCopyLocalIfPossible> <!-- Each test project is an executable that holds every package it uses; a hard link to the NuGet cache costs no disk, a copy costs up to 275 MB per project -->
+        <BeforeMicrosoftNETSdkTargets>$(MSBuildThisFileDirectory)HostRuntime.targets</BeforeMicrosoftNETSdkTargets>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- SQLitePCLRaw.lib.e_sqlite3 2.1.11 (transitive via Microsoft.EntityFrameworkCore.Sqlite,
+             used only by tests) carries GHSA-2m69-gcr7-jv3q. The package is deprecated and has no
+             patched release, so NuGet audit cannot be satisfied by upgrading. Suppress just this one
+             advisory; revisit when EF Core ships a build that no longer pulls the vulnerable bundle. -->
+        <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-2m69-gcr7-jv3q" />
+    </ItemGroup>
+</Project>

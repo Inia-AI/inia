@@ -1,0 +1,243 @@
+# Builds the platform, the Vue app and the agent runtime from their folders and runs them on one
+# machine with one Postgres database:
+#
+#   docker compose up --build --wait
+#
+# Set ANTHROPIC_API_KEY and INIA_ADMIN_PASSWORD first, in the shell or in a .env file beside this
+# one (.env.example lists every value). The first start makes every other secret, and later starts
+# reuse it. The stack serves plain HTTP on 127.0.0.1; README.md says how to reach it.
+name: inia
+
+x-platform: &platform
+  build: &platform-build
+    context: ./platform
+    dockerfile: docker/Dockerfile
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  volumes:
+    - type: volume
+      source: secrets
+      target: /run/inia/platform
+      read_only: true
+      volume:
+        subpath: platform
+  # Only root, which runs the app, reads them. Chrome runs as another user and never sees them.
+  configs:
+    - source: anthropic_api_key
+      target: /run/settings/PlatformSettings__Anthropic__ApiKey
+      mode: 0400
+    - source: admin_password
+      target: /run/settings/Seeding__SuperAdminPassword
+      mode: 0400
+    - source: cohere_api_key
+      target: /run/settings/PlatformSettings__Cohere__ApiKey
+      mode: 0400
+    - source: exa_api_key
+      target: /run/settings/PlatformSettings__Exa__ApiKey
+      mode: 0400
+    - source: exchange_rate_api_key
+      target: /run/settings/PlatformSettings__ExchangeRateApi__ApiKey
+      mode: 0400
+  environment: &platform-environment
+    ASPNETCORE_ENVIRONMENT: Production
+    FORCE_AWS_MODE: "false"
+    FORCE_AZURE_MODE: "false"
+    SETTINGS_DIRECTORIES: /run/settings:/run/inia/platform
+    PlatformSettings__CoreDbProvider: PostgreSQL
+    PlatformSettings__UserDataDbProvider: PostgreSQL
+    # One organization, so the first admin is the only account the first start creates.
+    PlatformSettings__CustomerOrgId: IniaAI
+    Seeding__SuperAdminEmail: ${INIA_ADMIN_EMAIL:-superadmin@example.com}
+    PlatformSettings__AgentRuntime__Enabled: "true"
+    PlatformSettings__AgentRuntime__BaseUrl: http://agent-runtime:8130
+    # The runtime's ANTHROPIC_ALLOWED_MODELS names the same models.
+    PlatformSettings__AgentRuntime__AllowedModels__0: claude-sonnet-5-5
+    PlatformSettings__AgentRuntime__AllowedModels__1: claude-opus-5-5
+    PlatformSettings__AgentRuntime__AllowedModels__2: claude-haiku-5-5
+    FrontendBaseUrl: http://localhost:${INIA_WEB_PORT:-8080}
+  healthcheck:
+    test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:80/health"]
+    interval: 10s
+    timeout: 10s
+    retries: 30
+    start_period: 30s
+    start_interval: 1s
+
+services:
+  secrets:
+    image: alpine:3.22
+    command: ["/bin/sh", "/make-secrets.sh"]
+    configs:
+      - source: anthropic_api_key
+        target: /run/configs/anthropic_api_key
+        mode: 0400
+    volumes:
+      - secrets:/run/inia
+      - ./platform/docker/stack/make-secrets.sh:/make-secrets.sh:ro
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    depends_on:
+      secrets:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_USER: inia
+      POSTGRES_DB: inia
+      POSTGRES_PASSWORD_FILE: /run/inia/postgres/password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - type: volume
+        source: secrets
+        target: /run/inia/postgres
+        read_only: true
+        volume:
+          subpath: postgres
+    healthcheck:
+      # Over TCP: on its first start the image runs a server on the socket alone, to create the
+      # database, and only then the real one.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "inia", "-d", "inia"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+      start_interval: 1s
+
+  # The WebApp, the admin app with the workflow editor. It and the API migrate the database on
+  # start, one at a time under a database lock.
+  webapp:
+    <<: *platform
+    build:
+      <<: *platform-build
+      target: webapp
+    ports:
+      - "${INIA_BIND_ADDRESS:-127.0.0.1}:${INIA_ADMIN_PORT:-8081}:80"
+
+  api:
+    <<: *platform
+    build:
+      <<: *platform-build
+      target: api
+    environment:
+      <<: *platform-environment
+      # Requests reach the API through the web server's proxy on the compose network.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      ForwardedHeaders__KnownNetworks__1: 192.168.0.0/16
+
+  # Loads the sample workflows of platform/samples/ on the first start, then exits.
+  sample:
+    build:
+      <<: *platform-build
+      target: api
+    entrypoint: ["/bin/sh", "/load-sample.sh"]
+    environment:
+      INIA_ADMIN_EMAIL: ${INIA_ADMIN_EMAIL:-superadmin@example.com}
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
+    configs:
+      - source: admin_password
+        target: /run/configs/admin_password
+        mode: 0400
+    volumes:
+      - sample-state:/state
+      - ./platform/docker/stack/load-sample.sh:/load-sample.sh:ro
+      - ./platform/samples:/samples:ro
+
+  # The Vue app. Its web server proxies /api/ and /hubs/ to the API.
+  web:
+    build:
+      context: ./web
+      args:
+        VERSION: ${INIA_VERSION:-}
+    restart: unless-stopped
+    # nginx looks the API up on each request, but the Vue app waits for the sample loader: without a
+    # service that waits for it, docker compose up --wait takes the loader's exit as a failure.
+    depends_on:
+      sample:
+        condition: service_completed_successfully
+    environment:
+      PROXY_BACKEND_URL: http://api:80
+    ports:
+      - "${INIA_BIND_ADDRESS:-127.0.0.1}:${INIA_WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+      start_interval: 1s
+
+  # Runs the Agent block. The settings below are the sandbox controls and limits the runtime
+  # refuses to start without; agent-runtime/README.md explains each one.
+  agent-runtime:
+    build:
+      context: ./agent-runtime
+      target: prod
+    restart: unless-stopped
+    depends_on:
+      secrets:
+        condition: service_completed_successfully
+    init: true
+    read_only: true
+    # Docker reads the profile from this path on the host when it creates the container.
+    security_opt:
+      - seccomp=./agent-runtime/sandbox/seccomp-bwrap.json
+      - systempaths=unconfined
+      - apparmor=unconfined
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - KILL
+    tmpfs:
+      - /tmp:size=512m,exec
+      - /home/bun:uid=1000,gid=1000,mode=700,size=64m
+      - /workspaces:mode=1777,size=6g
+    pids_limit: 4352
+    mem_limit: 12g
+    cpus: 2
+    stop_grace_period: 45s
+    volumes:
+      - type: volume
+        source: secrets
+        target: /run/inia/runtime
+        read_only: true
+        volume:
+          subpath: runtime
+    environment:
+      PORT: "8130"
+      # The runtime reads AUTH_TOKEN and ANTHROPIC_API_KEY from the files in this folder.
+      SETTINGS_DIRECTORIES: /run/inia/runtime
+      AGENT_RUNTIME_MODEL_PROVIDER: anthropic
+      ANTHROPIC_MODEL: claude-sonnet-5-5
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-5-5
+      ANTHROPIC_ALLOWED_MODELS: claude-sonnet-5-5,claude-opus-5-5,claude-haiku-5-5
+      CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1"
+
+# The values you give. Each reaches a service as a file, never as an environment variable, so
+# `docker inspect` shows none of them. An optional value ends in a newline, which the apps drop:
+# Compose mounts the project folder in place of a config whose content is empty.
+configs:
+  anthropic_api_key:
+    content: ${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY to your Anthropic API key}
+  admin_password:
+    content: ${INIA_ADMIN_PASSWORD:?Set INIA_ADMIN_PASSWORD to the password of the first admin}
+  cohere_api_key:
+    content: "${COHERE_API_KEY:-}\n"
+  exa_api_key:
+    content: "${EXA_API_KEY:-}\n"
+  exchange_rate_api_key:
+    content: "${EXCHANGE_RATE_API_KEY:-}\n"
+
+volumes:
+  postgres-data:
+  secrets:
+  sample-state:

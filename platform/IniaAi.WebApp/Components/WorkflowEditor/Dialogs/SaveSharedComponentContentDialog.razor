@@ -1,0 +1,165 @@
+@using ErrorOr
+@using IniaAi.Application.Commands.SharedComponents.SaveSharedComponentContent
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.SharedComponents.PreviewSharedComponentReconcile
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.DependencyInjection
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <SharedComponentImpactPanel IsLoading="_isLoading"
+                                    LoadError="@_loadError"
+                                    Preview="_preview"
+                                    IdenticalToHeadMessage="These edits match the current head, so saving changes nothing."
+                                    @bind-AcknowledgeOrphans="_acknowledgeOrphans"
+                                    SubmitError="@_submitError">
+            <Headline>Your edits become the new head of '@Component.Name'.</Headline>
+        </SharedComponentImpactPanel>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@SaveDisabled"
+                   OnClick="SaveAsync">
+            @(_isSubmitting ? "Saving..." : "Save changes")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public SharedComponentSummaryDto Component { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string HeadVersionId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string CandidateDefinitionJson { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private bool _headMoved;
+    private bool _acknowledgeOrphans;
+    private bool _acknowledgeOverwrittenEntries;
+    private string? _loadError;
+    private string? _submitError;
+    private SharedComponentReconcilePreviewResult? _preview;
+
+    private bool SaveDisabled =>
+        _isLoading
+        || _isSubmitting
+        || _headMoved
+        || _loadError is not null
+        || (SharedComponentImpactText.OrphansOf(_preview).Count > 0 && !_acknowledgeOrphans);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        _preview = null;
+
+        ErrorOr<SharedComponentReconcilePreviewResult> preview = await SendAsync(
+            new PreviewSharedComponentReconcileQuery(
+                OrganizationId, UserId, Component.Id, CandidateDefinitionJson));
+        if (preview.IsError)
+        {
+            _loadError = $"Could not compute the save impact: {preview.FirstError.Description}";
+            _isLoading = false;
+            return;
+        }
+
+        _preview = preview.Value;
+        _isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _isSubmitting = true;
+        _submitError = null;
+
+        ErrorOr<SharedComponentAppendResult> result = await SendAsync(
+            new SaveSharedComponentContentCommand(
+                OrganizationId,
+                UserId,
+                Component.Id,
+                CandidateDefinitionJson,
+                HeadVersionId,
+                _acknowledgeOrphans,
+                _acknowledgeOverwrittenEntries));
+
+        if (result.IsError)
+        {
+            Error error = result.FirstError;
+            if (error.Code == SharedComponentErrorCodes.OVERWRITES_LOCAL_ENTRIES)
+            {
+                _isSubmitting = false;
+                if (await OverwrittenEntriesAckDialog.ConfirmAsync(DialogService, error))
+                {
+                    _acknowledgeOverwrittenEntries = true;
+                    await SaveAsync();
+                }
+                else
+                {
+                    _submitError = error.Description;
+                }
+
+                return;
+            }
+
+            if (error.Code == SharedComponentErrorCodes.ORPHANS_NEED_ACKNOWLEDGEMENT)
+            {
+                _submitError = "The override impact changed while this dialog was open."
+                    + " Review the refreshed list and confirm again.";
+                _acknowledgeOrphans = false;
+                await LoadAsync();
+            }
+            else if (error.Code is SharedComponentErrorCodes.HEAD_MOVED
+                or SharedComponentErrorCodes.CONCURRENT_APPEND)
+            {
+                _submitError = "The component's head moved while this dialog was open."
+                    + " Close it and reopen the editor to re-apply your changes.";
+                _headMoved = true;
+            }
+            else
+            {
+                _submitError = error.Description;
+            }
+
+            _isSubmitting = false;
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(result.Value));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
+    {
+        return ServiceScopeFactory.SendScopedAsync(request);
+    }
+}

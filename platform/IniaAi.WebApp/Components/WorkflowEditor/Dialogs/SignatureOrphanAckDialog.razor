@@ -1,0 +1,70 @@
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+<MudDialog>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            Applying these decisions affects client signature overrides:
+        </MudAlert>
+        <ul class="mud-typography-body2 my-1 ps-5">
+            @foreach (SharedComponentOverrideImpact orphan in Orphans)
+            {
+                <li>@SharedComponentImpactText.Describe(orphan)</li>
+            }
+        </ul>
+        <MudCheckBox T="bool"
+                     @bind-Value="_acknowledged"
+                     Color="Color.Primary"
+                     Dense="true"
+                     Label="I understand the listed client overrides will be affected." />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   Disabled="@(!_acknowledged)"
+                   OnClick="Confirm">
+            Apply anyway
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<SharedComponentOverrideImpact> Orphans { get; set; } = [];
+
+    private bool _acknowledged;
+
+    private static readonly DialogOptions _options =
+        new() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    public static async Task<bool> ConfirmAsync(
+        IDialogService dialogService, IReadOnlyList<SharedComponentOverrideImpact> orphans)
+    {
+        var parameters = new DialogParameters<SignatureOrphanAckDialog>
+        {
+            { dialog => dialog.Orphans, orphans },
+        };
+        IDialogReference dialog = await dialogService.ShowAsync<SignatureOrphanAckDialog>(
+            "Client overrides are affected",
+            parameters,
+            _options);
+        DialogResult? result = await dialog.Result;
+
+        return result is not null && !result.Canceled;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

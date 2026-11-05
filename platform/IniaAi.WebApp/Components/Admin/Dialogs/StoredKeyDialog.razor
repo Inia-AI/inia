@@ -1,0 +1,125 @@
+@using ErrorOr
+@using IniaAi.Application.Commands.StoredKeys.SetStoredKey
+@using IniaAi.Domain.StoredKeys
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject AppState AppState
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudStack>
+            <MudText Typo="Typo.body2">
+                @if (IsNew)
+                {
+                    <span>A web API call header names this key as {StoredKey.Name}. After you save, nobody can read the value here again.</span>
+                }
+                else
+                {
+                    <span>The new value replaces the old one in every workflow that uses <b>@_name</b>.</span>
+                }
+            </MudText>
+
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <MudTextField T="string"
+                              Label="Name"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field"
+                              @bind-Value="_name"
+                              Immediate="true"
+                              Disabled="!IsNew"
+                              Placeholder="e.g. ParallelAi"
+                              HelperText="@StoredKeyNames.RULE"
+                              Validation="@(new Func<string, string?>(ValidateName))"
+                              Required="true"
+                              RequiredError="A name is required." />
+
+                <MudTextField T="string"
+                              Label="Value"
+                              Variant="Variant.Outlined"
+                              @bind-Value="_value"
+                              Immediate="true"
+                              InputType="InputType.Password"
+                              Placeholder="Paste the key"
+                              MaxLength="StoredKeyNames.VALUE_MAX_LENGTH"
+                              Required="true"
+                              RequiredError="A value is required." />
+            </MudForm>
+
+            @foreach (string error in _errors)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Error">@error</MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Disabled="_isBusy" Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Disabled="_isBusy" Color="Color.Primary" Variant="Variant.Text" OnClick="SaveAsync">Save Key</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyCollection<string> ExistingNames { get; set; } = [];
+
+    private MudForm _form = default!;
+    private string _name = string.Empty;
+    private bool _isValid;
+    private bool _isBusy;
+    private string? _value;
+    private List<string> _errors = [];
+
+    protected override void OnInitialized()
+    {
+        _name = Name;
+    }
+
+    private string? ValidateName(string name)
+    {
+        if (!StoredKeyNames.IsValid(name))
+        {
+            return StoredKeyNames.RULE;
+        }
+
+        return IsNew && ExistingNames.Contains(name)
+            ? $"This organization already has a key named '{name}'. Replace its value from the list."
+            : null;
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task SaveAsync()
+    {
+        await _form.ValidateAsync();
+
+        if (!_isValid || string.IsNullOrEmpty(_value) || AppState.CurrentOrganizationId is not { } organizationId)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        ErrorOr<Success> result = await ServiceScopeFactory.SendScopedAsync(
+            new SetStoredKeyCommand(organizationId, AppState.User?.Id ?? string.Empty, _name, _value));
+        _isBusy = false;
+
+        if (result.IsError)
+        {
+            _errors = [.. result.Errors.Select(error => error.Description)];
+            return;
+        }
+
+        MudDialog?.Close(DialogResult.Ok(_name));
+    }
+}

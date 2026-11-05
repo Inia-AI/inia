@@ -1,0 +1,78 @@
+{
+  "id": "execution-read",
+  "workflowId": "workflow-execution-snapshot",
+  "createdAt": "2026-09-07T08:00:00Z",
+  "workflowState": "Draft",
+  "failureKind": "ModelError",
+  "failureDetail": "The model refused once.",
+  "workflowTypeId": "CorpRead",
+  "workflowTypeName": "Corporate Read",
+  "counterpartyId": "counterparty-read",
+  "counterpartyName": "Example Corp",
+  "analystName": "Ada Lovelace",
+  "reviewDate": "2026-06-30T00:00:00Z",
+  "userId": "user-workflow-read",
+  "title": "Annual review",
+  "variables": {
+    "reviewYear": "2025",
+    "peerCount": 3,
+    "includeAppendix": true
+  },
+  "jobId": null,
+  "workflowExecutionDocuments": [],
+  "excludedDocuments": [],
+  "variableValues": [
+    {
+      "replacementTag": "ReviewYear",
+      "displayName": "Review year",
+      "description": "The year under review.",
+      "type": "Dropdown",
+      "displayValue": "2025",
+      "isConfidential": false,
+      "isHidden": false,
+      "isRequired": true
+    },
+    {
+      "replacementTag": "Secret",
+      "displayName": "Secret",
+      "description": "A confidential input.",
+      "type": "String",
+      "displayValue": "\u2022\u2022\u2022\u2022",
+      "isConfidential": true,
+      "isHidden": true,
+      "isRequired": true
+    },
+    {
+      "replacementTag": "peerCount",
+      "displayName": "peerCount",
+      "description": null,
+      "type": "Number",
+      "displayValue": "3",
+      "isConfidential": false,
+      "isHidden": false,
+      "isRequired": false
+    },
+    {
+      "replacementTag": "includeAppendix",
+      "displayName": "includeAppendix",
+      "description": null,
+      "type": "String",
+      "displayValue": "true",
+      "isConfidential": false,
+      "isHidden": false,
+      "isRequired": false
+    }
+  ],
+  "isBaseline": false,
+  "baselineVerified": null,
+  "freezeSourceExecutionId": "execution-source",
+  "freezeSourceCaseId": "case-1",
+  "freezeReplayedCount": 2,
+  "freezeEligibleCount": 4,
+  "startedAt": "2026-09-07T08:01:00Z",
+  "completedAt": "2026-09-07T08:05:00Z",
+  "duration": "00:04:00",
+  "intakeSkippedFiles": null,
+  "agentActivity": null,
+  "workflowActivity": null
+}

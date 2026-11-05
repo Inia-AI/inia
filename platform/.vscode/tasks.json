@@ -1,0 +1,76 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "buildWebApp",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/IniaAi.WebApp/IniaAi.WebApp.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "buildWebApi",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/IniaAi.WebApi/IniaAi.WebApi.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "buildAll",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "dotnet",
+            "task": "clean",
+            "group": "clean",
+            "problemMatcher": [],
+            "label": "dotnet: clean"
+        },
+        {
+            "label": "confirmReseed",
+            "type": "shell",
+            "command": "if [ '${input:confirmReseed}' != 'YES - Reseed the database' ]; then echo 'Cancelled by user'; exit 1; fi",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "close": true
+            }
+        },
+        {
+            "label": "confirmAndBuildWebApp",
+            "dependsOn": [
+                "confirmReseed",
+                "buildWebApp"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "confirmReseed",
+            "type": "pickString",
+            "description": "WARNING: This will DELETE ALL DATA and reseed the database. Are you sure?",
+            "options": [
+                "CANCEL",
+                "YES - Reseed the database"
+            ],
+            "default": "CANCEL"
+        }
+    ]
+}

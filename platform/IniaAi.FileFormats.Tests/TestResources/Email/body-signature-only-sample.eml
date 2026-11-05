@@ -1,0 +1,50 @@
+From: reporting@fund-admin.example
+To: hf-monitoring@bank.example
+Subject: signature-only
+Date: Thu, 01 Oct 2026 09:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="==b=="
+
+--==b==
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+<html><body><p>Dear investor,</p><p>The fund returned 1.24% net in September; NAV per share is 112.37 as of 30 September 2026.</p><p>Kind regards,<br/>Fund Reporting Team</p><p><img src="cid:logo" width="180" height="60"/> <img src="cid:icon" width="24" height="24"/> <img src="cid:icon2" width="24" height="24"/></p><img src="cid:pixel" width="1" height="1"/></body></html>
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <logo>
+Content-Disposition: inline; filename="logo.png"
+
+iVBORw0KGgoAAAANSUhEUgAAALQAAAA8CAAAAADqRc9bAAAATUlEQVR42u3ZQREAAAQAQUn0b8lf
+AsZegv1f1MECGhoaGhoaeqBzd9DQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ19HmJzQ0NDT0X3QD
+VIi85NLxoYwAAAAASUVORK5CYII=
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <icon>
+Content-Disposition: inline; filename="icon.png"
+
+iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAAAAADFHGIkAAAAE0lEQVR42mMIwAEYRiVGJciXAAD+
+prQBy4q7kQAAAABJRU5ErkJggg==
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <icon2>
+Content-Disposition: inline; filename="icon2.png"
+
+iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAAAAADFHGIkAAAAE0lEQVR42mMIwAEYRiVGJciXAAD+
+prQBy4q7kQAAAABJRU5ErkJggg==
+
+--==b==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-ID: <pixel>
+Content-Disposition: inline; filename="pixel.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR42mP4DwABAQEAHLCMmQAA
+AABJRU5ErkJggg==
+
+--==b==--

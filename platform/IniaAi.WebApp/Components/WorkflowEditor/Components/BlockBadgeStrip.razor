@@ -1,0 +1,41 @@
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+
+@foreach (BlockBadge badge in BlockBadges.For(Block, LinkIndex))
+{
+    <MudTooltip Text="@badge.Tooltip" @key="badge.Key">
+        @if (Display is BlockBadgeDisplay.Chip)
+        {
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="Variant.Outlined"
+                     Color="@badge.Color"
+                     Icon="@badge.Icon"
+                     Class="@($"ml-1 {badge.Accent}")"
+                     aria-label="@badge.Tooltip">
+                @badge.Label
+            </MudChip>
+        }
+        else
+        {
+            <MudIcon Icon="@badge.Icon"
+                     Color="@badge.Color"
+                     Size="Size.Small"
+                     Class="@badge.Accent"
+                     aria-label="@badge.Tooltip" />
+        }
+    </MudTooltip>
+}
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public BlockBadgeDisplay Display { get; set; } = BlockBadgeDisplay.Icon;
+
+    [CascadingParameter(Name = "LibraryLinkIndex")]
+    public LibraryLinkIndex? LinkIndex { get; set; }
+}

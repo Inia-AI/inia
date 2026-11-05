@@ -1,0 +1,71 @@
+﻿@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudStack Spacing="3">
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Page Number Adjustment Template"
+                            Variant="Variant.Outlined"
+                            Class="editor-mono-field"
+                            @bind-Value="RagSettings.PageAdjustmentInput" />
+        </MudItem>
+
+        @if(RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Page Number Adjustment After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.PageAdjustmentInput" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Exact Indexes Of Pages To Use"
+                            Variant="Variant.Outlined"
+                            Class="editor-mono-field"
+                            @bind-Value="RagSettings.ExactIndexesInput" />
+        </MudItem>
+
+        @if(RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Exact Indexes Of Pages To Use After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.ExactIndexesInput" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" sm="6">
+            <MudTextField Label="Number Of Following Pages To Include"
+                            Variant="Variant.Outlined"
+                            Class="editor-mono-field"
+                            @bind-Value="RagSettings.NumberOfPagesInput" />
+        </MudItem>
+
+        @if(RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Number Of Following Pages After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.NumberOfPagesInput" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+}

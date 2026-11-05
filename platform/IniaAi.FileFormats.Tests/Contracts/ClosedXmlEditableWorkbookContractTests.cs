@@ -1,0 +1,9 @@
+using IniaAi.FileFormats.ContractTests.Excel;
+using IniaAi.FileFormats.Excel;
+
+namespace IniaAi.FileFormats.Tests.Contracts;
+
+public class ClosedXmlEditableWorkbookContractTests : EditableWorkbookContract
+{
+    protected override IEditableWorkbookFormat Format { get; } = new ClosedXmlEditableWorkbookFormat();
+}

@@ -1,0 +1,263 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.UserData.Interfaces
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject ISnackbar Snackbar
+@inject ILogger<WorkflowTypeTenantAssignmentDialog> Logger
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Outlined.Business" />
+            <MudText Typo="Typo.h6">Manage Tenants for @WorkflowType.Name</MudText>
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStack Spacing="3">
+            <!-- Current Tenants -->
+            <MudCard Outlined="true">
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Current Tenants</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_currentTenants.Any())
+                    {
+                        <MudStack Spacing="2">
+                            @foreach (var tenant in _currentTenants.OrderBy(t => t.Name))
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Text">
+                                        @tenant.Name
+                                    </MudChip>
+
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Error"
+                                               StartIcon="@Icons.Material.Filled.RemoveCircle"
+                                               OnClick="() => RemoveTenant(tenant)">
+                                        Remove
+                                    </MudButton>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            No tenants assigned to this workflow type.
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Add Tenant -->
+            <MudCard Outlined="true">
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Add Tenant</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+                        <MudSelect T="string"
+                                   @bind-Value="_selectedOrganizationId"
+                                   Label="Select Tenant"
+                                   Variant="Variant.Outlined"
+                                   Dense="true"
+                                   Clearable="true"
+                                   Style="flex: 1;">
+                            @foreach (var org in _availableOrganizations.OrderBy(o => o.Name))
+                            {
+                                <MudSelectItem @key="org.Id" Value="@org.Id">@org.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddTenant"
+                                   Disabled="string.IsNullOrEmpty(_selectedOrganizationId)">
+                            Add
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Summary -->
+            @if (_hasChanges)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body2">
+                            <strong>Changes will be saved when you click Save:</strong>
+                        </MudText>
+                        @foreach (var change in _changesSummary)
+                        {
+                            <MudText Typo="Typo.caption">@change</MudText>
+                        }
+                    </MudStack>
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="!_hasChanges">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public WorkflowType WorkflowType { get; set; } = default!;
+
+    [Parameter]
+    public ICoreUnitOfWork CoreUnitOfWork { get; set; } = default!;
+
+    private List<Organization> _currentTenants = new();
+    private List<Organization> _availableOrganizations = new();
+    private string? _selectedOrganizationId;
+    private bool _hasChanges = false;
+    private List<string> _changesSummary = new();
+
+    // Track changes
+    private List<Organization> _toAdd = new();
+    private List<Organization> _toRemove = new();
+
+    // Original access records from DB
+    private List<WorkflowTypeOrganizationAccess> _existingAccess = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load existing access records for this workflow type
+        _existingAccess = (await CoreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
+            .FindAsync(a => a.WorkflowTypeId == WorkflowType.Id)).ToList();
+
+        var assignedOrgIds = _existingAccess.Select(a => a.OrganizationId).ToHashSet();
+
+        // Load all active organizations
+        var allOrganizations = (await UserDataUnitOfWork.Organizations.FindAsync(o => o.IsActive)).ToList();
+
+        _currentTenants = allOrganizations.Where(o => assignedOrgIds.Contains(o.Id)).ToList();
+        _availableOrganizations = allOrganizations.Where(o => !assignedOrgIds.Contains(o.Id)).ToList();
+    }
+
+    private void AddTenant()
+    {
+        if (string.IsNullOrEmpty(_selectedOrganizationId))
+        {
+            return;
+        }
+
+        var organization = _availableOrganizations.FirstOrDefault(o => o.Id == _selectedOrganizationId);
+        if (organization is null)
+        {
+            return;
+        }
+
+        _currentTenants.Add(organization);
+        _availableOrganizations.Remove(organization);
+
+        // If it was previously removed, cancel the removal; otherwise add to _toAdd
+        if (_toRemove.Any(o => o.Id == organization.Id))
+        {
+            _toRemove.RemoveAll(o => o.Id == organization.Id);
+        }
+        else
+        {
+            _toAdd.Add(organization);
+        }
+
+        _selectedOrganizationId = null;
+        UpdateChangesStatus();
+    }
+
+    private void RemoveTenant(Organization organization)
+    {
+        _currentTenants.Remove(organization);
+        _availableOrganizations.Add(organization);
+
+        // If it was added in this session, cancel the add; otherwise mark for removal
+        if (_toAdd.Any(o => o.Id == organization.Id))
+        {
+            _toAdd.RemoveAll(o => o.Id == organization.Id);
+        }
+        else
+        {
+            _toRemove.Add(organization);
+        }
+
+        UpdateChangesStatus();
+    }
+
+    private void UpdateChangesStatus()
+    {
+        _hasChanges = _toAdd.Any() || _toRemove.Any();
+
+        _changesSummary.Clear();
+
+        foreach (var org in _toAdd)
+        {
+            _changesSummary.Add($"+ Add {org.Name}");
+        }
+
+        foreach (var org in _toRemove)
+        {
+            _changesSummary.Add($"- Remove {org.Name}");
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            // Add new access records
+            foreach (var org in _toAdd)
+            {
+                var access = new WorkflowTypeOrganizationAccess
+                {
+                    WorkflowTypeId = WorkflowType.Id,
+                    OrganizationId = org.Id
+                };
+                await CoreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>().AddAsync(access);
+            }
+
+            // Remove access records
+            foreach (var org in _toRemove)
+            {
+                var existing = _existingAccess.FirstOrDefault(a => a.OrganizationId == org.Id);
+                if (existing is not null)
+                {
+                    CoreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>().HardRemove(existing);
+                }
+            }
+
+            await CoreUnitOfWork.CompleteAsync();
+
+            Snackbar.Add($"Successfully updated tenants for {WorkflowType.Name}", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update tenant assignments for workflow type {WorkflowTypeId}", WorkflowType.Id);
+            Snackbar.Add("Failed to update tenant assignments. Please try again.", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

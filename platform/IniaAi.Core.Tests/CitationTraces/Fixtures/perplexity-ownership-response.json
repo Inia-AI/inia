@@ -1,0 +1,81 @@
+{
+  "id": "00000000-0000-4000-8000-000000000002",
+  "model": "sonar-pro",
+  "created": 1767225600,
+  "usage": {
+    "prompt_tokens": 131,
+    "completion_tokens": 402,
+    "total_tokens": 533,
+    "search_context_size": "low",
+    "cost": {
+      "input_tokens_cost": 0.00039,
+      "output_tokens_cost": 0.00603,
+      "request_cost": 0.006,
+      "total_cost": 0.01242
+    }
+  },
+  "citations": [
+    "https://example.org/registry/harrowgate-aerostructures/shareholders",
+    "https://example.org/reports/harrowgate-aerostructures/governance-2025",
+    "https://example.org/reports/harrowgate-aerostructures/group-structure",
+    "https://example.org/market/harrowgate-aerostructures/holdings",
+    "https://example.org/news/harrowgate-tooling-sale-2025"
+  ],
+  "search_results": [
+    {
+      "title": "Harrowgate Aerostructures plc - shareholder register",
+      "url": "https://example.org/registry/harrowgate-aerostructures/shareholders",
+      "date": "2026-01-10",
+      "last_updated": "2026-01-10",
+      "snippet": "Founding family trusts hold 38.4% of the ordinary shares; Northgate Pension Trustees hold 9.2%.",
+      "source": "web"
+    },
+    {
+      "title": "Annual report 2025 - corporate governance",
+      "url": "https://example.org/reports/harrowgate-aerostructures/governance-2025",
+      "date": "2026-02-20",
+      "last_updated": "2026-02-20",
+      "snippet": "The board has seven directors, three of them independent. The company has one class of ordinary shares.",
+      "source": "web"
+    },
+    {
+      "title": "Harrowgate Aerostructures plc - group structure",
+      "url": "https://example.org/reports/harrowgate-aerostructures/group-structure",
+      "date": "2026-02-20",
+      "last_updated": "2026-02-20",
+      "snippet": "The group comprises the parent company and four wholly owned subsidiaries, including Harrowgate Portugal Lda.",
+      "source": "web"
+    },
+    {
+      "title": "Institutional holdings summary",
+      "url": "https://example.org/market/harrowgate-aerostructures/holdings",
+      "date": "2026-03-31",
+      "last_updated": "2026-03-31",
+      "snippet": "Institutional investors hold about 46% of the free float; the ten largest institutions hold 31%.",
+      "source": "web"
+    },
+    {
+      "title": "Company announcement - sale of tooling business",
+      "url": "https://example.org/news/harrowgate-tooling-sale-2025",
+      "date": "2025-12-19",
+      "last_updated": "2025-12-19",
+      "snippet": "The company completed the sale of its tooling business for £36 million in cash.",
+      "source": "web"
+    }
+  ],
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "## Ownership Structure of Harrowgate Aerostructures plc\n\nHarrowgate Aerostructures plc is a public company with a single class of ordinary shares[2]. The founding family trusts are the largest shareholder group with 38.4% of the shares[1], and a pension trustee holds a further 9.2%[1].\n\n### Group Structure\n\nThe group consists of the parent company and four wholly owned subsidiaries, including an operating subsidiary in Portugal[3]. In December 2025 the company sold its tooling business for £36 million in cash[5].\n\n### Institutional Ownership\n\nInstitutional investors hold about 46% of the free float[4], and the ten largest institutions hold 31%[4]. The board has seven directors, three of them independent[2].\n\n### Credit Considerations\n\nThe concentrated family holding gives stable control but limits the influence of minority shareholders[1][2]."
+      },
+      "delta": {
+        "role": "assistant",
+        "content": ""
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

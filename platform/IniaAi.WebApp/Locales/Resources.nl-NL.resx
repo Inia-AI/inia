@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>2.0</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <data name="ReportDataHeader" xml:space="preserve">  
+        <value>Rapportage Gegevens</value>  
+    </data>        
+    <data name="ReportDataInstruction" xml:space="preserve">  
+        <value>Vul dit formulier in om relevante informatie voor het rapport te verstrekken.</value>
+    </data>
+    <data name="FundManagerWebsite" xml:space="preserve">  
+        <value>Website van Fondsbeheerder</value>
+    </data>    
+    <data name="SearchTerm" xml:space="preserve">  
+        <value>Zoek Term</value>
+    </data>    
+    <data name="FundManagerCoverageLocation" xml:space="preserve">  
+        <value>Dekkingslocatie van Fondsbeheerder</value>
+    </data>    
+    <data name="InvestmentAdvisor" xml:space="preserve">  
+        <value>Beleggings Adviseur</value>
+    </data>    
+    <data name="InvestmentAdvisorScore" xml:space="preserve">  
+        <value>Score van Beleggings Adviseur</value>
+    </data>        
+    <data name="AnalystName" xml:space="preserve">  
+        <value>Naam van Analist</value>  
+    </data>  
+    <data name="ReviewDate" xml:space="preserve">  
+        <value>Beoordelingsdatum</value>  
+    </data>
+    <data name="Funds" xml:space="preserve">  
+        <value>Fondsen</value>
+    </data>    
+    <data name="Year" xml:space="preserve">  
+        <value>Jaar</value>  
+    </data>      
+</root>

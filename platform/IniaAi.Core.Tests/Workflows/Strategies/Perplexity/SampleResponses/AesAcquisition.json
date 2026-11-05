@@ -1,0 +1,85 @@
+{
+  "id": "8f6ae38e-44ca-47f5-b336-4d498cc544f4",
+  "model": "sonar-pro",
+  "created": 1776939386,
+  "usage": {
+    "prompt_tokens": 76,
+    "completion_tokens": 406,
+    "total_tokens": 482,
+    "search_context_size": "low",
+    "cost": {
+      "input_tokens_cost": 0.00023,
+      "output_tokens_cost": 0.00609,
+      "request_cost": 0.006,
+      "total_cost": 0.01232
+    }
+  },
+  "citations": [
+    "https://www.aes.com/energy-insights/consortium-led-global-infrastructure-partners-and-eqt-agrees-acquire-aes",
+    "https://www.prnewswire.com/news-releases/consortium-led-by-global-infrastructure-partners-and-eqt-agrees-to-acquire-aes-302700916.html",
+    "https://www.youtube.com/watch?v=ctI_K4HLpwE",
+    "https://www.sec.gov/Archives/edgar/data/874761/000119312526084157/d100078d8k.htm",
+    "https://dailyenergyinsider.com/featured/51366-aes-corp-will-become-private-company-in-agreed-upon-33-4b-deal/",
+    "https://www.spglobal.com/market-intelligence/en/news-insights/articles/2026/3/aes-shares-fall-after-long-awaited-10-7b-take-private-acquisition-is-announced-99233483"
+  ],
+  "search_results": [
+    {
+      "title": "Consortium Led by Global Infrastructure Partners and EQT Agrees to ...",
+      "url": "https://www.aes.com/energy-insights/consortium-led-global-infrastructure-partners-and-eqt-agrees-acquire-aes",
+      "date": "2026-03-02",
+      "last_updated": "2026-04-21",
+      "snippet": "EQT's acquisition of AES will support the growth and modernization of essential energy infrastructure that underpins energy security, ...",
+      "source": "web"
+    },
+    {
+      "title": "Consortium Led by Global Infrastructure Partners and EQT Agrees to ...",
+      "url": "https://www.prnewswire.com/news-releases/consortium-led-by-global-infrastructure-partners-and-eqt-agrees-to-acquire-aes-302700916.html",
+      "date": "2026-03-02",
+      "last_updated": "2026-03-21",
+      "snippet": "EQT's acquisition of AES will support the growth and modernization of essential energy infrastructure that underpins energy security, ...",
+      "source": "web"
+    },
+    {
+      "title": "AES corporation purchased for $10.7B - YouTube",
+      "url": "https://www.youtube.com/watch?v=ctI_K4HLpwE",
+      "date": "2026-03-02",
+      "last_updated": "2026-04-21",
+      "snippet": "The parent company of AES Ohio announced that their company will be going forward with an acquisition that will cost them $10.7 billion.",
+      "source": "web"
+    },
+    {
+      "title": "8-K - SEC.gov",
+      "url": "https://www.sec.gov/Archives/edgar/data/874761/000119312526084157/d100078d8k.htm",
+      "date": "2026-03-01",
+      "last_updated": "2026-03-02",
+      "snippet": "On March 1, 2026, The AES Corporation (the “Company” or “AES”) entered into an Agreement and Plan of Merger (the “Merger Agreement”), by and ...",
+      "source": "web"
+    },
+    {
+      "title": "AES Corp. will become private company in agreed-upon $33.4B deal",
+      "url": "https://dailyenergyinsider.com/featured/51366-aes-corp-will-become-private-company-in-agreed-upon-33-4b-deal/",
+      "snippet": "The AES Corp. has agreed to be acquired by a consortium led by Global Infrastructure Partners (GIP), part of BlackRock, and the EQT Infrastructure VI fund ...",
+      "source": "web"
+    },
+    {
+      "title": "AES shares fall after long-awaited $10.7B take-private acquisition is ...",
+      "url": "https://www.spglobal.com/market-intelligence/en/news-insights/articles/2026/3/aes-shares-fall-after-long-awaited-10-7b-take-private-acquisition-is-announced-99233483",
+      "date": "2026-03-02",
+      "last_updated": "2026-04-07",
+      "snippet": "subsidiary Global Infrastructure Management LLC and EQT AB agreed to take it private for $10.7 billion. The all-cash deal, which includes the ...",
+      "source": "web"
+    }
+  ],
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "**On March 2, 2026 (with SEC filing dated March 1, 2026), The AES Corporation entered into a definitive agreement to be acquired by a consortium led by Global Infrastructure Partners (GIP, part of BlackRock) and EQT Infrastructure VI fund, with co-underwriters CalPERS and Qatar Investment Authority.**[1][2][4][5][6]\n\nThis all-cash transaction values AES at **$15.00 per share**, equating to a total equity value of **$10.7 billion** and an enterprise value of approximately **$33.4 billion** (including proportional net debt of $22.7 billion as of December 31, 2025).[1][2][5][6] It represents a **40.3% premium** to the 30-day volume-weighted average share price prior to July 8, 2025, the last full trading day before initial media reports of a potential deal.[1][2]\n\nKey transaction details include:\n- **100% equity funding** by the consortium for the purchase price, with assumption of existing debt.[1][2]\n- Expected closure in **late 2026 or early 2027**.[1][2]\n- No anticipated impact on customer rates for regulated utilities such as **AES Indiana and AES Ohio**, which will remain locally operated, managed, and regulated by local, state, and federal authorities.[1][2]\n- Addresses AES's capital needs for growth beyond 2027; without the deal, growth funding might require dividend cuts or new equity issuances.[2]\n\nThe deal follows reports of a potential acquisition dating back to mid-2025 and will take AES private.[5][6] No other mergers, acquisitions, consolidations, divestitures, takeovers, strategic reviews, or joint ventures involving AES appear in the search results for the April 2023 to April 2026 period.[1][2][3][4][5][6]"
+      },
+      "delta": { "role": "assistant", "content": "" },
+      "finish_reason": "stop"
+    }
+  ]
+}

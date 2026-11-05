@@ -1,0 +1,98 @@
+{
+  "fixture": "greenvolt",
+  "framing": "regression tripwire, not an accuracy benchmark",
+  "document": "greenvolt-ar-2025.pdf",
+  "currency": "EUR",
+  "sourcePages": [267],
+  "periods": ["FY0", "FY_1"],
+  "notes": [
+    "FY_1 comparatives are restated per Note 8",
+    "totalCurrentAssets is the printed subtotal, excluding assets held for sale"
+  ],
+  "anchors": {
+    "tradeReceivables": {
+      "FY0": 37397885,
+      "FY_1": 37575319
+    },
+    "inventories": {
+      "FY0": 22629482,
+      "FY_1": 34123039
+    },
+    "totalCurrentAssets": {
+      "FY0": 860082705,
+      "FY_1": 731016239
+    },
+    "propertyPlantAndEquipment": {
+      "FY0": 2000148330,
+      "FY_1": 1533863702
+    },
+    "rightOfUseAssets": {
+      "FY0": 107197632,
+      "FY_1": 87373152
+    },
+    "totalAssets": {
+      "FY0": 4027553656,
+      "FY_1": 3318824587
+    },
+    "totalLiabilities": {
+      "FY0": 3186997939,
+      "FY_1": 2682853564
+    },
+    "shareholdersEquity": {
+      "FY0": 776238124,
+      "FY_1": 565402204
+    },
+    "nonControllingInterests": {
+      "FY0": 64317593,
+      "FY_1": 70568819
+    },
+    "totalEquity": {
+      "FY0": 840555717,
+      "FY_1": 635971023
+    }
+  },
+  "judgment": {
+    "cashAndShortTermInvestments": {
+      "acceptedBases": [
+        {
+          "id": "run1",
+          "basis": "cash_and_equivalents_only",
+          "composition": ["cash_and_cash_equivalents"],
+          "verifiedOn": "2026-08-01",
+          "values": {
+            "FY0": 204454491,
+            "FY_1": 326818129
+          }
+        }
+      ]
+    },
+    "goodwillAndIntangibleAssets": {
+      "acceptedBases": [
+        {
+          "id": "run1",
+          "basis": "goodwill_plus_intangibles",
+          "composition": ["goodwill", "intangible_assets"],
+          "verifiedOn": "2026-08-01",
+          "values": {
+            "FY0": 720589474,
+            "FY_1": 724099501
+          }
+        }
+      ]
+    }
+  },
+  "performance": {
+    "baseline": {
+      "p75DurationSeconds": 54,
+      "p75OutputTokens": 3898,
+      "promptSha256": "07f80b936f544a1e3fbe11d35e6782039c08c0b2cad5d31de1c9fa5031931cf3",
+      "modelPin": "us.anthropic.claude-sonnet-4-6",
+      "sdkVersion": "0.3.227",
+      "runtimeVersion": "0.3.1001",
+      "measuredAt": "2026-08-18"
+    },
+    "failAboveBaselineRatio": 1.5,
+    "warnAboveBaselineRatio": 1.2,
+    "spreadWarnRatio": 1.6
+  }
+}

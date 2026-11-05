@@ -1,0 +1,9 @@
+{
+  "title": "Edit & Re-run",
+  "description": "How would you like to re-run this report?",
+  "cancel": "Cancel",
+  "editInputs": "Edit inputs first",
+  "editInputsHint": "Open the form prefilled — change documents, settings, or @:{'terms.company'} before running.",
+  "restart": "Restart with same inputs",
+  "restartHint": "Use the original inputs and start a new report immediately."
+}

@@ -1,0 +1,162 @@
+{
+  "title": "Documents",
+  "subtitle": "{count} document | {count} documents",
+  "emptyText": "No documents match the current filters.",
+  "filters": {
+    "search": "Search",
+    "searchPlaceholder": "Search by name",
+    "mediaType": "Type",
+    "category": "Category",
+    "user": "Uploader",
+    "all": "All"
+  },
+  "jobChip": "Filtered by job: {jobId}",
+  "clearJobFilter": "Clear job filter",
+  "table": {
+    "name": "Name",
+    "type": "Type",
+    "category": "Category",
+    "user": "User",
+    "static": "Static",
+    "size": "Size",
+    "created": "Created",
+    "actions": "Actions",
+    "selectAll": "Select all documents on this page",
+    "selectRow": "Select {name}"
+  },
+  "actions": {
+    "preview": "Preview {name}",
+    "download": "Download {name}",
+    "edit": "Edit {name}",
+    "delete": "Delete {name}",
+    "deleteSelected": "Delete {count} selected"
+  },
+  "delete": {
+    "title": "Delete document?",
+    "bulkTitle": "Delete {count} documents?",
+    "bodySingle": "This will remove \"{name}\". This cannot be undone.",
+    "bodyBulk": "This will remove {count} documents. This cannot be undone.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
+  },
+  "toast": {
+    "deleteSuccess": "Deleted {count} document. | Deleted {count} documents.",
+    "deletePartial": "Deleted {deleted} of {total}, {failed} failed.",
+    "deleteError": "Failed to delete documents.",
+    "downloadError": "Failed to download the document."
+  },
+  "selection": {
+    "count": "{count} selected"
+  },
+  "detail": {
+    "title": "Document",
+    "back": "Back",
+    "notFoundTitle": "Document not found",
+    "notFoundBody": "It may have been deleted or belongs to a different organization.",
+    "loadErrorTitle": "This document could not be loaded",
+    "loadErrorBody": "Try again in a moment.",
+    "fields": {
+      "workflowType": "Workflow type",
+      "class": "Class",
+      "topics": "Topics",
+      "tableOfContents": "Table of contents",
+      "sources": "Sources",
+      "description": "Description",
+      "extension": "Extension",
+      "updatedAt": "Updated"
+    },
+    "preview": {
+      "open": "Preview",
+      "unavailable": "Preview is not available for this file type.",
+      "download": "Download"
+    },
+    "pages": {
+      "title": "Pages ({count})",
+      "empty": "No pages available.",
+      "noMatch": "No page matches \"{term}\".",
+      "searchPlaceholder": "Search the text of the pages",
+      "earlier": "Earlier pages",
+      "later": "Later pages",
+      "range": "{from}–{to} of {total}"
+    },
+    "downloadText": "Download text",
+    "details": "Details",
+    "reader": {
+      "pageOf": "Page {number} of {count}",
+      "filePage": "file page {number}",
+      "location": {
+        "FullPage": "full page",
+        "LeftSide": "left half",
+        "RightSide": "right half"
+      },
+      "conversion": {
+        "ProcessedSuccessfully": "Text layer",
+        "ExtractedWithErrors": "Text layer, with errors",
+        "OCRFallback": "Waiting for OCR",
+        "OCRSuccessful": "OCR",
+        "OCRNeedsReview": "OCR unreliable, read as an image",
+        "OCRFailed": "OCR failed",
+        "NotProcessed": "Not processed"
+      },
+      "previous": "Previous page",
+      "next": "Next page",
+      "original": "Original",
+      "enlarge": "Open page {number} at full size",
+      "noImage": "This file type has no page image. The text is all the platform keeps of this page.",
+      "text": "Text",
+      "asStored": "As stored",
+      "formatted": "Formatted",
+      "copy": "Copy",
+      "copyText": "Copy the text of page {number}",
+      "copyOverview": "Copy the overview of page {number}",
+      "copied": "Copied",
+      "copyFailed": "Could not copy to the clipboard",
+      "noText": "No text was extracted from this page.",
+      "needsReview": "OCR judged this page unreliable, so the model reads it as an image, through the overview below.",
+      "unusedText": "Text the OCR produced, which the model does not read",
+      "ocrFailed": "OCR failed on this page, so it has no text.",
+      "overview": "Overview",
+      "noOverview": "No overview yet",
+      "sections": "Sections",
+      "embedding": "Embedding",
+      "embeddingValue": "{model} · {dimensions} dimensions",
+      "noEmbedding": "No embedding yet",
+      "source": "Source",
+      "loadError": "This page could not be loaded. Refresh the page to try again."
+    },
+    "uploadedBy": "uploaded by {user}"
+  },
+  "edit": {
+    "title": "Edit document",
+    "static": "Static document",
+    "staticHint": "Joins every run of this workflow type in your organization",
+    "workflowType": "Workflow type",
+    "workflowTypePlaceholder": "Choose a workflow type",
+    "documentClass": "Document class",
+    "documentClassPlaceholder": "Choose a document class",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saved": "Document saved",
+    "saveError": "Could not save the document"
+  },
+  "upload": {
+    "open": "Upload documents",
+    "title": "Upload documents",
+    "description": "Each file is stored, filed under its category and read into pages.",
+    "chooseFiles": "Choose files",
+    "noCategory": "None",
+    "categoryFor": "Category for {name}",
+    "empty": "No files chosen yet",
+    "close": "Close",
+    "start": "Upload and process",
+    "processError": "Could not process the file",
+    "state": {
+      "pending": "Ready",
+      "uploading": "Uploading {percent}%",
+      "processing": "Processing",
+      "processed": "Processed",
+      "stored": "Stored, not read into pages",
+      "failed": "Failed"
+    }
+  }
+}

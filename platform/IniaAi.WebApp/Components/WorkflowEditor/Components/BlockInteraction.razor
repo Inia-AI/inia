@@ -1,0 +1,523 @@
+@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+@implements IDisposable
+
+@using IniaAi.Common.Constants
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Configuration.Platform
+@using IniaAi.Core.Workflows.Strategies
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApp.Components.WorkflowEditor.Components.Blocks
+@using IniaAi.WebApp.Components.WorkflowEditor.Components.Blocks.Responses
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using Microsoft.AspNetCore.Authorization
+@using IniaAi.WebApp.Services
+
+@inject AppState AppState
+@inject IOptions<AgentRuntimeSettings> AgentRuntimeSettingsOptions
+@inject InstalledBlockTypes InstalledTypes
+
+@if (Block.IsOutputSource && !Block.IsLoopBoundary)
+{
+    <MudGrid Spacing="2" Class="editor-twin-grid mb-2">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Paragraph Sub-Title Template"
+                          Class="editor-mono-field"
+                          @bind-Value="Block.OutputTitleTemplate" />
+        </MudItem>
+
+        @if (Block.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Paragraph Sub-Title After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@Block.ExecutionState.OutputTitle" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@if (Block.IsDataOutput && !Block.IsLoopBoundary)
+{
+    <DataOutputPanel Block="Block" OnChanged="NotifyDataOutputChanged" />
+}
+
+@if (Block.ExecutionState?.HasFailed == true && !string.IsNullOrEmpty(Block.ExecutionState.Error))
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+        <MudText Typo="Typo.body2">
+            Execution Error: @Block.ExecutionState?.Error
+        </MudText>
+    </MudAlert>
+
+    @if (Block.ExecutionState?.StartedAt is not null)
+    {
+        <MudText Typo="Typo.caption" Style="margin-top: 8px;">
+            Failed at: @Block.ExecutionState?.StartedAt.Value.ToString(format: "yyyy-MM-dd HH:mm:ss")
+        </MudText>
+    }
+}
+
+@if (Block.ExecutionState?.IsSkipped == true && !string.IsNullOrEmpty(Block.ExecutionState.Error))
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+        <MudText Typo="Typo.body2">
+            Block Skipped: @Block.ExecutionState?.Error
+        </MudText>
+    </MudAlert>
+
+    @if (Block.ExecutionState?.CompletedAt is not null)
+    {
+        <MudText Typo="Typo.caption" Style="margin-top: 8px;">
+            Skipped at: @Block.ExecutionState?.CompletedAt.Value.ToString(format: "yyyy-MM-dd HH:mm:ss")
+        </MudText>
+    }
+}
+
+<InvalidReplacementTagsAlert Block="Block" ValidationChanged="@OnTagValidationChanged" />
+
+<CascadingValue TValue="TagValidationSnapshot" Value="@_tagValidation" Name="TagValidation">
+<div class="editor-block-body" data-invalid-tags="@_invalidTagsAttr">
+
+@if (!Block.IsLoopBoundary)
+{
+    <MudTextField Variant="Variant.Outlined"
+                  Label="Replacement Tag"
+                  Class="editor-mono-field"
+                  MaxLength="@Block.MAX_REPLACEMENT_TAG_LENGTH"
+                  @bind-Value="@Block.ReplacementTag"
+                  @bind-Value:after="OnReplacementTagChanged" />
+
+    @if (_duplicateTagNote is not null)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">@_duplicateTagNote</MudText>
+    }
+}
+
+<MudSelect T="BlockTypes"
+           Label="Select Block Type"
+           Variant="Variant.Outlined"
+           AnchorOrigin="Origin.BottomLeft"
+           Value="@Block.Type"
+           ValueChanged="@OnBlockTypeChanged" >
+    @foreach (BlockTypes blockType in BlockTypeVisuals.SelectableFor(
+        AgentRuntimeSettingsOptions.Value.Enabled || Block.Type.IsAgentFamily(), InstalledTypes, Block.Type))
+    {
+        <MudSelectItem Value="blockType" @key="blockType">@BlockTypeVisuals.Label(blockType)</MudSelectItem>
+    }
+</MudSelect>
+
+@if (Block.Type is BlockTypes.AiQuery)
+{
+    <AiQueryBlock Block="Block"
+                  BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.SimpleRag)
+{
+    <RetrieveInformationFromDocumentBlock Block="Block"
+                                          BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.IntelligentSearch)
+{
+    <ExaSearchBlock Block="Block"
+                    BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.Merge)
+{
+    <ApplyFormatBlock Block="Block"
+                      BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.CalculateNumber)
+{
+    <CalculateFormulaBlock Block="Block" />
+}
+
+@if (Block.Type is BlockTypes.BuildTopicsForAllDocuments)
+{
+    <BuildTopicsForAllDocumentsBlock Block="Block"
+                                     BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.LoopStart)
+{
+    <LoopStartBlock Block="Block" />
+}
+
+@if (Block.Type is BlockTypes.ExchangeRate)
+{
+    <ExchangeRateBlock Block="Block" />
+}
+
+@if (Block.Type is BlockTypes.WebApiCall)
+{
+    <WebApiCallBlock Block="Block"
+                     BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.DynamicChart)
+{
+    <DynamicChartBlock Block="Block" BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.SwitchCase)
+{
+    <SwitchCaseBlock Block="Block"
+                     BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.MergeJson)
+{
+    <MergeJsonBlock Block="Block"
+                    BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (Block.Type is BlockTypes.StringManipulation)
+{
+    <StringManipulationBlock Block="Block" />
+}
+
+@if (Block.Type is BlockTypes.Agent)
+{
+    <AgentBlock Block="Block"
+                BlockChanged="@OnChildBlockChanged" />
+}
+
+@if (ExtensionEditor is { } extensionEditor)
+{
+    <DynamicComponent Type="extensionEditor" Parameters="ExtensionEditorParameters" />
+}
+
+@if (InstalledTypes.IsUnavailable(Block.Type))
+{
+    <StubBlockPanel Type="Block.Type" />
+}
+
+<div class="mud-expansion-panels mt-4">
+    <DisclosurePanel @bind-Expanded="_textInputsExpanded" Class="editor-subpanel">
+        <TitleContent>
+            <span class="editor-card-title">Text inputs</span>
+        </TitleContent>
+        <Actions>
+            <MudButton Size="Size.Small"
+                       Class="editor-soft-button"
+                       Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       Color="Color.Primary"
+                       OnClick="() => AddTextInput()">
+                Add Text Input
+            </MudButton>
+        </Actions>
+        <ChildContent>
+
+    @foreach (TextInput textInput in Block.TextInputs.OrderBy(x => x.ReplacementTag))
+    {
+        <MudDivider />
+
+        <MudStack @key="textInput"
+                  Row="true"
+                  AlignItems="AlignItems.Start"
+                  Spacing="2">
+            <MudItem xs="2">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Replacement Tag"
+                              Class="editor-mono-field"
+                              @bind-Value="textInput.ReplacementTag" />
+            </MudItem>
+
+            <div class="flex-grow-1">
+                <MudGrid Spacing="2" Class="editor-twin-grid">
+                    <MudItem xs="12" md="6">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Text Input Template"
+                                      Class="editor-mono-field"
+                                      Sizing="InputSizing.Auto"
+                                      MaxLines="10"
+                                      Value="@textInput.Value"
+                                      ValueChanged="@((string value) => AiQueryCitationDefault.ApplyToContentEdit(Block, () => textInput.Value = value))" />
+                    </MudItem>
+
+                    @if (textInput.ExecutionState is not null)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudTextField Variant="Variant.Outlined"
+                                          Label="Text Input After Execution"
+                                          Class="editor-mono-field editor-resolved"
+                                          ReadOnly="true"
+                                          Sizing="InputSizing.Auto"
+                                          MaxLines="10"
+                                          Value="@textInput.ExecutionState.Value" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </div>
+
+            <MudIconButton Size="Size.Small"
+                           Icon="@Icons.Material.Outlined.Delete"
+                           Color="Color.Error"
+                           Style="align-self: center;"
+                           Class="editor-soft-button"
+                           aria-label="Remove text input"
+                           OnClick="() => Block.TextInputs.Remove(textInput)" />
+        </MudStack>
+    }
+
+        </ChildContent>
+    </DisclosurePanel>
+</div>
+
+<MudExpansionPanels Elevation="0" Class="mt-4">
+    <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+        <TitleContent>
+            <span class="editor-card-title">Advanced settings</span>
+        </TitleContent>
+        <ChildContent>
+        @if (!Block.IsLoopBoundary)
+        {
+            <div class="editor-eyebrow mt-4 mb-2">Output settings</div>
+
+            <MudStack Spacing="2">
+                @if (ShowCounterpartySettings)
+                {
+                    <div>
+                        <MudCheckBox Label="@($"Save Output for {CounterpartyTerms.SINGULAR}")"
+                                     Color="Color.Primary"
+                                     @bind-Value="Block.ShouldUpdateCounterpartyWithResult"
+                                     @bind-Value:after="OnCounterpartyCheckboxToggled" />
+                        @if (Block.ShouldUpdateCounterpartyWithResult)
+                        {
+                            <div class="ml-6">
+                                <MudSelect T="CounterpartyResultType?"
+                                           Label="@($"Select {CounterpartyTerms.SINGULAR} Output Type")"
+                                           Variant="Variant.Outlined"
+                                           @bind-Value="Block.CounterpartyResultType"
+                                           Required="true"
+                                           For="@(() => Block.CounterpartyResultType)"
+                                           Clearable="true"
+                                           Style="max-width: 360px;">
+                                    <MudSelectItem T="CounterpartyResultType?"
+                                                   Value="CounterpartyResultType.LastFinancialAnalysisResult">
+                                        Last Financial Analysis Result
+                                    </MudSelectItem>
+                                    <MudSelectItem T="CounterpartyResultType?"
+                                                   Value="CounterpartyResultType.Property">
+                                        Property (key / value)
+                                    </MudSelectItem>
+                                </MudSelect>
+                                @if (Block.CounterpartyResultType == CounterpartyResultType.Property)
+                                {
+                                    <MudTextField T="string"
+                                                  Label="Property key"
+                                                  Variant="Variant.Outlined"
+                                                  @bind-Value="Block.UpdateCounterpartyPropertyKey"
+                                                  Placeholder="e.g. reportingStyle"
+                                                  Required="true"
+                                                  Class="mt-2"
+                                                  Style="max-width: 360px;" />
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <MudCheckBox Label="Run this block on its own (barrier)"
+                             Color="Color.Primary"
+                             @bind-Value="Block.RunsAlone" />
+            </MudStack>
+
+            @if (Block.Properties is not UnavailableBlockProperties)
+            {
+                <BlockFailureSetting Block="Block" />
+            }
+        }
+        </ChildContent>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@if (Block.BlockResponse is not null)
+{
+    <div class="mt-4">
+        <BlockResponseInteraction Response="@Block.BlockResponse" />
+    </div>
+}
+
+@if (Block.AgentRunTraceFiles.Count > 0)
+{
+    <AgentTraceInteraction Files="@Block.AgentRunTraceFiles"
+                           Passes="@((Block.Properties as IAgentRunProperties)?.RunLedger)" />
+}
+
+<CitationTraceInteraction Block="@Block" />
+
+</div>
+</CascadingValue>
+
+@code {
+    private readonly Dictionary<BlockTypes, BlockProperties> _propertiesCache = [];
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnBlockPropertiesChanged { get; set; }
+
+    [CascadingParameter]
+    public EditorSurfaceState? SurfaceState { get; set; }
+
+    private bool ShowCounterpartySettings =>
+        SurfaceState?.Capabilities.ShowCounterpartySettings ?? true;
+
+    private void NotifyDataOutputChanged()
+    {
+        SurfaceState?.NotifyBlockChanged(Block);
+    }
+
+    private void OnReplacementTagChanged()
+    {
+        RefreshDuplicateTagNote();
+        SurfaceState?.NotifyBlockChanged(Block);
+    }
+
+    private void RefreshDuplicateTagNote()
+    {
+        _noteTag = Block.ReplacementTag;
+        _duplicateTagNote = DuplicateTagDisclosure.Describe(Block, Block.Section?.Workflow);
+    }
+
+    private TagValidationSnapshot? _tagValidation;
+    private string? _invalidTagsAttr;
+
+    private void OnTagValidationChanged(TagValidationSnapshot snapshot)
+    {
+        _tagValidation = snapshot;
+        _invalidTagsAttr = snapshot.InvalidTags.Count == 0 ? null : string.Join(",", snapshot.InvalidTags);
+    }
+
+    private bool _textInputsExpanded;
+
+    protected override void OnInitialized()
+    {
+        _textInputsExpanded = Block.TextInputs.Any();
+
+        if (SurfaceState is not null)
+        {
+            SurfaceState.BlockChanged += OnPeerBlockChanged;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (SurfaceState is not null)
+        {
+            SurfaceState.BlockChanged -= OnPeerBlockChanged;
+        }
+    }
+
+    private void OnPeerBlockChanged(Block changed)
+    {
+        if (ReferenceEquals(changed, Block))
+        {
+            return;
+        }
+
+        bool mayAffectNote = _duplicateTagNote is not null
+            || string.Equals(changed.ReplacementTag, Block.ReplacementTag, ReplacementTags.Comparison);
+
+        if (!mayAffectNote)
+        {
+            return;
+        }
+
+        string? previous = _duplicateTagNote;
+        RefreshDuplicateTagNote();
+
+        if (!string.Equals(previous, _duplicateTagNote, StringComparison.Ordinal))
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void OnCounterpartyCheckboxToggled()
+    {
+        if (!Block.ShouldUpdateCounterpartyWithResult)
+        {
+            Block.CounterpartyResultType = null;
+            Block.UpdateCounterpartyPropertyKey = null;
+        }
+    }
+
+    private Type? ExtensionEditor => InstalledTypes.IsUnavailable(Block.Type) ? null : BlockTypeCatalog.Find(Block.Type)?.EditorComponent;
+
+    private Dictionary<string, object?> ExtensionEditorParameters => new()
+    {
+        [nameof(Block)] = Block,
+        [nameof(BlockChanged)] = EventCallback.Factory.Create(this, OnChildBlockChanged),
+    };
+
+    /// <summary>
+    /// Receives child block-body changes so this block's subtree (including the
+    /// invalid-tags alert) re-renders, then forwards to the workflow-level callback —
+    /// which is wired through a non-rendering receiver, so a prompt edit no longer
+    /// re-renders the whole editor tree.
+    /// </summary>
+    private async Task OnChildBlockChanged()
+    {
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnBlockTypeChanged(BlockTypes newType)
+    {
+        _propertiesCache[Block.Type] = Block.Properties;
+
+        Block.Type = newType;
+
+        if (_propertiesCache.TryGetValue(newType, out BlockProperties? cached))
+        {
+            Block.Properties = cached;
+        }
+        else
+        {
+            Block.Properties = Block.CreateDefaultProperties(newType);
+            AiQueryCitationDefault.ApplyToNewProperties(Block);
+        }
+
+        await OnBlockPropertiesChanged.InvokeAsync();
+    }
+
+    private Block? _syncedBlock;
+    private string? _noteTag;
+    private string? _duplicateTagNote;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_syncedBlock, Block)
+            || !string.Equals(_noteTag, Block.ReplacementTag, StringComparison.Ordinal))
+        {
+            RefreshDuplicateTagNote();
+        }
+
+        _syncedBlock = Block;
+    }
+
+    private void AddTextInput()
+    {
+        string replacementTag = $"input_{Block.TextInputs.Count() + 1}";
+        _ = new TextInput(Block, replacementTag);
+        _textInputsExpanded = true;
+    }
+
+}

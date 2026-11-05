@@ -1,0 +1,115 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.DocumentAnalysis
+@using IniaAi.Domain.Entities.DocumentAnalysis
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Tools.PdfOcr
+@using IniaAi.Domain.Tools.RagStrategies
+@using IniaAi.Domain.Tools.Reconciliation
+@using IniaAi.Domain.Tools.GraphRag
+@using IniaAi.WebApp.Components.Components
+@using IniaAi.WebApp.Components.ToolsSettings.Components
+@using Microsoft.AspNetCore.Authorization
+
+@inject AppState AppState
+@inject ICoreUnitOfWork CoreUnitOfWork
+@inject NavigationManager NavigationManager
+
+@attribute [Route(AppRoutes.TOOLS_SETTINGS)]
+@attribute [Authorize(Roles = ROLES)]
+
+<PageTitle>Inia AI - Tools Settings</PageTitle>
+
+<MudGrid Spacing="5">
+    <MudItem xs="12">
+        <MudTabs Elevation="2"
+                 Outlined="true"
+                 Rounded="true"
+                 ApplyEffectsToContainer="false"
+                 TabPanelsClass="pt-4">
+            <MudTabPanel Text="OCR">
+                <PdfOcrPromptsInteraction
+                    Prompts="@_pdfOcrPrompts"
+                    SaveChangesCallback="SaveChangesAsync" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Excel analysis">
+                <ExcelAnalysisPromptsInteraction
+                    Prompts="@_excelAnalysisPrompts"
+                    SaveChangesCallback="SaveChangesAsync" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Topics">
+                <TopicsPromptsInteraction
+                    Prompts="@_topicsPrompts"
+                    SaveChangesCallback="SaveChangesAsync" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Reconciliation">
+                <ReconciliationPromptsInteraction
+                    Prompts="@_reconciliationPrompts"
+                    SaveChangesCallback="SaveChangesAsync" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Use Auto-Detected ToC">
+                <UseAutoDetectedTableOfContentsPromptsInteraction
+                    Prompts="@_useAutoDetectedTableOfContentsPrompts"
+                    SaveChangesCallback="SaveChangesAsync" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Graph RAG">
+                <GraphRagPromptsInteraction
+                    Prompts="@_graphRagPrompts"
+                    SaveChangesCallback="SaveChangesAsync" />
+            </MudTabPanel>
+        </MudTabs>
+    </MudItem>
+</MudGrid>
+
+@code {
+    public const string ROLES = Roles.EDITOR_ROLES;
+
+    private UseAutoDetectedTableOfContentsPrompts _useAutoDetectedTableOfContentsPrompts = new UseAutoDetectedTableOfContentsPrompts();
+    private PdfOcrPrompts _pdfOcrPrompts = new PdfOcrPrompts();
+    private ReconciliationPrompts _reconciliationPrompts = new ReconciliationPrompts();
+    private GraphRagPrompts _graphRagPrompts = new GraphRagPrompts();
+    private ExcelAnalysisPrompts _excelAnalysisPrompts = ExcelAnalysisPromptsDefaults.Create();
+    private TopicsPrompts _topicsPrompts = TopicsPromptsDefaults.Create();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _useAutoDetectedTableOfContentsPrompts = await CoreUnitOfWork
+            .Tools
+            .GetUseAutoDetectedTableOfContentsPromptsAsync()
+            ?? new UseAutoDetectedTableOfContentsPrompts();
+
+        _pdfOcrPrompts = await CoreUnitOfWork
+            .Tools
+            .GetPdfOcrPromptsAsync()
+            ?? new PdfOcrPrompts();
+
+        _reconciliationPrompts = await CoreUnitOfWork
+            .Tools
+            .GetReconciliationPromptsAsync()
+            ?? new ReconciliationPrompts();
+
+        _graphRagPrompts = await CoreUnitOfWork
+            .Tools
+            .GetGraphRagPromptsAsync()
+            ?? new GraphRagPrompts();
+
+        _excelAnalysisPrompts = await CoreUnitOfWork
+            .Repository<ExcelAnalysisPrompts>()
+            .GetFirstOrDefaultAsync(new LatestExcelAnalysisPromptsSpec(tracked: true))
+            ?? ExcelAnalysisPromptsDefaults.Create();
+
+        _topicsPrompts = await CoreUnitOfWork
+            .Repository<TopicsPrompts>()
+            .GetFirstOrDefaultAsync(new LatestTopicsPromptsSpec(tracked: true))
+            ?? TopicsPromptsDefaults.Create();
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        await CoreUnitOfWork.CompleteAsync();
+    }
+}

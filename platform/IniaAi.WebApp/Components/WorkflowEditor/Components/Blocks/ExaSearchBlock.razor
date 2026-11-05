@@ -1,0 +1,294 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Core.Dto.Exa.Search.Enums
+@using IniaAi.Common.Extensions
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Search Term Template"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      @bind-Value="@_props.SearchTermTemplate" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Search Term After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Value="@_props.ExecutionState.SearchTerm" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="mt-2">
+    <MudItem xs="4">
+        <MudSelect T="string"
+                   Label="Search Type"
+                   Variant="Variant.Outlined"
+                   @bind-Value="@_props.SearchType">
+            <MudSelectItem Value="@(ExaSearchType.Auto.GetEnumMember())">
+                Auto
+            </MudSelectItem>
+
+            <MudSelectItem Value="@(ExaSearchType.Fast.GetEnumMember())">
+                Fast
+            </MudSelectItem>
+
+            <MudSelectItem Value="@(ExaSearchType.Keyword.GetEnumMember())">
+                Keyword
+            </MudSelectItem>
+
+            <MudSelectItem Value="@(ExaSearchType.Neural.GetEnumMember())">
+                Neural
+            </MudSelectItem>
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="4">
+        <MudNumericField Label="Number of Results"
+                         @bind-Value="@_props.NumResults"
+                         Min="1"
+                         Max="100"
+                         HideSpinButtons="true"
+                         Variant="Variant.Outlined" />
+    </MudItem>
+
+    <MudItem xs="4">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Result Category"
+                      HelperText="e.g. company, news, research paper"
+                      @bind-Value="@_props.Category" />
+    </MudItem>
+</MudGrid>
+
+<div class="editor-eyebrow mt-6 mb-2">Content retrieval</div>
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="4">
+    <MudCheckBox T="bool?"
+                 Label="Page Text"
+                 @bind-Value="@_props.TextEnabled"
+                 Color="Color.Primary" />
+
+    <MudCheckBox T="bool?"
+                 Label="Highlights"
+                 @bind-Value="@_props.HighlightsEnabled"
+                 Color="Color.Primary" />
+
+    <MudCheckBox T="bool?"
+                 Label="AI Summary"
+                 @bind-Value="@_props.SummaryEnabled"
+                 Color="Color.Primary" />
+</MudStack>
+
+@if (_props.TextEnabled is true)
+{
+    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="4" Class="mt-2">
+        <MudCheckBox T="bool?"
+                     Label="Include HTML Tags"
+                     @bind-Value="@_props.IncludeHtmlTags"
+                     Color="Color.Primary" />
+
+        <MudNumericField T="int?"
+                         Label="Max Characters"
+                         @bind-Value="@_props.MaxCharacters"
+                         Min="1"
+                         Max="2000000"
+                         HideSpinButtons="true"
+                         Variant="Variant.Outlined"
+                         Style="max-width: 200px;" />
+    </MudStack>
+}
+
+@if (_props.SummaryEnabled is true)
+{
+    <MudGrid Spacing="2" Class="mt-2">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Summary Prompt"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="5"
+                          @bind-Value="@_props.SummaryQuery" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Summary Output Schema (JSON)"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="5"
+                          @bind-Value="@_props.SummarySchema" />
+        </MudItem>
+    </MudGrid>
+}
+
+<div class="editor-eyebrow mt-6 mb-2">Output document class (optional)</div>
+
+<DocumentClassSelector Block="@Block"
+                       SelectionChanged="@BlockChanged"
+                       IsOutputClasses="true"
+                       Required="false" />
+
+<MudExpansionPanels Elevation="0" Class="mt-4">
+    <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+        <TitleContent>
+            <span class="editor-card-title">Crawling &amp; filters</span>
+        </TitleContent>
+
+        <ChildContent>
+            <MudText Typo="Typo.subtitle2" Class="mt-2 mb-2" Style="opacity: 0.7;">
+                Live crawling
+            </MudText>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudSelect T="string"
+                               Label="Crawl Strategy"
+                               Variant="Variant.Outlined"
+                               @bind-Value="@_props.LiveCrawlStrategy">
+                        <MudSelectItem Value="@(ExaLiveCrawlStrategy.Never.GetEnumMember())">
+                            Never
+                        </MudSelectItem>
+
+                        <MudSelectItem Value="@(ExaLiveCrawlStrategy.Fallback.GetEnumMember())">
+                            Fallback
+                        </MudSelectItem>
+
+                        <MudSelectItem Value="@(ExaLiveCrawlStrategy.Always.GetEnumMember())">
+                            Always
+                        </MudSelectItem>
+
+                        <MudSelectItem Value="@(ExaLiveCrawlStrategy.Preferred.GetEnumMember())">
+                            Preferred
+                        </MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                @if (_props.LiveCrawlStrategy is not null
+                    && _props.LiveCrawlStrategy != ExaLiveCrawlStrategy.Never.GetEnumMember())
+                {
+                    <MudItem xs="4">
+                        <MudNumericField T="int?"
+                                         Label="Timeout (seconds)"
+                                         @bind-Value="@_props.LiveCrawlTimeout"
+                                         Min="1"
+                                         HideSpinButtons="true"
+                                         Variant="Variant.Outlined" />
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudText Typo="Typo.subtitle2"
+                     Class="mt-4 mb-2"
+                     Style="opacity: 0.7;">
+                Subpage crawling
+            </MudText>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudNumericField T="int?"
+                                     Label="Subpages Per Result (1-10)"
+                                     @bind-Value="@_props.Subpages"
+                                     Min="1"
+                                     Max="10"
+                                     HideSpinButtons="true"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+
+                @if (_props.Subpages is > 0)
+                {
+                    <MudItem xs="8">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Subpage Keywords (comma-separated)"
+                                      Class="editor-mono-field"
+                                      Value="@JoinList(_props.SubpageTarget)"
+                                      ValueChanged="@((string v) => _props.SubpageTarget = ParseCommaSeparated(v))" />
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudText Typo="Typo.subtitle2"
+                     Class="mt-4 mb-2"
+                     Style="opacity: 0.7;">
+                Domain filtering
+            </MudText>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Include Domains (comma-separated)"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  Value="@JoinList(_props.IncludeDomains)"
+                                  ValueChanged="@((string v) => _props.IncludeDomains = ParseCommaSeparated(v))" />
+                </MudItem>
+
+                <MudItem xs="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Exclude Domains (comma-separated)"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  Value="@JoinList(_props.ExcludeDomains)"
+                                  ValueChanged="@((string v) => _props.ExcludeDomains = ParseCommaSeparated(v))" />
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.subtitle2"
+                     Class="mt-4 mb-2"
+                     Style="opacity: 0.7;">
+                Date filtering
+            </MudText>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Published After"
+                                  Class="editor-mono-field"
+                                  HelperText="ISO 8601 (e.g. 2024-01-01)"
+                                  @bind-Value="@_props.StartPublishedDate" />
+                </MudItem>
+
+                <MudItem xs="4">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Published Before"
+                                  Class="editor-mono-field"
+                                  HelperText="ISO 8601 (e.g. 2024-12-31)"
+                                  @bind-Value="@_props.EndPublishedDate" />
+                </MudItem>
+            </MudGrid>
+        </ChildContent>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    private IntelligentSearchProperties _props => Block.Properties as IntelligentSearchProperties
+        ?? throw new InvalidOperationException("Block properties must be of type IntelligentSearchProperties");
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    private static List<string> ParseCommaSeparated(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+    }
+
+    private static string JoinList(List<string>? list)
+    {
+        return list is null || list.Count == 0
+            ? ""
+            : string.Join(", ", list);
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "label": "Cancel run",
+  "labelPending": "Cancelling…",
+  "title": "Cancel running report?",
+  "message": "This will stop the report that's currently running. Any work already done will be discarded. This can't be undone.",
+  "confirm": "Yes, stop run",
+  "dismiss": "Keep running",
+  "success": "Report cancelled",
+  "error": "Failed to cancel report"
+}

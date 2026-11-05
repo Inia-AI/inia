@@ -1,0 +1,27 @@
+<MudTooltip Text="@HoverText">
+    <MudPaper Width="20px"
+              Height="20px"
+              Class="@ClassBuilder(Color, ShowFadeInOut)"
+              Style="border-radius: 10px" />
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired]
+    public Color Color { get; set; }
+
+    [Parameter, EditorRequired]
+    public string HoverText { get; set; } = default!;
+
+    [Parameter]
+    public bool ShowFadeInOut { get; set; } = false;
+
+    private static string ClassBuilder(Color color, bool isFadingInOut)
+    {
+        var cssClass = $"pa-0 ma-0 mud-theme-{color.ToString().ToLower()}";
+        if (isFadingInOut)
+        {
+            cssClass += " fadeInOut";
+        }
+        return cssClass;
+    }
+}

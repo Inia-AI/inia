@@ -1,0 +1,372 @@
+@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.Workflows.Templates
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Specifications.DocumentCategories
+@using IniaAi.WebApp.Components.Dialogs
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using Microsoft.AspNetCore.Authorization
+
+@inject ILogger<DocumentClassManager> Logger
+@inject IDialogService DialogService
+@inject AppState AppState
+@inject IServiceScopeFactory ServiceScopeFactory
+
+<MudCard Outlined="true" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Class="editor-card-title">
+                Page overviews
+            </MudText>
+        </CardHeaderContent>
+
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Edit"
+                       aria-label="Edit the default overview prompt"
+                       OnClick="OpenDefaultOverviewDialog">
+                Edit
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudText Typo="Typo.subtitle2">Default overview prompt</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Used for any document class without its own prompt. Empty: those classes get no page overviews.
+        </MudText>
+        <MudStack Row="true" Spacing="2" Class="mt-2 flex-wrap">
+            @PromptChip("Prompt", Workflow.Configuration?.PageOverviews?.Pages)
+            @PromptChip("One-page version", Workflow.Configuration?.PageOverviews?.SinglePage)
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@{
+    PageOverviewCoverage.Gap? gap = PageOverviewCoverage.FindGap(Workflow);
+}
+
+@if (gap is not null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.body2">@gap.Message</MudText>
+            <div>
+                <MudButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Color="Color.Warning"
+                           OnClick="() => _showGapBlocks = !_showGapBlocks">
+                    @(_showGapBlocks ? "Hide blocks" : "Show blocks")
+                </MudButton>
+            </div>
+            @if (_showGapBlocks)
+            {
+                <ul class="ma-0">
+                    @foreach (Block block in gap.Blocks)
+                    {
+                        <li><MudText Typo="Typo.body2">@BlockLocation(block)</MudText></li>
+                    }
+                </ul>
+            }
+        </MudStack>
+    </MudAlert>
+}
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Class="editor-card-title">
+                Document Classes
+            </MudText>
+        </CardHeaderContent>
+
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Outlined.Add"
+                           aria-label="Add document class"
+                           Color="Color.Primary"
+                           OnClick="() => OpenEditDocumentClassDialog()" />
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        @if (!Workflow.DocumentClasses.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                No document classes defined for this workflow. Document classes allow you to categorize
+                and manage which types of documents blocks can process.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="@Workflow.DocumentClasses.OrderBy(dc => dc.DisplayName)"
+                      Hover="true"
+                      Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>
+                        Display Name
+                    </MudTh>
+
+                    <MudTh>
+                        Key
+                    </MudTh>
+
+                    <MudTh>
+                        Description
+                    </MudTh>
+
+                    <MudTh>
+                        Category
+                    </MudTh>
+
+                    <MudTh>
+                        Requirement
+                    </MudTh>
+
+                    <MudTh>
+                        Overview prompt
+                    </MudTh>
+
+                    <MudTh Style="text-align: center;">
+                        @EditDocumentClassDialog.LIMIT_TO_ONE_DOCUMENT
+                    </MudTh>
+
+                    <MudTh Style="text-align: center;">
+                        @EditDocumentClassDialog.IS_FOR_OUTPUT_DOCUMENTS
+                    </MudTh>
+
+                    <MudTh>
+                        Actions
+                    </MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd DataLabel="Display Name">
+                        @context.DisplayName
+                    </MudTd>
+
+                    <MudTd DataLabel="Key">
+                        @context.Key
+                    </MudTd>
+
+                    <MudTd DataLabel="Description">
+                        @context.Description
+                    </MudTd>
+
+                    <MudTd DataLabel="Category">
+                        @(GetDocumentCategoryName(context.DocumentCategoryId))
+                    </MudTd>
+
+                    <MudTd DataLabel="Requirement">
+                        @context.Requirement.ToString()
+                    </MudTd>
+
+                    <MudTd DataLabel="Overview prompt">
+                        @if (context.IsOutputDocument)
+                        {
+                            <MudText Typo="Typo.body2" Class="mud-text-disabled">-</MudText>
+                        }
+                        else
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2">@PageOverviewCoverage.SourceLabel(context, Workflow.Configuration?.PageOverviews)</MudText>
+                                @if (gap?.Classes.Contains(context) == true)
+                                {
+                                    <MudTooltip Text="Blocks read page overviews this class does not get">
+                                        <MudIcon Icon="@Icons.Material.Outlined.WarningAmber" Color="Color.Warning" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                            </MudStack>
+                        }
+                    </MudTd>
+
+                    <MudTd DataLabel="@EditDocumentClassDialog.LIMIT_TO_ONE_DOCUMENT" Style="text-align: center;">
+                        @SettingCell(context.ShouldBeSingular)
+                    </MudTd>
+
+                    <MudTd DataLabel="@EditDocumentClassDialog.IS_FOR_OUTPUT_DOCUMENTS" Style="text-align: center;">
+                        @SettingCell(context.IsOutputDocument)
+                    </MudTd>
+
+                    <MudTd>
+                        <MudStack Row="true">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                           Size="Size.Small"
+                                           aria-label="Edit document class"
+                                           OnClick="() => OpenEditDocumentClassDialog(context)" />
+
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           Class="editor-soft-button"
+                                           aria-label="Remove document class"
+                                           OnClick="() => DeleteDocumentClass(context)" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public Workflow Workflow { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback DocumentClassesChanged { get; set; }
+
+    private Dictionary<string, string> _documentCategoryNames = new();
+    private bool _showGapBlocks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadDocumentCategoriesAsync();
+    }
+
+    private async Task LoadDocumentCategoriesAsync()
+    {
+        try
+        {
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            var spec = new DocumentCategoriesSpec();
+            var categories = await coreUnitOfWork
+                .Repository<DocumentCategory>()
+                .GetAllAsync(spec);
+
+            _documentCategoryNames = categories.ToDictionary(c => c.Id, c => c.Name);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load document categories");
+        }
+    }
+
+    private static RenderFragment SettingCell(bool isOn) =>
+        @<span class="d-inline-flex align-center gap-1">
+            <MudIcon Icon="@(isOn ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                     Color="@(isOn ? Color.Success : Color.Default)"
+                     Size="Size.Small" />
+            @(isOn ? "Yes" : "No")
+        </span>;
+
+    private static RenderFragment PromptChip(string label, PageOverviewPrompt? prompt)
+    {
+        bool hasText = prompt is { IsBlank: false };
+
+        return @<MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ma-0"
+                         Color="@(hasText ? Color.Success : Color.Default)">
+                    @label: @(hasText ? "Set" : "Empty")
+                </MudChip>;
+    }
+
+    private static string BlockLocation(Block block)
+    {
+        string section = string.IsNullOrWhiteSpace(block.Section?.Title) ? "Untitled section" : block.Section.Title;
+        string name = string.IsNullOrWhiteSpace(block.Name) ? "Untitled block" : block.Name;
+
+        return $"{section} › {name}";
+    }
+
+    private async Task OpenDefaultOverviewDialog()
+    {
+        DialogParameters<PageOverviewDefaultDialog> parameters = [];
+        parameters.Add(x => x.Workflow, Workflow);
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true };
+        IDialogReference dialog = await DialogService.ShowAsync<PageOverviewDefaultDialog>("Default overview prompt", parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        await DocumentClassesChanged.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private string GetDocumentCategoryName(string? categoryId)
+    {
+        if (string.IsNullOrEmpty(categoryId))
+        {
+            return "-";
+        }
+
+        return _documentCategoryNames.TryGetValue(categoryId, out var name) ? name : categoryId;
+    }
+
+
+    private async Task OpenEditDocumentClassDialog(DocumentClass? documentClass = null)
+    {
+        DialogParameters<EditDocumentClassDialog> parameters = [];
+        parameters.Add(x => x.DocumentClass, documentClass);
+        parameters.Add(x => x.Workflow, Workflow);
+
+        string title = documentClass is null
+            ? "Add Document Class"
+            : "Edit Document Class";
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditDocumentClassDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            if (documentClass is null && result.Data is DocumentClass newDocumentClass)
+            {
+                AppState.Notify($"Document class '{newDocumentClass.DisplayName}' created", Severity.Success);
+            }
+            else
+            {
+                AppState.Notify($"Document class '{documentClass?.DisplayName}' updated", Severity.Success);
+            }
+
+            await DocumentClassesChanged.InvokeAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating document class");
+            AppState.Notify("Error updating document class: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteDocumentClass(DocumentClass documentClass)
+    {
+        DialogParameters<ConfirmationDialog> parameters = [];
+        parameters.Add(x => x.ConfirmButtonText, "Delete");
+        parameters.Add(x => x.Message, $"Are you sure you want to delete the document class '{documentClass.DisplayName}'?");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                Workflow.RemoveDocumentClass(documentClass);
+                await DocumentClassesChanged.InvokeAsync();
+                StateHasChanged();
+
+                AppState.Notify($"Document class '{documentClass.DisplayName}' deleted", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting document class");
+                AppState.Notify("Error deleting document class: " + ex.Message, Severity.Error);
+            }
+        }
+    }
+}

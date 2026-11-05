@@ -1,0 +1,100 @@
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">
+            Publishes this @SubjectKind to the Library as a reusable component and links this copy to it.
+        </MudText>
+
+        @if (LinkedContainerName is not null)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                This block sits inside Library section '@LinkedContainerName'. Sharing converts it
+                into a reference there — the section's definition updates, and every workflow using
+                the section follows along.
+            </MudAlert>
+        }
+
+        <MudTextField Label="Component name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      RequiredError="A name is required."
+                      @bind-Value="Name" />
+
+        <MudSelect T="string"
+                   Label="Category"
+                   Variant="Variant.Outlined"
+                   Class="mt-3"
+                   Required="true"
+                   RequiredError="Pick a category — the Library groups components by it."
+                   @bind-Value="CategoryId">
+            @foreach (SharedComponentCategoryDto category in Categories)
+            {
+                <MudSelectItem T="string" Value="@category.Id">@category.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField Label="Description (optional)"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Class="mt-3"
+                      @bind-Value="Description" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="@Cancel">Cancel</MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(Name) || string.IsNullOrEmpty(CategoryId))">Share</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public sealed record ShareToLibraryResult(string Name, string? Description, string CategoryId);
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string SubjectKind { get; set; } = "block";
+
+    [Parameter]
+    public string? DefaultName { get; set; }
+
+    [Parameter]
+    public List<SharedComponentCategoryDto> Categories { get; set; } = [];
+
+    [Parameter]
+    public string? LinkedContainerName { get; set; }
+
+    private string? Name { get; set; }
+
+    private string? CategoryId { get; set; }
+
+    private string? Description { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Name = DefaultName;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrEmpty(CategoryId))
+        {
+            return;
+        }
+
+        string? description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim();
+        MudDialog.Close(DialogResult.Ok(new ShareToLibraryResult(Name.Trim(), description, CategoryId)));
+    }
+}

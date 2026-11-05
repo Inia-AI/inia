@@ -1,0 +1,410 @@
+@using IniaAi.Core.Workflows
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Services
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.subtitle1">Variants</MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                               Variant="Variant.Text"
+                               Class="editor-soft-button"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="AddVariant">
+                        Add Variant
+                    </MudButton>
+                    @if (_variants.Count > 0)
+                    {
+                        <MudButton StartIcon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Class="editor-soft-button"
+                                   OnClick="RemoveCurrentVariant">
+                            Remove Variant
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudStack>
+
+            @if (_variants.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">
+                    No variants configured. Click "Add Variant" to create one.
+                </MudAlert>
+            }
+            else
+            {
+                <MudChipSet T="int"
+                            SelectionMode="SelectionMode.SingleSelection"
+                            CheckMark="true"
+                            SelectedValue="ActiveIndex"
+                            SelectedValueChanged="(int index) => _activeTabIndex = index">
+                    @foreach (var (variant, index) in _variants.Select((v, i) => (v, i)))
+                    {
+                        <MudChip T="int"
+                                 Value="index"
+                                 Variant="Variant.Text"
+                                 Color="Color.Default"
+                                 SelectedColor="Color.Primary"
+                                 Size="Size.Large">
+                            @(!string.IsNullOrWhiteSpace(variant.Key) ? variant.Key : $"Variant {index + 1}")
+                        </MudChip>
+                    }
+                </MudChipSet>
+
+                var variant = _variants[ActiveIndex];
+                <MudPaper Elevation="0"
+                          Class="pa-4"
+                          Style="background: var(--editor-surface-subpanel); border-radius: var(--editor-radius-control);">
+                    <MudStack Spacing="4">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="Key"
+                                              Variant="Variant.Outlined"
+                                              Class="editor-mono-field"
+                                              Margin="Margin.Dense"
+                                              HelperText="Suffix for block tags (e.g., AR, QR)"
+                                              @bind-Value="variant.Key"
+                                              Required="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="Label"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              HelperText="Display name (e.g., Annual Report)"
+                                              @bind-Value="variant.Label"
+                                              Required="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="Stop Gate"
+                                              Variant="Variant.Outlined"
+                                              Class="editor-mono-field"
+                                              Margin="Margin.Dense"
+                                              HelperText="e.g., {verify_report.stop}"
+                                              @bind-Value="variant.SectionStopGate" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <div>
+                            <MudText Class="editor-eyebrow mb-2">Document Class Mapping</MudText>
+                            @if (variant.ClassMapRows.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true">
+                                    No blocks in this section declare document classes, so there is nothing to map.
+                                    Set classes on the blocks to translate them per variant.
+                                </MudAlert>
+                            }
+                            else
+                            {
+                                <MudPaper Elevation="0"
+                                          Style="border: 1px solid var(--editor-border); border-radius: var(--editor-radius-control); background: var(--editor-surface-1);">
+                                    @foreach (var (row, rowIndex) in variant.ClassMapRows.Select((r, i) => (r, i)))
+                                    {
+                                        @if (rowIndex > 0)
+                                        {
+                                            <MudDivider />
+                                        }
+                                        <MudStack @key="row"
+                                                  Row="true"
+                                                  AlignItems="AlignItems.Center"
+                                                  Spacing="3"
+                                                  Class="px-4 py-2">
+                                            <MudText Typo="Typo.body2"
+                                                     Class="editor-mono-field"
+                                                     Style="flex: 1 1 0; min-width: 160px; overflow-wrap: anywhere;">
+                                                @row.Source
+                                            </MudText>
+                                            <MudIcon Icon="@Icons.Material.Outlined.ArrowForward"
+                                                     Size="Size.Small"
+                                                     Style="color: var(--mud-palette-text-secondary); flex-shrink: 0;" />
+                                            <MudSelect T="string"
+                                                       Placeholder="Unchanged (same class)"
+                                                       Variant="Variant.Outlined"
+                                                       Margin="Margin.Dense"
+                                                       MultiSelection="true"
+                                                       Style="flex: 1.4 1 0; min-width: 240px;"
+                                                       SelectedValues="@row.Targets"
+                                                       SelectedValuesChanged="@((IReadOnlyCollection<string> values) => row.Targets = VariantClassMapEditor.NormalizeTargets(row.Targets, values))">
+                                                <MudSelectItem Value="@VariantDocumentClassEditor.ANY">Any (All documents)</MudSelectItem>
+                                                <MudSelectItem Value="@VariantDocumentClassEditor.NONE">None (No documents)</MudSelectItem>
+                                                <MudDivider />
+                                                @foreach (var dc in _mappableClasses)
+                                                {
+                                                    <MudSelectItem Value="@dc">@dc</MudSelectItem>
+                                                }
+                                            </MudSelect>
+                                            @if (row.IsStale)
+                                            {
+                                                <MudTooltip Text="This class is no longer used by any block in this section.">
+                                                    <MudIcon Icon="@Icons.Material.Outlined.Warning" Color="Color.Warning" Size="Size.Small" />
+                                                </MudTooltip>
+                                                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                               Color="Color.Error"
+                                                               Size="Size.Small"
+                                                               Class="editor-soft-button"
+                                                               aria-label="Remove stale mapping"
+                                                               OnClick="() => variant.ClassMapRows.Remove(row)" />
+                                            }
+                                        </MudStack>
+                                    }
+                                </MudPaper>
+                            }
+                        </div>
+
+                        <div>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                                <MudText Class="editor-eyebrow">Parameters</MudText>
+                                <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                                           Variant="Variant.Text"
+                                           Class="editor-soft-button"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="() => variant.Parameters.Add(new ParamEntry())">
+                                    Add Parameter
+                                </MudButton>
+                            </MudStack>
+                            @if (variant.Parameters.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2" Style="color: var(--mud-palette-text-secondary);">
+                                    No parameters. Use them as {_NAME} placeholders resolved per variant.
+                                </MudText>
+                            }
+                            @foreach (var (param, pIndex) in variant.Parameters.Select((p, i) => (p, i)))
+                            {
+                                <MudStack @key="param"
+                                          Class="mb-2 pa-3"
+                                          Spacing="2"
+                                          Style="border: 1px solid var(--editor-border); border-radius: var(--editor-radius-control); background: var(--editor-surface-1);">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                                        <MudTextField Label="Name"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      Class="editor-mono-field"
+                                                      @bind-Value="param.Name" />
+
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                       Color="Color.Error"
+                                                       Size="Size.Small"
+                                                       Class="editor-soft-button"
+                                                       aria-label="Remove parameter"
+                                                       OnClick="() => variant.Parameters.RemoveAt(pIndex)" />
+                                    </MudStack>
+
+                                    <MudTextField Label="Value"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Lines="3"
+                                                  MaxLines="15"
+                                                  @bind-Value="param.Value" />
+                                </MudStack>
+                            }
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-2">@_errorMessage</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        @if (_variants.Count > 0)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Delete"
+                       Variant="Variant.Text"
+                       Color="Color.Error"
+                       Class="editor-soft-button mr-auto"
+                       OnClick="ClearAll">
+                Clear All Variants
+            </MudButton>
+        }
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="Confirm">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<VariantEditModel> _variants = [];
+    private List<string> _blockClasses = [];
+    private List<string> _mappableClasses = [];
+    private int _activeTabIndex;
+    private string _errorMessage = string.Empty;
+
+    private int ActiveIndex => Math.Clamp(_activeTabIndex, 0, Math.Max(0, _variants.Count - 1));
+
+    [Parameter]
+    public Section Section { get; set; } = default!;
+
+    [Parameter]
+    public List<string> AvailableDocumentClasses { get; set; } = [];
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _ = ParameterizedSectionNormalizer.Normalize(Section);
+        _blockClasses = VariantClassMapEditor.CollectBlockClasses(Section);
+        _mappableClasses = AvailableDocumentClasses.Where(dc => !VariantDocumentClassEditor.IsSentinel(dc)).ToList();
+
+        if (!string.IsNullOrWhiteSpace(Section.ParameterizedConfig))
+        {
+            try
+            {
+                var config = Newtonsoft.Json.JsonConvert.DeserializeObject<ParameterizedSectionConfig>(
+                    Section.ParameterizedConfig);
+
+                if (config?.Variants is not null)
+                {
+                    _variants = config.Variants.Select(sv => VariantEditModel.FromDomain(sv, _blockClasses)).ToList();
+                }
+            }
+            catch (Newtonsoft.Json.JsonException)
+            {
+                _variants = [];
+                _errorMessage = "Failed to load parameterized configuration — using empty config.";
+            }
+        }
+    }
+
+    private ParameterizedSectionConfig? BuildConfig()
+    {
+        if (_variants.Count == 0)
+            return null;
+
+        var variants = _variants.Select(v => new SectionVariant(
+            Key: v.Key.Trim(),
+            Label: v.Label.Trim(),
+            Params: v.Parameters
+                .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+                .ToDictionary(p => p.Name.Trim(), p => p.Value ?? string.Empty) is { Count: > 0 } paramDict
+                    ? paramDict : null,
+            SectionStopGate: string.IsNullOrWhiteSpace(v.SectionStopGate) ? null : v.SectionStopGate.Trim(),
+            SectionSupportedDocumentClasses: v.LegacyDocumentClasses is { Count: > 0 } ? v.LegacyDocumentClasses.ToList() : null,
+            ClassMap: VariantClassMapEditor.BuildMap(v.ClassMapRows)
+        )).ToList();
+
+        return new ParameterizedSectionConfig(variants);
+    }
+
+    private void AddVariant()
+    {
+        _variants.Add(new VariantEditModel
+        {
+            ClassMapRows = VariantClassMapEditor.DeriveRows(_blockClasses, null),
+        });
+        _activeTabIndex = _variants.Count - 1;
+    }
+
+    private void RemoveCurrentVariant()
+    {
+        if (_activeTabIndex >= 0 && _activeTabIndex < _variants.Count)
+        {
+            _variants.RemoveAt(_activeTabIndex);
+            _activeTabIndex = Math.Max(0, _activeTabIndex - 1);
+        }
+    }
+
+    private void ClearAll()
+    {
+        _variants.Clear();
+        _activeTabIndex = 0;
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+
+    private void Confirm()
+    {
+        _errorMessage = string.Empty;
+
+        foreach (var variant in _variants)
+        {
+            if (string.IsNullOrWhiteSpace(variant.Key))
+            {
+                _errorMessage = "All variants must have a Key";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(variant.Label))
+            {
+                _errorMessage = "All variants must have a Label";
+                return;
+            }
+        }
+
+        var duplicateKeys = _variants.GroupBy(v => v.Key.Trim()).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (duplicateKeys.Count > 0)
+        {
+            _errorMessage = $"Duplicate variant keys: {string.Join(", ", duplicateKeys)}";
+            return;
+        }
+
+        foreach (var variant in _variants)
+        {
+            var duplicateParams = variant.Parameters
+                .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+                .GroupBy(p => p.Name.Trim())
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+            if (duplicateParams.Count > 0)
+            {
+                _errorMessage = $"Variant '{variant.Key}' has duplicate param names: {string.Join(", ", duplicateParams)}";
+                return;
+            }
+        }
+
+        if (_variants.Count == 0)
+        {
+            MudDialog?.Close(DialogResult.Ok<string?>(null));
+            return;
+        }
+
+        var config = BuildConfig();
+        var json = config is not null
+            ? Newtonsoft.Json.JsonConvert.SerializeObject(config)
+            : null;
+
+        MudDialog?.Close(DialogResult.Ok(json));
+    }
+
+    #region Edit Models
+
+    public class VariantEditModel
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public string? SectionStopGate { get; set; }
+        public List<VariantClassMapEditor.Row> ClassMapRows { get; set; } = [];
+        public List<ParamEntry> Parameters { get; set; } = [];
+
+        /// <summary>Round-trips an unconverted legacy class list; never edited or shown.</summary>
+        public List<string>? LegacyDocumentClasses { get; set; }
+
+        public static VariantEditModel FromDomain(SectionVariant sv, IReadOnlyList<string> blockClasses) => new()
+        {
+            Key = sv.Key,
+            Label = sv.Label,
+            SectionStopGate = sv.SectionStopGate,
+            ClassMapRows = VariantClassMapEditor.DeriveRows(blockClasses, sv.ClassMap),
+            LegacyDocumentClasses = sv.SectionSupportedDocumentClasses,
+            Parameters = sv.Params?
+                .Select(kv => new ParamEntry { Name = kv.Key, Value = kv.Value })
+                .ToList() ?? []
+        };
+    }
+
+    public class ParamEntry
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    #endregion
+}

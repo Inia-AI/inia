@@ -1,0 +1,290 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.WebApp.Services
+@using IniaAi.WebApp.Services.Signatures
+
+@inject ISignatureOverrideReader SignatureOverrideReader
+@inject IDialogService DialogService
+@inject AppState AppState
+@implements IDisposable
+
+@if (Block.Properties is IHasSignatureFields && Workflow is not null)
+{
+    List<string> referencedNames = SignatureFieldReferences.GetReferencedFieldNames(Block, Workflow);
+    List<string> unmatchedTokens = SignatureFieldReferences.GetUnmatchedTokens(Block, Workflow);
+
+    if (referencedNames.Count > 0 || unmatchedTokens.Count > 0)
+    {
+        <MudExpansionPanels Elevation="0" Class="mt-4">
+            <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+                <TitleContent>
+                    <MudStack Row="true"
+                              AlignItems="AlignItems.Center"
+                              Spacing="2"
+                              Class="signature-fields-header">
+                        <span class="editor-card-title">Signature fields</span>
+
+                        @if (referencedNames.Count > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
+                                @referencedNames.Count
+                            </MudChip>
+                        }
+                    </MudStack>
+                </TitleContent>
+                <ChildContent>
+                    <MudText Typo="Typo.body2" Class="mb-2 mt-2" Style="opacity: 0.75;">
+                        Workflow-level fields this block's templates reference via
+                        <code>{Name}</code> tokens. One shared value applies to every
+                        referencing block — manage definitions on the workflow's
+                        <b>Signatures</b> tab.
+                    </MudText>
+
+                    @foreach (string name in referencedNames)
+                    {
+                        WorkflowSignatureField? field = FindField(name);
+                        if (field is null)
+                        {
+                            continue;
+                        }
+
+                        <MudPaper @key="@name" Elevation="0" Outlined="true" Class="pa-3 mb-2 rounded">
+                            <MudStack Row="true"
+                                      AlignItems="AlignItems.Center"
+                                      Spacing="2"
+                                      Style="cursor: pointer;"
+                                      @onclick="@(() => ToggleFieldExpansion(name))">
+                                <MudIcon Icon="@(IsFieldExpanded(name) ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                         Size="Size.Small" />
+                                <span class="editor-mono-field">@field.Name</span>
+                                <MudText Typo="Typo.body2" Style="opacity: 0.75;">@field.DisplayName</MudText>
+                                @if (GetOverrideValue(name) is not null)
+                                {
+                                    <MudTooltip Text="Client override active">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                 Color="Color.Secondary"
+                                                 Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                <MudSpacer />
+                                <div @onclick:stopPropagation="true">
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Class="editor-soft-button"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => ManageField())">
+                                        Manage
+                                    </MudButton>
+                                </div>
+                            </MudStack>
+
+                            @if (IsFieldExpanded(name))
+                            {
+                                <MudTextField T="string"
+                                              Variant="Variant.Outlined"
+                                              Label="Default Value"
+                                              Class="mt-3 editor-mono-field editor-resolved"
+                                              Value="@field.DefaultValue"
+                                              Lines="6"
+                                              ReadOnly="true" />
+
+                                <MudTextField T="string"
+                                              Variant="Variant.Outlined"
+                                              Label="@(GetOverrideValue(name) is null ? "Client Override (none set)" : "Client Override")"
+                                              Class="mt-3 editor-mono-field editor-resolved"
+                                              HelperText="Read-only. Clients author overrides from the Signatures page — shows the value as of page load, so save or refresh to see newer client edits."
+                                              Value="@(GetOverrideValue(name) ?? string.Empty)"
+                                              Lines="6"
+                                              ReadOnly="true"
+                                              Adornment="Adornment.End"
+                                              AdornmentIcon="@(GetOverrideValue(name) is not null ? Icons.Material.Filled.CheckCircle : null)"
+                                              AdornmentColor="Color.Secondary" />
+                            }
+                        </MudPaper>
+                    }
+
+                    @foreach (string token in unmatchedTokens)
+                    {
+                        <MudAlert @key="@token" Severity="Severity.Warning" Dense="true" Class="mt-2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <span><code>{@token}</code> matches no signature field, variable, or block tag.</span>
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => QuickCreateField(token))">
+                                    Add definition
+                                </MudButton>
+                            </MudStack>
+                        </MudAlert>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    [CascadingParameter]
+    public EditorSurfaceState? SurfaceState { get; set; }
+
+    private Workflow? Workflow => Block.Section?.Workflow;
+
+    /// <summary>
+    /// Cache of active override values (workflow-level, keyed by field name). Refreshed only
+    /// when the (workflow type, org id) fingerprint drifts — never on parent re-renders that
+    /// pass the same Block under the same tenant. Null until the first load completes.
+    /// </summary>
+    private IReadOnlyDictionary<string, string>? _activeOverrides;
+
+    private string? _lastLoadedWorkflowTypeId;
+
+    /// <summary>Field cards are collapsed by default; values render only when expanded.</summary>
+    private readonly HashSet<string> _expandedFields = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Org id portion of the cache fingerprint. <c>TenantSelector</c> swaps
+    /// <c>AppState.CurrentOrganizationId</c> without a page reload, so a SuperAdmin
+    /// can switch tenants while this editor stays mounted on the same Block. Without
+    /// org-id in the key the cached overrides would leak the previous tenant's values
+    /// into the current tenant's view.
+    /// </summary>
+    private string? _lastLoadedOrgId;
+
+    protected override void OnInitialized()
+    {
+        // Tenant switch via TenantSelector raises this event but does not force a parent
+        // re-render of the workflow editor, so OnParametersSetAsync alone is not enough
+        // — subscribe directly so the override read re-issues for the new org even when
+        // nothing else changes.
+        AppState.OrganizationChanged += OnOrganizationChanged;
+
+        // Save-As-Core fires this after a successful save. The fingerprint is unchanged
+        // across save, so OnParametersSetAsync would skip the reload — but a client may
+        // have promoted a pending override while staff was editing, and the cached value
+        // would otherwise stay stale until the next mount or tenant switch.
+        AppState.SignatureOverridesInvalidated += OnSignatureOverridesInvalidated;
+    }
+
+    public void Dispose()
+    {
+        AppState.OrganizationChanged -= OnOrganizationChanged;
+        AppState.SignatureOverridesInvalidated -= OnSignatureOverridesInvalidated;
+    }
+
+    private void OnOrganizationChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _lastLoadedWorkflowTypeId = Workflow?.WorkflowTypeId;
+            _lastLoadedOrgId = AppState.CurrentOrganizationId;
+            await LoadOverridesAsync();
+            StateHasChanged();
+        });
+    }
+
+    private void OnSignatureOverridesInvalidated(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadOverridesAsync();
+            StateHasChanged();
+        });
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        string? currentOrgId = AppState.CurrentOrganizationId;
+        if (Workflow?.WorkflowTypeId == _lastLoadedWorkflowTypeId && currentOrgId == _lastLoadedOrgId)
+        {
+            return;
+        }
+
+        _lastLoadedWorkflowTypeId = Workflow?.WorkflowTypeId;
+        _lastLoadedOrgId = currentOrgId;
+        await LoadOverridesAsync();
+    }
+
+    private async Task LoadOverridesAsync()
+    {
+        string? organizationId = AppState.CurrentOrganizationId;
+        if (string.IsNullOrEmpty(organizationId))
+        {
+            _activeOverrides = null;
+            return;
+        }
+
+        _activeOverrides = await SignatureOverrideReader.LoadForWorkflowAsync(
+            organizationId,
+            Workflow?.WorkflowTypeId,
+            CancellationToken.None);
+    }
+
+    private WorkflowSignatureField? FindField(string name)
+    {
+        return Workflow?.SignatureFields.FirstOrDefault(
+            f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string? GetOverrideValue(string fieldName)
+    {
+        if (_activeOverrides is null)
+        {
+            return null;
+        }
+
+        return _activeOverrides.TryGetValue(fieldName, out string? value)
+            ? value
+            : null;
+    }
+
+    private void ManageField()
+    {
+        SurfaceState?.RequestSignaturesTab();
+    }
+
+    private bool IsFieldExpanded(string name)
+    {
+        return _expandedFields.Contains(name);
+    }
+
+    private void ToggleFieldExpansion(string name)
+    {
+        if (!_expandedFields.Add(name))
+        {
+            _ = _expandedFields.Remove(name);
+        }
+    }
+
+    private async Task QuickCreateField(string token)
+    {
+        if (Workflow is null)
+        {
+            return;
+        }
+
+        DialogParameters<EditSignatureFieldDialog> parameters = [];
+        parameters.Add(x => x.Workflow, Workflow);
+        parameters.Add(x => x.InitialName, token);
+
+        var dialog = await DialogService.ShowAsync<EditSignatureFieldDialog>("Add Signature Field", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        StateHasChanged();
+        await BlockChanged.InvokeAsync();
+    }
+}

@@ -1,0 +1,60 @@
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+<MudPaper Outlined="true" Class="pa-2 d-inline-flex align-center" Style="gap: 8px;">
+    <MudIcon Icon="@Icons.Material.Outlined.Link"
+             Size="Size.Small"
+             Color="@(ComponentName is null ? Color.Error : Color.Primary)" />
+    <MudStack Spacing="0">
+        <MudText Typo="Typo.body2">@(ComponentName ?? "No longer in the Library")</MudText>
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">slot '@SlotTag'</MudText>
+            @if (HeadContentHash is not null)
+            {
+                <span class="editor-mono-field">@WorkflowVersionCode.Short(HeadContentHash)</span>
+            }
+        </MudStack>
+    </MudStack>
+    @if (OnOpen.HasDelegate)
+    {
+        <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
+                       Size="Size.Small"
+                       aria-label="@($"Open '{ComponentName}' in the Library")"
+                       OnClick="async () => await OnOpen.InvokeAsync()" />
+    }
+    @if (OnSwap.HasDelegate)
+    {
+        <MudIconButton Icon="@Icons.Material.Outlined.SwapHoriz"
+                       Size="Size.Small"
+                       aria-label="@($"Swap the block referenced in slot '{SlotTag}'")"
+                       OnClick="async () => await OnSwap.InvokeAsync()" />
+    }
+    @if (OnRemove.HasDelegate)
+    {
+        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                       Size="Size.Small"
+                       Color="Color.Error"
+                       aria-label="@($"Remove the reference in slot '{SlotTag}'")"
+                       OnClick="async () => await OnRemove.InvokeAsync()" />
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public string SlotTag { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ComponentName { get; set; }
+
+    [Parameter]
+    public string? HeadContentHash { get; set; }
+
+    [Parameter]
+    public EventCallback OnOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnSwap { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+}

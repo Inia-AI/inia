@@ -1,0 +1,176 @@
+﻿@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Domain.Entities.Documents
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Services.Jobs;
+@using IniaAi.Services.Models.Jobs
+@using IniaAi.Services.Models.Jobs.Enums
+
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject AppState AppState
+@inject ILogger<JobsCard> Logger
+@inject IJobsService JobService
+
+<MudCard Outlined="true">
+	<MudCardHeader>
+        <MudText Typo="Typo.h5" Class="ml-2">
+            Active Jobs
+        </MudText>
+	</MudCardHeader>
+
+    <MudCardContent>
+		<MudDataGrid T="Job"
+					 Items="@SortedJobs"
+					 Dense="true"
+					 ReadOnly="true"
+					 RowsPerPage="@PAGE_ITEM_COUNT"
+					 SortMode="SortMode.Single"
+					 Class="w-100">
+
+			<Columns>
+				<PropertyColumn Property="x => x.Name"
+								Title="Name"
+								SortBy="x => x.Name" />
+
+				<TemplateColumn Title="Start Date">
+					<CellTemplate Context="ctx">
+						<div class="text-end">
+							@ctx.Item.CreatedAt.ToString("MMM d, H:mm")
+						</div>
+					</CellTemplate>
+				</TemplateColumn>
+
+				<TemplateColumn Title="Status">
+					<CellTemplate Context="ctx">
+						<div class="text-center">
+							@switch (ctx.Item)
+							{
+								case { State: JobState.Queued }:
+									<StateIndicator Color="Color.Info"
+													HoverText="@ctx.Item.State.ToString()"
+													ShowFadeInOut="true" />
+									break;
+								case { IsBusy: true }:
+									<StateIndicator Color="Color.Warning"
+													HoverText="@ctx.Item.State.ToString()"
+													ShowFadeInOut="true" />
+									break;
+								case { State: JobState.Error }:
+									<StateIndicator Color="Color.Error"
+													HoverText="@(ctx.Item.Error?.ToString() ?? "No error to show")" />
+									break;
+								case { State: JobState.Cancelled }:
+									<StateIndicator Color="Color.Error"
+													HoverText="@ctx.Item.State.ToString()" />
+									break;
+								default:
+									<StateIndicator Color="Color.Success"
+													HoverText="@ctx.Item.State.ToString()" />
+									break;
+							}
+						</div>
+					</CellTemplate>
+				</TemplateColumn>
+
+				<TemplateColumn Title="Actions" HeaderClass="actions-col" CellClass="actions-col">
+					<CellTemplate Context="ctx">
+						<div class="text-center">
+							@if (ctx.Item.IsBusy)
+							{
+								<MudTooltip Text="Cancel">
+									<MudIconButton Size="Size.Small"
+												   aria-label="Cancel job"
+												   Icon="@Icons.Material.Outlined.Cancel"
+												   Color="Color.Warning"
+												   OnClick="@(() => CancelJobAsync(ctx.Item))" />
+								</MudTooltip>
+							}
+							else
+							{
+								<MudTooltip Text="Delete">
+									<MudIconButton Size="Size.Small"
+												   aria-label="Delete job"
+												   Icon="@Icons.Material.Outlined.Delete"
+												   Color="Color.Error"
+												   OnClick="@(() => DeleteJobAsync(ctx.Item))" />
+								</MudTooltip>
+							}
+						</div>
+					</CellTemplate>
+				</TemplateColumn>
+			</Columns>
+
+			<PagerContent>
+				<MudDataGridPager T="Job"
+								  PageSizeSelector="false"
+								  InfoFormat="" />
+			</PagerContent>
+		</MudDataGrid>
+
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private const int PAGE_ITEM_COUNT = 5;
+
+    [CascadingParameter]
+    public List<Job> Jobs { get; set; } = [];
+
+    private List<Job>? _sortedJobsSource;
+    private List<Job> _sortedJobs = [];
+
+    private List<Job> SortedJobs
+    {
+        get
+        {
+            if (!ReferenceEquals(_sortedJobsSource, Jobs))
+            {
+                _sortedJobsSource = Jobs;
+                _sortedJobs = Jobs.OrderByDescending(j => j.CreatedAt).ToList();
+            }
+
+            return _sortedJobs;
+        }
+    }
+
+    private async Task CancelJobAsync(Job job)
+    {
+        bool shouldProceed = await DialogService.ShowMessageBoxAsync(
+                "Cancel Job",
+                "Are you sure you want to cancel this job?",
+                yesText: "Yes",
+                noText: "No")
+            ?? false;
+
+        if (shouldProceed)
+        {
+            JobService.CancelJob(job.Id);
+        }
+    }
+
+    private async Task DeleteJobAsync(Job job)
+    {
+        if (job.IsBusy)
+        {
+            await DialogService.ShowMessageBoxAsync(
+                "Job is running",
+                "Please wait for the job to finish before deleting it.");
+
+            return;
+        }
+
+        bool shouldProceed = await DialogService.ShowMessageBoxAsync(
+                "Delete Job",
+                "Are you sure you want to delete this job?",
+                yesText: "Yes",
+                noText: "No")
+            ?? false;
+
+        if (shouldProceed)
+        {
+            job.Delete();
+
+            StateHasChanged();
+        }
+    }
+}

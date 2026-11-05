@@ -1,0 +1,47 @@
+{
+  "synthesis": {
+    "label": "Synthesis",
+    "labelWithTitle": "Synthesized with: \"{title}\"",
+    "defaultTitle": "prior analysis",
+    "traceButton": "Trace sources",
+    "viewButton": "View"
+  },
+  "panel": {
+    "title": "Synthesis Chain",
+    "synthesizedFrom": "Text above was synthesized with",
+    "emptyState": "No further sources traced for this synthesis.",
+    "emptyStateHint": "This may mean the content was paraphrased significantly from the original documents.",
+    "goBack": "Go back",
+    "close": "Close panel",
+    "citedText": "Cited text:",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "loading": "Loading..."
+  },
+  "sources": {
+    "document": "Document",
+    "unknownSource": "Unknown source"
+  },
+  "errors": {
+    "loadPreviewFailed": "Unable to load page preview. Please try again later.",
+    "noAccess": "You don't have access to this document.",
+    "notAvailable": "This page is no longer available.",
+    "unsupportedContentType": "Unsupported content type."
+  },
+  "block": {
+    "excludeFromSources": "Exclude outputs of this block from citation sources",
+    "excludeFromSourcesHint": "When enabled, text from this block won't be used as a source for citations in downstream blocks"
+  },
+  "unverified": {
+    "badge": "Unverified",
+    "tooltip": "The quoted text could not be located in this document's pages — treat this figure as unchecked."
+  },
+  "drawnFrom": {
+    "title": "Drawn from",
+    "showAll": "Show all {count}"
+  },
+  "marker": {
+    "label": "Show sources for {text}",
+    "popupLabel": "Sources"
+  }
+}

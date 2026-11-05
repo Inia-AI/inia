@@ -1,0 +1,173 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+@implements IAsyncDisposable
+
+@using IniaAi.Application.Workflows.EditorAgent
+
+@inject IWorkflowEditorAgentService AgentService
+@inject IJSRuntime JsRuntime
+@inject ILogger<EditorAgentEntry> Logger
+
+@* The way into Agent mode, and back out of it, at the top of the editor page. *@
+@if (_canUse)
+{
+    <div class="editor-agent-entry-anchor">
+        <MudTooltip Text="@(IsOn ? BACK_TOOLTIP : ASK_TOOLTIP)">
+            @if (IsOn)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Class="editor-agent-entry editor-agent-entry--back"
+                           StartIcon="@Icons.Material.Outlined.ArrowBack"
+                           aria-keyshortcuts="@SHORTCUT_KEYS"
+                           OnClick="@(() => IsOnChanged.InvokeAsync(false))">
+                    @BACK_TO_EDITOR
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled"
+                           DropShadow="false"
+                           Class="editor-agent-entry"
+                           StartIcon="@Icons.Material.Outlined.AutoAwesome"
+                           aria-keyshortcuts="@SHORTCUT_KEYS"
+                           OnClick="OpenAsync">
+                    @WORK_WITH_THE_AGENT
+                </MudButton>
+            }
+        </MudTooltip>
+
+        @if (_showHint && !IsOn)
+        {
+            <div class="editor-agent-hint" role="note">
+                <p class="editor-agent-hint-text">@HINT</p>
+                <MudButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Class="editor-agent-hint-dismiss"
+                           OnClick="DismissHintAsync">
+                    Got it
+                </MudButton>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    public const string WORK_WITH_THE_AGENT = "Work with the agent";
+    public const string BACK_TO_EDITOR = "Back to editor";
+    public const string HINT = "Ask questions about this workflow or request changes";
+    public const string SHORTCUT = "Ctrl+J or ⌘J";
+    public const string ASK_TOOLTIP = $"{HINT} ({SHORTCUT})";
+    public const string BACK_TOOLTIP = $"Back to the editor ({SHORTCUT})";
+
+    private const string SHORTCUT_KEYS = "Control+J Meta+J";
+    private const string LISTEN_FOR_SHORTCUT_JS = "editorAgent.listenForShortcut";
+    private const string STOP_LISTENING_FOR_SHORTCUT_JS = "editorAgent.stopListeningForShortcut";
+
+    private bool _canUse;
+    private bool _showHint;
+    private DotNetObjectReference<EditorAgentEntry>? _selfReference;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter]
+    public bool IsOn { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsOnChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState? authentication = AuthenticationStateTask is null ? null : await AuthenticationStateTask;
+        _canUse = EditorAgentAccess.CanUse(authentication?.User, AgentService);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsOn)
+        {
+            _showHint = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !_canUse)
+        {
+            return;
+        }
+
+        try
+        {
+            _selfReference = DotNetObjectReference.Create(this);
+            await JsRuntime.InvokeVoidAsync(LISTEN_FOR_SHORTCUT_JS, _selfReference);
+
+            if (!IsOn && !await EditorAgentHintPreference.WasSeenAsync(JsRuntime, UserId))
+            {
+                _showHint = true;
+                StateHasChanged();
+            }
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Could not set up the agent's shortcut and hint");
+        }
+    }
+
+    /// <summary>Ctrl+J or Cmd+J, pressed anywhere in the editor.</summary>
+    [JSInvokable]
+    public async Task ToggleFromShortcutAsync()
+    {
+        if (IsOn)
+        {
+            await IsOnChanged.InvokeAsync(false);
+            return;
+        }
+
+        await OpenAsync();
+    }
+
+    private async Task OpenAsync()
+    {
+        await DismissHintAsync();
+        await IsOnChanged.InvokeAsync(true);
+    }
+
+    private async Task DismissHintAsync()
+    {
+        _showHint = false;
+
+        try
+        {
+            await EditorAgentHintPreference.MarkSeenAsync(JsRuntime, UserId);
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Could not remember that the agent hint was seen");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_selfReference is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync(STOP_LISTENING_FOR_SHORTCUT_JS);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Could not stop listening for the agent shortcut");
+        }
+
+        _selfReference.Dispose();
+    }
+}

@@ -1,0 +1,41 @@
+{
+  "newWorkflowType": {
+    "name": "Sample: annual report key figures",
+    "description": "Reads the sample annual report and states four figures, each cited to its page."
+  },
+  "workflow": {
+    "Name": "Sample: annual report key figures",
+    "Title": "Annual report key figures",
+    "Description": "Reads an annual report and states its revenue, net profit, total assets and number of employees, each with a citation to the page that states it.",
+    "Sections": [
+      {
+        "Name": "Key figures",
+        "Title": "Key figures",
+        "Order": 0,
+        "Blocks": [
+          {
+            "Type": "AiQuery",
+            "Name": "Key figures",
+            "ReplacementTag": "key_figures",
+            "Order": 0,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Key figures for 2025",
+            "RagSettings": [
+              {
+                "Type": 0
+              }
+            ],
+            "Properties": {
+              "Type": "AiQuery",
+              "SystemPromptTemplate": "You read annual reports and state each figure exactly as the report writes it.",
+              "UserPromptTemplate": "From the annual report, state these four figures for 2025, each exactly as the report writes it, with its currency where it has one:\n\n1. Revenue for the year\n2. Net profit for the year\n3. Total assets at the end of the year\n4. Number of employees at the end of the year\n\nWrite one line per figure, in the form \"Name: value\", and nothing else.",
+              "ShouldGetCitationsFromModel": true,
+              "ShouldUseAdvancedModel": false,
+              "MaxTokens": 2000
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

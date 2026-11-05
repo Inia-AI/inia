@@ -1,0 +1,27 @@
+﻿@using System.Security.Claims
+@inject NavigationManager NavigationManager
+
+@code {
+    private const string ACCESS_DENIED_PATH = "Account/AccessDenied";
+    private const string LOGIN_PATH = "Account/Login";
+
+    [Parameter, EditorRequired]
+    public ClaimsPrincipal User { get; set; } = default!;
+
+    /// <summary>
+    /// Where the router sends a user a page refuses. A signed-in user who lacks the role gets the
+    /// Access denied page, as a direct visit does; sending them to the sign-in form would read as an
+    /// expired session and invite a password retry against the lockout.
+    /// </summary>
+    public static string TargetFor(ClaimsPrincipal user, string currentUri)
+    {
+        return user.Identity?.IsAuthenticated == true
+            ? ACCESS_DENIED_PATH
+            : $"{LOGIN_PATH}?returnUrl={Uri.EscapeDataString(currentUri)}";
+    }
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.NavigateTo(TargetFor(User, NavigationManager.Uri), forceLoad: true);
+    }
+}

@@ -1,0 +1,48 @@
+{
+  "newWorkflowType": {
+    "name": "Sample: agent run",
+    "description": "An Agent block reads the sample annual report and calculates a figure with Python in its sandbox."
+  },
+  "workflow": {
+    "Title": "Agent run",
+    "Name": "Sample: agent run",
+    "Description": "One Agent block reads the sample annual report, runs Python in its sandbox to calculate the revenue growth, and writes the answer. The run needs the agent runtime.",
+    "Sections": [
+      {
+        "Name": "Agent",
+        "Title": "Agent",
+        "Order": 0,
+        "Blocks": [
+          {
+            "Type": "Agent",
+            "Name": "Revenue growth",
+            "ReplacementTag": "agentGrowth",
+            "Order": 0,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Revenue growth, calculated by an Agent block with Python in its sandbox",
+            "RagSettings": [
+              {
+                "Type": 0
+              }
+            ],
+            "Properties": {
+              "Type": "Agent",
+              "PromptTemplate": "The annual report in your workspace states the company's revenue for 2024 and for 2025, in millions.\n\n1. Find both revenue figures in the report.\n2. Run a Python command in your sandbox that calculates the growth from 2024 to 2025 as a percentage, rounded to one decimal place.\n3. Answer with exactly one line: Revenue growth: <the percentage>%",
+              "ShouldUseAdvancedModel": false,
+              "MaxBudgetUsd": 1,
+              "DeadlineMinutes": 10,
+              "MaxTurns": 20,
+              "WorkerSkills": [
+                {
+                  "Name": "growth-from-two-figures",
+                  "Description": "Use when a task asks for the growth between two figures of a report.",
+                  "Content": "Find both figures in the document and note the page of each. Calculate the growth with Python as (later - earlier) / earlier * 100, and round it to one decimal place. Never calculate it in your head."
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

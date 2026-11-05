@@ -1,0 +1,112 @@
+{
+  "sources": [
+    { "type": "bun", "path": "bun.lock" },
+    { "type": "bun", "path": "toolbelt/node/bun.lock" },
+    { "type": "uv", "path": "toolbelt/python/uv.lock" }
+  ],
+  "allowed": [
+    "0BSD",
+    "Apache-2.0",
+    "BlueOak-1.0.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC-BY-4.0",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MIT-CMU",
+    "MPL-2.0",
+    "PSF-2.0",
+    "Unlicense",
+    "Zlib"
+  ],
+  "declared": [
+    {
+      "package": "uv:beautifulsoup4",
+      "metadata": "license: MIT License; classifiers: License :: OSI Approved :: MIT License",
+      "licence": "MIT"
+    },
+    {
+      "package": "uv:cobble",
+      "metadata": "classifiers: License :: OSI Approved :: BSD License",
+      "licence": "BSD-2-Clause"
+    },
+    {
+      "package": "uv:colorama",
+      "metadata": "classifiers: License :: OSI Approved :: BSD License",
+      "licence": "BSD-3-Clause"
+    },
+    { "package": "uv:defusedxml", "metadata": "PSFL", "licence": "PSF-2.0" },
+    {
+      "package": "uv:flatbuffers",
+      "metadata": "license: Apache 2.0; classifiers: License :: OSI Approved :: Apache Software License",
+      "licence": "Apache-2.0"
+    },
+    {
+      "package": "uv:markdownify",
+      "metadata": "classifiers: License :: OSI Approved :: MIT License",
+      "licence": "MIT"
+    },
+    { "package": "uv:mpmath", "metadata": "BSD", "licence": "BSD-3-Clause" },
+    {
+      "package": "uv:onnxruntime",
+      "metadata": "license: MIT License; classifiers: License :: OSI Approved :: MIT License",
+      "licence": "MIT"
+    },
+    {
+      "package": "uv:pandas",
+      "metadata": "license: BSD 3-Clause License Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development T; classifiers: License :: OSI Approved :: BSD License",
+      "licence": "BSD-3-Clause"
+    },
+    {
+      "package": "uv:pdfplumber",
+      "metadata": "classifiers: License :: OSI Approved :: MIT License",
+      "licence": "MIT"
+    },
+    { "package": "uv:protobuf", "metadata": "license: 3-Clause BSD License", "licence": "BSD-3-Clause" },
+    {
+      "package": "uv:pypdfium2",
+      "metadata": "license: BSD-3-Clause, Apache-2.0, dependency licenses",
+      "licence": "(Apache-2.0 OR BSD-3-Clause) AND CC-BY-4.0"
+    },
+    { "package": "uv:pyreadline3", "metadata": "BSD", "licence": "BSD-3-Clause" },
+    {
+      "package": "uv:python-dateutil",
+      "metadata": "license: Dual License; classifiers: License :: OSI Approved :: Apache Software License; License :: OSI Approved :: BSD License",
+      "licence": "Apache-2.0 AND BSD-3-Clause"
+    },
+    {
+      "package": "uv:reportlab",
+      "metadata": "license: BSD license (see license.txt for details), Copyright (c) 2000-2025, ReportLab Inc.; classifiers: License :: OSI Approved :: BSD License",
+      "licence": "BSD-3-Clause"
+    },
+    { "package": "uv:sympy", "metadata": "BSD", "licence": "BSD-3-Clause" }
+  ],
+  "exceptions": [
+    {
+      "packages": [
+        "bun:@anthropic-ai/claude-agent-sdk",
+        "bun:@anthropic-ai/claude-agent-sdk-darwin-arm64",
+        "bun:@anthropic-ai/claude-agent-sdk-darwin-x64",
+        "bun:@anthropic-ai/claude-agent-sdk-linux-arm64",
+        "bun:@anthropic-ai/claude-agent-sdk-linux-arm64-musl",
+        "bun:@anthropic-ai/claude-agent-sdk-linux-x64",
+        "bun:@anthropic-ai/claude-agent-sdk-linux-x64-musl",
+        "bun:@anthropic-ai/claude-agent-sdk-win32-arm64",
+        "bun:@anthropic-ai/claude-agent-sdk-win32-x64"
+      ],
+      "version": "0.3.308",
+      "licence": "LicenseRef-Anthropic-Claude-Agent-SDK",
+      "terms": "terms/anthropic-claude-agent-sdk.txt",
+      "reason": "The runtime is built on the Claude Agent SDK, Anthropic's proprietary software. bun install fetches it from npm at build time; this repository does not hold or redistribute it."
+    },
+    {
+      "packages": ["uv:xlrd"],
+      "version": "2.0.2",
+      "licence": "BSD-3-Clause AND LicenseRef-xlrd-earlier-work",
+      "terms": "terms/xlrd.txt",
+      "reason": "Reads legacy .xls workbooks in the toolbelt. Part of it is under a four-clause BSD-style licence with an advertising clause."
+    }
+  ]
+}

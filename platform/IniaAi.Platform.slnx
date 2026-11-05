@@ -1,0 +1,62 @@
+<Solution>
+    <Folder Name="/src/">
+        <Project Path="IniaAi.AiConnection/IniaAi.AiConnection.csproj" />
+        <Project Path="IniaAi.Application/IniaAi.Application.csproj" />
+        <Project Path="IniaAi.Common.Interfaces/IniaAi.Common.Interfaces.csproj" />
+        <Project Path="IniaAi.Common/IniaAi.Common.csproj" />
+        <Project Path="IniaAi.Configuration/IniaAi.Configuration.csproj" />
+        <Project Path="IniaAi.Core/IniaAi.Core.csproj" />
+        <Project Path="IniaAi.Domain/IniaAi.Domain.csproj" />
+        <Project Path="IniaAi.FileFormats/IniaAi.FileFormats.csproj" />
+        <Project Path="IniaAi.FileFormats.PdfiumWorker/IniaAi.FileFormats.PdfiumWorker.csproj" />
+        <Project Path="IniaAi.Infrastructure/IniaAi.Infrastructure.csproj" />
+        <Project Path="IniaAi.Migrations.Mssql/IniaAi.Migrations.Mssql.csproj" />
+        <Project Path="IniaAi.Migrations.PostgreSql/IniaAi.Migrations.PostgreSql.csproj" />
+        <Project Path="IniaAi.Samples.WordCount/IniaAi.Samples.WordCount.csproj" />
+        <Project Path="IniaAi.Services/IniaAi.Services.csproj" />
+        <Project Path="IniaAi.WebApi.Contracts/IniaAi.WebApi.Contracts.csproj" />
+        <Project Path="IniaAi.WebApi/IniaAi.WebApi.csproj" />
+        <Project Path="IniaAi.WebApp/IniaAi.WebApp.csproj" />
+    </Folder>
+
+    <Folder Name="/src/Solution files/">
+        <File Path=".editorconfig" />
+        <File Path=".gitignore" />
+        <File Path="create_and_apply_migration.ps1" />
+        <File Path="create_and_apply_migration.sh" />
+        <File Path="create_and_apply_migration.zsh" />
+        <File Path="Directory.Build.props" />
+        <File Path="README.md" />
+    </Folder>
+
+    <Folder Name="/src/Solution files/CICD/">
+        <File Path=".github/dependabot.yml" />
+    </Folder>
+
+    <Folder Name="/src/Solution files/Docker/">
+        <File Path=".dockerignore" />
+    </Folder>
+
+    <Folder Name="/tests/">
+        <Project Path="IniaAi.AiConnection.Tests/IniaAi.AiConnection.Tests.csproj" />
+        <Project Path="IniaAi.Application.UnitTests/IniaAi.Application.UnitTests.csproj" />
+        <Project Path="IniaAi.Common.Tests/IniaAi.Common.Tests.csproj" />
+        <Project Path="IniaAi.Configuration.Tests/IniaAi.Configuration.Tests.csproj" />
+        <Project Path="IniaAi.Core.Tests/IniaAi.Core.Tests.csproj" />
+        <Project Path="IniaAi.Domain.Tests/IniaAi.Domain.Tests.csproj" />
+        <Project Path="IniaAi.FileFormats.Tests/IniaAi.FileFormats.Tests.csproj" />
+        <Project Path="IniaAi.FileFormats.ContractTests/IniaAi.FileFormats.ContractTests.csproj" />
+        <Project Path="IniaAi.Infrastructure.Tests/IniaAi.Infrastructure.Tests.csproj" />
+        <Project Path="IniaAi.Services.Tests/IniaAi.Services.Tests.csproj" />
+        <Project Path="IniaAi.Testing.DependencyInjection/IniaAi.Testing.DependencyInjection.csproj" />
+        <Project Path="IniaAi.Testing.Documents/IniaAi.Testing.Documents.csproj" />
+        <Project Path="IniaAi.Testing.Ooxml/IniaAi.Testing.Ooxml.csproj" />
+        <Project Path="IniaAi.Testing/IniaAi.Testing.csproj" />
+        <Project Path="IniaAi.WebApi.IntegrationTests/IniaAi.WebApi.IntegrationTests.csproj" />
+        <Project Path="IniaAi.WebApi.UnitTests/IniaAi.WebApi.UnitTests.csproj" />
+        <Project Path="IniaAi.WebApp.Tests/IniaAi.WebApp.Tests.csproj" />
+    </Folder>
+
+    <Folder Name="/tools/">
+    </Folder>
+</Solution>

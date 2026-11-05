@@ -1,0 +1,104 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+
+<div class="editor-eyebrow mb-2">Prompts</div>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <PromptEditor Label="@SystemPromptLabel"
+                      BlockId="@Block.StableBlockId"
+                      WorkflowTypeId="@(Block.Section?.Workflow?.WorkflowTypeId)"
+                      BlockChanged="@Changed"
+                      MinLines="3"
+                      MaxLines="10"
+                      DoubleBraceTags="true"
+                      Value="@Props.SystemPromptTemplate"
+                      ValueChanged="@OnSystemPromptTemplateChanged" />
+    </MudItem>
+
+    @if (ResolvedSystemPrompt is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="@AfterExecution(SystemPromptLabel)"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="10"
+                          Value="@ResolvedSystemPrompt" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="mt-3 editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <PromptEditor Label="@UserPromptLabel"
+                      BlockId="@Block.StableBlockId"
+                      WorkflowTypeId="@(Block.Section?.Workflow?.WorkflowTypeId)"
+                      BlockChanged="@Changed"
+                      MinLines="8"
+                      MaxLines="30"
+                      DoubleBraceTags="true"
+                      Value="@Props.PromptTemplate"
+                      ValueChanged="@OnPromptTemplateChanged" />
+    </MudItem>
+
+    @if (ResolvedPrompt is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="@AfterExecution(UserPromptLabel)"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Lines="8"
+                          MaxLines="30"
+                          Value="@ResolvedPrompt" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IAgentRunProperties Props { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback Changed { get; set; }
+
+    /// <summary>
+    /// Per caller, because the two hosts treat an authored system prompt differently: an Agent
+    /// block's replaces the runtime's default, a verifier's is appended to a system-owned seed.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string SystemPromptLabel { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserPromptLabel { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ResolvedSystemPrompt { get; set; }
+
+    [Parameter]
+    public string? ResolvedPrompt { get; set; }
+
+    private static string AfterExecution(string label)
+    {
+        return $"{label} after execution";
+    }
+
+    private async Task OnPromptTemplateChanged(string value)
+    {
+        Props.PromptTemplate = value;
+        await Changed.InvokeAsync();
+    }
+
+    private async Task OnSystemPromptTemplateChanged(string value)
+    {
+        Props.SystemPromptTemplate = value;
+        await Changed.InvokeAsync();
+    }
+}

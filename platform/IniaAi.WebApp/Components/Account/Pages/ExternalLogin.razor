@@ -1,0 +1,125 @@
+@page "/Account/ExternalLogin"
+
+@using System.Diagnostics.CodeAnalysis
+@using System.Security.Claims
+@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Application.Common.Services
+@using IniaAi.Common.Constants
+@using IniaAi.Configuration.Security
+@using IniaAi.Domain.Entities.UserManagement
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
+@using IniaAi.WebApp.Extensions
+
+@inject SignInManager<User> SignInManager
+@inject IExternalLoginUserResolver ExternalLoginResolver
+@inject IOptions<GoogleAuthSettings> GoogleSettings
+@inject IOptions<OidcAuthSettings> OidcSettings
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<ExternalLogin> Logger
+
+<PageTitle>Log in</PageTitle>
+
+@code {
+    private const string LOGIN_PAGE = "Account/Login";
+    private const string NOT_REGISTERED_MESSAGE = "Error: Your account is not registered. Please contact your administrator.";
+    private const string DOMAIN_NOT_ALLOWED_MESSAGE = "Error: Email domain is not allowed.";
+    private const string MISSING_EMAIL_MESSAGE = "Error: The external login did not provide an email address.";
+    private const string EMAIL_NOT_VERIFIED_MESSAGE = "Error: The external login does not confirm that this email address belongs to you.";
+    private const string CANNOT_SIGN_IN_MESSAGE = "Error: This account cannot sign in. Please contact your administrator.";
+
+    private ExternalLoginInfo externalLoginInfo = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? RemoteError { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            RedirectManager.RedirectTo(LOGIN_PAGE);
+        }
+
+        if (RemoteError is not null)
+        {
+            RedirectManager.RedirectToWithStatus(LOGIN_PAGE, $"Error from external provider: {RemoteError}", HttpContext);
+        }
+
+        var info = await SignInManager.GetExternalLoginInfoAsync();
+        if (info is null)
+        {
+            RedirectManager.RedirectToWithStatus(LOGIN_PAGE, "Error loading external login information.", HttpContext);
+        }
+
+        externalLoginInfo = info;
+        await OnLoginCallbackAsync();
+    }
+
+    private async Task OnLoginCallbackAsync()
+    {
+        string? email = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email)
+            ?? externalLoginInfo.Principal.FindFirstValue("email");
+
+        IReadOnlyCollection<string> allowedDomains = externalLoginInfo.LoginProvider switch
+        {
+            ExternalLoginProviders.GOOGLE => GoogleSettings.Value.AllowedDomains,
+            ExternalLoginProviders.OIDC => OidcSettings.Value.AllowedDomains,
+            _ => throw new InvalidOperationException(
+                $"No AllowedDomains mapping for external provider '{externalLoginInfo.LoginProvider}'."),
+        };
+
+        bool emailVerified = ExternalEmailVerification.IsVerified(
+            externalLoginInfo.Principal.FindFirstValue(ExternalEmailVerification.EMAIL_VERIFIED_CLAIM),
+            externalLoginInfo.Principal.FindFirstValue(ExternalEmailVerification.ENTRA_DOMAIN_OWNER_VERIFIED_CLAIM),
+            externalLoginInfo.LoginProvider == ExternalLoginProviders.OIDC && OidcSettings.Value.TrustUnverifiedEmail);
+
+        ExternalLoginUserResolution resolution = await ExternalLoginResolver.ResolveAsync(
+            externalLoginInfo.LoginProvider, email, emailVerified, allowedDomains, HttpContext.ClientAddress());
+        if (!resolution.Succeeded)
+        {
+            HandleResolutionFailure(resolution.Failure!.Value);
+        }
+
+        User user = resolution.User!;
+        await ExternalLoginResolver.LinkLoginIfNeededAsync(user, externalLoginInfo.LoginProvider, externalLoginInfo.ProviderKey);
+
+        await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
+
+        Logger.LogInformation("User {UserId} authenticated via {Provider}", user.Id, externalLoginInfo.LoginProvider);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    [DoesNotReturn]
+    private void HandleResolutionFailure(ExternalLoginFailure failure)
+    {
+        switch (failure)
+        {
+            case ExternalLoginFailure.LockedOut:
+                RedirectManager.RedirectTo("Account/Lockout");
+                break;
+            case ExternalLoginFailure.MissingEmail:
+                RedirectManager.RedirectToWithStatus(LOGIN_PAGE, MISSING_EMAIL_MESSAGE, HttpContext);
+                break;
+            case ExternalLoginFailure.EmailNotVerified:
+                RedirectManager.RedirectToWithStatus(LOGIN_PAGE, EMAIL_NOT_VERIFIED_MESSAGE, HttpContext);
+                break;
+            case ExternalLoginFailure.DomainNotAllowed:
+                RedirectManager.RedirectToWithStatus(LOGIN_PAGE, DOMAIN_NOT_ALLOWED_MESSAGE, HttpContext);
+                break;
+            case ExternalLoginFailure.UserNotFound:
+                RedirectManager.RedirectToWithStatus(LOGIN_PAGE, NOT_REGISTERED_MESSAGE, HttpContext);
+                break;
+            default:
+                RedirectManager.RedirectToWithStatus(LOGIN_PAGE, CANNOT_SIGN_IN_MESSAGE, HttpContext);
+                break;
+        }
+    }
+}

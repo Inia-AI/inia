@@ -1,0 +1,66 @@
+name: Bug report
+description: Something does not work as the docs say it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        To report a vulnerability, do not open an issue. Follow SECURITY.md instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, with the exact message if there was one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that shows the problem. Attach a workflow file or a document when the problem needs one, with no confidential data in it.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Release or commit
+      description: The release tag, or the commit you built from.
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part
+      options:
+        - The platform (the API, or the WebApp with the workflow editor)
+        - The Vue app
+        - The agent runtime
+        - I do not know
+    validations:
+      required: true
+  - type: dropdown
+    id: how-you-run-it
+    attributes:
+      label: How you run it
+      options:
+        - The one-command Docker stack
+        - A part from source, with dotnet run, npm or bun
+        - Another way (say how below)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The lines of the log around the problem, from the API, the WebApp, the Vue app or the agent runtime. Remove keys, passwords and personal data first.
+      render: shell

@@ -1,0 +1,152 @@
+@using IniaAi.Application.Common.Workflows
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+
+<div class="editor-eyebrow mt-2 mb-2">Input settings</div>
+
+<DocumentClassSelector Block="@Block"
+                       SelectionChanged="@BlockChanged" />
+
+<MudGrid Spacing="3" Class="mt-4">
+    <MudItem xs="12" md="9">
+        <AgentPromptsPanel Block="@Block"
+                           Props="@_props"
+                           Changed="@BlockChanged"
+                           SystemPromptLabel="@AgentPromptFieldLabels.SYSTEM_PROMPT_OVERRIDE"
+                           UserPromptLabel="@AgentPromptFieldLabels.TASK_PROMPT"
+                           ResolvedSystemPrompt="@_props.ExecutionState?.SystemPrompt"
+                           ResolvedPrompt="@_props.ExecutionState?.Prompt" />
+
+        <AgentAddedAutomaticallyPanel Props="@_props"
+                                      HasOutputSchema="@(!string.IsNullOrWhiteSpace(_props.OutputSchema))" />
+    </MudItem>
+
+    <MudItem xs="12" md="3">
+        <AgentModelEffortPanel Props="@_props" />
+
+        <div class="mt-4">
+            <AgentRunFusesPanel Props="@_props" Changed="@BlockChanged" />
+        </div>
+    </MudItem>
+</MudGrid>
+
+<AgentSkillsPanel Block="@Block"
+                  Props="@_props"
+                  Changed="@BlockChanged"
+                  Title="Worker skills"
+                  NamePlaceholder="e.g. income-statement"
+                  DescriptionPlaceholder="e.g. Standardizes a balance sheet from an annual report. Use when the task asks for financial-statement figures."
+                  ResolvedSkillContents="@ResolvedSkillContents()" />
+
+<div class="editor-eyebrow mt-4 mb-2">Output schema</div>
+
+<MudTextField T="string"
+              Variant="Variant.Outlined"
+              Label="@OUTPUT_SCHEMA_LABEL"
+              Class="editor-mono-field"
+              Sizing="InputSizing.Auto"
+              Lines="4"
+              MaxLines="16"
+              Immediate="true"
+              Validation="@((Func<string, string?>)ValidateOutputSchema)"
+              Value="@_props.OutputSchema"
+              ValueChanged="@OnOutputSchemaChanged" />
+
+<div class="editor-eyebrow mt-4 mb-2">Output files</div>
+
+<MudTextField T="string"
+              Variant="Variant.Outlined"
+              Label="@OUTPUT_FILES_LABEL"
+              HelperText="@OUTPUT_FILES_HELP"
+              Class="editor-mono-field"
+              Sizing="InputSizing.Auto"
+              Lines="2"
+              MaxLines="10"
+              Validation="@((Func<string, string?>)ValidateOutputFiles)"
+              Value="@string.Join('\n', _props.OutputFiles)"
+              ValueChanged="@OnOutputFilesChanged" />
+
+@code {
+    // Every other text field on this surface substitutes tags; a schema is sent verbatim, so a
+    // tag written here fails silently. The label carries it at the point of typing.
+    private const string OUTPUT_SCHEMA_LABEL = "Output JSON schema (no {{tags}})";
+
+    private const string OUTPUT_FILES_LABEL = "Output files, one per line (e.g. out/rows.json)";
+    private const string OUTPUT_FILES_HELP =
+        "Each file's JSON is passed on exactly as the agent wrote it. The block output becomes "
+        + "{\"answer\": ..., \"files\": {\"rows\": ...}}, read with {tag.answer} and {tag.files.rows}.";
+
+    private AgentProperties _props => Block.Properties as AgentProperties
+        ?? throw new InvalidOperationException("Block properties must be of type AgentProperties");
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    private Dictionary<string, string>? ResolvedSkillContents()
+    {
+        return _props.ExecutionState?.WorkerSkills
+            .GroupBy(static skill => skill.Name, StringComparer.Ordinal)
+            .ToDictionary(static group => group.Key, static group => group.Last().Content, StringComparer.Ordinal);
+    }
+
+    private async Task OnOutputSchemaChanged(string value)
+    {
+        _props.OutputSchema = value;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnOutputFilesChanged(string value)
+    {
+        _props.OutputFiles = ParseOutputFiles(value);
+        await BlockChanged.InvokeAsync();
+    }
+
+    private static List<string> ParseOutputFiles(string? value)
+    {
+        return [.. (value ?? string.Empty)
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)];
+    }
+
+    private static string? ValidateOutputFiles(string value)
+    {
+        return IniaAi.Common.Interfaces.Services.AgentRuntime.AgentRunOutputFiles.DescribeFirstPathProblem(
+            ParseOutputFiles(value)) is string problem
+            ? char.ToUpperInvariant(problem[0]) + problem[1..]
+            : null;
+    }
+
+    private static string? ValidateOutputSchema(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (System.Text.Json.Nodes.JsonNode.Parse(value)
+                is not System.Text.Json.Nodes.JsonObject schema)
+            {
+                return "Must be a single JSON object";
+            }
+
+            List<IniaAi.Common.Interfaces.Services.AgentRuntime.AgentOutputSchemaDraft07.SchemaViolation> problems =
+                IniaAi.Common.Interfaces.Services.AgentRuntime.AgentOutputSchemaDraft07.Validate(schema);
+            if (problems.Count == 0)
+            {
+                return null;
+            }
+
+            string overflow = problems.Count > 1 ? $" (+{problems.Count - 1} more)" : string.Empty;
+            return $"Not a schema the agent runtime accepts (JSON Schema draft-07) — "
+                + $"{problems[0].Path}: {problems[0].Message}{overflow}";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return "Not valid JSON";
+        }
+    }
+}

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/Inia-AI/inia/security/policy
+    about: Report a security problem in private, as SECURITY.md says. Do not open a public issue.

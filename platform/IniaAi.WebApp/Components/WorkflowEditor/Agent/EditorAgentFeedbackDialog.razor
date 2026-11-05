@@ -1,0 +1,234 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@using ErrorOr
+@using IniaAi.Application.Workflows.EditorAgent
+
+@inject IWorkflowEditorAgentService AgentService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog Class="editor-agent-reports-dialog" ContentClass="editor-agent-reports-content">
+    <TitleContent>
+        <div class="editor-agent-reports-title">Choose feedback</div>
+        <div class="editor-agent-caption">
+            Your next message carries the feedback you choose, with the reports it is on. Choose up to @EditorAgentFeedback.MAX_SENT.
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <div class="editor-agent-reports-list" role="list" aria-label="Feedback" data-testid="editor-agent-feedback-list">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@_error</MudAlert>
+            }
+            else if (_items is null)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_items.Count == 0)
+            {
+                <div class="editor-agent-reports-empty editor-agent-caption" data-testid="editor-agent-no-feedback">
+                    There is no open feedback on this workflow's reports.
+                </div>
+            }
+            else
+            {
+                <div class="editor-agent-report-row" role="listitem" data-testid="editor-agent-feedback-all">
+                    <MudCheckBox T="bool?"
+                                 Value="AllState"
+                                 ValueChanged="@(_ => ToggleAll())"
+                                 TriState="true"
+                                 Size="Size.Small"
+                                 Color="Color.Primary"
+                                 aria-label="@AllLabel" />
+                    <div class="editor-agent-report-row-text" @onclick="ToggleAll">
+                        <span class="editor-agent-report-row-label">@AllLabel</span>
+                    </div>
+                </div>
+                @foreach (EditorAgentFeedbackOption item in _items)
+                {
+                    bool chosen = _chosen.Contains(item.Id);
+                    bool blocked = !chosen && _chosen.Count >= EditorAgentFeedback.MAX_SENT;
+                    <div @key="item.Id"
+                         class="@RowClass(chosen, blocked)"
+                         role="listitem"
+                         data-testid="editor-agent-feedback-row"
+                         data-feedback-id="@item.Id">
+                        <MudCheckBox T="bool"
+                                     Value="chosen"
+                                     ValueChanged="@(_ => Toggle(item))"
+                                     Disabled="blocked"
+                                     Size="Size.Small"
+                                     Color="Color.Primary"
+                                     aria-label="@($"Use the feedback: {item.Comment}")" />
+                        <div class="editor-agent-report-row-text" @onclick="@(() => Toggle(item))">
+                            <span class="editor-agent-report-row-label">@item.Comment</span>
+                            <span class="editor-agent-caption editor-agent-report-row-documents" title="@Details(item)">
+                                @Details(item)
+                            </span>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                       Size="Size.Small"
+                                       Class="editor-agent-feedback-delete"
+                                       Disabled="@(_deleting is not null)"
+                                       OnClick="@(() => DeleteAsync(item))"
+                                       title="@DELETE_LABEL"
+                                       aria-label="@DELETE_LABEL"
+                                       data-testid="editor-agent-feedback-delete" />
+                    </div>
+                }
+            }
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <span class="editor-agent-caption editor-agent-reports-count" data-testid="editor-agent-feedback-count">
+            @_chosen.Count of @EditorAgentFeedback.MAX_SENT chosen
+        </span>
+        <MudSpacer />
+        <MudButton Variant="Variant.Text" OnClick="Cancel">@CANCEL</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   DropShadow="false"
+                   Disabled="@(_chosen.Count == 0)"
+                   OnClick="Use"
+                   data-testid="editor-agent-feedback-use">
+            Use this feedback
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string DELETE_LABEL = "Delete feedback";
+    public const string DELETE_CONFIRM_TITLE = "Delete this feedback?";
+    public const string DELETE_CONFIRM_TEXT = "It is deleted for good, for everyone. Messages already sent with it keep their copy.";
+    public const string DELETE_CONFIRM_YES = "Delete";
+
+    private const string CANCEL = "Cancel";
+    private const string ROW_CLASS = "editor-agent-report-row";
+    private const string CHOSEN_CLASS = " editor-agent-report-row-chosen";
+    private const string BLOCKED_CLASS = " editor-agent-report-row-blocked";
+
+    private readonly HashSet<string> _chosen = new(StringComparer.Ordinal);
+    private List<EditorAgentFeedbackOption>? _items;
+    private string? _error;
+    private string? _deleting;
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    /// <summary>The feedback already chosen for the next message.</summary>
+    [Parameter]
+    public IReadOnlyList<string> Chosen { get; set; } = [];
+
+    /// <summary>Called with an item's id once it is deleted, whether the dialog then closes or is cancelled.</summary>
+    [Parameter]
+    public EventCallback<string> OnDeleted { get; set; }
+
+    /// <summary>All the items "Choose all" can tick: every item, or the newest the cap allows.</summary>
+    private int Choosable => Math.Min(_items?.Count ?? 0, EditorAgentFeedback.MAX_SENT);
+
+    private bool? AllState => _chosen.Count == 0 ? false : _chosen.Count >= Choosable ? true : null;
+
+    private string AllLabel => (_items?.Count ?? 0) > EditorAgentFeedback.MAX_SENT
+        ? $"Choose the newest {EditorAgentFeedback.MAX_SENT}"
+        : "Choose all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ErrorOr<IReadOnlyList<EditorAgentFeedbackOption>> items = await AgentService.ListOpenFeedbackAsync(
+            OrganizationId, UserId, WorkflowTypeId);
+        if (items.IsError)
+        {
+            _error = items.FirstError.Description;
+            return;
+        }
+
+        _items = [.. items.Value];
+        _chosen.UnionWith(_items.Select(static item => item.Id).Where(Chosen.Contains).Take(EditorAgentFeedback.MAX_SENT));
+    }
+
+    private void Toggle(EditorAgentFeedbackOption item)
+    {
+        if (!_chosen.Remove(item.Id) && _chosen.Count < EditorAgentFeedback.MAX_SENT)
+        {
+            _ = _chosen.Add(item.Id);
+        }
+    }
+
+    private void ToggleAll()
+    {
+        if (AllState == true)
+        {
+            _chosen.Clear();
+            return;
+        }
+
+        _chosen.Clear();
+        _chosen.UnionWith((_items ?? []).Take(EditorAgentFeedback.MAX_SENT).Select(static item => item.Id));
+    }
+
+    private async Task DeleteAsync(EditorAgentFeedbackOption item)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            DELETE_CONFIRM_TITLE,
+            DELETE_CONFIRM_TEXT,
+            yesText: DELETE_CONFIRM_YES,
+            cancelText: CANCEL);
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _deleting = item.Id;
+        try
+        {
+            ErrorOr<Deleted> deleted = await AgentService.DeleteFeedbackAsync(OrganizationId, UserId, WorkflowTypeId, item.Id);
+            if (deleted.IsError && deleted.FirstError.Type != ErrorType.NotFound)
+            {
+                Snackbar.Add(deleted.FirstError.Description, Severity.Warning);
+                return;
+            }
+        }
+        finally
+        {
+            _deleting = null;
+        }
+
+        _ = _items?.Remove(item);
+        _ = _chosen.Remove(item.Id);
+        await OnDeleted.InvokeAsync(item.Id);
+    }
+
+    private static string RowClass(bool chosen, bool blocked)
+    {
+        return ROW_CLASS + (chosen ? CHOSEN_CLASS : string.Empty) + (blocked ? BLOCKED_CLASS : string.Empty);
+    }
+
+    private static string Details(EditorAgentFeedbackOption item)
+    {
+        string details = $"{EditorAgentFeedback.CategoryName(item.Category)}, {item.CreatedAt:d MMM yyyy}";
+        return string.IsNullOrWhiteSpace(item.QuotedText) ? details : $"{details}: \"{item.QuotedText}\"";
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    /// <summary>The chosen ids in list order, newest first.</summary>
+    private void Use()
+    {
+        MudDialog?.Close(DialogResult.Ok<IReadOnlyList<string>>(
+            [.. (_items ?? []).Select(static item => item.Id).Where(_chosen.Contains)]));
+    }
+}

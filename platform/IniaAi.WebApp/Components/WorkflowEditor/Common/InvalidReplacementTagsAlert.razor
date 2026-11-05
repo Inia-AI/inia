@@ -1,0 +1,90 @@
+@using IniaAi.WebApp.Services
+@using BlockEntity = IniaAi.Domain.Entities.Workflows.Blocks.Block
+
+@if (_invalidTags.Any())
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-2">
+        <MudText Typo="Typo.body2">
+            <strong>Invalid replacement tags found:</strong>
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">
+            @string.Join(", ", _invalidTags)
+        </MudText>
+        <MudText Typo="Typo.caption" Class="mt-1">
+            These tags don't match any block names in the current workflow.
+        </MudText>
+        @foreach (var (tag, suggestions) in _suggestions)
+        {
+            <MudText Typo="Typo.caption" Class="mt-1">
+                @tag is from a parameterized section — use @string.Join(" or ", suggestions) instead.
+            </MudText>
+        }
+    </MudAlert>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public BlockEntity Block { get; set; } = default!;
+
+    /// <summary>
+    /// Fires when the validation result actually changes (same fingerprint guard as
+    /// the alert itself), carrying the invalid tags plus the block's available-tag
+    /// set so tag-aware inputs share this one computation.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TagValidationSnapshot> ValidationChanged { get; set; }
+
+    private List<string> _invalidTags = new();
+    private List<(string Tag, List<string> Suggestions)> _suggestions = new();
+    private BlockEntity? _lastValidatedBlock;
+    private int _lastFingerprint;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Block?.Section?.Workflow is not { } root)
+        {
+            _invalidTags.Clear();
+            _suggestions.Clear();
+            _lastValidatedBlock = null;
+            return;
+        }
+
+        List<string> candidates = ReplacementTagUiValidationService.CollectCandidateStrings(Block);
+        int fingerprint = ReplacementTagUiValidationService.ComputeValidationFingerprint(Block, root, candidates);
+
+        if (ReferenceEquals(Block, _lastValidatedBlock) && fingerprint == _lastFingerprint)
+        {
+            return;
+        }
+
+        _lastValidatedBlock = Block;
+        _lastFingerprint = fingerprint;
+        _suggestions.Clear();
+
+        ReplacementTagValidationService.TagValidationContext context =
+            ReplacementTagValidationService.BuildValidationContext(root, Block);
+
+        _invalidTags = ReplacementTagUiValidationService
+            .ValidateCandidateStrings(candidates, context)
+            .Distinct()
+            .ToList();
+
+        foreach (var tag in _invalidTags)
+        {
+            var suggestions = ReplacementTagValidationService.GetParameterizedSuggestions(tag, root);
+            if (suggestions.Count > 0)
+                _suggestions.Add((tag, suggestions));
+        }
+
+        if (ValidationChanged.HasDelegate)
+        {
+            List<string> available = context.AvailableReplacementTags
+                .Concat(context.WorkflowVariableTags)
+                .Distinct()
+                .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            await ValidationChanged.InvokeAsync(new TagValidationSnapshot(_invalidTags, available));
+        }
+    }
+}

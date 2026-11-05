@@ -1,0 +1,84 @@
+@* Looks like a MudExpansionPanel, whose header is a focusable div that announces neither its role
+   nor its state: this header holds a native button that says whether the panel is open. A screen
+   reader flattens what sits inside a button, so header controls go in Actions, beside it. *@
+<div class="@PanelClass">
+    <div class="@HeaderClass" @onclick="ToggleAsync">
+        <button type="button"
+                class="editor-plain-button disclosure-panel__header"
+                aria-expanded="@(_expanded ? "true" : "false")"
+                aria-controls="@_contentId"
+                @onclick="ToggleAsync"
+                @onclick:stopPropagation="true">
+            <div class="mud-expand-panel-text">
+                @TitleContent
+            </div>
+        </button>
+        @if (Actions is not null)
+        {
+            <div class="disclosure-panel__actions" @onclick:stopPropagation="true">
+                @Actions
+            </div>
+        }
+        <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Class="@($"mud-expand-panel-icon{(_expanded ? " mud-transform" : null)}")" />
+    </div>
+    <MudCollapse Expanded="_expanded">
+        <div id="@_contentId" class="@ContentClass">
+            @if (_expanded)
+            {
+                @ChildContent
+            }
+        </div>
+    </MudCollapse>
+</div>
+
+@code {
+    private readonly string _contentId = $"disclosure-{Guid.NewGuid():N}";
+    private bool _expanded;
+    private bool? _expandedGiven;
+
+    [Parameter, EditorRequired]
+    public RenderFragment TitleContent { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>Controls for the header row, such as an add or download button.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ExpandedChanged { get; set; }
+
+    [Parameter]
+    public bool Dense { get; set; }
+
+    [Parameter]
+    public bool Gutters { get; set; } = true;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string PanelClass => $"mud-expand-panel mud-elevation-0{(_expanded ? " mud-panel-expanded" : null)} {Class}";
+
+    private string HeaderClass => $"mud-expand-panel-header{(Gutters ? " mud-expand-panel-header-gutters" : null)}";
+
+    private string ContentClass => $"mud-expand-panel-content{(Gutters ? " mud-expand-panel-gutters" : null)}{(Dense ? " mud-expand-panel-dense" : null)}";
+
+    protected override void OnParametersSet()
+    {
+        if (_expandedGiven != Expanded)
+        {
+            _expandedGiven = Expanded;
+            _expanded = Expanded;
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        _expanded = !_expanded;
+        await ExpandedChanged.InvokeAsync(_expanded);
+    }
+}

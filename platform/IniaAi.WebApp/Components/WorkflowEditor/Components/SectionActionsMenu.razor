@@ -1,0 +1,305 @@
+@using IniaAi.Domain.Entities.SharedComponents.Enums
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+<MudStack Spacing="2" Class="pa-0 section-header">
+    <MudStack Row="true" AlignItems="AlignItems.Baseline" Spacing="2" Class="pa-0 section-header__title">
+        <MudText Class="editor-section-title" Style="opacity: .5; flex: 0 0 auto;">@Section.Order.</MudText>
+
+        <MudTextField @bind-Value="Section.Title"
+                      @onblur="async () => await OnTitleChanged.InvokeAsync()"
+                      Variant="Variant.Text"
+                      Margin="Margin.Dense"
+                      Underline="false"
+                      Placeholder="Section title"
+                      aria-label="Section title"
+                      Class="editor-section-title"
+                      Style="flex: 1 1 auto;" />
+
+        @if (LinkIndex is not null)
+        {
+            <LibraryLinkBadge Status="LinkIndex.For(Section)" />
+        }
+
+        @if (Section.Properties.ExcludeFromWordExport)
+        {
+            <MudTooltip Text="Shows in the app report but is left out of the Word and Markdown exports">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Text"
+                         Color="Color.Default"
+                         Icon="@Icons.Material.Outlined.FileDownloadOff"
+                         Class="ma-0 mud-text-secondary">
+                    Not in exports
+                </MudChip>
+            </MudTooltip>
+        }
+
+        @if (HiddenEntryCount > 0)
+        {
+            <MudTooltip Text="Hidden Library entries — open Library sync to restore them">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Text"
+                         Color="Color.Default"
+                         Class="ma-0 mud-text-disabled"
+                         OnClick="async () => await OnOpenLibrarySync.InvokeAsync()">
+                    @(HiddenEntryCount == 1 ? "1 hidden" : $"{HiddenEntryCount} hidden")
+                </MudChip>
+            </MudTooltip>
+        }
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" Class="flex-grow-1 editor-action-bar">
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-1 editor-action-bar__buttons" Style="min-width: 0;">
+            @if (OnGoBack.HasDelegate)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.ArrowBack"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           OnClick="async () => await OnGoBack.InvokeAsync()">
+                    Go Back
+                </MudButton>
+            }
+
+            @if (OnScrollToTop.HasDelegate)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.VerticalAlignTop"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           Class="section-top-button"
+                           OnClick="async () => await OnScrollToTop.InvokeAsync()">
+                    Top
+                </MudButton>
+            }
+
+            @if (OnShowBlocks.HasDelegate)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.ArrowForward"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           aria-label="@NameFor(OPEN)"
+                           OnClick="async () => await OnShowBlocks.InvokeAsync()">
+                    @OPEN
+                </MudButton>
+            }
+
+            <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow"
+                           Class="editor-soft-button"
+                           Color="Color.Success"
+                           Size="Size.Large"
+                           title="@RUN_SECTION"
+                           aria-label="@NameFor(RUN_SECTION)"
+                           OnClick="async () => await OnRun.InvokeAsync()" />
+
+            <MudButton StartIcon="@Icons.Material.Outlined.ContentCopy"
+                       Class="editor-soft-button"
+                       Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Size="Size.Large"
+                       aria-label="@NameFor(DUPLICATE)"
+                       OnClick="async () => await OnDuplicate.InvokeAsync()">
+                @DUPLICATE
+            </MudButton>
+
+            <MudButton StartIcon="@Icons.Material.Outlined.MoveUp"
+                       Class="editor-soft-button"
+                       Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Size="Size.Large"
+                       aria-label="@NameFor(MOVE)"
+                       OnClick="async () => await OnMove.InvokeAsync()">
+                @MOVE
+            </MudButton>
+
+            <MudButton StartIcon="@Icons.Material.Outlined.Cloud"
+                       Class="editor-soft-button"
+                       Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Size="Size.Large"
+                       aria-label="@NameFor(COPY_TO_WORKFLOW)"
+                       OnClick="async () => await OnCopyToWorkflow.InvokeAsync()">
+                @COPY_TO_WORKFLOW
+            </MudButton>
+
+            <MudButton StartIcon="@Icons.Material.Outlined.Notes"
+                       Class="editor-soft-button"
+                       Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Size="Size.Large"
+                       aria-label="@NameFor(COPY_AS_TEXT)"
+                       OnClick="async () => await OnCopyAsText.InvokeAsync()">
+                @COPY_AS_TEXT
+            </MudButton>
+
+            @if (OnParameterizedConfig.HasDelegate)
+            {
+                @if (HasParameterizedConfig)
+                {
+                    <MudButton StartIcon="@Icons.Material.Outlined.Tune"
+                               Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Size="Size.Large"
+                               aria-label="@NameFor(ParameterizedLabel)"
+                               OnClick="async () => await OnParameterizedConfig.InvokeAsync()">
+                        @ParameterizedLabel
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton StartIcon="@Icons.Material.Outlined.Tune"
+                               Class="editor-soft-button"
+                               Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               Size="Size.Large"
+                               aria-label="@NameFor(PARAMETERIZE)"
+                               OnClick="async () => await OnParameterizedConfig.InvokeAsync()">
+                        @PARAMETERIZE
+                    </MudButton>
+                }
+            }
+        </MudStack>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-0 flex-shrink-0 editor-action-bar__end">
+            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                           Class="editor-soft-button"
+                           Color="Color.Error"
+                           Size="Size.Large"
+                           title="@REMOVE"
+                           aria-label="@NameFor(REMOVE)"
+                           OnClick="async () => await OnRemove.InvokeAsync()" />
+
+            <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                     Size="Size.Large"
+                     AriaLabel="@NameFor(MORE_SECTION_ACTIONS)"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Dense="true">
+                <MudMenuItem Icon="@Icons.Material.Outlined.FormatListBulleted"
+                             OnClick="async () => await OnToggleCitations.InvokeAsync()">
+                    @_citationsLabel
+                </MudMenuItem>
+                <MudMenuItem Icon="@_exportIcon"
+                             OnClick="ToggleExport">
+                    @_exportLabel
+                </MudMenuItem>
+                @if (OnOpenLayout.HasDelegate)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.Dashboard"
+                                 OnClick="async () => await OnOpenLayout.InvokeAsync()">
+                        Layout in report
+                    </MudMenuItem>
+                }
+                @if (OnShareToLibrary.HasDelegate)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.LibraryAdd"
+                                 OnClick="async () => await OnShareToLibrary.InvokeAsync()">
+                        Share to Library
+                    </MudMenuItem>
+                }
+            </MudMenu>
+        </MudStack>
+    </MudStack>
+</MudStack>
+
+@code {
+    private const string OPEN = "Open";
+    private const string RUN_SECTION = "Run section";
+    private const string DUPLICATE = "Duplicate";
+    private const string MOVE = "Move";
+    private const string COPY_TO_WORKFLOW = "Copy to another workflow";
+    private const string COPY_AS_TEXT = "Copy as text";
+    private const string PARAMETERIZE = "Parameterize";
+    private const string REMOVE = "Remove";
+    private const string MORE_SECTION_ACTIONS = "More section actions";
+
+    [Parameter, EditorRequired]
+    public Section Section { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnOpenLibrarySync { get; set; }
+
+    [Parameter]
+    public EventCallback OnTitleChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnShowBlocks { get; set; }
+
+    [Parameter]
+    public EventCallback OnGoBack { get; set; }
+
+    [Parameter]
+    public EventCallback OnScrollToTop { get; set; }
+
+    [Parameter]
+    public EventCallback OnParameterizedConfig { get; set; }
+
+    [Parameter]
+    public bool HasParameterizedConfig { get; set; }
+
+    [Parameter]
+    public int ParameterizedVariantCount { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnRun { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnDuplicate { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnMove { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnCopyToWorkflow { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnCopyAsText { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnToggleCitations { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnOpenLayout { get; set; }
+
+    [Parameter]
+    public EventCallback OnShareToLibrary { get; set; }
+
+    [CascadingParameter(Name = "LibraryLinkIndex")]
+    public LibraryLinkIndex? LinkIndex { get; set; }
+
+    private string ParameterizedLabel => $"Parameterized · {ParameterizedVariantCount}";
+
+    private string NameFor(string action)
+    {
+        return ActionName.For(action, string.IsNullOrWhiteSpace(Section.Title) ? $"section {Section.Order}" : Section.Title);
+    }
+
+    private int HiddenEntryCount =>
+        Section.SharedComponentSlotStates?.Count(s => s.Value == SharedComponentSlotState.Hidden) ?? 0;
+
+    private void ToggleExport()
+    {
+        Section.Properties.ExcludeFromWordExport = !Section.Properties.ExcludeFromWordExport;
+    }
+
+    private string _exportLabel => Section.Properties.ExcludeFromWordExport
+        ? "Include in exports"
+        : "Leave out of exports";
+
+    private string _exportIcon => Section.Properties.ExcludeFromWordExport
+        ? Icons.Material.Outlined.FileDownload
+        : Icons.Material.Outlined.FileDownloadOff;
+
+    private string _citationsLabel => Section.Blocks
+        .Any(b => b.Properties is AiQueryProperties props && props.ShouldGetCitationsFromModel == true)
+            ? "Disable citations for all"
+            : "Enable citations for all";
+}

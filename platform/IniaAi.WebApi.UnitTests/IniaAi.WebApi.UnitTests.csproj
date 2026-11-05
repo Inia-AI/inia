@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="NSubstitute" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.WebApi\IniaAi.WebApi.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.DependencyInjection\IniaAi.Testing.DependencyInjection.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.Documents\IniaAi.Testing.Documents.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing\IniaAi.Testing.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+</Project>

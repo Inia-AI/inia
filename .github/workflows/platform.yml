@@ -1,0 +1,44 @@
+name: Platform
+
+# Builds and tests platform/ with nuget.org as the only package source, and checks the rules of the
+# one-command stack in compose.yaml. It needs no secret.
+on:
+  pull_request:
+    paths: ["platform/**", "compose.yaml", ".env.example", ".github/workflows/platform.yml"]
+  push:
+    branches: [main]
+    paths: ["platform/**", "compose.yaml", ".env.example", ".github/workflows/platform.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./platform/.github/actions/tests
+        with:
+          tree: platform
+
+  compose:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the compose file
+        run: platform/docker/check-compose.sh compose.yaml

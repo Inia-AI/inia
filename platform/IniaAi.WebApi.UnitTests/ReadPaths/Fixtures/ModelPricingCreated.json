@@ -1,0 +1,30 @@
+{
+  "id": "pricing-created",
+  "provider": "aws-bedrock",
+  "family": "Anthropic",
+  "modelId": "claude-haiku",
+  "modelAlias": "haiku",
+  "displayName": "Claude Haiku",
+  "pricingType": "Llm",
+  "effectiveFrom": "2026-09-07T08:00:00Z",
+  "effectiveTo": "2027-09-07T08:00:00Z",
+  "isActive": true,
+  "longPromptThresholdTokens": null,
+  "regionalEndpointMultiplier": null,
+  "components": [
+    {
+      "id": "component-Input",
+      "componentType": "Input",
+      "cost": 0.8,
+      "unit": "PerMillion",
+      "currency": "USD"
+    },
+    {
+      "id": "component-Output",
+      "componentType": "Output",
+      "cost": 4,
+      "unit": "PerMillion",
+      "currency": "EUR"
+    }
+  ]
+}

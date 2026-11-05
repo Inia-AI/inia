@@ -1,0 +1,26 @@
+{
+  "title": "Model Pricing Management",
+  "subtitle": "Manage AI model pricing for LLM and embedding providers",
+  "createLabel": "Add Model Pricing",
+  "emptyText": "No model pricing entries found. Click 'Add Model Pricing' to create one.",
+  "filters": {
+    "provider": "Provider",
+    "family": "Family",
+    "pricingType": "Pricing type"
+  },
+  "actions": {
+    "edit": "Edit pricing of {name}",
+    "delete": "Delete pricing of {name}"
+  },
+  "dialog": {
+    "createTitle": "Create Model Pricing",
+    "editTitle": "Edit Model Pricing",
+    "deleteTitle": "Delete Model Pricing",
+    "deleteConfirm": "Are you sure you want to delete"
+  },
+  "form": {
+    "cancelLabel": "Cancel",
+    "submitLabel": "Submit",
+    "deleteLabel": "Delete"
+  }
+}

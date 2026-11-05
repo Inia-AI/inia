@@ -1,0 +1,292 @@
+@using ErrorOr
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentVersionDiff
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.Core.Workflows.Diff
+@using IniaAi.WebApi.Contracts.Enums
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.DependencyInjection
+
+@inject AppState AppState
+@inject IDialogService DialogService
+@inject IServiceScopeFactory ServiceScopeFactory
+
+@if (Versions.Count == 0)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+        This component has no versions yet.
+    </MudText>
+}
+else
+{
+    <MudList T="string" Class="pa-0" ReadOnly="true" aria-label="Version history">
+        @for (int index = 0; index < Versions.Count; index++)
+        {
+            SharedComponentVersionDto version = Versions[index];
+            bool isCurrent = index == 0;
+            string? openPanelKey = _openPanelByVersion.GetValueOrDefault(version.VersionId);
+            bool showsPrevious = openPanelKey == DiffKey(version, vsCurrent: false);
+            bool showsCurrent = openPanelKey == DiffKey(version, vsCurrent: true);
+
+            <MudListItem T="string" Class="px-0 py-2">
+                <div class="d-flex" style="gap: 12px;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0" Style="width: 20px;">
+                        <MudIcon Icon="@(isCurrent ? Icons.Material.Filled.Circle : Icons.Material.Outlined.Circle)"
+                                 Color="@(isCurrent ? Color.Primary : Color.Default)"
+                                 Size="Size.Small"
+                                 Class="@(isCurrent ? string.Empty : "mud-text-disabled")"
+                                 Style="font-size: 0.85rem;" />
+                        @if (index < Versions.Count - 1)
+                        {
+                            <div class="flex-grow-1"
+                                 style="width: 2px; min-height: 16px; background-color: var(--mud-palette-divider);"></div>
+                        }
+                    </MudStack>
+
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-center flex-wrap" style="gap: 8px;">
+                            @if (string.IsNullOrWhiteSpace(version.Narrative))
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="font-style: italic;">
+                                    No change summary is available for this version
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2"
+                                         Style="font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    @version.Narrative
+                                </MudText>
+                                int narrativeParts = NarrativePartCount(version.Narrative);
+                                @if (narrativeParts > 2)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default" Class="ma-0">
+                                        @($"{narrativeParts} changes")
+                                    </MudChip>
+                                }
+                            }
+                            @if (isCurrent)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="ma-0">
+                                    Current
+                                </MudChip>
+                            }
+                        </div>
+
+                        <VersionStamp When="version.CreatedAtUtc"
+                                      Author="@version.CreatedByName"
+                                      VersionCode="@WorkflowVersionCode.Short(version.ContentHash)"
+                                      Class="mt-1" />
+
+                        @if (version.PayloadAbsent)
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-disabled mt-1" Style="font-style: italic;">
+                                This is a hash-only lineage entry without stored content, so it cannot be viewed, compared, or restored.
+                            </MudText>
+                        }
+                        else
+                        {
+                            <div class="d-flex align-center flex-wrap mt-1" style="gap: 4px;">
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           StartIcon="@(showsPrevious ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                           OnClick="async () => await TogglePanelAsync(version, vsCurrent: false)">
+                                    @(showsPrevious ? "Hide changes" : "Show changes")
+                                </MudButton>
+                                @if (!isCurrent)
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               StartIcon="@Icons.Material.Outlined.Difference"
+                                               OnClick="async () => await TogglePanelAsync(version, vsCurrent: true)">
+                                        Compare with current
+                                    </MudButton>
+                                }
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           StartIcon="@Icons.Material.Outlined.Visibility"
+                                           OnClick="async () => await OnViewVersion.InvokeAsync(version)">
+                                    View definition
+                                </MudButton>
+                                @if (!isCurrent && Component.State == SharedComponentState.Active)
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Warning"
+                                               StartIcon="@Icons.Material.Outlined.Restore"
+                                               OnClick="async () => await OpenRestoreDialogAsync(version)">
+                                        Restore this version
+                                    </MudButton>
+                                }
+                            </div>
+                        }
+
+                        @if (openPanelKey is not null)
+                        {
+                            <MudPaper Outlined="true" Class="pa-3 mt-2">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-1">
+                                    @(showsCurrent ? "Compared with the current head" : "What this version changed")
+                                </MudText>
+                                @if (!_panels.TryGetValue(openPanelKey, out DiffPanelState? panel))
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                else if (panel.Message is not null)
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@panel.Message</MudText>
+                                }
+                                else if (panel.Diff is not null)
+                                {
+                                    <WorkflowVersionChangesPanel Diff="panel.Diff" />
+                                }
+                            </MudPaper>
+                        }
+                    </div>
+                </div>
+            </MudListItem>
+        }
+    </MudList>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public SharedComponentSummaryDto Component { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public List<SharedComponentVersionDto> Versions { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<SharedComponentVersionDto> OnViewVersion { get; set; }
+
+    [Parameter]
+    public EventCallback OnHeadChanged { get; set; }
+
+    private readonly Dictionary<string, string> _openPanelByVersion = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DiffPanelState> _panels = new(StringComparer.Ordinal);
+
+    private sealed record DiffPanelState(WorkflowDiff? Diff, string? Message, bool Retryable = false);
+
+    private string DiffKey(SharedComponentVersionDto version, bool vsCurrent)
+    {
+        return vsCurrent
+            ? $"{version.VersionId}→{Versions[0].VersionId}"
+            : $"{version.VersionId}→parent";
+    }
+
+    private async Task TogglePanelAsync(SharedComponentVersionDto version, bool vsCurrent)
+    {
+        string key = DiffKey(version, vsCurrent);
+        if (_openPanelByVersion.GetValueOrDefault(version.VersionId) == key)
+        {
+            _ = _openPanelByVersion.Remove(version.VersionId);
+            return;
+        }
+
+        _openPanelByVersion[version.VersionId] = key;
+        if (_panels.TryGetValue(key, out DiffPanelState? cached) && !cached.Retryable)
+        {
+            return;
+        }
+
+        _panels[key] = await LoadPanelAsync(version, vsCurrent);
+    }
+
+    private async Task<DiffPanelState> LoadPanelAsync(SharedComponentVersionDto version, bool vsCurrent)
+    {
+        string fromVersionId;
+        string toVersionId;
+        if (vsCurrent)
+        {
+            SharedComponentVersionDto head = Versions[0];
+            if (string.Equals(version.ContentHash, head.ContentHash, StringComparison.Ordinal))
+            {
+                return new DiffPanelState(null, "This version's content is identical to the current head.");
+            }
+
+            fromVersionId = version.VersionId;
+            toVersionId = head.VersionId;
+        }
+        else
+        {
+            if (version.ParentVersionId is null)
+            {
+                return new DiffPanelState(null, "This is the first version of this component.");
+            }
+
+            fromVersionId = version.ParentVersionId;
+            toVersionId = version.VersionId;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<SharedComponentVersionDiffResult> result = await sender.Send(
+            new GetSharedComponentVersionDiffQuery(
+                OrganizationId, UserId, Component.Id, fromVersionId, toVersionId));
+
+        if (result.IsError)
+        {
+            bool payloadAbsent = string.Equals(
+                result.FirstError.Code, SharedComponentErrorCodes.PAYLOAD_ABSENT, StringComparison.Ordinal);
+
+            return new DiffPanelState(
+                null,
+                payloadAbsent
+                    ? "A definition needed for this comparison is no longer stored."
+                    : result.FirstError.Description,
+                Retryable: !payloadAbsent);
+        }
+
+        return new DiffPanelState(result.Value.Diff, null);
+    }
+
+    private async Task OpenRestoreDialogAsync(SharedComponentVersionDto version)
+    {
+        var parameters = new DialogParameters<RestoreComponentVersionDialog>
+        {
+            { dialog => dialog.OrganizationId, OrganizationId },
+            { dialog => dialog.UserId, UserId },
+            { dialog => dialog.Component, Component },
+            { dialog => dialog.Version, version },
+            { dialog => dialog.HeadVersionId, Versions[0].VersionId },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<RestoreComponentVersionDialog>(
+            $"Restore version {WorkflowVersionCode.Short(version.ContentHash)}",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        if (result.Data is SharedComponentAppendResult appended)
+        {
+            AppState.Notify(
+                appended.WasDeduped
+                    ? "That version already matches the current head, so nothing changed."
+                    : $"Restored '{Component.Name}'; {TemplatesUpdatedLabel(appended.ConsumerSaves.Count)}.",
+                Severity.Success);
+        }
+
+        await OnHeadChanged.InvokeAsync();
+    }
+
+    private static string TemplatesUpdatedLabel(int count)
+    {
+        return count == 1 ? "1 template was updated" : $"{count} templates were updated";
+    }
+
+    private static int NarrativePartCount(string narrative)
+    {
+        return narrative.Split("; ").Length;
+    }
+}

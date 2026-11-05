@@ -1,0 +1,367 @@
+@using IniaAi.Domain.Entities.AgentRuntime
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using System.Text
+@inject IJSRuntime JsRuntime
+
+@if (Files.Count > 0)
+{
+    <MudExpansionPanels Elevation="0" Outlined="true" Class="mt-4">
+        <MudExpansionPanel Text="@PanelTitle" KeepContentAlive="false">
+            @foreach (AgentTracePanelRun run in _runs)
+            {
+                @if (_runs.Count > 1)
+                {
+                    <MudText Typo="Typo.subtitle2"
+                             Style="display: block; font-family: monospace;"
+                             Class="mt-3 mb-1">
+                        @AgentTracePanelRuns.Header(run)
+                    </MudText>
+                }
+
+                @if (run.Pass is { SuspiciouslyFast: true } or { SuspiciouslyCheap: true })
+                {
+                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-2">
+                        @if (run.Pass.SuspiciouslyFast)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">
+                                @($"back in {run.Pass.DurationSeconds:0.#} s")
+                            </MudChip>
+                        }
+                        @if (run.Pass.SuspiciouslyCheap)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">
+                                @($"spent {run.Pass.EstimatedCostUsd:$0.####}")
+                            </MudChip>
+                        }
+                    </MudStack>
+                }
+
+                @if (run.Digest is { } digest)
+                {
+                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-3">
+                        @if (!string.IsNullOrWhiteSpace(digest.Model))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@digest.Model</MudChip>
+                        }
+                        @if (digest.Attempt > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">attempt @digest.Attempt</MudChip>
+                        }
+                        @if (digest.Turns is not null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@digest.Turns turns</MudChip>
+                        }
+                        @if (digest.InputTokens > 0 || digest.OutputTokens > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                                @TokensChipText(digest)
+                            </MudChip>
+                        }
+                        @if (digest.TotalCostUsd is not null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                                @($"${digest.TotalCostUsd:0.####}")
+                            </MudChip>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(digest.StopReason))
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Variant="Variant.Text"
+                                     Color="@(digest.StopReason == "success" ? Color.Success : Color.Warning)">
+                                @digest.StopReason
+                            </MudChip>
+                        }
+                        @if (digest.WallDurationMs is not null || digest.ApiDurationMs is not null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">
+                                @LatencyChipText(digest)
+                            </MudChip>
+                        }
+                        @if (digest.PermissionDenials.Count > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">
+                                @($"{digest.PermissionDenials.Count} denied tool call(s)")
+                            </MudChip>
+                        }
+                        @if (digest.SkippedLines > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">
+                                @digest.SkippedLines unparsed line(s)
+                            </MudChip>
+                        }
+                    </MudStack>
+
+                    @if (digest.AvailableTools.Count > 0 || !string.IsNullOrWhiteSpace(digest.PermissionMode))
+                    {
+                        <MudText Typo="Typo.caption" Style="opacity: .7; display: block;" Class="mb-2">
+                            @EnvironmentText(digest)
+                        </MudText>
+                    }
+
+                    @foreach (AgentTracePermissionDenial denial in digest.PermissionDenials)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning" Style="display: block;" Class="mb-1">
+                            @($"denied: {denial.Tool}{(string.IsNullOrWhiteSpace(denial.InputSummary) ? string.Empty : " · " + denial.InputSummary)}")
+                        </MudText>
+                    }
+
+                    @if (digest.ModelUsages.Count > 1)
+                    {
+                        <MudSimpleTable Dense="true" Elevation="0" Class="mb-3">
+                            <thead>
+                                <tr>
+                                    <th>model</th>
+                                    <th style="text-align: right;">in</th>
+                                    <th style="text-align: right;">out</th>
+                                    <th style="text-align: right;">cache read</th>
+                                    <th style="text-align: right;">cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (AgentTraceModelUsage usage in digest.ModelUsages)
+                                {
+                                    <tr>
+                                        <td style="font-family: monospace;">@usage.Model</td>
+                                        <td style="text-align: right;">@($"{usage.InputTokens:N0}")</td>
+                                        <td style="text-align: right;">@($"{usage.OutputTokens:N0}")</td>
+                                        <td style="text-align: right;">@($"{usage.CacheReadInputTokens:N0}")</td>
+                                        <td style="text-align: right;">@(usage.CostUsd is null ? "—" : $"${usage.CostUsd:0.####}")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+
+                    @if (digest.Timeline.Count > 0)
+                    {
+                        @TimelineTable(digest.Timeline)
+                    }
+
+                    @foreach (AgentTraceSubagentTimeline subagent in digest.SubagentTimelines)
+                    {
+                        <MudText Typo="Typo.caption"
+                                 Style="display: block; font-family: monospace; opacity: .8;"
+                                 Class="mt-2 mb-1">
+                            @($"subagent: {subagent.Agent}")
+                        </MudText>
+                        @TimelineTable(subagent.Timeline)
+                    }
+                }
+
+                <div class="mud-expansion-panels">
+                    @foreach (AgentRunTraceFile file in run.Files)
+                    {
+                        <DisclosurePanel Dense="true">
+                            <TitleContent>
+                                <span class="d-flex align-center gap-2">
+                                    <MudText Typo="Typo.body2" Style="font-family: monospace;">@file.Path</MudText>
+                                    <MudText Typo="Typo.caption" Style="opacity: .7;">
+                                        @file.SizeBytes.ToFileSize()
+                                    </MudText>
+                                </span>
+                            </TitleContent>
+                            <Actions>
+                                <MudIconButton Icon="@Icons.Material.Outlined.Download"
+                                               aria-label="@($"Download {file.Path}")"
+                                               Size="Size.Small"
+                                               OnClick="@(() => DownloadAsync(file))" />
+                            </Actions>
+                            <ChildContent>
+                                <pre style="max-height: 400px; overflow: auto; font-size: .75rem; white-space: pre-wrap; word-break: break-all;">@PreviewOf(file)</pre>
+                            </ChildContent>
+                        </DisclosurePanel>
+                    }
+                </div>
+            }
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+}
+
+@code {
+    private int _digestFingerprint;
+    private List<AgentTracePanelRun> _runs = [];
+
+    private const string PANEL_TITLE = "Agent run trace";
+
+    /// <summary>
+    /// The panel says how much there is to open before it is opened: several runs behind one
+    /// block means a verification group redid it, and the total is what the reader is billed
+    /// for. The total comes from the run ledger, which is what the runtime charged, rather than
+    /// from the parsed traces.
+    /// </summary>
+    private string PanelTitle => _runs.Count <= 1
+        ? PANEL_TITLE
+        : $"{PANEL_TITLE} — {_runs.Count} runs{AgentTracePanelRuns.LedgerSpend(_runs)}";
+
+    [Parameter, EditorRequired]
+    public ICollection<AgentRunTraceFile> Files { get; set; } = [];
+
+    /// <summary>
+    /// The block's run ledger, when its consumer holds one: the only record of which round bought
+    /// which run, since a trace row deliberately carries no round of its own.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<AgentRunPass>? Passes { get; set; }
+
+    // Row ids fingerprint the collection: every collection materializes fresh rows, so in-place
+    // Clear+Add re-runs change the fingerprint even when the file count stays identical.
+    protected override void OnParametersSet()
+    {
+        int fingerprint = 0;
+        foreach (AgentRunTraceFile file in Files)
+        {
+            fingerprint = HashCode.Combine(fingerprint, file.Id);
+        }
+
+        // EstimatedCostUsd is in the fingerprint because the panel title displays it: a row
+        // settles its cost after the id and the smell flags are already set, and without it the
+        // title would keep showing the pre-settlement total.
+        foreach (AgentRunPass pass in Passes ?? [])
+        {
+            fingerprint = HashCode.Combine(
+                fingerprint, pass.ExecutionId, pass.Round, pass.SuspiciouslyFast, pass.SuspiciouslyCheap,
+                pass.EstimatedCostUsd);
+        }
+
+        if (fingerprint == _digestFingerprint)
+        {
+            return;
+        }
+
+        _digestFingerprint = fingerprint;
+        _runs = AgentTracePanelRuns.Split(Files, Passes);
+    }
+
+    private const int PREVIEW_MAX_CHARS = 262_144;
+
+    private RenderFragment TimelineTable(IReadOnlyList<AgentTraceTimelineEntry> entries) =>
+        @<div style="max-height: 320px; overflow-y: auto;" class="mb-3">
+            <MudSimpleTable Dense="true" Elevation="0">
+                <tbody>
+                    @foreach (AgentTraceTimelineEntry entry in entries)
+                    {
+                        <tr>
+                            <td style="white-space: nowrap; opacity: .7;">
+                                @(entry.At?.ToString("HH:mm:ss") ?? "—")
+                            </td>
+                            <td style="white-space: nowrap;">
+                                <MudIcon Icon="@IconFor(entry.Kind)"
+                                         Size="Size.Small"
+                                         Style="vertical-align: middle;" />
+                                @entry.Label
+                            </td>
+                            <td style="@DetailStyle(entry.Kind)">@entry.Detail</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </div>;
+
+    private static string IconFor(AgentTraceTimelineKind kind)
+    {
+        return kind switch
+        {
+            AgentTraceTimelineKind.ToolCall => Icons.Material.Outlined.Build,
+            AgentTraceTimelineKind.Thinking => Icons.Material.Outlined.Psychology,
+            AgentTraceTimelineKind.AssistantText => Icons.Material.Outlined.ChatBubbleOutline,
+            _ => Icons.Material.Outlined.Flag,
+        };
+    }
+
+    private const string DEFAULT_DETAIL_STYLE = "opacity: .8; word-break: break-all;";
+    private const string PROSE_DETAIL_STYLE = "opacity: .8; white-space: pre-wrap; word-break: break-word;";
+    private const string THINKING_DETAIL_STYLE = PROSE_DETAIL_STYLE + " font-style: italic;";
+
+    private static string DetailStyle(AgentTraceTimelineKind kind)
+    {
+        return kind switch
+        {
+            AgentTraceTimelineKind.Thinking => THINKING_DETAIL_STYLE,
+            AgentTraceTimelineKind.AssistantText => PROSE_DETAIL_STYLE,
+            _ => DEFAULT_DETAIL_STYLE,
+        };
+    }
+
+    private static string LatencyChipText(AgentTraceDigest digest)
+    {
+        var parts = new List<string>();
+        if (digest.ApiDurationMs is not null)
+        {
+            parts.Add($"{Seconds(digest.ApiDurationMs.Value)} s api");
+        }
+
+        if (digest.ToolTimeMs > 0)
+        {
+            parts.Add($"{Seconds(digest.ToolTimeMs)} s tools");
+        }
+
+        if (digest.WallDurationMs is not null)
+        {
+            parts.Add($"{Seconds(digest.WallDurationMs.Value)} s wall");
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    private static string Seconds(long milliseconds)
+    {
+        return (milliseconds / 1000.0).ToString("0.#");
+    }
+
+    private static string EnvironmentText(AgentTraceDigest digest)
+    {
+        var parts = new List<string>();
+        if (digest.AvailableTools.Count > 0)
+        {
+            parts.Add("tools: " + string.Join(", ", digest.AvailableTools));
+        }
+
+        if (digest.LoadedSkills.Count > 0)
+        {
+            parts.Add("skills: " + string.Join(", ", digest.LoadedSkills));
+        }
+
+        if (!string.IsNullOrWhiteSpace(digest.PermissionMode))
+        {
+            parts.Add("permissionMode: " + digest.PermissionMode);
+        }
+
+        if (!string.IsNullOrWhiteSpace(digest.ClaudeCodeVersion))
+        {
+            parts.Add("claude-code " + digest.ClaudeCodeVersion);
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    private static string TokensChipText(AgentTraceDigest digest)
+    {
+        string cached = digest.CachedInputTokens > 0
+            ? $" ({digest.CachedInputTokens:N0} cached)"
+            : string.Empty;
+
+        return $"{digest.InputTokens:N0} in{cached} / {digest.OutputTokens:N0} out tokens";
+    }
+
+    private static string TextOf(AgentRunTraceFile file)
+    {
+        return Encoding.UTF8.GetString(file.Content);
+    }
+
+    private static string PreviewOf(AgentRunTraceFile file)
+    {
+        string text = TextOf(file);
+
+        return text.Length <= PREVIEW_MAX_CHARS
+            ? text
+            : text[..PREVIEW_MAX_CHARS] + "\n… truncated — download the file for the full content";
+    }
+
+    private async Task DownloadAsync(AgentRunTraceFile file)
+    {
+        string fileName = file.Path.Replace('/', '_');
+        _ = await JsRuntime.InvokeAsync<object>("downloadFile", fileName, TextOf(file));
+    }
+}

@@ -1,0 +1,47 @@
+From: Fund Administration Reporting <reporting@fund-admin.example>
+Date: Thu, 15 Jan 2026 09:30:00 +0000
+Subject: Monthly Newsletter
+Message-Id: <newsletter-2026-01@fund-admin.example>
+To: Monitoring Desk <monitoring@bank.example>
+Cc: Credit Analyst <analyst@bank.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary=mixed-newsletter-0001
+
+--mixed-newsletter-0001
+Content-Type: multipart/alternative; boundary=alt-newsletter-0001
+
+--alt-newsletter-0001
+Content-Type: text/plain; charset=utf-8
+
+Monthly Newsletter - January 2026
+
+The Corvane Global Macro Fund returned 1.4% in December and 6.2% for the year.
+Net asset value closed at 412.6 million.
+
+This message is a synthetic test fixture.
+
+--alt-newsletter-0001
+Content-Type: text/html; charset=utf-8
+
+<html><body><h1>Monthly Newsletter - January 2026</h1><p>The Corvane Global Macro Fund returned 1.4% in December and 6.2% for the year.</p><table border="1"><tr><th>Month</th><th>Return</th><th>NAV (m)</th></tr><tr><td>October</td><td>0.8%</td><td>401.2</td></tr><tr><td>November</td><td>-0.3%</td><td>399.9</td></tr><tr><td>December</td><td>1.4%</td><td>412.6</td></tr></table><p>This message is a synthetic test fixture.</p></body></html>
+--alt-newsletter-0001--
+
+--mixed-newsletter-0001
+Content-Type: application/pdf; name=factsheet.pdf
+Content-Disposition: attachment; filename=factsheet.pdf
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2Jq
+CjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFs0IDAgUl0gL0NvdW50IDEgPj4KZW5kb2Jq
+CjMgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0
+aWNhID4+CmVuZG9iago0IDAgb2JqCjw8IC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlh
+Qm94IFswIDAgNjEyIDc5Ml0gL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgMyAwIFIgPj4gPj4g
+L0NvbnRlbnRzIDUgMCBSID4+CmVuZG9iago1IDAgb2JqCjw8IC9MZW5ndGggMTE5ID4+CnN0cmVh
+bQpCVCAvRjEgMTIgVGYgMTQgVEwgNzIgNzUwIFRkIChDb3J2YW5lIEdsb2JhbCBNYWNybyBGdW5k
+IGZhY3RzaGVldCAtIERlY2VtYmVyIDIwMjUpIFRqIFQqIChTeW50aGV0aWMgdGVzdCBmaXh0dXJl
+KSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAw
+MDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAK
+MDAwMDAwMDE4NSAwMDAwMCBuIAowMDAwMDAwMzExIDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUg
+NiAvUm9vdCAxIDAgUiA+PgpzdGFydHhyZWYKNDgxCiUlRU9GCg==
+
+--mixed-newsletter-0001--

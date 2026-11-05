@@ -1,0 +1,63 @@
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="@Class">
+    @if (OnGoBack.HasDelegate)
+    {
+        <MudButton Variant="Variant.Text"
+                   Size="Size.Small"
+                   Color="Color.Primary"
+                   Class="editor-soft-button"
+                   StartIcon="@Icons.Material.Outlined.ArrowBack"
+                   OnClick="async () => await OnGoBack.InvokeAsync()">
+            Go Back
+        </MudButton>
+    }
+    <MudButton Variant="Variant.Text"
+               Size="Size.Small"
+               Color="Color.Primary"
+               Class="editor-soft-button"
+               StartIcon="@Icons.Material.Outlined.Add"
+               OnClick="async () => await OnInsert.InvokeAsync()">
+        @Label
+    </MudButton>
+    @if (OnInsertSeparator.HasDelegate)
+    {
+        <MudButton Variant="Variant.Text"
+                   Size="Size.Small"
+                   Color="Color.Primary"
+                   Class="editor-soft-button"
+                   StartIcon="@Icons.Material.Outlined.HorizontalRule"
+                   OnClick="async () => await OnInsertSeparator.InvokeAsync()">
+            Add Separator
+        </MudButton>
+    }
+    @if (OnInsertFromLibrary.HasDelegate)
+    {
+        <MudButton Variant="Variant.Text"
+                   Size="Size.Small"
+                   Color="Color.Primary"
+                   Class="editor-soft-button"
+                   StartIcon="@Icons.Material.Outlined.LibraryBooks"
+                   OnClick="async () => await OnInsertFromLibrary.InvokeAsync()">
+            From Library…
+        </MudButton>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback OnInsert { get; set; }
+
+    [Parameter]
+    public EventCallback OnInsertSeparator { get; set; }
+
+    [Parameter]
+    public EventCallback OnInsertFromLibrary { get; set; }
+
+    [Parameter]
+    public EventCallback OnGoBack { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+}

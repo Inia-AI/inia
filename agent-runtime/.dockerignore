@@ -1,0 +1,7 @@
+node_modules
+dist
+.git
+.env
+evals/runs
+evals/fixtures/documents/*
+!evals/fixtures/documents/README.md

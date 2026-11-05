@@ -1,0 +1,11 @@
+{
+  "home": "Dashboard",
+  "workflowReports": "Reports",
+  "counterpartyManagement": "@:{'terms.Companies'}",
+  "counterpartyTypes": "@:{'terms.Company'} types",
+  "documents": "Documents",
+  "documentCategoryManagement": "Document Categories",
+  "tokenUsageAnalytics": "Token Usage",
+  "modelPricing": "Model Pricing",
+  "signatures": "Signatures"
+}

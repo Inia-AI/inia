@@ -1,0 +1,34 @@
+{
+  "@odata.count": 3,
+  "@odata.skip": 0,
+  "@odata.top": 50,
+  "value": [
+    {
+      "id": "user-ada",
+      "email": "ada@example.com",
+      "username": "ada@example.com",
+      "firstName": "Ada",
+      "lastName": "Lovelace",
+      "middleName": null,
+      "fullName": "Ada Lovelace"
+    },
+    {
+      "id": "user-grace",
+      "email": "grace@example.com",
+      "username": "grace@example.com",
+      "firstName": "Grace",
+      "lastName": "Hopper",
+      "middleName": "Brewster",
+      "fullName": "Grace Brewster Hopper"
+    },
+    {
+      "id": "user-nameless",
+      "email": "nameless@example.com",
+      "username": "nameless@example.com",
+      "firstName": null,
+      "lastName": null,
+      "middleName": null,
+      "fullName": ""
+    }
+  ]
+}

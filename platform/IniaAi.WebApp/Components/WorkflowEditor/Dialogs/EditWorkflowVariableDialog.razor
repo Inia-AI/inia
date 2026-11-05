@@ -1,0 +1,518 @@
+@using System.ComponentModel.DataAnnotations
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Replacement Tag"
+                                  Variant="Variant.Outlined"
+                                  Class="editor-mono-field"
+                                  HelperText="Tag that will be used to reference this variable in templates (e.g. 'workflowVariable_1')"
+                                  @bind-Value="@_replacementTag"
+                                  For="@(() => _replacementTag)"
+                                  Required="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Display Name"
+                                  Variant="Variant.Outlined"
+                                  HelperText="User-friendly name for this variable"
+                                  @bind-Value="@_displayName"
+                                  For="@(() => _displayName)"
+                                  Required="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField Label="Description"
+                          Variant="Variant.Outlined"
+                          HelperText="Optional description explaining the purpose of this variable"
+                          @bind-Value="@_description"
+                          Lines="3" />
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="WorkflowVariableTypes"
+                               Label="Variable Type"
+                               Variant="Variant.Outlined"
+                               Value="@_variableType"
+                               ValueChanged="OnVariableTypeChanged"
+                               For="@(() => _variableType)"
+                               HelperText="How the value is entered and validated"
+                               Required="true">
+                        <MudSelectItem Value="WorkflowVariableTypes.String">String</MudSelectItem>
+                        <MudSelectItem Value="WorkflowVariableTypes.Number">Number</MudSelectItem>
+                        <MudSelectItem Value="WorkflowVariableTypes.DateTime">Date</MudSelectItem>
+                        <MudSelectItem Value="WorkflowVariableTypes.List">List</MudSelectItem>
+                        <MudSelectItem Value="WorkflowVariableTypes.Dropdown">Dropdown</MudSelectItem>
+                        <MudSelectItem Value="WorkflowVariableTypes.MultiSelect">Multi-Select</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    @if (_variableType is WorkflowVariableTypes.Dropdown)
+                    {
+                        <MudSelect T="string"
+                                   Label="Default Value"
+                                   Variant="Variant.Outlined"
+                                   HelperText="Optional default value — must be one of the defined options"
+                                   Value="@(_defaultValue ?? string.Empty)"
+                                   ValueChanged="OnDropdownDefaultChanged">
+                            <MudSelectItem T="string" Value="@string.Empty">
+                                <em>(none)</em>
+                            </MudSelectItem>
+                            @foreach (var option in _options)
+                            {
+                                <MudSelectItem T="string" Value="@option.Key">
+                                    @(option.Value == option.Key ? option.Value : $"{option.Value} ({option.Key})")
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else if (_variableType is WorkflowVariableTypes.MultiSelect)
+                    {
+                        <MudSelect T="string"
+                                   Label="Default Value"
+                                   Variant="Variant.Outlined"
+                                   HelperText="Optional default values — each must be one of the defined options"
+                                   MultiSelection="true"
+                                   SelectedValues="@_defaultValueSelections"
+                                   SelectedValuesChanged="OnMultiSelectDefaultsChanged">
+                            @foreach (var option in _options)
+                            {
+                                <MudSelectItem T="string" Value="@option.Key">
+                                    @(option.Value == option.Key ? option.Value : $"{option.Value} ({option.Key})")
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudTextField Label="Default Value"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Optional default value for this variable"
+                                      @bind-Value="@_defaultValue" />
+                    }
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="4">
+                    <MudCheckBox T="bool"
+                                 @bind-Value="@_isRequired"
+                                 Color="Color.Primary">
+                        <div class="d-flex flex-column">
+                            <MudText Typo="Typo.body1">Required</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                A run cannot start without a value
+                            </MudText>
+                        </div>
+                    </MudCheckBox>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudCheckBox T="bool"
+                                 @bind-Value="@_isHidden"
+                                 Color="Color.Primary">
+                        <div class="d-flex flex-column">
+                            <MudText Typo="Typo.body1">Hidden</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                Left out of the report's variable list
+                            </MudText>
+                        </div>
+                    </MudCheckBox>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudCheckBox T="bool"
+                                 @bind-Value="@_isConfidential"
+                                 Color="Color.Primary">
+                        <div class="d-flex flex-column">
+                            <MudText Typo="Typo.body1">Confidential</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                The value is masked when a run is read back
+                            </MudText>
+                        </div>
+                    </MudCheckBox>
+                </MudItem>
+            </MudGrid>
+
+            @if (_variableType is WorkflowVariableTypes.Dropdown
+                or WorkflowVariableTypes.MultiSelect)
+            {
+                <MudPaper Outlined="true"
+                          Class="pa-4">
+                    <MudStack Spacing="3">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.subtitle1">Options</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                The value is what the workflow receives. The display name is what the user picks.
+                            </MudText>
+                        </MudStack>
+
+                        @foreach (var (option, index) in _options.Select((kvp, i) => (kvp, i)))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudTextField Value="@option.Key"
+                                              Label="@($"Option {index + 1} - Value")"
+                                              Variant="Variant.Outlined"
+                                              Class="editor-mono-field"
+                                              ValueChanged="(string value) => UpdateOptionValue(option.Key, value)" />
+
+                                <MudTextField Value="@option.Value"
+                                              Label="@($"Option {index + 1} - Display Name")"
+                                              Variant="Variant.Outlined"
+                                              ValueChanged="(string value) => UpdateOptionDisplayName(option.Key, value)" />
+
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               Class="editor-soft-button"
+                                               aria-label="Remove option"
+                                               OnClick="() => RemoveOption(option.Key)" />
+                            </MudStack>
+                        }
+
+                        <div>
+                            <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                                       Variant="Variant.Text"
+                                       Class="editor-soft-button"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="AddOption">
+                                Add Option
+                            </MudButton>
+                        </div>
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm">
+            @_saveButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _saveButtonText => WorkflowVariable is null
+        ? "Create"
+        : "Save";
+    private string _replacementTag = string.Empty;
+    private string _displayName = string.Empty;
+    private string _description = string.Empty;
+    private WorkflowVariableTypes _variableType = WorkflowVariableTypes.String;
+    private bool _isRequired = true;
+    private bool _isHidden = false;
+    private bool _isConfidential = false;
+    private string? _defaultValue;
+    private HashSet<string> _defaultValueSelections = [];
+    private Dictionary<string, string> _options = [];
+    private string _errorMessage = string.Empty;
+    private string _originalReplacementTag = string.Empty;
+
+    [Parameter]
+    public WorkflowVariable? WorkflowVariable { get; set; }
+
+    [Parameter]
+    public Workflow Workflow { get; set; } = default!;
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (WorkflowVariable is not null)
+        {
+            _replacementTag = WorkflowVariable.ReplacementTag;
+            _originalReplacementTag = WorkflowVariable.ReplacementTag;
+            _displayName = WorkflowVariable.DisplayName;
+            _description = WorkflowVariable.Description;
+            _variableType = WorkflowVariable.Type;
+            _isRequired = WorkflowVariable.IsRequired;
+            _isHidden = WorkflowVariable.IsHidden;
+            _isConfidential = WorkflowVariable.IsConfidential;
+            _defaultValue = WorkflowVariable.DefaultValue;
+            _options = new Dictionary<string, string>(WorkflowVariable.Options);
+
+            if (_variableType is WorkflowVariableTypes.MultiSelect)
+            {
+                InitializeDefaultValueSelections();
+            }
+            else if (_variableType is WorkflowVariableTypes.Dropdown)
+            {
+                ReconcileDefaultWithOptions();
+            }
+
+            return;
+        }
+
+        int variableCount = Workflow.Variables.Count + 1;
+        _replacementTag = $"workflowVariable_{variableCount}";
+        _originalReplacementTag = _replacementTag;
+        _displayName = _replacementTag;
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Confirm()
+    {
+        _errorMessage = string.Empty;
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(_replacementTag))
+        {
+            _errorMessage = "Replacement tag is required";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_displayName))
+        {
+            _errorMessage = "Display name is required";
+            return;
+        }
+
+        if (_replacementTag != _originalReplacementTag)
+        {
+            bool replacementTagExists = Workflow.Variables
+                .Any(v => v.ReplacementTag.Equals(_replacementTag, StringComparison.OrdinalIgnoreCase));
+
+            if (replacementTagExists)
+            {
+                _errorMessage = $"A variable with replacement tag '{_replacementTag}' already exists";
+                return;
+            }
+        }
+
+        if ((_variableType is WorkflowVariableTypes.Dropdown
+            or WorkflowVariableTypes.MultiSelect)
+            && !_options.Any())
+        {
+            _errorMessage = "Please add at least one option for dropdown/multi-select variables";
+            return;
+        }
+
+        if (_variableType is WorkflowVariableTypes.Dropdown
+            && !string.IsNullOrEmpty(_defaultValue)
+            && !_options.ContainsKey(_defaultValue))
+        {
+            _errorMessage = "Default value must match one of the defined option keys";
+            return;
+        }
+
+        if (_variableType is WorkflowVariableTypes.MultiSelect
+            && _defaultValueSelections.Any(k => !_options.ContainsKey(k)))
+        {
+            _errorMessage = "Default values must all match defined option keys";
+            return;
+        }
+
+        try
+        {
+            if (WorkflowVariable is not null)
+            {
+                WorkflowVariable.ReplacementTag = _replacementTag;
+                WorkflowVariable.DisplayName = _displayName;
+                WorkflowVariable.Description = _description;
+                WorkflowVariable.Type = _variableType;
+                WorkflowVariable.IsRequired = _isRequired;
+                WorkflowVariable.IsHidden = _isHidden;
+                WorkflowVariable.IsConfidential = _isConfidential;
+                WorkflowVariable.DefaultValue = _defaultValue;
+                WorkflowVariable.Options.Clear();
+
+                foreach (var option in _options)
+                {
+                    WorkflowVariable.Options.Add(option.Key, option.Value);
+                }
+
+                MudDialog?.Close(DialogResult.Ok(WorkflowVariable));
+
+                return;
+            }
+
+            var newVariable = new WorkflowVariable(Workflow, _replacementTag)
+            {
+                DisplayName = _displayName,
+                Description = _description,
+                Type = _variableType,
+                IsRequired = _isRequired,
+                IsHidden = _isHidden,
+                IsConfidential = _isConfidential,
+                DefaultValue = _defaultValue
+            };
+
+            foreach (var option in _options)
+            {
+                newVariable.Options.Add(option.Key, option.Value);
+            }
+
+            MudDialog?.Close(DialogResult.Ok(newVariable));
+        }
+        catch (Exception ex)
+        {
+            string errorMessage = WorkflowVariable is not null
+                ? "Error updating variable"
+                : "Error creating variable";
+            _errorMessage = $"{errorMessage}: {ex.Message}";
+        }
+    }
+
+    private void AddOption()
+    {
+        var newKey = $"option_{_options.Count + 1}";
+        _options.Add(newKey, newKey);
+    }
+
+    private void RemoveOption(string key)
+    {
+        if (_options.ContainsKey(key))
+        {
+            _options.Remove(key);
+            ReconcileDefaultWithOptions();
+        }
+    }
+
+    private void UpdateOptionValue(string oldKey, string newValue)
+    {
+        if (!_options.ContainsKey(oldKey) || string.IsNullOrWhiteSpace(newValue))
+        {
+            return;
+        }
+
+        if (newValue == oldKey)
+        {
+            return;
+        }
+
+        if (_options.ContainsKey(newValue))
+        {
+            _errorMessage = $"Cannot rename: option key '{newValue}' is already in use";
+            return;
+        }
+
+        _errorMessage = string.Empty;
+
+        var displayName = _options[oldKey];
+        _options.Remove(oldKey);
+        _options.Add(newValue, displayName);
+
+        if (_variableType is WorkflowVariableTypes.Dropdown
+            && _defaultValue == oldKey)
+        {
+            _defaultValue = newValue;
+            return;
+        }
+
+        if (_variableType is WorkflowVariableTypes.MultiSelect
+            && _defaultValueSelections.Remove(oldKey))
+        {
+            _defaultValueSelections.Add(newValue);
+            SyncDefaultFromSelections();
+            return;
+        }
+
+        ReconcileDefaultWithOptions();
+    }
+
+    private void UpdateOptionDisplayName(string key, string newDisplayName)
+    {
+        if (_options.ContainsKey(key))
+        {
+            _options[key] = newDisplayName;
+        }
+    }
+
+    private void InitializeDefaultValueSelections()
+    {
+        if (string.IsNullOrEmpty(_defaultValue))
+        {
+            _defaultValueSelections = [];
+        }
+        else
+        {
+            _defaultValueSelections = _defaultValue
+                .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => _options.ContainsKey(s))
+                .ToHashSet();
+        }
+
+        SyncDefaultFromSelections();
+    }
+
+    private void OnVariableTypeChanged(WorkflowVariableTypes newType)
+    {
+        _variableType = newType;
+
+        if (_variableType is WorkflowVariableTypes.MultiSelect)
+        {
+            InitializeDefaultValueSelections();
+        }
+
+        ReconcileDefaultWithOptions();
+    }
+
+    private void OnDropdownDefaultChanged(string newValue)
+    {
+        _defaultValue = string.IsNullOrEmpty(newValue)
+            ? null
+            : newValue;
+    }
+
+    private void OnMultiSelectDefaultsChanged(IEnumerable<string> newValues)
+    {
+        _defaultValueSelections = newValues is null
+            ? []
+            : [.. newValues];
+        SyncDefaultFromSelections();
+    }
+
+    private void SyncDefaultFromSelections()
+    {
+        _defaultValue = _defaultValueSelections.Count == 0
+            ? null
+            : string.Join("|", _options.Keys.Where(k => _defaultValueSelections.Contains(k)));
+    }
+
+    private void ReconcileDefaultWithOptions()
+    {
+        if (_variableType is WorkflowVariableTypes.Dropdown)
+        {
+            if (_defaultValue is not null && !_options.ContainsKey(_defaultValue))
+            {
+                _defaultValue = null;
+            }
+        }
+        else if (_variableType is WorkflowVariableTypes.MultiSelect)
+        {
+            _defaultValueSelections = _defaultValueSelections
+                .Where(k => _options.ContainsKey(k))
+                .ToHashSet();
+            SyncDefaultFromSelections();
+        }
+    }
+}

@@ -1,0 +1,68 @@
+{
+  "bundleFormatVersion": 1,
+  "sourceInstance": "unit-tests",
+  "sourceOrganizationId": "org-read",
+  "sourceOrganizationName": "Read Org",
+  "exportedAt": "2026-09-07T08:00:00Z",
+  "counterpartyTypes": [
+    {
+      "name": "Corporation",
+      "description": "A company."
+    },
+    {
+      "name": "Hedge Fund",
+      "description": "A fund."
+    }
+  ],
+  "counterparties": [
+    {
+      "id": "counterparty-child",
+      "parentId": "counterparty-parent",
+      "name": "Child Co",
+      "nameVariants": "Child Co; CHILD CO",
+      "email": "counterparty-child@example.com",
+      "phoneNumber": "\u002B44 20 7946 0000",
+      "website": "https://counterparty-child.example.com",
+      "address": "1 Example Street, London",
+      "lastFinancialAnalysisResult": "Stable",
+      "properties": null,
+      "counterpartyTypeNames": [
+        "Corporation"
+      ]
+    },
+    {
+      "id": "counterparty-orphan",
+      "parentId": null,
+      "name": "Orphan Co",
+      "nameVariants": "Orphan Co; ORPHAN CO",
+      "email": "counterparty-orphan@example.com",
+      "phoneNumber": "\u002B44 20 7946 0000",
+      "website": "https://counterparty-orphan.example.com",
+      "address": "1 Example Street, London",
+      "lastFinancialAnalysisResult": "Stable",
+      "properties": null,
+      "counterpartyTypeNames": [
+        "Hedge Fund"
+      ]
+    },
+    {
+      "id": "counterparty-parent",
+      "parentId": null,
+      "name": "Parent Holdings",
+      "nameVariants": "Parent Holdings; PARENT HOLDINGS",
+      "email": "counterparty-parent@example.com",
+      "phoneNumber": "\u002B44 20 7946 0000",
+      "website": "https://counterparty-parent.example.com",
+      "address": "1 Example Street, London",
+      "lastFinancialAnalysisResult": "Stable",
+      "properties": {
+        "lei": "5493001KJTIIGC8Y1R12",
+        "region": "EMEA"
+      },
+      "counterpartyTypeNames": [
+        "Corporation",
+        "Hedge Fund"
+      ]
+    }
+  ]
+}

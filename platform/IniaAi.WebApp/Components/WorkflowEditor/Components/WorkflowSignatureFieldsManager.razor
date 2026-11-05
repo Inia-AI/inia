@@ -1,0 +1,354 @@
+@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.WebApp.Services.Signatures
+@using Microsoft.AspNetCore.Authorization
+
+@inject ILogger<WorkflowSignatureFieldsManager> Logger
+@inject IDialogService DialogService
+@inject ISignatureOverrideReader SignatureOverrideReader
+@inject AppState AppState
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Class="editor-card-title">
+                Signature Fields
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Row="true" Spacing="2" Class="mb-4">
+            <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                       Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       OnClick="() => OpenEditFieldDialog()">
+                Add Signature Field
+            </MudButton>
+        </MudStack>
+
+        @if (!Workflow.SignatureFields.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                No signature fields defined for this workflow. Signature fields are staff-authored
+                prompt snippets that clients can override per workflow. Define a field here, then
+                reference it as <code>{Name}</code> in any block's templates — one shared value
+                applies to every referencing block.
+            </MudAlert>
+        }
+        else
+        {
+            Dictionary<string, List<Block>> references = Workflow.GetSignatureFieldReferences();
+
+            <MudTable Items="@Workflow.SignatureFields.OrderBy(f => f.Name)"
+                      Hover="true"
+                      Breakpoint="Breakpoint.Sm"
+                      Dense="true"
+                      T="WorkflowSignatureField"
+                      OnRowClick="@((TableRowClickEventArgs<WorkflowSignatureField> args) => ToggleRowExpansion(args.Item))"
+                      RowStyle="cursor: pointer;">
+                <HeaderContent>
+                    <MudTh Style="width: 2rem;"></MudTh>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Display Name</MudTh>
+                    <MudTh>Used By</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudIcon Icon="@(IsRowExpanded(context) ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                 Size="Size.Small" />
+                    </MudTd>
+                    <MudTd DataLabel="Name">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <span class="editor-mono-field">@context.Name</span>
+                            @if (GetOverrideValue(context.Name) is not null)
+                            {
+                                <MudTooltip Text="Client override active — expand the row to see it">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                             Color="Color.Secondary"
+                                             Size="Size.Small" />
+                                </MudTooltip>
+                            }
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Display Name">@context.DisplayName</MudTd>
+                    <MudTd DataLabel="Used By">
+                        @{
+                            List<Block> referencingBlocks = references.GetValueOrDefault(context.Name) ?? [];
+                        }
+                        @if (referencingBlocks.Count == 0)
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="Color.Warning"
+                                     Icon="@Icons.Material.Outlined.Warning">
+                                unreferenced
+                            </MudChip>
+                        }
+                        else if (referencingBlocks.Count <= 3)
+                        {
+                            foreach (Block referencingBlock in referencingBlocks)
+                            {
+                                <MudTooltip Text="Go to block">
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="Color.Primary"
+                                             Style="text-decoration: underline; cursor: pointer;"
+                                             OnClick="() => NavigateToBlock(referencingBlock)">
+                                        @BlockLabel(referencingBlock)
+                                    </MudChip>
+                                </MudTooltip>
+                            }
+                        }
+                        else
+                        {
+                            <MudMenu Dense="true">
+                                <ActivatorContent Context="menuContext">
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="Color.Primary"
+                                             OnClick="@menuContext.ToggleAsync">
+                                        @referencingBlocks.Count blocks
+                                    </MudChip>
+                                </ActivatorContent>
+                                <ChildContent>
+                                    @foreach (Block referencingBlock in referencingBlocks)
+                                    {
+                                        <MudMenuItem OnClick="() => NavigateToBlock(referencingBlock)">
+                                            @BlockLabel(referencingBlock)
+                                        </MudMenuItem>
+                                    }
+                                </ChildContent>
+                            </MudMenu>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudStack Row="true">
+                            <div @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                               Size="Size.Small"
+                                               aria-label="Edit signature field"
+                                               OnClick="() => OpenEditFieldDialog(context)" />
+                            </div>
+                            @if ((references.GetValueOrDefault(context.Name)?.Count ?? 0) > 0)
+                            {
+                                <MudTooltip Text="Referenced by block templates — remove the token first">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   Size="Size.Small"
+                                                   Disabled="true"
+                                                   aria-label="Remove signature field (disabled while referenced)" />
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <div @onclick:stopPropagation="true">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   Class="editor-soft-button"
+                                                   aria-label="Remove signature field"
+                                                   OnClick="() => DeleteField(context)" />
+                                </div>
+                            }
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <ChildRowContent>
+                    @if (IsRowExpanded(context))
+                    {
+                        <MudTr>
+                            <td colspan="5" class="pa-4">
+                                <MudTextField T="string"
+                                              Variant="Variant.Outlined"
+                                              Label="Default Value"
+                                              Class="editor-mono-field editor-resolved"
+                                              Value="@context.DefaultValue"
+                                              Lines="6"
+                                              ReadOnly="true" />
+
+                                <MudTextField T="string"
+                                              Variant="Variant.Outlined"
+                                              Label="@(GetOverrideValue(context.Name) is null ? "Client Override (none set)" : "Client Override")"
+                                              Class="mt-3 editor-mono-field editor-resolved"
+                                              HelperText="Read-only. Clients author overrides from the Signatures page — shows the value as of page load."
+                                              Value="@(GetOverrideValue(context.Name) ?? string.Empty)"
+                                              Lines="6"
+                                              ReadOnly="true" />
+
+                                @if (!string.IsNullOrWhiteSpace(context.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mt-2" Style="opacity: 0.75;">
+                                        @context.Description
+                                    </MudText>
+                                }
+                            </td>
+                        </MudTr>
+                    }
+                </ChildRowContent>
+            </MudTable>
+
+            @if (references.Any(entry => entry.Value.Count == 0))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                    Unreferenced fields are never injected anywhere. Add the
+                    <code>{name}</code> token to a block template or delete the definition.
+                </MudAlert>
+            }
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public Workflow Workflow { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback SignatureFieldsChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<(Block, string)> ScrollToBlockCallback { get; set; }
+
+    /// <summary>Records a staff rename so client override rows follow the new name on save.</summary>
+    [Parameter]
+    public EventCallback<(string OldName, string NewName)> FieldRenamed { get; set; }
+
+    private IReadOnlyDictionary<string, string>? _activeOverrides;
+
+    /// <summary>Rows are collapsed by default; Default/Override values render only when expanded.</summary>
+    private readonly HashSet<string> _expandedRows = new(StringComparer.OrdinalIgnoreCase);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        string? organizationId = AppState.CurrentOrganizationId;
+        if (string.IsNullOrEmpty(organizationId))
+        {
+            _activeOverrides = null;
+            return;
+        }
+
+        _activeOverrides = await SignatureOverrideReader.LoadForWorkflowAsync(
+            organizationId,
+            Workflow.WorkflowTypeId,
+            CancellationToken.None);
+    }
+
+    private string? GetOverrideValue(string fieldName)
+    {
+        return _activeOverrides is not null && _activeOverrides.TryGetValue(fieldName, out string? value)
+            ? value
+            : null;
+    }
+
+    private bool IsRowExpanded(WorkflowSignatureField field)
+    {
+        return _expandedRows.Contains(field.Name);
+    }
+
+    private void ToggleRowExpansion(WorkflowSignatureField? field)
+    {
+        if (field is null)
+        {
+            return;
+        }
+
+        if (!_expandedRows.Add(field.Name))
+        {
+            _ = _expandedRows.Remove(field.Name);
+        }
+    }
+
+    private static string BlockLabel(Block block)
+    {
+        return string.IsNullOrWhiteSpace(block.ReplacementTag) ? block.Name : block.ReplacementTag;
+    }
+
+    private async Task NavigateToBlock(Block block)
+    {
+        await ScrollToBlockCallback.InvokeAsync((block, block.Id));
+    }
+
+    private async Task OpenEditFieldDialog(WorkflowSignatureField? field = null)
+    {
+        DialogParameters<EditSignatureFieldDialog> parameters = [];
+        parameters.Add(x => x.SignatureField, field);
+        parameters.Add(x => x.Workflow, Workflow);
+        parameters.Add(x => x.FieldRenamed, FieldRenamed);
+
+        string title = field is null
+            ? "Add Signature Field"
+            : "Edit Signature Field";
+
+        var dialog = await DialogService.ShowAsync<EditSignatureFieldDialog>(title, parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            await SignatureFieldsChanged.InvokeAsync();
+            StateHasChanged();
+
+            if (result.Data is WorkflowSignatureField savedField)
+            {
+                AppState.Notify($"Signature field '{savedField.Name}' saved", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating signature field");
+            AppState.Notify("Error updating signature field: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteField(WorkflowSignatureField field)
+    {
+        (int active, int pending) = await SignatureOverrideReader.CountOverridesForFieldAsync(
+            Workflow.WorkflowTypeId,
+            field.Name,
+            CancellationToken.None);
+
+        string overrideWarning = active + pending == 0
+            ? string.Empty
+            : $" {active} client override(s) and {pending} pending proposal(s) across all organizations will be permanently deleted on save.";
+        string message =
+            $"Are you sure you want to delete the signature field '{field.Name}'?{overrideWarning}";
+
+        DialogParameters<ConfirmationDialog> parameters = [];
+        parameters.Add(x => x.ConfirmButtonText, "Delete");
+        parameters.Add(x => x.Message, message);
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            _ = Workflow.SignatureFields.Remove(field);
+            await SignatureFieldsChanged.InvokeAsync();
+            StateHasChanged();
+
+            AppState.Notify($"Signature field '{field.Name}' deleted", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting signature field");
+            AppState.Notify("Error deleting signature field: " + ex.Message, Severity.Error);
+        }
+    }
+}

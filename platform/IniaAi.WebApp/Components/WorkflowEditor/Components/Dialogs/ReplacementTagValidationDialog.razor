@@ -1,0 +1,107 @@
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks
+@using IniaAi.WebApp.Services
+
+<MudDialog>
+    <DialogContent>
+        <div class="d-flex align-center mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Large" Class="mr-3" />
+            <MudText Typo="Typo.h6">Heads up: invalid replacement tags in this workflow</MudText>
+        </div>
+
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Your workflow was saved and whatever you started is carrying on — this is a warning, not a
+            failure. Somewhere in this workflow, not necessarily in the part you just worked on, these
+            blocks reference replacement tags that match no block:
+        </MudText>
+
+        @if (BlockIssues is not null)
+        {
+            @foreach (var blockIssue in BlockIssues)
+            {
+                <MudCard Class="mb-3" Outlined="true">
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">
+                            <strong>@blockIssue.BlockLocation</strong>
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="mb-2">
+                            Invalid tags:
+                        </MudText>
+                        @foreach (var tag in blockIssue.InvalidTags)
+                        {
+                            var suggestions = GetSuggestions((string)tag);
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ma-1">
+                                @tag
+                            </MudChip>
+                            if (suggestions.Count > 0)
+                            {
+                                <MudText Typo="Typo.caption" Class="ml-2" Color="Color.Warning">
+                                    This tag belongs to a parameterized section — use the suffixed variant: @string.Join(" or ", suggestions)
+                                </MudText>
+                            }
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
+        }
+        else
+        {
+            <!-- Fallback for backward compatibility -->
+            <MudText Typo="Typo.body1" Class="mb-3">
+                The following replacement tags in <strong>@BlockLocation</strong> don't match any blocks in the workflow:
+            </MudText>
+
+            <MudCard Class="mb-3" Outlined="true">
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        <strong>Invalid tags:</strong>
+                    </MudText>
+                    @if (InvalidTags is not null)
+                    {
+                        @foreach (var tag in InvalidTags)
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Class="ma-1">
+                                @tag
+                            </MudChip>
+                        }
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            These tags need to reference existing block replacement tags in your workflow.
+            Check your block names and replacement tags to ensure they match.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary" Variant="Variant.Filled">
+            OK
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public List<string>? InvalidTags { get; set; }
+
+    [Parameter]
+    public string? BlockLocation { get; set; }
+
+    [Parameter]
+    public dynamic? BlockIssues { get; set; }
+
+    [Parameter]
+    public Workflow? Workflow { get; set; }
+
+    private List<string> GetSuggestions(string tag)
+    {
+        if (Workflow is null) return [];
+        return ReplacementTagValidationService.GetParameterizedSuggestions(tag, Workflow);
+    }
+
+    void Close() => MudDialog.Close();
+}

@@ -1,0 +1,15 @@
+{
+  "workflowTypeId": "SampleAgentRun",
+  "document": "../annual-report/annual-report.pdf",
+  "needs": [
+    "agent-runtime"
+  ],
+  "outputs": [
+    {
+      "tag": "agentGrowth",
+      "says": [
+        "Revenue growth: 10.2%"
+      ]
+    }
+  ]
+}

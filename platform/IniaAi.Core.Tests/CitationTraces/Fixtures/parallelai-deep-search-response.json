@@ -1,0 +1,236 @@
+{
+  "run": {
+    "run_id": "trun_synthetic0000000000000000000002",
+    "interaction_id": "trun_synthetic0000000000000000000002",
+    "status": "completed",
+    "is_active": false,
+    "warnings": [],
+    "processor": "ultra-fast",
+    "metadata": {},
+    "created_at": "2026-01-01T00:00:00Z",
+    "modified_at": "2026-01-01T00:08:00Z"
+  },
+  "output": {
+    "basis": [
+      {
+        "field": "executive_summary",
+        "citations": [
+          {
+            "title": "Annual report 2025",
+            "url": "https://example.org/reports/harrowgate-aerostructures/annual-report-2025",
+            "excerpts": [
+              "Revenue for the year was £1,240 million (2024: £1,117 million), an increase of 11%.",
+              "EBITDA was £98 million, a margin of 7.9% (2024: 9.6%).",
+              "The group employs about 3,100 people across five plants."
+            ]
+          },
+          {
+            "title": "European aerostructures market review",
+            "url": "https://example.org/research/european-aerostructures-2025",
+            "excerpts": [
+              "The five largest suppliers hold about 78% of the European machined wing-rib market.",
+              "Harrowgate holds about 12% of the European wing-rib market, up from about 10% in 2023."
+            ]
+          },
+          {
+            "title": "Trade measures notice",
+            "url": "https://example.org/notices/aluminium-plate-tariff-2026",
+            "excerpts": [
+              "The duty on imported aluminium plate rises from 10% to 25% with effect from 1 March 2026."
+            ]
+          }
+        ],
+        "reasoning": "Revenue and margin come from the annual report; market share from the market review; the tariff from the trade notice.",
+        "confidence": "high"
+      },
+      {
+        "field": "company_profile",
+        "citations": [
+          {
+            "title": "Company registry record",
+            "url": "https://example.org/registry/harrowgate-aerostructures",
+            "excerpts": [
+              "Company name: Harrowgate Aerostructures plc. Incorporated: 1962-04-11. Registered office: Thornby. Status: Active. Company number: 00712345."
+            ]
+          },
+          {
+            "title": "Annual report 2025",
+            "url": "https://example.org/reports/harrowgate-aerostructures/annual-report-2025",
+            "excerpts": [
+              "Revenue for the year was £1,240 million (2024: £1,117 million), an increase of 11%.",
+              "EBITDA was £98 million, a margin of 7.9% (2024: 9.6%).",
+              "The group employs about 3,100 people across five plants."
+            ]
+          }
+        ],
+        "reasoning": "Profile facts come from the registry record and the annual report.",
+        "confidence": "high"
+      },
+      {
+        "field": "company_profile.company_overview",
+        "citations": [
+          {
+            "title": "Annual report 2025",
+            "url": "https://example.org/reports/harrowgate-aerostructures/annual-report-2025",
+            "excerpts": [
+              "Revenue for the year was £1,240 million (2024: £1,117 million), an increase of 11%.",
+              "EBITDA was £98 million, a margin of 7.9% (2024: 9.6%).",
+              "The group employs about 3,100 people across five plants."
+            ]
+          }
+        ],
+        "reasoning": "Products and headcount are stated in the annual report.",
+        "confidence": "high"
+      },
+      {
+        "field": "company_profile.operating_countries",
+        "citations": [
+          {
+            "title": "Annual report 2025",
+            "url": "https://example.org/reports/harrowgate-aerostructures/annual-report-2025",
+            "excerpts": [
+              "Revenue for the year was £1,240 million (2024: £1,117 million), an increase of 11%.",
+              "EBITDA was £98 million, a margin of 7.9% (2024: 9.6%).",
+              "The group employs about 3,100 people across five plants."
+            ]
+          }
+        ],
+        "reasoning": "Plant locations are listed in the annual report.",
+        "confidence": "medium"
+      },
+      {
+        "field": "company_profile.registry_number",
+        "citations": [
+          {
+            "title": "Company registry record",
+            "url": "https://example.org/registry/harrowgate-aerostructures",
+            "excerpts": [
+              "Company name: Harrowgate Aerostructures plc. Incorporated: 1962-04-11. Registered office: Thornby. Status: Active. Company number: 00712345."
+            ]
+          }
+        ],
+        "reasoning": "The company number is on the registry record.",
+        "confidence": "high"
+      },
+      {
+        "field": "key_competitors",
+        "citations": [
+          {
+            "title": "Competitor profile: Calderon Structures",
+            "url": "https://example.org/firms/calderon-structures",
+            "excerpts": [
+              "Calderon Structures supplies wing skins and ribs to two European airframe makers and reported revenue of £2.1 billion in 2025."
+            ]
+          },
+          {
+            "title": "European aerostructures market review",
+            "url": "https://example.org/research/european-aerostructures-2025",
+            "excerpts": [
+              "The five largest suppliers hold about 78% of the European machined wing-rib market.",
+              "Harrowgate holds about 12% of the European wing-rib market, up from about 10% in 2023."
+            ]
+          }
+        ],
+        "reasoning": "Competitor revenue comes from its profile; relative positions from the market review.",
+        "confidence": "medium"
+      },
+      {
+        "field": "market_concentration_and_size_summary",
+        "citations": [
+          {
+            "title": "European aerostructures market review",
+            "url": "https://example.org/research/european-aerostructures-2025",
+            "excerpts": [
+              "The five largest suppliers hold about 78% of the European machined wing-rib market.",
+              "Harrowgate holds about 12% of the European wing-rib market, up from about 10% in 2023."
+            ]
+          }
+        ],
+        "reasoning": "Shares come from the market review.",
+        "confidence": "high"
+      },
+      {
+        "field": "supplier_power_analysis",
+        "citations": [
+          {
+            "title": "Supplier disclosure",
+            "url": "https://example.org/reports/harrowgate-aerostructures/suppliers",
+            "excerpts": [
+              "Aluminium plate is sourced from two mills; titanium forgings from a single mill.",
+              "Requalifying a new source of titanium forgings takes up to 18 months."
+            ]
+          },
+          {
+            "title": "Trade measures notice",
+            "url": "https://example.org/notices/aluminium-plate-tariff-2026",
+            "excerpts": [
+              "The duty on imported aluminium plate rises from 10% to 25% with effect from 1 March 2026."
+            ]
+          },
+          {
+            "title": "Collective agreement summary",
+            "url": "https://example.org/news/harrowgate-pay-agreement-2025",
+            "excerpts": [
+              "The agreement, ratified in November 2025 after a 21-day dispute, raises base pay by 14% over three years."
+            ]
+          }
+        ],
+        "reasoning": "Supply sources from the supplier disclosure; the duty from the trade notice; labour cost from the agreement summary.",
+        "confidence": "medium"
+      },
+      {
+        "field": "identified_data_gaps",
+        "citations": [],
+        "reasoning": "No source discloses these items.",
+        "confidence": "low"
+      },
+      {
+        "field": "identified_data_gaps.1",
+        "citations": [
+          {
+            "title": "Annual report 2025",
+            "url": "https://example.org/reports/harrowgate-aerostructures/annual-report-2025",
+            "excerpts": [
+              "Revenue for the year was £1,240 million (2024: £1,117 million), an increase of 11%.",
+              "EBITDA was £98 million, a margin of 7.9% (2024: 9.6%).",
+              "The group employs about 3,100 people across five plants."
+            ]
+          }
+        ],
+        "reasoning": "The annual report describes the new plant but gives no offtake figures.",
+        "confidence": "low"
+      }
+    ],
+    "type": "json",
+    "content": {
+      "executive_summary": "Harrowgate Aerostructures plc is a mid-tier European aerostructures supplier with about 12% of the European wing-rib market. Revenue rose 11% to £1,240 million in 2025, but the EBITDA margin fell to 7.9% as input costs rose faster than contract escalators. A new tariff on aluminium plate and a three-year pay agreement keep cost pressure high in 2026.",
+      "company_profile": {
+        "company_overview": "Harrowgate Aerostructures plc makes machined wing ribs, spars and landing-gear parts and employs about 3,100 people across five plants.",
+        "operating_countries": "United Kingdom, Portugal",
+        "registry_number": "00712345"
+      },
+      "key_competitors": [
+        {
+          "competitor_name": "Calderon Structures",
+          "key_markets": "United Kingdom, France",
+          "competitive_positioning": "Larger supplier with wing-skin capability and revenue of £2.1 billion."
+        },
+        {
+          "competitor_name": "Vossberg Precision",
+          "key_markets": "Germany",
+          "competitive_positioning": "Specialist in small machined parts; competes on price."
+        }
+      ],
+      "market_concentration_and_size_summary": "The five largest suppliers hold about 78% of the European machined wing-rib market; the company holds about 12%.",
+      "supplier_power_analysis": {
+        "raw_materials": "Aluminium plate comes from two mills and titanium forgings from one; a 25% duty on imported plate applies from 1 March 2026.",
+        "overall_assessment": "Supplier power is high for titanium and moderate for aluminium."
+      },
+      "identified_data_gaps": [
+        "No segment split of EBITDA is published.",
+        "Contracted offtake for the new plant is not disclosed.",
+        "Hedging positions for 2027 are not disclosed."
+      ]
+    }
+  }
+}

@@ -1,0 +1,87 @@
+@using IniaAi.Common.Interfaces.Services.AgentRuntime
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.WebApp.Services
+
+@inject IAgentRunLimitsProvider RunLimitsProvider
+
+<div class="editor-eyebrow mb-2">Run limits</div>
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        <MudNumericField T="int?"
+                         Label="Max run time (minutes)"
+                         Variant="Variant.Outlined"
+                         Clearable="true"
+                         ShrinkLabel="true"
+                         Min="1"
+                         Max="@_limitHints.DeadlineMaxMinutes"
+                         Placeholder="@_limitHints.DeadlinePlaceholder"
+                         @bind-Value="@Props.DeadlineMinutes"
+                         @bind-Value:after="@(() => Changed.InvokeAsync())" />
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudNumericField T="decimal?"
+                         Label="Max spend per run (USD)"
+                         Variant="Variant.Outlined"
+                         Clearable="true"
+                         ShrinkLabel="true"
+                         Min="0.01m"
+                         Max="@_limitHints.BudgetMaxUsd"
+                         HelperText="@BUDGET_RETRY_HELPER"
+                         Placeholder="@_limitHints.BudgetPlaceholder"
+                         @bind-Value="@Props.MaxBudgetUsd"
+                         @bind-Value:after="@(() => Changed.InvokeAsync())" />
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudNumericField T="int?"
+                         Label="Max model calls"
+                         Variant="Variant.Outlined"
+                         Clearable="true"
+                         ShrinkLabel="true"
+                         Min="1"
+                         Max="@_limitHints.TurnsMax"
+                         Placeholder="@_limitHints.TurnsPlaceholder"
+                         @bind-Value="@Props.MaxTurns"
+                         @bind-Value:after="@(() => Changed.InvokeAsync())" />
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudNumericField T="int?"
+                         Label="Max output kept (MiB)"
+                         Variant="Variant.Outlined"
+                         Clearable="true"
+                         ShrinkLabel="true"
+                         Min="1"
+                         Max="@_limitHints.RetainedMaxMib"
+                         Placeholder="@_limitHints.RetainedPlaceholder"
+                         @bind-Value="@Props.MaxRetainedOutputMib"
+                         @bind-Value:after="@(() => Changed.InvokeAsync())" />
+    </MudItem>
+</MudGrid>
+
+@code {
+    // Real money, invisible anywhere else on the surface, and it changes what the number the
+    // author just typed means.
+    private const string BUDGET_RETRY_HELPER = "A retry after infrastructure trouble spends this again.";
+
+    [Parameter, EditorRequired]
+    public IAgentRunProperties Props { get; set; } = default!;
+
+    /// <summary>
+    /// A limit is an input to the verification loop's displayed cost and wall-clock figures, so
+    /// a change here has to reach the composing block or those figures quote fuses the author
+    /// has already cleared.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public EventCallback Changed { get; set; }
+
+    private AgentRunLimitHints _limitHints = AgentRunLimitHints.None;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _limitHints = AgentRunLimitHints.From(RunLimitsProvider);
+    }
+}

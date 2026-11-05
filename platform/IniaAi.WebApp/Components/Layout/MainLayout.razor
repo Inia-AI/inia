@@ -1,0 +1,328 @@
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.WebApp.Services
+@using MudExtensions
+@using Microsoft.AspNetCore.Components.Sections
+
+@inherits LayoutComponentBase
+@implements IDisposable
+
+@inject IJSRuntime JsRuntime
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<MainLayout> Logger
+@inject IDialogService DialogService
+@inject AppState AppState
+@inject IWebHostEnvironment HostEnvironment
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+
+<style type="text/css">
+    .wrap-page {
+        max-width: 1024px;
+    }
+</style>
+
+<MudPopoverProvider />
+
+<MudDialogProvider FullWidth="true"
+                   MaxWidth="MaxWidth.ExtraSmall"
+                   CloseButton="false"
+                   Position="DialogPosition.Center"
+                   CloseOnEscapeKey="true" />
+
+<MudSnackbarProvider />
+
+<PageTitle>IniaAI Terminal</PageTitle>
+
+<MudLayout>
+    <MudThemeProvider IsDarkMode="@_isDarkMode" IsDarkModeChanged="@OnDarkModeChanged" Theme="IniaTheme.MudTheme" />
+    <StyleVariables Selector=":root" Variables="EditorHues.CssVariables" />
+    <StyleVariables Selector=".mud-appbar" Variables="IniaTheme.AppBarCssVariables(_isDarkMode)" />
+    <StyleVariables Selector=":root" Variables="IniaTheme.StripCardCssVariables" />
+
+    <MudAppBar Elevation="2" Style="@_appBarStyle">
+        @* The Account pages render without a live connection, so a control that needs one is left out there. *@
+        @if (RendererInfo.IsInteractive)
+        {
+            <MudIconButton Icon="@Icons.Material.Outlined.Menu"
+                           aria-label="Toggle navigation menu"
+                           Color="Color.Primary"
+                           Edge="Edge.Start"
+                           OnClick="ToggleDrawer" />
+        }
+
+        @if (_environment.Show)
+        {
+            <MudChip T="string"
+                     Label="true"
+                     Size="Size.Small"
+                     Class="ml-2"
+                     Style="@_environmentChipStyle">
+                @_environment.Label
+            </MudChip>
+        }
+
+        <MudSpacer />
+
+        <div class="appbar-actions">
+            <SectionOutlet SectionName="@LayoutSections.APP_BAR_ACTIONS" />
+
+            @if (RendererInfo.IsInteractive)
+            {
+                <AuthorizeView>
+                    <Authorized>
+                        <TenantSelector />
+                    </Authorized>
+                </AuthorizeView>
+
+                <button type="button"
+                        class="appbar-card appbar-theme-toggle"
+                        aria-label="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")"
+                        @onclick="() => OnDarkModeChanged(!_isDarkMode)">
+                    <span class="appbar-theme-icon @(_isDarkMode ? "" : "appbar-theme-icon--moon")" aria-hidden="true">@(_isDarkMode ? "\u2600" : "\U0001F319")</span>
+                </button>
+
+                <AuthorizeView Roles="@(Roles.OPERATOR_ROLES)">
+                    <Authorized>
+                        <button type="button" class="appbar-log" @onclick="DownloadLogFile">
+                            <MudIcon Icon="@Icons.Material.Outlined.Download" Size="Size.Small" />
+                            <span>Log</span>
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            }
+
+            <AuthorizeView>
+                <Authorized>
+                    @if (RendererInfo.IsInteractive)
+                    {
+                        <!-- A hidden form that we'll send by invoking the click function on the submit button -->
+                        <div style="display:none">
+                            <form action="Account/Logout" method="post">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="returnUrl" value="@AppState.CurrentRoute.TrimStart('/')" />
+                                <button id="logoutButton" type="submit">
+                                    <span aria-hidden="true"></span> Logout
+                                </button>
+                            </form>
+                        </div>
+
+                        <MudMenu>
+                            <ActivatorContent Context="menuContext">
+                                <MudIconButton aria-label="Account menu"
+                                               Class="appbar-account"
+                                               Icon="@Icons.Material.Filled.Person"
+                                               OnClick="@menuContext.ToggleAsync" />
+                            </ActivatorContent>
+
+                            <ChildContent>
+                                <MudMenuItem Href="Account/Manage">
+                                    Manage Account
+                                </MudMenuItem>
+
+                                <MudMenuItem OnClick="async (e) => await ShowLogoutDialogAsync()">
+                                    Logout
+                                </MudMenuItem>
+                            </ChildContent>
+                        </MudMenu>
+                    }
+                    else
+                    {
+                        <details class="appbar-static-menu">
+                            <summary aria-label="Account menu" class="appbar-static-account">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            </summary>
+
+                            <div class="appbar-static-menu-items">
+                                <a href="Account/Manage">Manage Account</a>
+                                <form action="Account/Logout" method="post">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="returnUrl" value="@Navigation.ToBaseRelativePath(Navigation.Uri)" />
+                                    <button type="submit">Logout</button>
+                                </form>
+                            </div>
+                        </details>
+                    }
+                </Authorized>
+
+                <NotAuthorized>
+                    <MudLink Href="Account/Login" Color="Color.Secondary">
+                        Login
+                    </MudLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Class="p-0" Elevation="1" Width="250px">
+        <MudDrawerHeader>
+            <MudGrid Justify="Justify.Center">
+                <MudItem xs="12" Class="d-flex justify-center">
+                    <MudImage Src=@(_isDarkMode ? Assets["images/inia-wordmark-white.svg"] : Assets["images/inia-wordmark-navy.svg"])
+                              Width="109"
+                              Alt="Inia.AI Logo"
+                              Class="mx-auto" />
+                </MudItem>
+            </MudGrid>
+        </MudDrawerHeader>
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent Class="px-4 pb-4" role="main">
+        @if (_organizationResolved || !RendererInfo.IsInteractive)
+        {
+            @* This key is how pages reload on a tenant switch: a new organization id discards the
+               page and initializes a fresh one. Pages therefore do not subscribe to
+               AppState.OrganizationChanged — removing the key would silently leave them stale. *@
+            <div @key="@AppState.CurrentOrganizationId" style="display: contents;">
+                @Body
+            </div>
+        }
+        else
+        {
+            <div class="d-flex justify-center align-center" style="min-height: 60vh;">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+    </MudMainContent>
+</MudLayout>
+
+<!-- Animations -->
+<MudAnimate Selector=".fadeInOut"
+            Duration="1.5"
+            AnimationType="AnimationType.Fade"
+            Value="0.3"
+            ValueSecondary="1.0"
+            Hover="false"
+            Delay="0"
+            Infinite="true"
+            AnimationTiming="AnimationTiming.EaseInOut"
+            AnimationDirection="AnimationDirection.AlternateReverse"
+            AnimationFillMode="AnimationFillMode.None"
+            Paused="false" />
+
+@code {
+    private EnvironmentIndicator _environment = default!;
+    private string _environmentChipStyle = string.Empty;
+    private string _appBarStyle = string.Empty;
+
+    private bool _drawerOpen = true;
+    private bool _isDownloadingLog = false;
+
+    private bool _isDarkMode = true;
+
+    private bool _organizationResolved = false;
+
+    protected override void OnInitialized()
+    {
+        AppState.OrganizationChanged += OnOrganizationChanged;
+
+        _environment = EnvironmentIndicatorResolver.Resolve(
+            HostEnvironment.EnvironmentName,
+            PlatformSettingsOptions.Value.EnvironmentBanner);
+        _environmentChipStyle = $"background-color:{_environment.Color};color:{_environment.TextColor};font-weight:600;";
+        _appBarStyle = _environment.Show
+            ? $"border-top:3px solid {_environment.Color};"
+            : string.Empty;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var stored = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", ThemePreference.STORAGE_KEY);
+            _isDarkMode = ThemePreference.IsDarkMode(stored);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Could not read the stored theme preference; using the dark default");
+        }
+
+        try
+        {
+            var storedOrganizationId = await JsRuntime.InvokeAsync<string?>("localStorage.getItem", TenantPreference.STORAGE_KEY);
+            AppState.TryRestoreOrganization(storedOrganizationId);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Could not read the stored organization preference; using the default");
+        }
+        finally
+        {
+            _organizationResolved = true;
+        }
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        AppState.OrganizationChanged -= OnOrganizationChanged;
+    }
+
+    private void OnOrganizationChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnDarkModeChanged(bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("localStorage.setItem", ThemePreference.STORAGE_KEY, ThemePreference.FromIsDarkMode(isDarkMode));
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Could not persist the theme preference");
+        }
+    }
+
+    private void ToggleDrawer(MouseEventArgs e)
+        => _drawerOpen = !_drawerOpen;
+
+    private async Task ShowLogoutDialogAsync()
+    {
+        var parameters = new DialogParameters<ConfirmationDialog> { };
+        parameters.Add(x => x.Message, "Are you sure you want to logout?");
+        parameters.Add(x => x.ConfirmButtonText, "Logout");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Logout", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await JsRuntime.InvokeVoidAsync("logoutButton.click");
+        }
+    }
+
+    private async Task DownloadLogFile()
+    {
+        if (_isDownloadingLog) return;
+
+        try
+        {
+            _isDownloadingLog = true;
+            StateHasChanged();
+
+            string downloadUrl = Navigation.ToAbsoluteUri("Log/download").ToString();
+            await JsRuntime.InvokeVoidAsync("window.open", downloadUrl, "_blank");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initiating log file download");
+            AppState.Notify($"Error downloading logs: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isDownloadingLog = false;
+            StateHasChanged();
+        }
+    }
+}

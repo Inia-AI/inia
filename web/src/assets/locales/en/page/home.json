@@ -1,0 +1,23 @@
+{
+  "dashboardTitle": "Dashboard",
+  "analysesTitle": "Reports",
+  "createAnalysesLabel": "Create new report",
+  "viewToggle": {
+    "label": "Reports shown",
+    "teamView": "Team View",
+    "personalView": "Personal View"
+  },
+  "analysesAction": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "draftStatusLabel": "Draft completed",
+  "durationTooltip": "Time it took to run this report",
+  "monitoringTitle": "Monitoring",
+  "confirmDeleteTitle": "Delete Report?",
+  "confirmDeleteMessage": "This action cannot be undone. Are you sure you want to delete this report?",
+  "toast": {
+    "deleteSuccess": "Report deleted successfully",
+    "deleteError": "Failed to delete report"
+  }
+}

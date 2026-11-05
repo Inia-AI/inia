@@ -1,0 +1,47 @@
+{
+  "title": "Execution Logs",
+  "documentTitle": "{report} · Execution Logs",
+  "backToReport": "Back to report",
+  "clickToJump": "Click any failed block below to view its details",
+  "failedBlocks": "Failed Blocks",
+  "section": "Section",
+  "block": "Block",
+  "unknownSection": "Unknown Section",
+  "inSection": ", in {section}",
+  "variables": "Workflow Variables",
+  "loadingLogs": "Loading logs...",
+  "noLogs": "No logs available for this run.",
+  "navigation": "Navigation",
+  "navigationLabel": "Log navigation",
+  "item": {
+    "replacementTag": "Replacement Tag:",
+    "model": "Model:",
+    "status": "Status:",
+    "inputs": "Inputs:",
+    "loadingPrompt": "Loading prompt...",
+    "noPromptPreview": "No prompt preview was recorded for this block.",
+    "loadingOutput": "Loading output...",
+    "noOutput": "No output was recorded for this block."
+  },
+  "placeholder": {
+    "tooltip": "Placeholder: {key}",
+    "truncated": "(truncated)",
+    "translated": "(translated)",
+    "valueTruncated": "Value is truncated"
+  },
+  "meta": {
+    "counterparty": "@:{'terms.Company'}",
+    "started": "Started",
+    "duration": "Duration"
+  },
+  "toggles": {
+    "showPrompt": "Show Prompt",
+    "hidePrompt": "Hide Prompt",
+    "showOutput": "Show Output",
+    "hideOutput": "Hide Output",
+    "forBlock": "{label} for {block}",
+    "forBlockInSection": "{label} for {block} in {section}",
+    "showFullValues": "Show Full Values",
+    "showTruncatedValues": "Show Truncated Values"
+  }
+}

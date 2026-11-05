@@ -1,0 +1,59 @@
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Tools.GraphRag
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack>
+            <MudText Typo="Typo.h5">Graph RAG Prompts</MudText>
+            <MudText Typo="Typo.subtitle1">
+                Prompts used for querying workflow execution graphs to trace provenance and answer questions about data sources.
+            </MudText>
+            <ToolsSettingsScopeNotice />
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Spacing="5">
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.SystemPrompt"
+                          Label="System Prompt"
+                          HelperText="The system-level instructions that define the assistant's role as a provenance analyst."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.UserPromptTemplate"
+                          Label="User Prompt Template"
+                          HelperText="Main prompt template with placeholders: {QUESTION}, {PROVENANCE_JSON}, {CURRENT_DEPTH}, {MAX_DEPTH}"
+                          Sizing="InputSizing.Auto"
+                          Lines="15"
+                          MaxLines="30"/>
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.MaxDepthWarning"
+                          Label="Max Depth Warning"
+                          HelperText="Warning message appended when maximum traversal depth is reached. Placeholder: {MAX_DEPTH}"
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="10"/>
+
+            <PromptsToolbar Prompts="@Prompts"
+                            Title="@nameof(GraphRagPrompts)"
+                            SaveChangesCallback="@SaveChangesCallback"
+                            PromptsUploaded="@((GraphRagPrompts uploaded) => uploaded.CopyTo(Prompts))" />
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public GraphRagPrompts Prompts { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback SaveChangesCallback { get; set; }
+}

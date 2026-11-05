@@ -1,0 +1,996 @@
+{
+ "_meta": {
+  "source": "https://raw.githubusercontent.com/unicode-org/cldr/release-48-2/common/supplemental/units.xml",
+  "cldr_version": "release-48-2",
+  "generator": "generate_unit_conversions.py",
+  "notes": [
+   "Keyed by the subtype ids used in units_dictionary.json and SupplementalLexicon.cs.",
+   "factorNum/factorDen (and offsetNum/offsetDen for affine temperature units) are exact integer rationals; canonical = value * factor + offset. Consumers compare via cross-multiplication, never division, so non-terminating rationals (month = year/12) stay exact.",
+   "Two quantities convert only when their dimension strings are equal. Consumption's reciprocal pair (mile-per-gallon vs liter-per-100-kilometer) lands on reciprocal dimensions and is deliberately not cross-converted.",
+   "Only USD carries a subunit pair (USD-cent); all other currencies have no entries, so cross-currency pairs never convert.",
+   "concentr-permillion and concentr-portion-per-1e9 are legacy ids from the babel-era dictionary, resolved as part-per-1000000 and part-per-1000000000.",
+   "semantically_distinct entries carry a distinct: dimension of their own: CLDR's dimensional algebra or aliasing would equate them with a different physical claim, so they keep same-subtype matching but never cross-convert."
+  ],
+  "excluded": {
+   "temperature-generic": "display-only degree sign with no defined conversion",
+   "mass-dalton": "conversion rational exceeds System.Decimal range",
+   "mass-solar-mass": "conversion rational exceeds System.Decimal range"
+  },
+  "semantically_distinct": {
+   "speed-beaufort": "CLDR marks its convertUnit special=: the Beaufort scale is non-linear, no linear factor exists",
+   "concentr-percentage-point": "a change in a rate is a different claim than a level; never converts to percent",
+   "concentr-karat": "a purity scale, not a generic portion; 18 karat must not match 75%",
+   "light-lumen": "luminous flux; CLDR's algebra drops the steradian and would equate it with candela",
+   "graphics-dot": "print dots are not screen pixels, although CLDR aliases them",
+   "force-kilowatt-hour-per-100-kilometer": "a consumption figure; dimensional algebra would equate it with newtons"
+  }
+ },
+ "conversions": {
+  "acceleration-g-force": {
+   "dimension": "meter^1|second^-2",
+   "factorNum": "196133",
+   "factorDen": "20000"
+  },
+  "acceleration-meter-per-square-second": {
+   "dimension": "meter^1|second^-2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "angle-arc-minute": {
+   "dimension": "revolution^1",
+   "factorNum": "1",
+   "factorDen": "21600"
+  },
+  "angle-arc-second": {
+   "dimension": "revolution^1",
+   "factorNum": "1",
+   "factorDen": "1296000"
+  },
+  "angle-degree": {
+   "dimension": "revolution^1",
+   "factorNum": "1",
+   "factorDen": "360"
+  },
+  "angle-radian": {
+   "dimension": "revolution^1",
+   "factorNum": "65501488",
+   "factorDen": "411557987"
+  },
+  "angle-revolution": {
+   "dimension": "revolution^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "area-acre": {
+   "dimension": "meter^2",
+   "factorNum": "316160658",
+   "factorDen": "78125"
+  },
+  "area-dunam": {
+   "dimension": "meter^2",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "area-hectare": {
+   "dimension": "meter^2",
+   "factorNum": "10000",
+   "factorDen": "1"
+  },
+  "area-square-centimeter": {
+   "dimension": "meter^2",
+   "factorNum": "1",
+   "factorDen": "10000"
+  },
+  "area-square-foot": {
+   "dimension": "meter^2",
+   "factorNum": "145161",
+   "factorDen": "1562500"
+  },
+  "area-square-inch": {
+   "dimension": "meter^2",
+   "factorNum": "16129",
+   "factorDen": "25000000"
+  },
+  "area-square-kilometer": {
+   "dimension": "meter^2",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "area-square-meter": {
+   "dimension": "meter^2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "area-square-mile": {
+   "dimension": "meter^2",
+   "factorNum": "40468564224",
+   "factorDen": "15625"
+  },
+  "area-square-yard": {
+   "dimension": "meter^2",
+   "factorNum": "1306449",
+   "factorDen": "1562500"
+  },
+  "concentr-basis-point": {
+   "dimension": "part^1",
+   "factorNum": "1",
+   "factorDen": "10000"
+  },
+  "concentr-item": {
+   "dimension": "item^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "concentr-karat": {
+   "dimension": "distinct:concentr-karat",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "concentr-milligram-ofglucose-per-deciliter": {
+   "dimension": "item^1|meter^-3",
+   "factorNum": "60221407600000000000000000000",
+   "factorDen": "1801557"
+  },
+  "concentr-millimole-per-liter": {
+   "dimension": "item^1|meter^-3",
+   "factorNum": "602214076000000000000000",
+   "factorDen": "1"
+  },
+  "concentr-mole": {
+   "dimension": "item^1",
+   "factorNum": "602214076000000000000000",
+   "factorDen": "1"
+  },
+  "concentr-percent": {
+   "dimension": "part^1",
+   "factorNum": "1",
+   "factorDen": "100"
+  },
+  "concentr-percentage-point": {
+   "dimension": "distinct:concentr-percentage-point",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "concentr-permille": {
+   "dimension": "part^1",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "concentr-permillion": {
+   "dimension": "part^1",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "concentr-permyriad": {
+   "dimension": "part^1",
+   "factorNum": "1",
+   "factorDen": "10000"
+  },
+  "concentr-portion-per-1e9": {
+   "dimension": "part^1",
+   "factorNum": "1",
+   "factorDen": "1000000000"
+  },
+  "consumption-liter-per-100-kilometer": {
+   "dimension": "meter^2",
+   "factorNum": "1",
+   "factorDen": "100000000"
+  },
+  "consumption-liter-per-kilometer": {
+   "dimension": "meter^2",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "consumption-mile-per-gallon": {
+   "dimension": "meter^-2",
+   "factorNum": "48000000000",
+   "factorDen": "112903"
+  },
+  "consumption-mile-per-gallon-imperial": {
+   "dimension": "meter^-2",
+   "factorNum": "160934400000",
+   "factorDen": "454609"
+  },
+  "digital-bit": {
+   "dimension": "bit^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "digital-byte": {
+   "dimension": "bit^1",
+   "factorNum": "8",
+   "factorDen": "1"
+  },
+  "digital-gigabit": {
+   "dimension": "bit^1",
+   "factorNum": "1000000000",
+   "factorDen": "1"
+  },
+  "digital-gigabyte": {
+   "dimension": "bit^1",
+   "factorNum": "8000000000",
+   "factorDen": "1"
+  },
+  "digital-kilobit": {
+   "dimension": "bit^1",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "digital-kilobyte": {
+   "dimension": "bit^1",
+   "factorNum": "8000",
+   "factorDen": "1"
+  },
+  "digital-megabit": {
+   "dimension": "bit^1",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "digital-megabyte": {
+   "dimension": "bit^1",
+   "factorNum": "8000000",
+   "factorDen": "1"
+  },
+  "digital-petabyte": {
+   "dimension": "bit^1",
+   "factorNum": "8000000000000000",
+   "factorDen": "1"
+  },
+  "digital-terabit": {
+   "dimension": "bit^1",
+   "factorNum": "1000000000000",
+   "factorDen": "1"
+  },
+  "digital-terabyte": {
+   "dimension": "bit^1",
+   "factorNum": "8000000000000",
+   "factorDen": "1"
+  },
+  "duration-century": {
+   "dimension": "year^1",
+   "factorNum": "100",
+   "factorDen": "1"
+  },
+  "duration-day": {
+   "dimension": "second^1",
+   "factorNum": "86400",
+   "factorDen": "1"
+  },
+  "duration-decade": {
+   "dimension": "year^1",
+   "factorNum": "10",
+   "factorDen": "1"
+  },
+  "duration-hour": {
+   "dimension": "second^1",
+   "factorNum": "3600",
+   "factorDen": "1"
+  },
+  "duration-microsecond": {
+   "dimension": "second^1",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "duration-millisecond": {
+   "dimension": "second^1",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "duration-minute": {
+   "dimension": "second^1",
+   "factorNum": "60",
+   "factorDen": "1"
+  },
+  "duration-month": {
+   "dimension": "year^1",
+   "factorNum": "1",
+   "factorDen": "12"
+  },
+  "duration-nanosecond": {
+   "dimension": "second^1",
+   "factorNum": "1",
+   "factorDen": "1000000000"
+  },
+  "duration-night": {
+   "dimension": "night^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "duration-quarter": {
+   "dimension": "year^1",
+   "factorNum": "1",
+   "factorDen": "4"
+  },
+  "duration-second": {
+   "dimension": "second^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "duration-week": {
+   "dimension": "second^1",
+   "factorNum": "604800",
+   "factorDen": "1"
+  },
+  "duration-year": {
+   "dimension": "year^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "electric-ampere": {
+   "dimension": "ampere^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "electric-milliampere": {
+   "dimension": "ampere^1",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "electric-ohm": {
+   "dimension": "ampere^-2|kilogram^1|meter^2|second^-3",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "electric-volt": {
+   "dimension": "ampere^-1|kilogram^1|meter^2|second^-3",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "energy-british-thermal-unit": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "23722880951",
+   "factorDen": "22500000"
+  },
+  "energy-calorie": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "523",
+   "factorDen": "125"
+  },
+  "energy-electronvolt": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "1602177",
+   "factorDen": "10000000000000000000000000"
+  },
+  "energy-foodcalorie": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "4184",
+   "factorDen": "1"
+  },
+  "energy-joule": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "energy-kilocalorie": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "4184",
+   "factorDen": "1"
+  },
+  "energy-kilojoule": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "energy-kilowatt-hour": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "3600000",
+   "factorDen": "1"
+  },
+  "energy-therm-us": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "105480400",
+   "factorDen": "1"
+  },
+  "force-kilowatt-hour-per-100-kilometer": {
+   "dimension": "distinct:force-kilowatt-hour-per-100-kilometer",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "force-newton": {
+   "dimension": "kilogram^1|meter^1|second^-2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "force-pound-force": {
+   "dimension": "kilogram^1|meter^1|second^-2",
+   "factorNum": "8896443230521",
+   "factorDen": "2000000000000"
+  },
+  "frequency-gigahertz": {
+   "dimension": "revolution^1|second^-1",
+   "factorNum": "1000000000",
+   "factorDen": "1"
+  },
+  "frequency-hertz": {
+   "dimension": "revolution^1|second^-1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "frequency-kilohertz": {
+   "dimension": "revolution^1|second^-1",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "frequency-megahertz": {
+   "dimension": "revolution^1|second^-1",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "graphics-dot": {
+   "dimension": "distinct:graphics-dot",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "graphics-dot-per-centimeter": {
+   "dimension": "meter^-1|pixel^1",
+   "factorNum": "100",
+   "factorDen": "1"
+  },
+  "graphics-dot-per-inch": {
+   "dimension": "meter^-1|pixel^1",
+   "factorNum": "5000",
+   "factorDen": "127"
+  },
+  "graphics-em": {
+   "dimension": "em^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "graphics-megapixel": {
+   "dimension": "pixel^1",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "graphics-pixel": {
+   "dimension": "pixel^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "graphics-pixel-per-centimeter": {
+   "dimension": "meter^-1|pixel^1",
+   "factorNum": "100",
+   "factorDen": "1"
+  },
+  "graphics-pixel-per-inch": {
+   "dimension": "meter^-1|pixel^1",
+   "factorNum": "5000",
+   "factorDen": "127"
+  },
+  "length-astronomical-unit": {
+   "dimension": "meter^1",
+   "factorNum": "149597870700",
+   "factorDen": "1"
+  },
+  "length-centimeter": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "100"
+  },
+  "length-decimeter": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "10"
+  },
+  "length-earth-radius": {
+   "dimension": "meter^1",
+   "factorNum": "6378100",
+   "factorDen": "1"
+  },
+  "length-fathom": {
+   "dimension": "meter^1",
+   "factorNum": "1143",
+   "factorDen": "625"
+  },
+  "length-foot": {
+   "dimension": "meter^1",
+   "factorNum": "381",
+   "factorDen": "1250"
+  },
+  "length-furlong": {
+   "dimension": "meter^1",
+   "factorNum": "25146",
+   "factorDen": "125"
+  },
+  "length-inch": {
+   "dimension": "meter^1",
+   "factorNum": "127",
+   "factorDen": "5000"
+  },
+  "length-kilometer": {
+   "dimension": "meter^1",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "length-light-year": {
+   "dimension": "meter^1",
+   "factorNum": "9460730472580800",
+   "factorDen": "1"
+  },
+  "length-meter": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "length-micrometer": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "length-mile": {
+   "dimension": "meter^1",
+   "factorNum": "201168",
+   "factorDen": "125"
+  },
+  "length-mile-scandinavian": {
+   "dimension": "meter^1",
+   "factorNum": "10000",
+   "factorDen": "1"
+  },
+  "length-millimeter": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "length-nanometer": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "1000000000"
+  },
+  "length-nautical-mile": {
+   "dimension": "meter^1",
+   "factorNum": "1852",
+   "factorDen": "1"
+  },
+  "length-parsec": {
+   "dimension": "meter^1",
+   "factorNum": "12699352539696155673600000",
+   "factorDen": "411557987"
+  },
+  "length-picometer": {
+   "dimension": "meter^1",
+   "factorNum": "1",
+   "factorDen": "1000000000000"
+  },
+  "length-point": {
+   "dimension": "meter^1",
+   "factorNum": "127",
+   "factorDen": "360000"
+  },
+  "length-solar-radius": {
+   "dimension": "meter^1",
+   "factorNum": "695700000",
+   "factorDen": "1"
+  },
+  "length-yard": {
+   "dimension": "meter^1",
+   "factorNum": "1143",
+   "factorDen": "1250"
+  },
+  "light-candela": {
+   "dimension": "candela^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "light-lumen": {
+   "dimension": "distinct:light-lumen",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "light-lux": {
+   "dimension": "candela^1|meter^-2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "light-solar-luminosity": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "382800000000000000000000000",
+   "factorDen": "1"
+  },
+  "mass-carat": {
+   "dimension": "kilogram^1",
+   "factorNum": "1",
+   "factorDen": "5000"
+  },
+  "mass-earth-mass": {
+   "dimension": "kilogram^1",
+   "factorNum": "5972200000000000000000000",
+   "factorDen": "1"
+  },
+  "mass-gigatonne": {
+   "dimension": "kilogram^1",
+   "factorNum": "1000000000000",
+   "factorDen": "1"
+  },
+  "mass-grain": {
+   "dimension": "kilogram^1",
+   "factorNum": "6479891",
+   "factorDen": "100000000000"
+  },
+  "mass-gram": {
+   "dimension": "kilogram^1",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "mass-kilogram": {
+   "dimension": "kilogram^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "mass-kilotonne": {
+   "dimension": "kilogram^1",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "mass-megatonne": {
+   "dimension": "kilogram^1",
+   "factorNum": "1000000000",
+   "factorDen": "1"
+  },
+  "mass-microgram": {
+   "dimension": "kilogram^1",
+   "factorNum": "1",
+   "factorDen": "1000000000"
+  },
+  "mass-milligram": {
+   "dimension": "kilogram^1",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "mass-ounce": {
+   "dimension": "kilogram^1",
+   "factorNum": "45359237",
+   "factorDen": "1600000000"
+  },
+  "mass-ounce-troy": {
+   "dimension": "kilogram^1",
+   "factorNum": "777587",
+   "factorDen": "25000000"
+  },
+  "mass-pound": {
+   "dimension": "kilogram^1",
+   "factorNum": "45359237",
+   "factorDen": "100000000"
+  },
+  "mass-stone": {
+   "dimension": "kilogram^1",
+   "factorNum": "317514659",
+   "factorDen": "50000000"
+  },
+  "mass-ton": {
+   "dimension": "kilogram^1",
+   "factorNum": "45359237",
+   "factorDen": "50000"
+  },
+  "mass-tonne": {
+   "dimension": "kilogram^1",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "power-gigawatt": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "1000000000",
+   "factorDen": "1"
+  },
+  "power-horsepower": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "37284993579113511",
+   "factorDen": "50000000000000"
+  },
+  "power-kilowatt": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "power-megawatt": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "power-milliwatt": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "power-watt": {
+   "dimension": "kilogram^1|meter^2|second^-3",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "pressure-atmosphere": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "101325",
+   "factorDen": "1"
+  },
+  "pressure-bar": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "100000",
+   "factorDen": "1"
+  },
+  "pressure-gasoline-energy-density": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "722250000000000000",
+   "factorDen": "22532213"
+  },
+  "pressure-hectopascal": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "100",
+   "factorDen": "1"
+  },
+  "pressure-inch-ofhg": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "3386388640341",
+   "factorDen": "1000000000"
+  },
+  "pressure-kilopascal": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "pressure-megapascal": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "1000000",
+   "factorDen": "1"
+  },
+  "pressure-millibar": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "100",
+   "factorDen": "1"
+  },
+  "pressure-millimeter-ofhg": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "26664477483",
+   "factorDen": "200000000"
+  },
+  "pressure-pascal": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "pressure-pound-force-per-square-inch": {
+   "dimension": "kilogram^1|meter^-1|second^-2",
+   "factorNum": "8896443230521",
+   "factorDen": "1290320000"
+  },
+  "speed-beaufort": {
+   "dimension": "distinct:speed-beaufort",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "speed-kilometer-per-hour": {
+   "dimension": "meter^1|second^-1",
+   "factorNum": "5",
+   "factorDen": "18"
+  },
+  "speed-knot": {
+   "dimension": "meter^1|second^-1",
+   "factorNum": "463",
+   "factorDen": "900"
+  },
+  "speed-light-speed": {
+   "dimension": "meter^1|second^-1",
+   "factorNum": "299792458",
+   "factorDen": "1"
+  },
+  "speed-meter-per-second": {
+   "dimension": "meter^1|second^-1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "speed-mile-per-hour": {
+   "dimension": "meter^1|second^-1",
+   "factorNum": "1397",
+   "factorDen": "3125"
+  },
+  "temperature-celsius": {
+   "dimension": "kelvin^1",
+   "factorNum": "1",
+   "factorDen": "1",
+   "offsetNum": "5463",
+   "offsetDen": "20"
+  },
+  "temperature-fahrenheit": {
+   "dimension": "kelvin^1",
+   "factorNum": "5",
+   "factorDen": "9",
+   "offsetNum": "45967",
+   "offsetDen": "180"
+  },
+  "temperature-kelvin": {
+   "dimension": "kelvin^1",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "torque-newton-meter": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "torque-pound-force-foot": {
+   "dimension": "kilogram^1|meter^2|second^-2",
+   "factorNum": "3389544870828501",
+   "factorDen": "2500000000000000"
+  },
+  "volume-acre-foot": {
+   "dimension": "meter^3",
+   "factorNum": "60228605349",
+   "factorDen": "48828125"
+  },
+  "volume-barrel": {
+   "dimension": "meter^3",
+   "factorNum": "9936705933",
+   "factorDen": "62500000000"
+  },
+  "volume-bushel": {
+   "dimension": "meter^3",
+   "factorNum": "220244188543",
+   "factorDen": "6250000000000"
+  },
+  "volume-centiliter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "100000"
+  },
+  "volume-cubic-centimeter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "volume-cubic-foot": {
+   "dimension": "meter^3",
+   "factorNum": "55306341",
+   "factorDen": "1953125000"
+  },
+  "volume-cubic-inch": {
+   "dimension": "meter^3",
+   "factorNum": "2048383",
+   "factorDen": "125000000000"
+  },
+  "volume-cubic-kilometer": {
+   "dimension": "meter^3",
+   "factorNum": "1000000000",
+   "factorDen": "1"
+  },
+  "volume-cubic-meter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "volume-cubic-mile": {
+   "dimension": "meter^3",
+   "factorNum": "8140980127813632",
+   "factorDen": "1953125"
+  },
+  "volume-cubic-yard": {
+   "dimension": "meter^3",
+   "factorNum": "1493271207",
+   "factorDen": "1953125000"
+  },
+  "volume-cup": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "2000000000000"
+  },
+  "volume-cup-metric": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "4000"
+  },
+  "volume-deciliter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "10000"
+  },
+  "volume-dessert-spoon": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "256000000000000"
+  },
+  "volume-dessert-spoon-imperial": {
+   "dimension": "meter^3",
+   "factorNum": "454609",
+   "factorDen": "204800000000"
+  },
+  "volume-dram": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "128000000000000"
+  },
+  "volume-drop": {
+   "dimension": "meter^3",
+   "factorNum": "157725491",
+   "factorDen": "3072000000000000"
+  },
+  "volume-fluid-ounce": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "16000000000000"
+  },
+  "volume-fluid-ounce-imperial": {
+   "dimension": "meter^3",
+   "factorNum": "454609",
+   "factorDen": "16000000000"
+  },
+  "volume-gallon": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "125000000000"
+  },
+  "volume-gallon-imperial": {
+   "dimension": "meter^3",
+   "factorNum": "454609",
+   "factorDen": "100000000"
+  },
+  "volume-hectoliter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "10"
+  },
+  "volume-jigger": {
+   "dimension": "meter^3",
+   "factorNum": "1419529419",
+   "factorDen": "32000000000000"
+  },
+  "volume-liter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "1000"
+  },
+  "volume-megaliter": {
+   "dimension": "meter^3",
+   "factorNum": "1000",
+   "factorDen": "1"
+  },
+  "volume-milliliter": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "1000000"
+  },
+  "volume-pinch": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "2048000000000000"
+  },
+  "volume-pint": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "1000000000000"
+  },
+  "volume-pint-metric": {
+   "dimension": "meter^3",
+   "factorNum": "1",
+   "factorDen": "2000"
+  },
+  "volume-quart": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "500000000000"
+  },
+  "volume-quart-imperial": {
+   "dimension": "meter^3",
+   "factorNum": "454609",
+   "factorDen": "400000000"
+  },
+  "volume-tablespoon": {
+   "dimension": "meter^3",
+   "factorNum": "473176473",
+   "factorDen": "32000000000000"
+  },
+  "volume-teaspoon": {
+   "dimension": "meter^3",
+   "factorNum": "157725491",
+   "factorDen": "32000000000000"
+  },
+  "USD": {
+   "dimension": "USD",
+   "currency": "USD",
+   "factorNum": "1",
+   "factorDen": "1"
+  },
+  "USD-cent": {
+   "dimension": "USD",
+   "currency": "USD",
+   "factorNum": "1",
+   "factorDen": "100"
+  }
+ }
+}

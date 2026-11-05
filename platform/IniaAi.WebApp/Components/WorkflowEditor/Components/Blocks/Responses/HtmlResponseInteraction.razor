@@ -1,0 +1,55 @@
+@using IniaAi.Domain.Entities.Workflows.Responses
+
+@if (!string.IsNullOrWhiteSpace(Response.HtmlResponse))
+{
+    <MudCheckBox T="bool"
+                 @bind-Value="_shouldRenderAsHtml"
+                 Color="Color.Primary">
+        Render as HTML
+    </MudCheckBox>
+
+    @if (_shouldRenderAsHtml)
+    {
+        <MudText>
+            @ShownHtml
+        </MudText>
+    }
+    else
+    {
+        <MudTextField T="string"
+                      Variant="Variant.Outlined"
+                      Sizing="InputSizing.Auto"
+                      MaxLines="20"
+                      Class="editor-mono-field"
+                      @bind-Value="@Response.HtmlResponse" />
+    }
+}
+else
+{
+    <MudAlert Severity="Severity.Info">
+        No HTML Response Generated
+    </MudAlert>
+}
+
+@code {
+    private bool _shouldRenderAsHtml = true;
+    private string? _shownFrom;
+    private MarkupString _shownHtml;
+
+    [Parameter, EditorRequired]
+    public BlockResponse Response { get; set; } = default!;
+
+    private MarkupString ShownHtml
+    {
+        get
+        {
+            if (!string.Equals(_shownFrom, Response.HtmlResponse, StringComparison.Ordinal))
+            {
+                _shownFrom = Response.HtmlResponse;
+                _shownHtml = ModelOutputMarkup.Html(Response.HtmlResponse ?? string.Empty);
+            }
+
+            return _shownHtml;
+        }
+    }
+}

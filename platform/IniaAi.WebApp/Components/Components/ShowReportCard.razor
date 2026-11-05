@@ -1,0 +1,59 @@
+﻿@inject IJSRuntime JsRuntime
+
+<script type="text/javascript">
+    function printComponent(componentSelector) {
+        var elementToPrint = document.querySelector(componentSelector);
+        if (elementToPrint) {
+            var printWindow = window.open('', '_blank');
+            printWindow.document.open();
+            printWindow.document.write('<html><head><title>Print</title></head><body>');
+            printWindow.document.write(elementToPrint.innerHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
+            printWindow.close();
+        }
+    }
+</script>
+
+<MudCard Outlined="true">
+    <MudCardHeader Class="pb-0">
+        <MudStack Spacing="0" Style="width: 100%">
+            <MudText Typo="Typo.h5">@Title</MudText>
+
+            <MudToolBar Class="pa-0">
+                <MudSpacer />
+                <MudIconButton aria-label="Print report" Icon="@Icons.Material.Outlined.Print" Color="Color.Secondary" OnClick="async () => await PrintAsync()" />
+                <MudIconButton aria-label="Download report" Icon="@Icons.Material.Outlined.Download" Color="Color.Secondary" OnClick="async () => await DownloadAsync()" />
+            </MudToolBar>
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudElement id="content" HtmlTag="div" Class="pa-4" Style="background-color: var(--mud-palette-white); color: var(--mud-palette-black);">
+            @Html
+        </MudElement>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public MarkupString Html { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = default!;
+
+    private async Task DownloadAsync()
+    {
+        var data = Encoding.UTF8.GetBytes(Html.Value);
+
+        var filename = $"{Title}.html";
+
+        await JsRuntime.InvokeAsync<object>("downloadFile", filename, data);
+    }
+
+    private async Task PrintAsync()
+    {
+        await JsRuntime.InvokeVoidAsync("printComponent", "#content");
+    }
+}

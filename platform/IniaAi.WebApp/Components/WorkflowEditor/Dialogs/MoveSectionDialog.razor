@@ -1,0 +1,49 @@
+﻿@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudTextField Label="New Position Of The Section"
+                      Variant="Variant.Outlined"
+                      Margin="0"
+                      @bind-Value="@NewPosition" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm">
+            Confirm
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public int NewIndex { get; set; }
+
+    private int NewPosition
+    {
+        get => NewIndex;
+        set => NewIndex = Math.Max(0, value);
+    }
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Confirm()
+    {
+        MudDialog?.Close(DialogResult.Ok(NewIndex));
+    }
+}

@@ -1,0 +1,161 @@
+@using ErrorOr
+@using IniaAi.Application.Commands.SharedComponents.RestoreSharedComponentVersion
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentVersionContent
+@using IniaAi.Application.Queries.SharedComponents.PreviewSharedComponentReconcile
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.DependencyInjection
+
+@inject IServiceScopeFactory ServiceScopeFactory
+
+<MudDialog>
+    <DialogContent>
+        <SharedComponentImpactPanel IsLoading="_isLoading"
+                                    LoadError="@_loadError"
+                                    Preview="_preview"
+                                    IdenticalToHeadMessage="This version's content is identical to the current head, so restoring it changes nothing."
+                                    @bind-AcknowledgeOrphans="_acknowledgeOrphans"
+                                    SubmitError="@_submitError">
+            <Headline>
+                Version <span class="editor-mono-field">@WorkflowVersionCode.Short(Version.ContentHash)</span>
+                becomes the new head of '@Component.Name'.
+            </Headline>
+        </SharedComponentImpactPanel>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   Disabled="@RestoreDisabled"
+                   OnClick="RestoreAsync">
+            @(_isSubmitting ? "Restoring..." : "Restore version")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public SharedComponentSummaryDto Component { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SharedComponentVersionDto Version { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string HeadVersionId { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _isSubmitting;
+    private bool _headMoved;
+    private bool _acknowledgeOrphans;
+    private string? _loadError;
+    private string? _submitError;
+    private SharedComponentReconcilePreviewResult? _preview;
+
+    private bool RestoreDisabled =>
+        _isLoading
+        || _isSubmitting
+        || _headMoved
+        || _loadError is not null
+        || (SharedComponentImpactText.OrphansOf(_preview).Count > 0 && !_acknowledgeOrphans);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        _preview = null;
+
+        ErrorOr<SharedComponentVersionContentResult> content = await SendAsync(
+            new GetSharedComponentVersionContentQuery(
+                OrganizationId, UserId, Component.Id, Version.VersionId));
+        if (content.IsError)
+        {
+            _loadError = $"Could not load this version's definition: {content.FirstError.Description}";
+            _isLoading = false;
+            return;
+        }
+
+        ErrorOr<SharedComponentReconcilePreviewResult> preview = await SendAsync(
+            new PreviewSharedComponentReconcileQuery(
+                OrganizationId, UserId, Component.Id, content.Value.ContentJson));
+        if (preview.IsError)
+        {
+            _loadError = $"Could not compute the restore impact: {preview.FirstError.Description}";
+            _isLoading = false;
+            return;
+        }
+
+        _preview = preview.Value;
+        _isLoading = false;
+    }
+
+    private async Task RestoreAsync()
+    {
+        _isSubmitting = true;
+        _submitError = null;
+
+        ErrorOr<SharedComponentAppendResult> result = await SendAsync(
+            new RestoreSharedComponentVersionCommand(
+                OrganizationId,
+                UserId,
+                Component.Id,
+                Version.VersionId,
+                HeadVersionId,
+                _acknowledgeOrphans));
+
+        if (result.IsError)
+        {
+            Error error = result.FirstError;
+            if (error.Code == SharedComponentErrorCodes.ORPHANS_NEED_ACKNOWLEDGEMENT)
+            {
+                _submitError = "The override impact changed while this dialog was open."
+                    + " Review the refreshed list and confirm again.";
+                _acknowledgeOrphans = false;
+                await LoadAsync();
+            }
+            else if (error.Code is SharedComponentErrorCodes.HEAD_MOVED
+                or SharedComponentErrorCodes.CONCURRENT_APPEND)
+            {
+                _submitError = "The component's head moved while this dialog was open."
+                    + " Close it and restore again from the refreshed history.";
+                _headMoved = true;
+            }
+            else
+            {
+                _submitError = error.Description;
+            }
+
+            _isSubmitting = false;
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(result.Value));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
+    {
+        return ServiceScopeFactory.SendScopedAsync(request);
+    }
+}

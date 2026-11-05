@@ -1,0 +1,51 @@
+{
+  "@odata.count": 4,
+  "@odata.skip": 0,
+  "@odata.top": 50,
+  "value": [
+    {
+      "id": "settings-global",
+      "tenantId": null,
+      "tenantDisplayName": "Global Default",
+      "usageContext": "BlockExecution",
+      "modelPricingId": "pricing-sonnet",
+      "modelDisplayName": "Claude Sonnet",
+      "modelProvider": "",
+      "isEnabled": true,
+      "priority": 0
+    },
+    {
+      "id": "settings-org-block",
+      "tenantId": "org-tokens",
+      "tenantDisplayName": "Settings Org",
+      "usageContext": "BlockExecution",
+      "modelPricingId": "pricing-haiku",
+      "modelDisplayName": "Claude Haiku",
+      "modelProvider": "",
+      "isEnabled": true,
+      "priority": 1
+    },
+    {
+      "id": "settings-org-embedding",
+      "tenantId": "org-tokens",
+      "tenantDisplayName": "Settings Org",
+      "usageContext": "Embedding",
+      "modelPricingId": "pricing-embed",
+      "modelDisplayName": "Cohere Embed",
+      "modelProvider": "",
+      "isEnabled": true,
+      "priority": 2
+    },
+    {
+      "id": "settings-org-disabled",
+      "tenantId": "org-tokens",
+      "tenantDisplayName": "Settings Org",
+      "usageContext": "DocumentProcessing",
+      "modelPricingId": "pricing-missing",
+      "modelDisplayName": "",
+      "modelProvider": "",
+      "isEnabled": false,
+      "priority": 3
+    }
+  ]
+}

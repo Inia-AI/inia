@@ -1,0 +1,89 @@
+@using IniaAi.Domain.Entities.SharedComponents
+@using IniaAi.WebApi.Contracts.Enums
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                Choose what to create, name it, and file it under a category. You author its content
+                next; nothing is saved until you choose Create.
+            </MudText>
+
+            <MudRadioGroup T="SharedComponentKind" @bind-Value="_kind">
+                <MudRadio T="SharedComponentKind" Value="SharedComponentKind.Block" Color="Color.Primary" Dense="true">
+                    Block
+                </MudRadio>
+                <MudRadio T="SharedComponentKind" Value="SharedComponentKind.Section" Color="Color.Primary" Dense="true">
+                    Section
+                </MudRadio>
+            </MudRadioGroup>
+
+            <MudTextField @bind-Value="_name"
+                          Label="Name"
+                          Immediate="true"
+                          MaxLength="SharedComponent.NAME_MAX_LENGTH" />
+
+            <MudTextField @bind-Value="_description"
+                          Label="Description (optional)"
+                          Lines="2" />
+
+            <MudSelect T="string" @bind-Value="_categoryId" Label="Category" Dense="true">
+                @foreach (SharedComponentCategoryDto category in Categories)
+                {
+                    <MudSelectItem T="string" Value="@category.Id">@category.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Confirm">Continue</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public List<SharedComponentCategoryDto> Categories { get; set; } = [];
+
+    private SharedComponentKind _kind = SharedComponentKind.Block;
+    private string _name = string.Empty;
+    private string? _description;
+    private string? _categoryId;
+    private string? _error;
+
+    private void Confirm()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "Enter a name.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_categoryId))
+        {
+            _error = "Pick a category.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new NewSharedComponentSpec(
+            _kind,
+            _name.Trim(),
+            _categoryId,
+            string.IsNullOrWhiteSpace(_description) ? null : _description.Trim())));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

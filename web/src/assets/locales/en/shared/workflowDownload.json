@@ -1,0 +1,7 @@
+{
+  "downloadLabel": "Download workflow",
+  "downloadTitle": "Download executed workflow (SuperAdmin)",
+  "downloadFor": "Download executed workflow of {subject} (SuperAdmin)",
+  "downloadSuccess": "Workflow downloaded",
+  "downloadError": "Failed to download workflow"
+}

@@ -1,0 +1,283 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApi.Contracts.Responses.WorkflowVersions
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+@{
+    ExecutionStatus status = Block.ExecutionState?.Status ?? ExecutionStatus.NotExecuted;
+    var executionDuration = Block.ExecutionState?.ExecutionDuration;
+}
+
+<MudStack Spacing="1" Class="flex-grow-1 block-header" Style="min-width: 0;">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="block-header__title">
+        <MudText Class="editor-section-title" Style="opacity: .5;">@(Block.Order).</MudText>
+        <MudTextField Variant="Variant.Text"
+                      Margin="Margin.Dense"
+                      Class="editor-section-title editor-block-name"
+                      Underline="false"
+                      Placeholder="Block name"
+                      @bind-Value="@Block.Name"
+                      @onblur="async () => await OnBlockPropertiesChanged.InvokeAsync()" />
+
+        <BlockBadgeStrip Block="Block" Display="BlockBadgeDisplay.Chip" />
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="editor-action-bar">
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-1 editor-action-bar__buttons" Style="min-width: 0;">
+            @if (Capabilities.CanExecute)
+            {
+                <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow"
+                               Class="editor-soft-button"
+                               Color="Color.Success"
+                               Size="Size.Large"
+                               title="@RUN_BLOCK"
+                               aria-label="@NameFor(RUN_BLOCK)"
+                               OnClick="async () => await OnRun.InvokeAsync()" />
+            }
+
+            @if (!Block.IsLoopBoundary)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.Article"
+                           Variant="@(Block.IsOutputSource ? Variant.Filled : Variant.Text)"
+                           Class="@(Block.IsOutputSource ? null : "editor-soft-button")"
+                           Color="Color.Info"
+                           Size="Size.Large"
+                           title="Include this block's result in the final report"
+                           aria-label="@NameFor(SHOW_IN_OUTPUT)"
+                           aria-pressed="@(Block.IsOutputSource ? "true" : "false")"
+                           OnClick="ToggleOutputAsync">
+                    @SHOW_IN_OUTPUT
+                </MudButton>
+
+                <MudButton StartIcon="@Icons.Material.Outlined.DataObject"
+                           Variant="@(Block.IsDataOutput ? Variant.Filled : Variant.Text)"
+                           Class="@(Block.IsDataOutput ? null : "editor-soft-button")"
+                           Color="Color.Info"
+                           Size="Size.Large"
+                           title="Send this block's JSON to other systems beside the report"
+                           aria-label="@NameFor(SEND_AS_DATA)"
+                           aria-pressed="@(Block.IsDataOutput ? "true" : "false")"
+                           OnClick="ToggleDataOutputAsync">
+                    @SEND_AS_DATA
+                </MudButton>
+            }
+
+            @if (Capabilities.CanShowDependencyChain && SurfaceState is not null)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.AccountTree"
+                           Class="editor-soft-button"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           title="Show which blocks this one reads from and feeds into"
+                           aria-label="@NameFor(DEPENDENCY_CHAIN)"
+                           OnClick="@(() => SurfaceState?.RequestDependencyChain(Block))">
+                    @DEPENDENCY_CHAIN
+                </MudButton>
+            }
+
+            @if (!Capabilities.IsSingleBlockHost)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.ContentCopy"
+                           Class="editor-soft-button"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           aria-label="@NameFor(DUPLICATE)"
+                           OnClick="async () => await OnDuplicate.InvokeAsync()">
+                    @DUPLICATE
+                </MudButton>
+            }
+
+            @if (Capabilities.CanMoveAcrossSections)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.MoveUp"
+                           Class="editor-soft-button"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           aria-label="@NameFor(MOVE)"
+                           OnClick="async () => await OnMove.InvokeAsync()">
+                    @MOVE
+                </MudButton>
+            }
+
+            @if (Capabilities.CanCopyToCore)
+            {
+                <MudButton StartIcon="@Icons.Material.Outlined.Cloud"
+                           Class="editor-soft-button"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           aria-label="@NameFor(COPY_TO_WORKFLOW)"
+                           OnClick="async () => await OnCopyToWorkflow.InvokeAsync()">
+                    @COPY_TO_WORKFLOW
+                </MudButton>
+
+                <MudButton StartIcon="@Icons.Material.Outlined.Notes"
+                           Class="editor-soft-button"
+                           Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           aria-label="@NameFor(COPY_AS_TEXT)"
+                           OnClick="async () => await OnCopyAsText.InvokeAsync()">
+                    @COPY_AS_TEXT
+                </MudButton>
+            }
+        </MudStack>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="flex-grow-0 flex-shrink-0 editor-action-bar__end">
+            @if (!Capabilities.IsSingleBlockHost)
+            {
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                               Class="editor-soft-button"
+                               Color="Color.Error"
+                               Size="Size.Large"
+                               title="@REMOVE"
+                               aria-label="@NameFor(REMOVE)"
+                               OnClick="async () => await OnRemove.InvokeAsync()" />
+            }
+
+            <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                     Size="Size.Large"
+                     AriaLabel="@NameFor(MORE_BLOCK_ACTIONS)"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Dense="true">
+                @if (Capabilities.CanExecute)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.FilterAlt"
+                                 OnClick="async () => await OnIsolate.InvokeAsync()">
+                        Show only the blocks related to this one
+                    </MudMenuItem>
+                }
+                <MudMenuItem Icon="@Icons.Material.Outlined.ReceiptLong"
+                             IconColor="@(Block.ShouldDisplayInLogs ? Color.Primary : Color.Default)"
+                             OnClick="@(() => Block.ShouldDisplayInLogs = !Block.ShouldDisplayInLogs)">
+                    @(Block.ShouldDisplayInLogs ? "Exclude from run log" : "Include in run log")
+                </MudMenuItem>
+                @if (Capabilities.CanShareToLibrary)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.LibraryAdd"
+                                 OnClick="async () => await OnShareToLibrary.InvokeAsync()">
+                        Share to Library
+                    </MudMenuItem>
+                }
+            </MudMenu>
+        </MudStack>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="block-header__meta">
+        <span class="block-type-chip flex-shrink-0" style="--chip-hue: @EditorHues.Block(Block.Type);">@BlockTypeVisuals.Label(Block.Type)</span>
+
+        <div class="flex-grow-1 block-header__spacer"></div>
+
+        @if (LastTouched is not null)
+        {
+            <VersionStamp Verb="Last changed"
+                          When="LastTouched.CreatedAtUtc"
+                          Author="@LastTouched.CreatedByName"
+                          VersionCode="@LastTouched.ShortCode"
+                          Icon="@Icons.Material.Outlined.History"
+                          Class="block-header__stamp" />
+        }
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="block-header__status">
+            @if (status is ExecutionStatus.Running)
+            {
+                <MudProgressCircular Color="@ExecutionStatusVisuals.Color(status)" Size="Size.Small" Indeterminate="true" />
+            }
+
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="Variant.Filled"
+                     Color="@ExecutionStatusVisuals.Color(status)"
+                     Icon="@(status is ExecutionStatus.Running ? null : ExecutionStatusVisuals.Icon(status))">
+                @ExecutionStatusVisuals.Label(status)
+            </MudChip>
+
+            @if (executionDuration is not null)
+            {
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                    (@DurationFormatter.Format(executionDuration.Value))
+                </MudText>
+            }
+        </MudStack>
+    </MudStack>
+</MudStack>
+
+@code {
+    private const string RUN_BLOCK = "Run block";
+    private const string SHOW_IN_OUTPUT = "Show in Output";
+    private const string SEND_AS_DATA = "Send as data";
+    private const string DEPENDENCY_CHAIN = "Dependency chain";
+    private const string DUPLICATE = "Duplicate";
+    private const string MOVE = "Move";
+    private const string COPY_TO_WORKFLOW = "Copy to another workflow";
+    private const string COPY_AS_TEXT = "Copy as text";
+    private const string REMOVE = "Remove";
+    private const string MORE_BLOCK_ACTIONS = "More block actions";
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [CascadingParameter]
+    public IReadOnlyDictionary<string, BlockLastTouchedDto>? BlocksLastTouched { get; set; }
+
+    [CascadingParameter]
+    public EditorSurfaceState? SurfaceState { get; set; }
+
+    [Parameter]
+    public EventCallback OnRun { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnDuplicate { get; set; }
+
+    [Parameter]
+    public EventCallback OnMove { get; set; }
+
+    [Parameter]
+    public EventCallback OnCopyToWorkflow { get; set; }
+
+    [Parameter]
+    public EventCallback OnCopyAsText { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnIsolate { get; set; }
+
+    [Parameter]
+    public EventCallback OnShareToLibrary { get; set; }
+
+    [Parameter]
+    public EventCallback OnOutputToggled { get; set; }
+
+    [Parameter]
+    public EventCallback OnBlockPropertiesChanged { get; set; }
+
+    private string NameFor(string action)
+    {
+        return ActionName.For(action, string.IsNullOrWhiteSpace(Block.Name) ? $"block {Block.Order}" : Block.Name);
+    }
+
+    private EditorSurfaceCapabilities Capabilities =>
+        SurfaceState?.Capabilities ?? EditorSurfaceCapabilities.FullEditor;
+
+    private BlockLastTouchedDto? LastTouched =>
+        Block.ReplacementTag is { Length: > 0 } tag ? BlocksLastTouched?.GetValueOrDefault(tag) : null;
+
+    private async Task ToggleOutputAsync()
+    {
+        Block.IsOutputSource = !Block.IsOutputSource;
+        await OnOutputToggled.InvokeAsync();
+    }
+
+    private async Task ToggleDataOutputAsync()
+    {
+        Block.DataOutputName = Block.IsDataOutput ? null : Block.ReplacementTag;
+        await OnOutputToggled.InvokeAsync();
+    }
+}

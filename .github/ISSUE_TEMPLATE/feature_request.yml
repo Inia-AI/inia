@@ -1,0 +1,23 @@
+name: Feature request
+description: Ask for something the platform does not do yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what stops you today.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: The change you want
+      description: What the platform would do. A sketch or an example helps.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Other ways you tried, or considered, and why they do not fit.

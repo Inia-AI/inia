@@ -1,0 +1,15 @@
+From: operations@example-sender.test
+To: intake@example-recipient.test
+Subject: Weekly estimate (synthetic pre-disclaimer sample)
+Date: Tue, 9 Dec 2025 11:17:15 +0000
+Message-ID: <pre-disclaimer-0001@example-sender.test>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+<html><head><title>Fund update</title></head><body style="font-family:Arial,sans-serif;">
+<p>PRE-TITLE Weekly estimate for the monitored fund (synthetic sample, no real data).</p>
+<p>Estimated NAV per share: 12.3456 (as of 2025-12-05).</p>
+<pre style="white-space:pre;font-size:9px;">DISCSENT01 This e-mail including any attachments is private and confidential and is intended for the named recipients only and may contain proprietary or privileged information. DISCSENT02 Unintended recipients must notify the sender immediately and delete all copies without distributing them further in any form. DISCSENT03 No liability is accepted for any harm that may be caused to any system or data by this transmission or its attachments. DISCSENT04 The sender accepts no responsibility for information, errors or omissions arising in the content of this e-mail. DISCSENT05 Nothing in this message constitutes investment advice or an offer to transact in any financial instrument. DISCSENT06 Internet communications cannot be guaranteed to be secure, timely, complete or free of viruses. DISCSENT07 Any views expressed are those of the individual sender except where specifically stated otherwise. DISCSENT08 Recipients should carry out their own virus checks before opening any attachment or link. DISCSENT09 This notice is generated automatically and forms part of the corporate record of the sender. DISCSENT10 Regulatory disclosures and terms of business are available from the compliance department upon request.</pre>
+<p>Kind regards, Operations</p>
+</body></html>

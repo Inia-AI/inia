@@ -1,0 +1,50 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Warning"
+                         Color="Color.Warning"
+                         Size="Size.Large"
+                         Class="mr-3" />
+                <MudText Typo="Typo.h6">Save Executed Workflow?</MudText>
+            </div>
+
+            <MudText Typo="Typo.body1">
+                This workflow was uploaded from a file and contains execution data.
+            </MudText>
+
+            <MudAlert Severity="Severity.Warning" Dense="false">
+                <MudText Typo="Typo.body2">
+                    Saving will:
+                </MudText>
+                <ul class="mt-1 mb-0">
+                    <li>Strip all execution state (block responses, status, timing data)</li>
+                    <li>Reset all blocks to their template state</li>
+                    <li>Replace the current core workflow in the database</li>
+                </ul>
+            </MudAlert>
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Make sure you have reviewed the workflow structure before saving.
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="Confirm"
+                   Color="Color.Warning"
+                   Variant="Variant.Filled">
+            Save Anyway
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(true));
+}

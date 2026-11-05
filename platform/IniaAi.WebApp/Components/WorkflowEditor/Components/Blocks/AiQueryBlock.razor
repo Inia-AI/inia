@@ -1,0 +1,237 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+<div class="editor-eyebrow mt-2 mb-2">Input settings</div>
+
+<DocumentClassSelector Block="@Block"
+                       ClassesReplacedFrom="@OnDocumentClassesReplaced"
+                       SelectionChanged="@BlockChanged" />
+
+<div class="editor-eyebrow mt-4 mb-2">Document filtering</div>
+
+@foreach (RagSettings ragSettings in Block.RagSettings)
+{
+    <MudCard @key="ragSettings" Outlined="true" Elevation="0" Class="mb-2 mt-2">
+        <MudCardContent>
+            <RagSettingsInteraction RagSettings="@ragSettings" />
+
+            <MudButton Size="Size.Small"
+                       Variant="Variant.Text"
+                       Class="editor-soft-button mt-2"
+                       StartIcon="@Icons.Material.Outlined.Delete"
+                       Color="Color.Error"
+                       OnClick="() => Block.RagSettings.Remove(ragSettings)">
+                Remove
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+}
+
+<MudButton Size="Size.Small"
+           Variant="Variant.Text"
+           Class="editor-soft-button mb-2"
+           StartIcon="@Icons.Material.Outlined.Add"
+           Color="Color.Primary"
+           OnClick="AddFilterRule">
+    Add Filter Rule
+</MudButton>
+
+<AiQueryInputsSettings Block="@Block"
+                       BlockChanged="@OnInputSettingsChanged" />
+
+@if (_props.ExecutionState is not null
+    && !string.IsNullOrEmpty(_props.ExecutionState.InputContext))
+{
+    <MudTextField Variant="Variant.Outlined"
+                  Label="Retrieved document content after execution"
+                  ReadOnly="true"
+                  Sizing="InputSizing.Auto"
+                  Lines="5"
+                  MaxLines="20"
+                  Class="mt-3 editor-mono-field editor-resolved"
+                  Value="@_props.ExecutionState.InputContext" />
+}
+
+@if (_props.ShouldUseCachingForInputContext)
+{
+    <MudGrid Spacing="2" Class="mt-3 editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <PromptEditor Label="Cached prompt section"
+                          BlockId="@Block.StableBlockId"
+                          WorkflowTypeId="@_workflowTypeId"
+                          SignatureFields="@_workflowSignatureFields"
+                          BlockChanged="@BlockChanged"
+                          MinLines="2"
+                          MaxLines="6"
+                          Value="@_props.TextToCache"
+                          ValueChanged="@OnTextToCacheChanged" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Cached prompt section after execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              Lines="2"
+                              MaxLines="6"
+                              Value="@_props.ExecutionState.TextToCache" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<MudGrid Spacing="3" Class="mt-4">
+    <MudItem xs="12" md="9">
+        <div class="editor-eyebrow mb-2">Prompts</div>
+
+        <MudGrid Spacing="2" Class="editor-twin-grid">
+            <MudItem xs="12" md="6">
+                <PromptEditor Label="System prompt"
+                              BlockId="@Block.StableBlockId"
+                              WorkflowTypeId="@_workflowTypeId"
+                              SignatureFields="@_workflowSignatureFields"
+                              BlockChanged="@BlockChanged"
+                              MinLines="3"
+                              MaxLines="10"
+                              Value="@_props.SystemPromptTemplate"
+                              ValueChanged="@OnSystemPromptTemplateChanged" />
+            </MudItem>
+
+            @if (_props.ExecutionState is not null)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="System prompt after execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Sizing="InputSizing.Auto"
+                                  Lines="3"
+                                  MaxLines="10"
+                                  Value="@_props.ExecutionState.SystemPrompt" />
+                </MudItem>
+            }
+        </MudGrid>
+
+        <MudGrid Spacing="2" Class="mt-3 editor-twin-grid">
+            <MudItem xs="12" md="6">
+                <PromptEditor Label="User prompt"
+                              BlockId="@Block.StableBlockId"
+                              WorkflowTypeId="@_workflowTypeId"
+                              SignatureFields="@_workflowSignatureFields"
+                              BlockChanged="@BlockChanged"
+                              MinLines="8"
+                              MaxLines="30"
+                              Value="@_props.UserPromptTemplate"
+                              ValueChanged="@((string value) => OnUserPromptTemplateChanged(value))" />
+            </MudItem>
+
+            @if (_props.ExecutionState is not null)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="User prompt after execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Sizing="InputSizing.Auto"
+                                  Lines="8"
+                                  MaxLines="30"
+                                  Value="@_props.ExecutionState.UserPrompt" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudItem>
+
+    <MudItem xs="12" md="3">
+        <div class="editor-eyebrow mb-2">Model</div>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <AiQueryModelSettings Block="@Block"
+                                      BlockChangedCallback="@BlockChanged" />
+            </MudItem>
+        </MudGrid>
+    </MudItem>
+</MudGrid>
+
+<OutputFormatPanel Block="@Block" BlockChanged="@BlockChanged" />
+
+<SignatureFieldsEditor Block="@Block" BlockChanged="@BlockChanged" />
+
+@code {
+    private AiQueryProperties _props => Block.Properties as AiQueryProperties
+        ?? throw new InvalidOperationException("Block properties must be of type AiQueryProperties");
+
+    private string? _workflowTypeId => Block.Section?.Workflow?.WorkflowTypeId;
+
+    /// <summary>
+    /// Workflow-level signature field definitions projected into the dict shape the prompt
+    /// editor's token highlighter consumes. All workflow fields are offered — the editor
+    /// only decorates tokens that actually appear in the text.
+    /// </summary>
+    private Dictionary<string, SignatureFieldDefinition>? _workflowSignatureFields =>
+        Block.Section?.Workflow?.SignatureFields is { Count: > 0 } fields
+            ? fields.ToDictionary(
+                f => f.Name,
+                f => new SignatureFieldDefinition(f.DisplayName, f.Description, f.DefaultValue),
+                StringComparer.OrdinalIgnoreCase)
+            : null;
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    private void AddFilterRule()
+    {
+        _ = new RagSettings(Block) { Type = RagTypes.WholeDocument };
+        AiQueryCitationDefault.ApplyToAddedFilterRule(Block);
+    }
+
+    private void OnDocumentClassesReplaced(IReadOnlyList<string> previousClasses)
+    {
+        AiQueryCitationDefault.ApplyToClassChange(Block, previousClasses);
+    }
+
+    private async Task OnInputSettingsChanged()
+    {
+        StateHasChanged();
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnSystemPromptTemplateChanged(string value)
+    {
+        AiQueryCitationDefault.ApplyToContentEdit(Block, () => _props.SystemPromptTemplate = value);
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnTextToCacheChanged(string value)
+    {
+        AiQueryCitationDefault.ApplyToContentEdit(Block, () => _props.TextToCache = value);
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnUserPromptTemplateChanged(string value)
+    {
+        string oldValue = _props.UserPromptTemplate ?? string.Empty;
+        AiQueryCitationDefault.ApplyToContentEdit(Block, () => _props.UserPromptTemplate = value);
+
+        // Clear the preview whenever the template changes (any change)
+        // This ensures preview is always in sync with the prompt
+        if (!oldValue.Equals(value, StringComparison.OrdinalIgnoreCase))
+        {
+            _props.UserPromptTemplatePreview = null;
+
+            StateHasChanged(); // Refresh UI to hide the preview section
+        }
+
+        // Validate replacement tags (centralized component handles computation on render)
+
+        await BlockChanged.InvokeAsync();
+    }
+}

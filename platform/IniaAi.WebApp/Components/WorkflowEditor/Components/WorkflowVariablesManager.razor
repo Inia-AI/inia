@@ -1,0 +1,354 @@
+@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+
+@using System.ComponentModel.DataAnnotations
+@using IniaAi.Domain.Constants
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using Microsoft.AspNetCore.Authorization
+
+@inject ILogger<WorkflowVariablesManager> Logger
+@inject IDialogService DialogService
+@inject AppState AppState
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Class="editor-card-title">
+                Workflow Variables
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <MudCardContent>
+        @* Action Buttons - Always visible *@
+        <MudStack Row="true" Spacing="2" Class="mb-4">
+            <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                       Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       OnClick="() => OpenEditVariableDialog()">
+                Add Custom Variable
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Outlined.AccountTree"
+                       Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       OnClick="AddOrganisationStructure"
+                       Disabled="@HasAllParentCompanyVariables()">
+                Add Organisation Structure Variables
+            </MudButton>
+        </MudStack>
+
+        @* Variable Sections - Only show when variables exist *@
+        @if (!Workflow.Variables.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                No variables defined for this workflow. Variables allow you to define reusable
+                pieces of information that can be referenced in your workflow blocks.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="mud-expansion-panels">
+                @* Workflow Variables Section *@
+                @if (GetOtherVariables().Any())
+                {
+                    <DisclosurePanel Class="mb-4">
+                        <TitleContent>
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Outlined.Settings" Class="mr-2" Color="Color.Primary" />
+                                <MudText Class="editor-card-title">Workflow Variables</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">@GetOtherVariables().Count()</MudChip>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudTable Items="@GetOtherVariables().OrderBy(v => v.DisplayName)"
+                                      Hover="true"
+                                      Breakpoint="Breakpoint.Sm"
+                                      Dense="true">
+                                <HeaderContent>
+                                    <MudTh>Display Name</MudTh>
+                                    <MudTh>Tag</MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Required</MudTh>
+                                    <MudTh>Hidden</MudTh>
+                                    <MudTh>Confidential</MudTh>
+                                    <MudTh>Default Value</MudTh>
+                                    <MudTh>Actions</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Display Name">@context.DisplayName</MudTd>
+                                    <MudTd DataLabel="Tag" Class="editor-mono-field">@context.ReplacementTag</MudTd>
+                                    <MudTd DataLabel="Type">@context.Type.ToString()</MudTd>
+                                    <MudTd DataLabel="Required">@(context.IsRequired ? "Yes" : "No")</MudTd>
+                                    <MudTd DataLabel="Hidden">@(context.IsHidden ? "Yes" : "No")</MudTd>
+                                    <MudTd DataLabel="Confidential">@(context.IsConfidential ? "Yes" : "No")</MudTd>
+                                    <MudTd DataLabel="Default Value">@context.DefaultValue</MudTd>
+                                    <MudTd>
+                                        <MudStack Row="true">
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                                           Size="Size.Small"
+                                                           aria-label="Edit variable"
+                                                           OnClick="() => OpenEditVariableDialog(context)" />
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           Class="editor-soft-button"
+                                                           aria-label="Remove variable"
+                                                           OnClick="() => DeleteVariable(context)" />
+                                        </MudStack>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </ChildContent>
+                    </DisclosurePanel>
+                }
+
+                @* Organisation Structure Variables Section *@
+                @if (GetParentCompanyVariables().Any())
+                {
+                    <DisclosurePanel>
+                        <TitleContent>
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Outlined.AccountTree" Class="mr-2" Color="Color.Secondary" />
+                                <MudText Class="editor-card-title">Organisation Structure Variables</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-2">@GetParentCompanyVariables().Count()</MudChip>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudTable Items="@GetParentCompanyVariables().OrderBy(v => v.DisplayName)"
+                                      Hover="true"
+                                      Breakpoint="Breakpoint.Sm"
+                                      Dense="true">
+                                <HeaderContent>
+                                    <MudTh>Display Name</MudTh>
+                                    <MudTh>Tag</MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Required</MudTh>
+                                    <MudTh>Hidden</MudTh>
+                                    <MudTh>Confidential</MudTh>
+                                    <MudTh>Default Value</MudTh>
+                                    <MudTh>Actions</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Display Name">@context.DisplayName</MudTd>
+                                    <MudTd DataLabel="Tag" Class="editor-mono-field">@context.ReplacementTag</MudTd>
+                                    <MudTd DataLabel="Type">@context.Type.ToString()</MudTd>
+                                    <MudTd DataLabel="Required">@(context.IsRequired ? "Yes" : "No")</MudTd>
+                                    <MudTd DataLabel="Hidden">@(context.IsHidden ? "Yes" : "No")</MudTd>
+                                    <MudTd DataLabel="Confidential">@(context.IsConfidential ? "Yes" : "No")</MudTd>
+                                    <MudTd DataLabel="Default Value">@context.DefaultValue</MudTd>
+                                    <MudTd>
+                                        <MudStack Row="true">
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                                           Size="Size.Small"
+                                                           aria-label="Edit variable"
+                                                           OnClick="() => OpenEditVariableDialog(context)" />
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           Class="editor-soft-button"
+                                                           aria-label="Remove variable"
+                                                           OnClick="() => DeleteVariable(context)" />
+                                        </MudStack>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </ChildContent>
+                    </DisclosurePanel>
+                }
+            </div>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public Workflow Workflow { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback WorkflowVariablesChanged { get; set; }
+
+    private async Task OpenEditVariableDialog(WorkflowVariable? variable = null)
+    {
+        DialogParameters<EditWorkflowVariableDialog> parameters = [];
+        parameters.Add(x => x.WorkflowVariable, variable);
+        parameters.Add(x => x.Workflow, Workflow);
+
+        string title = variable is null
+            ? "Add Workflow Variable"
+            : "Edit Workflow Variable";
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditWorkflowVariableDialog>(title, parameters, options);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            await WorkflowVariablesChanged.InvokeAsync();
+            StateHasChanged();
+
+            if (variable is null && result.Data is WorkflowVariable newVariable)
+            {
+                AppState.Notify($"Variable '{newVariable.DisplayName}' updated", Severity.Success);
+                return;
+            }
+
+            AppState.Notify($"Variable '{variable?.DisplayName}' updated", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating workflow variable");
+            AppState.Notify("Error updating variable: " + ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task DeleteVariable(WorkflowVariable variable)
+    {
+        DialogParameters<ConfirmationDialog> parameters = [];
+        parameters.Add(x => x.ConfirmButtonText, "Delete");
+        parameters.Add(x => x.Message, $"Are you sure you want to delete the variable '{variable.DisplayName}'?");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                Workflow.Variables.Remove(variable);
+                await WorkflowVariablesChanged.InvokeAsync();
+                StateHasChanged();
+
+                AppState.Notify($"Variable '{variable.DisplayName}' deleted", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting workflow variable");
+                AppState.Notify("Error deleting variable: " + ex.Message, Severity.Error);
+            }
+        }
+    }
+
+    private bool HasAllParentCompanyVariables()
+    {
+        var existingTags = Workflow.Variables
+            .Select(v => v.ReplacementTag)
+            .ToHashSet();
+
+        return DefaultWorkflowVariables.AllParentCompanyTags
+            .All(tag => existingTags.Contains(tag));
+    }
+
+    private IEnumerable<WorkflowVariable> GetParentCompanyVariables()
+    {
+        return Workflow.Variables
+            .Where(v => DefaultWorkflowVariables.AllParentCompanyTags.Contains(v.ReplacementTag));
+    }
+
+    private IEnumerable<WorkflowVariable> GetOtherVariables()
+    {
+        return Workflow.Variables
+            .Where(v => !DefaultWorkflowVariables.AllParentCompanyTags.Contains(v.ReplacementTag));
+    }
+
+    private async Task AddOrganisationStructure()
+    {
+        try
+        {
+            // Check which variables are missing
+            var existingTags = Workflow.Variables.Select(v => v.ReplacementTag).ToHashSet();
+            var missingTags = DefaultWorkflowVariables.AllParentCompanyTags
+                .Where(tag => !existingTags.Contains(tag))
+                .ToList();
+
+            var variablesAdded = 0;
+
+            // Has Parent Company - Dropdown
+            if (missingTags.Contains(DefaultWorkflowVariables.HAS_PARENT))
+            {
+                var hasParent = new WorkflowVariable(Workflow, DefaultWorkflowVariables.HAS_PARENT)
+                {
+                    DisplayName = DefaultWorkflowVariables.HAS_PARENT_DISPLAY_NAME,
+                    Description = DefaultWorkflowVariables.HAS_PARENT_DESCRIPTION,
+                    Type = WorkflowVariableTypes.Dropdown,
+                    IsRequired = false,
+                    IsHidden = false,
+                    IsConfidential = false,
+                    DefaultValue = null,
+                    Options = DefaultWorkflowVariables.GetHasParentOptions()
+                };
+                variablesAdded++;
+            }
+
+            // Parent Company Name - Text field
+            if (missingTags.Contains(DefaultWorkflowVariables.NAME_PARENT))
+            {
+                var nameParent = new WorkflowVariable(Workflow, DefaultWorkflowVariables.NAME_PARENT)
+                {
+                    DisplayName = DefaultWorkflowVariables.NAME_PARENT_DISPLAY_NAME,
+                    Description = DefaultWorkflowVariables.NAME_PARENT_DESCRIPTION,
+                    Type = WorkflowVariableTypes.String,
+                    IsRequired = false,
+                    IsHidden = false,
+                    IsConfidential = false,
+                    DefaultValue = null
+                };
+                variablesAdded++;
+            }
+
+            // Parent Company URL - Text field
+            if (missingTags.Contains(DefaultWorkflowVariables.PARENT_URL))
+            {
+                var parentUrl = new WorkflowVariable(Workflow, DefaultWorkflowVariables.PARENT_URL)
+                {
+                    DisplayName = DefaultWorkflowVariables.PARENT_URL_DISPLAY_NAME,
+                    Description = DefaultWorkflowVariables.PARENT_URL_DESCRIPTION,
+                    Type = WorkflowVariableTypes.String,
+                    IsRequired = false,
+                    IsHidden = false,
+                    IsConfidential = false,
+                    DefaultValue = null
+                };
+                variablesAdded++;
+            }
+
+            // Parent Company Reputation - Text field
+            if (missingTags.Contains(DefaultWorkflowVariables.PARENT_REPUTATION))
+            {
+                var parentReputation = new WorkflowVariable(Workflow, DefaultWorkflowVariables.PARENT_REPUTATION)
+                {
+                    DisplayName = DefaultWorkflowVariables.PARENT_REPUTATION_DISPLAY_NAME,
+                    Description = DefaultWorkflowVariables.PARENT_REPUTATION_DESCRIPTION,
+                    Type = WorkflowVariableTypes.String,
+                    IsRequired = false,
+                    IsHidden = false,
+                    IsConfidential = false,
+                    DefaultValue = null
+                };
+                variablesAdded++;
+            }
+
+            // Trigger save callback
+            await WorkflowVariablesChanged.InvokeAsync();
+            StateHasChanged();
+
+            AppState.Notify($"Added {variablesAdded} parent company variable(s)", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error adding parent company variables");
+            AppState.Notify("Error adding parent company variables: " + ex.Message, Severity.Error);
+        }
+    }
+}

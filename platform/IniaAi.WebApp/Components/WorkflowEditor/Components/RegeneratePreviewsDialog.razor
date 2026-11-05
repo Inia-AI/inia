@@ -1,0 +1,162 @@
+﻿<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h6">Generate User Prompt Previews</MudText>
+            
+            <MudText Typo="Typo.body1">
+                This workflow has @BlockCount block(s) that need privacy-safe preview updates.
+            </MudText>
+            
+            <MudText Typo="Typo.body2" Color="Color.Primary">
+                Privacy-safe previews will be automatically generated using AI and displayed in logs instead of the actual prompts to protect sensitive information.
+            </MudText>
+            
+            <MudAlert Severity="Severity.Info">
+                <MudText Typo="Typo.body2">
+                    This process will:
+                    <ul>
+                        <li>Create brief summaries of your prompts</li>
+                        <li>Remove sensitive information</li>
+                        <li>Keep placeholder references like {InputContext}</li>
+                        <li>Focus on general intent rather than specific details</li>
+                    </ul>
+                </MudText>
+            </MudAlert>
+
+            @if (_isGeneratingPreviews)
+            {
+                <MudDivider />
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoFixHigh" Size="Size.Small" />
+                        Generating Previews...
+                    </MudText>
+                    
+                    <MudProgressLinear Value="@_progressValue" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Medium" 
+                                       Rounded="true" />
+                    
+                    <MudText Typo="Typo.caption" Align="Align.Center">
+                        Processing block @_currentBlockIndex of @BlockCount
+                        @if (!string.IsNullOrEmpty(_currentBlockName))
+                        {
+                            <text> - @_currentBlockName</text>
+                        }
+                    </MudText>
+
+                    @if (_completedBlocks > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Success" Align="Align.Center">
+                            ✓ @_completedBlocks completed, @_failedBlocks failed
+                        </MudText>
+                    }
+                </MudStack>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" 
+                   Color="Color.Default"
+                   Disabled="@_isGeneratingPreviews">
+            @if (_isGeneratingPreviews)
+            {
+                <text>Generating...</text>
+            }
+            else
+            {
+                <text>Skip</text>
+            }
+        </MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="GeneratePreviews"
+                   Disabled="@_isGeneratingPreviews">
+            @if (_isGeneratingPreviews)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <text>Generating...</text>
+            }
+            else
+            {
+                <text>Generate Previews</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    
+    [Parameter] public int BlockCount { get; set; }
+    [Parameter] public EventCallback<RegeneratePreviewsDialog> OnPreviewGeneration { get; set; }
+
+
+    private bool _isGeneratingPreviews = false;
+    private double _progressValue = 0;
+    private int _currentBlockIndex = 0;
+    private string _currentBlockName = string.Empty;
+    private int _completedBlocks = 0;
+    private int _failedBlocks = 0;
+
+    private void Cancel() 
+    {
+        if (_isGeneratingPreviews)
+        {
+            // Could add cancellation logic here if needed
+            return;
+        }
+        MudDialog.Cancel();
+    }
+
+    private async Task GeneratePreviews()
+    {
+        // Don't close the dialog - start generating previews here
+        _isGeneratingPreviews = true;
+        StateHasChanged();
+        
+        // Trigger the preview generation callback, passing this dialog instance
+        await OnPreviewGeneration.InvokeAsync(this);
+    }
+
+    public void UpdateProgress(int currentBlock, int totalBlocks, string blockName, int completed, int failed)
+    {
+        _currentBlockIndex = currentBlock;
+        _currentBlockName = blockName;
+        _completedBlocks = completed;
+        _failedBlocks = failed;
+        _progressValue = totalBlocks > 0 ? (double)currentBlock / totalBlocks * 100 : 0;
+        
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void SetGeneratingState(bool isGenerating)
+    {
+        _isGeneratingPreviews = isGenerating;
+        if (!isGenerating)
+        {
+            // Reset progress when done
+            _progressValue = 0;
+            _currentBlockIndex = 0;
+            _currentBlockName = string.Empty;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void CompleteGeneration(bool success)
+    {
+        _isGeneratingPreviews = false;
+        StateHasChanged();
+        
+        // Close the dialog with the appropriate result
+        if (success)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            MudDialog.Close(DialogResult.Ok(false));
+        }
+    }
+}

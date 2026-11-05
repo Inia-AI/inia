@@ -1,0 +1,214 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.UserManagement
+
+@inject IDialogService DialogService
+@inject AppState AppState
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack Row="true" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h5">
+                Workflow Type Category Management
+            </MudText>
+
+            <AuthorizeView Roles="@(Roles.SUPER_ADMIN)">
+                <MudButton Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.DeleteSweep"
+                           OnClick="RemoveAllCategoriesAsync">
+                    Remove All Categories
+                </MudButton>
+            </AuthorizeView>
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid T="WorkflowTypeCategory"
+                     Items="@Categories"
+                     Dense="true"
+                     ReadOnly="true">
+            <ToolBarContent>
+                <AuthorizeView Roles="@(Roles.EDITOR_ROLES)">
+                    <MudStack Row="true">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="async () => await AddCategoryAsync()">
+                            Add Category
+                        </MudButton>
+                    </MudStack>
+                </AuthorizeView>
+            </ToolBarContent>
+
+            <Columns>
+                <PropertyColumn Property="x => x.Id"
+                                Title="Id" />
+
+                <PropertyColumn Property="x => x.Name"
+                                Title="Name" />
+
+                <PropertyColumn Property="x => x.Description"
+                                Title="Description" />
+
+                <PropertyColumn Property="x => x.DisplayOrder"
+                                Title="Display Order" />
+
+                <PropertyColumn Property="x => x.WorkflowTypes.Count"
+                                Title="Workflow Types Count" />
+
+                <TemplateColumn>
+                    <CellTemplate Context="templateContext">
+                        <AuthorizeView Roles="@(Roles.EDITOR_ROLES)">
+                            <MudStack Row="true" Spacing="0">
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                                   aria-label="@($"Edit category {templateContext.Item.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="async () => await EditCategoryAsync(templateContext.Item)" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   aria-label="@($"Delete category {templateContext.Item.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="async () => await RemoveCategoryAsync(templateContext.Item)" />
+                                </MudTooltip>
+                            </MudStack>
+                        </AuthorizeView>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="WorkflowTypeCategory"
+                                  PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public ICoreUnitOfWork CoreUnitOfWork { get; set; } = default!;
+
+    [Parameter]
+    public IEnumerable<WorkflowTypeCategory> Categories { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IEnumerable<WorkflowTypeCategory>> CategoriesChanged { get; set; }
+
+    private async Task EditCategoryAsync(WorkflowTypeCategory category)
+    {
+        var parameters = new DialogParameters<WorkflowTypeCategoryInfoDialog> { };
+        parameters.Add(x => x.Category, category);
+        parameters.Add(x => x.IsNew, false);
+
+        var dialog = await DialogService.ShowAsync<WorkflowTypeCategoryInfoDialog>("Edit Category", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await CoreUnitOfWork.CompleteAsync();
+            await CategoriesChanged.InvokeAsync(Categories);
+        }
+        else
+        {
+            await CoreUnitOfWork.RevertAsync(category);
+        }
+    }
+
+    private async Task AddCategoryAsync()
+    {
+        var category = new WorkflowTypeCategory();
+
+        var parameters = new DialogParameters<WorkflowTypeCategoryInfoDialog> { };
+        parameters.Add(x => x.Category, category);
+        parameters.Add(x => x.IsNew, true);
+
+        var dialog = await DialogService.ShowAsync<WorkflowTypeCategoryInfoDialog>("Add Category", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await CoreUnitOfWork.Repository<WorkflowTypeCategory>().AddAsync(category);
+            await CoreUnitOfWork.CompleteAsync();
+
+            await CategoriesChanged.InvokeAsync(Categories);
+        }
+    }
+
+    private async Task RemoveCategoryAsync(WorkflowTypeCategory category)
+    {
+        bool hasAssociatedTypes = (await CoreUnitOfWork
+                .WorkflowTypes
+                .FindAsync(w => w.CategoryId == category.Id))
+            .Any();
+
+        if (hasAssociatedTypes)
+        {
+            var errorParameters = new DialogParameters<ConfirmationDialog> { };
+            errorParameters.Add(p => p.Message, $"Cannot delete category \"{category.Name}\" because it has associated workflow types. Please reassign or remove the workflow types first.");
+            errorParameters.Add(p => p.ConfirmButtonText, "OK");
+
+            await DialogService.ShowAsync<ConfirmationDialog>("Cannot Delete Category", errorParameters);
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmationDialog> { };
+        parameters.Add(p => p.Message, $"Are you sure you want to remove \"{category.Name}\"?");
+        parameters.Add(p => p.ConfirmButtonText, "Remove");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Remove Category", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        CoreUnitOfWork.Repository<WorkflowTypeCategory>().Remove(category);
+        await CoreUnitOfWork.CompleteAsync();
+
+        await CategoriesChanged.InvokeAsync(Categories);
+    }
+
+    private async Task RemoveAllCategoriesAsync()
+    {
+        var parameters = new DialogParameters<ConfirmationDialog>();
+        parameters.Add(p => p.Message, "Are you sure you want to remove ALL categories? This action cannot be undone and will only remove categories that have no associated workflow types.");
+        parameters.Add(p => p.ConfirmButtonText, "Remove All");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Remove All Categories", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var categoriesToRemove = new List<WorkflowTypeCategory>();
+
+        foreach (var category in Categories)
+        {
+            bool hasAssociatedTypes = (await CoreUnitOfWork
+                    .WorkflowTypes
+                    .FindAsync(w => w.CategoryId == category.Id))
+                .Any();
+
+            if (!hasAssociatedTypes)
+            {
+                categoriesToRemove.Add(category);
+            }
+        }
+
+        foreach (var category in categoriesToRemove)
+        {
+            CoreUnitOfWork.Repository<WorkflowTypeCategory>().Remove(category);
+        }
+
+        await CoreUnitOfWork.CompleteAsync();
+        await CategoriesChanged.InvokeAsync(Categories);
+    }
+}

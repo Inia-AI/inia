@@ -1,0 +1,42 @@
+{
+  "@odata.count": 4,
+  "@odata.skip": 0,
+  "@odata.top": 50,
+  "value": [
+    {
+      "id": "counterparty-child",
+      "parentId": "counterparty-parent",
+      "counterpartyTypeIds": [
+        "type-corporation"
+      ],
+      "name": "Alpha Child",
+      "nameVariants": "Alpha; Child"
+    },
+    {
+      "id": "counterparty-sibling",
+      "parentId": "counterparty-parent",
+      "counterpartyTypeIds": [
+        "type-hedge-fund"
+      ],
+      "name": "Beta Child",
+      "nameVariants": "Beta"
+    },
+    {
+      "id": "counterparty-loose",
+      "parentId": null,
+      "counterpartyTypeIds": [],
+      "name": "Gamma Loose",
+      "nameVariants": "Gamma"
+    },
+    {
+      "id": "counterparty-parent",
+      "parentId": null,
+      "counterpartyTypeIds": [
+        "type-corporation",
+        "type-hedge-fund"
+      ],
+      "name": "Parent Holdings",
+      "nameVariants": "Parent; Holdings"
+    }
+  ]
+}

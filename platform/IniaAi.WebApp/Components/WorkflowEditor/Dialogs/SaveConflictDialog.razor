@@ -1,0 +1,72 @@
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2">
+            Someone else saved a newer version of this template after you loaded it.
+        </MudText>
+        @if (RevertLines.Count > 0)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">
+                Saving yours will undo their changes to:
+            </MudText>
+            <MudList T="string" Dense="true" ReadOnly="true">
+                @foreach (string line in RevertLines)
+                {
+                    <MudListItem T="string" Class="py-0">
+                        <MudText Typo="Typo.body2">@line</MudText>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+        else if (DiffUnavailable)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">
+                Their version could not be compared with yours, so saving yours may undo changes
+                you haven't seen.
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">
+                Their version has no content differences from the version you loaded, so saving
+                yours only applies your own edits.
+            </MudText>
+        }
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-2">
+            Every save is kept in version history, so no version is permanently lost either way.
+        </MudText>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="KeepEditing">Keep editing</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="LoadLatest">Discard mine, load latest</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveMine">Save mine anyway</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> RevertLines { get; set; } = [];
+
+    [Parameter]
+    public bool DiffUnavailable { get; set; }
+
+    private void KeepEditing()
+    {
+        MudDialog.Close(DialogResult.Ok(SaveConflictChoice.KeepEditing));
+    }
+
+    private void LoadLatest()
+    {
+        MudDialog.Close(DialogResult.Ok(SaveConflictChoice.LoadLatest));
+    }
+
+    private void SaveMine()
+    {
+        MudDialog.Close(DialogResult.Ok(SaveConflictChoice.SaveMine));
+    }
+}

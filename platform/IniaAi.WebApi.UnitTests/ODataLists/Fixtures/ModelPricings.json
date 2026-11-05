@@ -1,0 +1,63 @@
+{
+  "@odata.count": 4,
+  "@odata.skip": 0,
+  "@odata.top": 50,
+  "value": [
+    {
+      "id": "pricing-haiku",
+      "provider": "aws-bedrock",
+      "family": "anthropic",
+      "modelId": "model-pricing-haiku",
+      "modelAlias": "alias-pricing-haiku",
+      "displayName": "Claude Haiku",
+      "pricingType": "Llm",
+      "isActive": true,
+      "effectiveFrom": "2026-03-01T00:00:00Z",
+      "inputTokenCostPerMillion": null,
+      "outputTokenCostPerMillion": null,
+      "embeddingCostPerMillion": null
+    },
+    {
+      "id": "pricing-legacy",
+      "provider": "aws-bedrock",
+      "family": "anthropic",
+      "modelId": "model-pricing-legacy",
+      "modelAlias": "alias-pricing-legacy",
+      "displayName": "Claude Legacy",
+      "pricingType": "Llm",
+      "isActive": false,
+      "effectiveFrom": "2026-04-01T00:00:00Z",
+      "inputTokenCostPerMillion": null,
+      "outputTokenCostPerMillion": null,
+      "embeddingCostPerMillion": null
+    },
+    {
+      "id": "pricing-sonnet",
+      "provider": "aws-bedrock",
+      "family": "anthropic",
+      "modelId": "model-pricing-sonnet",
+      "modelAlias": "alias-pricing-sonnet",
+      "displayName": "Claude Sonnet",
+      "pricingType": "Llm",
+      "isActive": true,
+      "effectiveFrom": "2026-02-01T00:00:00Z",
+      "inputTokenCostPerMillion": null,
+      "outputTokenCostPerMillion": null,
+      "embeddingCostPerMillion": null
+    },
+    {
+      "id": "pricing-embed",
+      "provider": "aws-bedrock",
+      "family": "cohere",
+      "modelId": "model-pricing-embed",
+      "modelAlias": "alias-pricing-embed",
+      "displayName": "Cohere Embed",
+      "pricingType": "Embedding",
+      "isActive": true,
+      "effectiveFrom": "2025-06-01T00:00:00Z",
+      "inputTokenCostPerMillion": null,
+      "outputTokenCostPerMillion": null,
+      "embeddingCostPerMillion": null
+    }
+  ]
+}

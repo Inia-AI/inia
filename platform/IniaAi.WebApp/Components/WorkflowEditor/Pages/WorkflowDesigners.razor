@@ -1,0 +1,269 @@
+﻿@attribute [Route(AppRoutes.EDITORS)]
+@attribute [Authorize]
+
+@using IniaAi.Application.Commands.WorkflowTransfer.ImportWorkflowTemplateApply
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApi.Contracts.Dto.WorkflowTransfer
+@using IniaAi.WebApp.Components.Components
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+
+@inject NavigationManager Navigation
+@inject AppState AppState
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDialogService DialogService
+@inject DesignerPages DesignerPages
+@inject ILogger<WorkflowDesigners> Logger
+
+<PageTitle>Inia AI - @AppState.GetName(AppState.CurrentRoute)</PageTitle>
+
+<MudGrid Justify="Justify.FlexStart"
+         Spacing="2"
+         Class="my-2"
+         Style="max-width: 1024px">
+    <MudItem xs="12">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudChip T="string"
+                     Color="@(_selectedCategory is null ? Color.Primary : Color.Default)"
+                     Variant="@(_selectedCategory is null ? Variant.Filled : Variant.Outlined)"
+                     OnClick="() => OnCategoryChanged(null)"
+                     Style="cursor: pointer;">
+                All Categories
+            </MudChip>
+
+            @foreach (var category in _categories.OrderBy(x => x.DisplayOrder ?? int.MaxValue).ThenBy(x => x.Name))
+            {
+                <MudChip T="string"
+                         Color="@(_selectedCategory?.Id == category.Id ? Color.Primary : Color.Default)"
+                         Variant="@(_selectedCategory?.Id == category.Id ? Variant.Filled : Variant.Outlined)"
+                         OnClick="() => OnCategoryChanged(category)"
+                         Style="cursor: pointer;">
+                    @category.Name
+                </MudChip>
+            }
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12" Class="py-0">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <AuthorizeView Roles="@Roles.EDITOR_ROLES">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.CompareArrows"
+                           OnClick="@(() => Navigation.NavigateTo("/workflows/compare-deployments"))">
+                    Compare across deployments
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Unarchive"
+                           OnClick="@(async () => await _bundleUpload.OpenFilePickerAsync())">
+                    Import workflow bundle
+                </MudButton>
+
+                <div class="d-none">
+                    <MudFileUpload @ref="_bundleUpload"
+                                   T="IReadOnlyList<IBrowserFile>"
+                                   FilesChanged="async(files) => await UploadBundleAsync(files)"
+                                   Accept="@TransferBundleFile.UPLOAD_ACCEPT"
+                                   MaximumFileCount="1" />
+                </div>
+            </AuthorizeView>
+        </MudStack>
+    </MudItem>
+
+    @if (_isLoading)
+    {
+        <MudItem xs="12">
+            <MudProgressCircular Color="Color.Primary"
+                                 Indeterminate="true" />
+        </MudItem>
+    }
+    else if (_hasLoadFailed)
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Error">
+                The workflow list did not load. Reload the page to try again.
+            </MudAlert>
+        </MudItem>
+    }
+    else if (_isEveryTypeHidden)
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Info">
+                Your roles open no workflow editor. An administrator can give you the Workflow Editor role.
+            </MudAlert>
+        </MudItem>
+    }
+    else
+    {
+        @foreach (var workflowType in _filteredWorkflowTypes)
+        {
+            <MudItem Style="display: flex;">
+                <CategoryTile
+                    Title="@workflowType.Name"
+                    Icon="@DesignerPages.IconFor(workflowType.Id)"
+                    HrefInfo="@GetHrefInfoForWorkflowType(workflowType)" />
+            </MudItem>
+        }
+    }
+</MudGrid>
+
+@code {
+    private bool _isLoading = true;
+    private bool _hasLoadFailed;
+    private bool _isEveryTypeHidden;
+    private WorkflowTypeCategory? _selectedCategory;
+    private List<WorkflowType> _workflowTypes = [];
+    private List<WorkflowType> _filteredWorkflowTypes = [];
+    private List<WorkflowTypeCategory> _categories = [];
+    private MudFileUpload<IReadOnlyList<IBrowserFile>> _bundleUpload = default!;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            ClaimsPrincipal user = (await AuthenticationStateTask).User;
+
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            // Load workflow types with their categories
+            List<WorkflowType> editableTypes = (await coreUnitOfWork.WorkflowTypes.GetAllAsync())
+                .Where(w => w.Id != WorkflowType.GENERIC)
+                .ToList();
+            _workflowTypes = editableTypes
+                .Where(w => DesignerPages.CanOpen(user, w.Id))
+                .OrderBy(w => w.Name)
+                .ToList();
+            _isEveryTypeHidden = editableTypes.Count > 0 && _workflowTypes.Count == 0;
+
+            // Load categories using generic repository
+            var categories = await coreUnitOfWork.Repository<WorkflowTypeCategory>().GetAllAsync();
+            _categories = categories
+                .Where(c => _workflowTypes.Any(w => w.CategoryId == c.Id))
+                .ToList();
+
+            // Create a dictionary for fast category lookup
+            var categoryDict = _categories.ToDictionary(c => c.Id);
+
+            // Load category details for each workflow type using dictionary lookup
+            foreach (var workflowType in _workflowTypes)
+            {
+                if (!string.IsNullOrEmpty(workflowType.CategoryId) && categoryDict.TryGetValue(workflowType.CategoryId, out var category))
+                {
+                    workflowType.Category = category;
+                }
+            }
+
+            // Initialize filtered list with all types
+            FilterWorkflowTypesByCategory();
+        }
+        catch (Exception ex)
+        {
+            _hasLoadFailed = true;
+            Logger.LogError(ex, "Error loading workflow types");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void FilterWorkflowTypesByCategory()
+    {
+        if (_selectedCategory is null)
+        {
+            _filteredWorkflowTypes = _workflowTypes.ToList();
+        }
+        else
+        {
+            _filteredWorkflowTypes = _workflowTypes
+                .Where(w => w.CategoryId == _selectedCategory.Id)
+                .ToList();
+        }
+    }
+
+    private Task OnCategoryChanged(WorkflowTypeCategory? value)
+    {
+        _selectedCategory = value;
+        FilterWorkflowTypesByCategory();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Dictionary<string, string> GetHrefInfoForWorkflowType(WorkflowType workflowType)
+    {
+        var routePath = $"{AppRoutes.EDITORS}/{workflowType.Id}";
+
+        string displayName = AppState.GetName(routePath) ?? workflowType.Name;
+
+        return new Dictionary<string, string>
+        {
+            { displayName, routePath }
+        };
+    }
+
+    private async Task UploadBundleAsync(IReadOnlyList<IBrowserFile> files)
+    {
+        IBrowserFile? file = files?.FirstOrDefault();
+        if (file is null)
+        {
+            return;
+        }
+
+        string json;
+        try
+        {
+            using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: TransferBundleFile.MAX_FILE_SIZE_BYTES));
+            json = await reader.ReadToEndAsync();
+        }
+        catch (Exception ex)
+        {
+            AppState.Notify($"Could not read that file: {ex.Message}", Severity.Error);
+            return;
+        }
+
+        WorkflowTransferBundle? bundle = TransferBundleFile.TryDeserialize(json);
+        if (bundle is null)
+        {
+            AppState.Notify(
+                TransferBundleFile.Classify(json) == TransferPayloadKind.WorkflowJson
+                    ? "That is a workflow file, not a bundle — open a workflow type's editor and use Upload from file."
+                    : "That file is not a workflow bundle.",
+                Severity.Error);
+            return;
+        }
+
+        await ImportBundleAsync(bundle);
+    }
+
+    private async Task ImportBundleAsync(WorkflowTransferBundle bundle)
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User, nameof(AppState.User));
+
+        ImportWorkflowTemplateApplyResult? applied = await BundleImportFlow.RunAsync(
+            ServiceScopeFactory,
+            DialogService,
+            AppState,
+            AppState.User.OrganizationId,
+            AppState.User.Id,
+            bundle.OriginWorkflowTypeId,
+            bundle);
+        if (applied is null)
+        {
+            return;
+        }
+
+        AppState.Notify(
+            "Bundle imported — opening the workflow type's editor.",
+            Severity.Success);
+        Navigation.NavigateTo($"{AppRoutes.EDITORS}/{applied.WorkflowTypeId}");
+    }
+}

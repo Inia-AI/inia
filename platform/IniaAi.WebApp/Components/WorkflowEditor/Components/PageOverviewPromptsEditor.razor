@@ -1,0 +1,77 @@
+@using IniaAi.Domain.Entities.Workflows
+
+<MudStack Spacing="3">
+    @PromptFields(Prompts.Pages!, "Overview")
+
+    <MudExpansionPanels Outlined="true" Elevation="0">
+        <MudExpansionPanel Text="One-page version (spreadsheets, CSV)" @bind-Expanded="_singlePageOpen">
+            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-3">
+                For pages read alone, without the pages around them. Empty: they use the prompt above.
+            </MudText>
+            @PromptFields(Prompts.SinglePage!, "One-page")
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
+    <MudText Typo="Typo.caption" Class="mud-text-secondary">@EmptyMeaning</MudText>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public PageOverviewPrompts Prompts { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string EmptyMeaning { get; set; } = string.Empty;
+
+    private bool _singlePageOpen;
+    private PageOverviewPrompts? _shownPrompts;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(Prompts, _shownPrompts))
+        {
+            return;
+        }
+
+        _shownPrompts = Prompts;
+        Prompts.Pages ??= new PageOverviewPrompt();
+        Prompts.SinglePage ??= new PageOverviewPrompt();
+        _singlePageOpen = !Prompts.SinglePage.IsBlank || !string.IsNullOrWhiteSpace(Prompts.SinglePage.SystemPrompt);
+    }
+
+    private RenderFragment PromptFields(PageOverviewPrompt prompt, string name)
+    {
+        return @<MudStack Spacing="3">
+            <MudTextField T="string"
+                          Label="System prompt"
+                          aria-label="@($"{name} system prompt")"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          Lines="2"
+                          MaxLines="12"
+                          @bind-Value="prompt.SystemPrompt" />
+            <MudTextField T="string"
+                          Label="User prompt"
+                          aria-label="@($"{name} user prompt")"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          HelperText="{0} becomes the page number"
+                          Sizing="InputSizing.Auto"
+                          Lines="6"
+                          MaxLines="24"
+                          @bind-Value="prompt.UserPrompt" />
+            @if (prompt.IsBlank && !string.IsNullOrWhiteSpace(prompt.SystemPrompt))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Warning">Without a user prompt, pages get no overview.</MudText>
+            }
+            @if (prompt.AnswerFormatProblem is string answerFormatProblem)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Warning">@answerFormatProblem</MudText>
+            }
+            <MudSwitch T="bool"
+                       Label="Use the advanced model"
+                       Color="Color.Primary"
+                       @bind-Value="prompt.ShouldUseAdvancedModel" />
+        </MudStack>;
+    }
+}

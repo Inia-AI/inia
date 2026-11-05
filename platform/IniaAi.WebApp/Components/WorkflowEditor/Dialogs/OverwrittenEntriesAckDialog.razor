@@ -1,0 +1,84 @@
+@using ErrorOr
+@using IniaAi.Application.Common.Workflows
+
+<MudDialog>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            @($"Applying this discards local edits in {WorkflowTypeId}, in entries no decision named:")
+        </MudAlert>
+        <ul class="mud-typography-body2 my-1 ps-5">
+            @foreach (string slot in SlotTags)
+            {
+                <li>@slot</li>
+            }
+        </ul>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            Those entries track a Library component and someone edited them in place. Cancel and
+            reconcile them first to keep that work.
+        </MudText>
+        <MudCheckBox T="bool"
+                     @bind-Value="_acknowledged"
+                     Color="Color.Primary"
+                     Dense="true"
+                     Label="I understand the listed edits will be replaced by the component head." />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   Disabled="@(!_acknowledged)"
+                   OnClick="Confirm">
+            Apply anyway
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> SlotTags { get; set; } = [];
+
+    private bool _acknowledged;
+
+    private static readonly DialogOptions _options =
+        new() { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    public static async Task<bool> ConfirmAsync(IDialogService dialogService, Error error)
+    {
+        (string workflowTypeId, IReadOnlyList<string> slotTags) = SharedComponentOrphanMetadata
+            .ReadOverwrittenEntries(error);
+        if (slotTags.Count == 0)
+        {
+            return false;
+        }
+
+        var parameters = new DialogParameters<OverwrittenEntriesAckDialog>
+        {
+            { dialog => dialog.WorkflowTypeId, workflowTypeId },
+            { dialog => dialog.SlotTags, slotTags },
+        };
+        IDialogReference dialog = await dialogService.ShowAsync<OverwrittenEntriesAckDialog>(
+            "Local edits would be replaced",
+            parameters,
+            _options);
+        DialogResult? result = await dialog.Result;
+
+        return result is not null && !result.Canceled;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

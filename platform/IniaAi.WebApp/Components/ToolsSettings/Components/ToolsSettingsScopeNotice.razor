@@ -1,0 +1,12 @@
+<MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" Class="mt-1 px-0">@Sentence</MudAlert>
+
+@code {
+    public const string EVERY_WORKFLOW = "One edit changes every workflow for every organization.";
+    public const string EVERY_SCREENED_WORKFLOW = "One edit changes every screened workflow for every organization.";
+
+    /// <summary>The screening prompts reach only the workflows that screen their documents.</summary>
+    [Parameter]
+    public bool ScreenedWorkflowsOnly { get; set; }
+
+    private string Sentence => ScreenedWorkflowsOnly ? EVERY_SCREENED_WORKFLOW : EVERY_WORKFLOW;
+}

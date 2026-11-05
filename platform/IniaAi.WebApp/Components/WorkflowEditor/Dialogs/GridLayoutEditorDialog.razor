@@ -1,0 +1,359 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.WebApp.Components.WorkflowEditor.Components
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6">Visual Grid Layout Editor</MudText>
+                <MudText Typo="Typo.body2" Class="mt-2">
+                    Drag and drop blocks to position them in the grid. Use the resize handles to adjust span.
+                </MudText>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudPaper Elevation="1" Class="pa-2">
+                    <style>
+                        .grid-container {
+                            display: grid;
+                            grid-template-columns: repeat(@GridColumns, 1fr);
+                            gap: 8px;
+                            padding: 16px;
+                            background: repeating-linear-gradient(
+                                0deg,
+                                transparent,
+                                transparent 49px,
+                                var(--mud-palette-lines-default) 49px,
+                                var(--mud-palette-lines-default) 50px
+                            ),
+                            repeating-linear-gradient(
+                                90deg,
+                                transparent,
+                                transparent 49px,
+                                var(--mud-palette-lines-default) 49px,
+                                var(--mud-palette-lines-default) 50px
+                            );
+                            min-height: 400px;
+                            position: relative;
+                        }
+
+                        .grid-item {
+                            background: var(--mud-palette-primary);
+                            color: var(--mud-palette-primary-text);
+                            padding: 12px;
+                            border-radius: 4px;
+                            cursor: move;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            text-align: center;
+                            position: relative;
+                            box-shadow: var(--mud-elevation-2);
+                            transition: transform 0.2s, box-shadow 0.2s;
+                        }
+
+                        .grid-item:hover {
+                            transform: scale(1.02);
+                            box-shadow: var(--mud-elevation-4);
+                        }
+
+                        .grid-item.dragging {
+                            opacity: 0.5;
+                        }
+
+                        .resize-handle {
+                            position: absolute;
+                            width: 16px;
+                            height: 16px;
+                            background: var(--mud-palette-surface);
+                            border: 2px solid var(--mud-palette-primary);
+                            border-radius: 50%;
+                            cursor: nwse-resize;
+                            bottom: -8px;
+                            right: -8px;
+                        }
+
+                        .resize-handle-row {
+                            position: absolute;
+                            width: 100%;
+                            height: 8px;
+                            background: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+                            cursor: ns-resize;
+                            bottom: -4px;
+                            left: 0;
+                            border-radius: 4px;
+                        }
+
+                        .resize-handle-col {
+                            position: absolute;
+                            width: 8px;
+                            height: 100%;
+                            background: color-mix(in srgb, var(--mud-palette-primary) 30%, transparent);
+                            cursor: ew-resize;
+                            right: -4px;
+                            top: 0;
+                            border-radius: 4px;
+                        }
+
+                        .resize-handle:hover,
+                        .resize-handle-row:hover,
+                        .resize-handle-col:hover {
+                            background: var(--mud-palette-primary);
+                        }
+
+                        .grid-cell {
+                            border: 1px solid var(--mud-palette-lines-default);
+                            min-height: 60px;
+                            transition: background-color 0.2s;
+                        }
+
+                        .grid-cell.drop-target {
+                            background-color: color-mix(in srgb, var(--mud-palette-primary) 20%, transparent);
+                            border: 2px dashed var(--mud-palette-primary);
+                        }
+
+                        .grid-cell.occupied {
+                            background-color: color-mix(in srgb, var(--mud-palette-text-primary) 2%, transparent);
+                        }
+                    </style>
+
+                    <div class="grid-container" @ref="gridContainer">
+                        @* Grid cells for drop targets *@
+                        @for (int row = 1; row <= MaxRows; row++)
+                        {
+                            @for (int col = 1; col <= GridColumns; col++)
+                            {
+                                var currentRow = row;
+                                var currentCol = col;
+                                var isOccupied = IsGridCellOccupied(currentRow, currentCol);
+
+                                <div class="grid-cell @(isOccupied ? "occupied" : "") @(IsDropTarget(currentRow, currentCol) ? "drop-target" : "")"
+                                     style="grid-row: @currentRow; grid-column: @currentCol;"
+                                     @ondrop="@((e) => HandleDrop(e, currentRow, currentCol))"
+                                     @ondragover="@((e) => HandleDragOver(e, currentRow, currentCol))"
+                                     @ondragover:preventDefault="true"
+                                     @ondragleave="@(() => ClearDropTarget())">
+                                </div>
+                            }
+                        }
+
+                        @* Grid items *@
+                        @foreach (var config in GridConfig)
+                        {
+                            var block = Blocks.FirstOrDefault(b => b.Order == config.BlockOrder);
+                            if (block is not null)
+                            {
+                                <div class="grid-item @(DraggingBlockOrder == config.BlockOrder ? "dragging" : "")"
+                                     style="grid-row: @config.Row / span @config.RowSpan; grid-column: @config.Column / span @config.ColumnSpan; z-index: 10;"
+                                     draggable="true"
+                                     @ondragstart="@(() => HandleDragStart(config.BlockOrder))"
+                                     @ondragend="@HandleDragEnd">
+                                    <MudText Typo="Typo.caption">@block.Order</MudText>
+                                    <MudText Typo="Typo.body2">@block.Name</MudText>
+                                    <MudText Typo="Typo.caption">
+                                        @config.Column,@config.Row (@config.ColumnSpan×@config.RowSpan)
+                                    </MudText>
+                                </div>
+                            }
+                        }
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2">Manual Position & Size Adjustment</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Bordered="true" Class="mt-2">
+                    <thead>
+                        <tr>
+                            <th>Block</th>
+                            <th>Row</th>
+                            <th>Column</th>
+                            <th>Row Span</th>
+                            <th>Column Span</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var config in GridConfig)
+                        {
+                            var block = Blocks.FirstOrDefault(b => b.Order == config.BlockOrder);
+                            <tr>
+                                <td>@(block?.Name ?? "Unknown")</td>
+                                <td>
+                                    <MudNumericField T="int" @bind-Value="config.Row" Min="1" Max="20" Variant="Variant.Text" />
+                                </td>
+                                <td>
+                                    <MudNumericField T="int" @bind-Value="config.Column" Min="1" Max="@GridColumns" Variant="Variant.Text" />
+                                </td>
+                                <td>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Remove"
+                                                       aria-label="Decrease row span"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => AdjustRowSpan(config, -1))"
+                                                       Disabled="@(config.RowSpan <= 1)" />
+                                        <MudText>@config.RowSpan</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Add"
+                                                       aria-label="Increase row span"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => AdjustRowSpan(config, 1))"
+                                                       Disabled="@(config.RowSpan >= 10)" />
+                                    </MudStack>
+                                </td>
+                                <td>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Remove"
+                                                       aria-label="Decrease column span"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => AdjustColumnSpan(config, -1))"
+                                                       Disabled="@(config.ColumnSpan <= 1)" />
+                                        <MudText>@config.ColumnSpan</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Add"
+                                                       aria-label="Increase column span"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => AdjustColumnSpan(config, 1))"
+                                                       Disabled="@(config.ColumnSpan >= GridColumns)" />
+                                    </MudStack>
+                                </td>
+                                <td>
+                                    <MudButton Size="Size.Small"
+                                              Variant="Variant.Text"
+                                              OnClick="@(() => ResetBlockSize(config))">
+                                        Reset Size
+                                    </MudButton>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Apply Layout</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public List<WorkflowItemDescriptor.GridBlockConfig> GridConfig { get; set; } = new();
+    [Parameter] public int GridColumns { get; set; } = 2;
+    [Parameter] public List<Block> Blocks { get; set; } = new();
+
+    private int? DraggingBlockOrder;
+    private ElementReference gridContainer;
+    private int? DropTargetRow;
+    private int? DropTargetCol;
+
+    private const int MaxRows = 20; // Maximum grid rows to display
+
+    private void HandleDragStart(int blockOrder)
+    {
+        DraggingBlockOrder = blockOrder;
+    }
+
+    private void HandleDragEnd()
+    {
+        DraggingBlockOrder = null;
+        ClearDropTarget();
+    }
+
+    private void HandleDragOver(DragEventArgs e, int row, int col)
+    {
+        if (DraggingBlockOrder is not null)
+        {
+            // Check if this position can accept the dragged item
+            if (CanDropAt(row, col))
+            {
+                DropTargetRow = row;
+                DropTargetCol = col;
+            }
+        }
+    }
+
+    private void HandleDrop(DragEventArgs e, int row, int col)
+    {
+        if (DraggingBlockOrder is not null && CanDropAt(row, col))
+        {
+            var config = GridConfig.FirstOrDefault(c => c.BlockOrder == DraggingBlockOrder);
+            if (config is not null)
+            {
+                config.Row = row;
+                config.Column = col;
+                StateHasChanged();
+            }
+        }
+
+        DraggingBlockOrder = null;
+        ClearDropTarget();
+    }
+
+    private void ClearDropTarget()
+    {
+        DropTargetRow = null;
+        DropTargetCol = null;
+        StateHasChanged();
+    }
+
+    private bool IsGridCellOccupied(int row, int col)
+    {
+        return GridConfig.Any(config =>
+            config.BlockOrder != DraggingBlockOrder && // Don't consider currently dragging item
+            row >= config.Row && row < config.Row + config.RowSpan &&
+            col >= config.Column && col < config.Column + config.ColumnSpan);
+    }
+
+    private bool IsDropTarget(int row, int col)
+    {
+        return DropTargetRow == row && DropTargetCol == col;
+    }
+
+    private bool CanDropAt(int row, int col)
+    {
+        if (DraggingBlockOrder is null) return false;
+
+        var draggingConfig = GridConfig.FirstOrDefault(c => c.BlockOrder == DraggingBlockOrder);
+        if (draggingConfig is null) return false;
+
+        // Check if the entire span would fit without overlapping other items
+        for (int r = row; r < row + draggingConfig.RowSpan; r++)
+        {
+            for (int c = col; c < col + draggingConfig.ColumnSpan; c++)
+            {
+                if (c > GridColumns || IsGridCellOccupied(r, c))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void AdjustRowSpan(WorkflowItemDescriptor.GridBlockConfig config, int adjustment)
+    {
+        var newRowSpan = Math.Max(1, Math.Min(10, config.RowSpan + adjustment));
+        config.RowSpan = newRowSpan;
+        StateHasChanged();
+    }
+
+    private void AdjustColumnSpan(WorkflowItemDescriptor.GridBlockConfig config, int adjustment)
+    {
+        var newColumnSpan = Math.Max(1, Math.Min(GridColumns, config.ColumnSpan + adjustment));
+        config.ColumnSpan = newColumnSpan;
+        StateHasChanged();
+    }
+
+    private void ResetBlockSize(WorkflowItemDescriptor.GridBlockConfig config)
+    {
+        config.RowSpan = 1;
+        config.ColumnSpan = 1;
+        StateHasChanged();
+    }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(GridConfig));
+    void Cancel() => MudDialog.Cancel();
+}

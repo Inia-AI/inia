@@ -1,0 +1,10 @@
+{
+  "workflowTypeId": "SampleAnnualReport",
+  "document": "annual-report.pdf",
+  "figures": [
+    { "name": "Revenue for 2025", "value": "EUR 48.6 million", "page": 2 },
+    { "name": "Net profit for 2025", "value": "EUR 5.9 million", "page": 3 },
+    { "name": "Total assets at the end of 2025", "value": "EUR 112.4 million", "page": 4 },
+    { "name": "Employees at the end of 2025", "value": "1,284", "page": 5 }
+  ]
+}

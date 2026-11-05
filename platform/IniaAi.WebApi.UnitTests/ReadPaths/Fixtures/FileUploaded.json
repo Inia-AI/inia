@@ -1,0 +1,8 @@
+{
+  "id": "document-read",
+  "filename": "Annual report",
+  "mediaType": "ApplicationPdf",
+  "warnings": null,
+  "created": true,
+  "producesPages": true
+}

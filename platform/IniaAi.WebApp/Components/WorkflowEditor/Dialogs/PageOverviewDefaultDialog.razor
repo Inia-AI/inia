@@ -1,0 +1,83 @@
+@using IniaAi.Domain.DocumentAnalysis
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Components
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">
+                Used for any document class without its own prompt.
+            </MudText>
+
+            <PageOverviewPromptsEditor @key="_revision"
+                                       Prompts="@_prompts"
+                                       EmptyMeaning="@EMPTY_MEANING" />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Outlined.Restore"
+                   OnClick="UseStandardPrompts">
+            Use the standard prompts
+        </MudButton>
+
+        <MudSpacer />
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Save">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string EMPTY_MEANING = "Empty: document classes without their own prompt get no page overviews, so the blocks that search pages find nothing in them.";
+
+    [Parameter, EditorRequired]
+    public Workflow Workflow { get; set; } = default!;
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private PageOverviewPrompts _prompts = new();
+    private int _revision;
+
+    protected override void OnInitialized()
+    {
+        _prompts = Workflow.Configuration?.PageOverviews?.Clone() ?? new PageOverviewPrompts();
+    }
+
+    private void UseStandardPrompts()
+    {
+        _prompts = PageOverviewPromptDefaults.Create();
+        _revision++;
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Save()
+    {
+        PageOverviewPrompts? kept = _prompts.WithoutBlankPrompts();
+        if (kept is not null)
+        {
+            Workflow.Configuration ??= new WorkflowConfiguration();
+            Workflow.Configuration.PageOverviews = kept;
+        }
+        else if (Workflow.Configuration is not null)
+        {
+            Workflow.Configuration.PageOverviews = null;
+        }
+
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+}

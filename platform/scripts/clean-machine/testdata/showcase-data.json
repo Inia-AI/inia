@@ -1,0 +1,19 @@
+{
+  "value": [
+    {
+      "name": "figures_and_ratios",
+      "data": {
+        "company_name": "Larkspur Freight Ltd",
+        "currency": "EUR",
+        "revenue_2024": 44.1,
+        "revenue_2025": 48.6,
+        "net_profit_2024": 4.7,
+        "net_profit_2025": 5.9,
+        "revenue_growth_percent": 10.2,
+        "net_margin_percent": 12.1
+      },
+      "citations": [],
+      "citedSourcesByBlock": []
+    }
+  ]
+}

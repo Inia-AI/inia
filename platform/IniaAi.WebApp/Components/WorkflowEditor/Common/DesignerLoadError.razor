@@ -1,0 +1,10 @@
+<MudItem xs="12">
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="my-4">@Message</MudAlert>
+    <MudButton Variant="Variant.Text" Color="Color.Secondary" Class="editor-soft-button" StartIcon="@Icons.Material.Outlined.ArrowBack" Href="@AppRoutes.EDITORS">Back to Workflow Editors</MudButton>
+</MudItem>
+
+@code {
+    /// <summary>Why the designer page could not open a workflow, shown in place of the editor.</summary>
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = string.Empty;
+}

@@ -1,0 +1,219 @@
+﻿@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="Start Index Template"
+                        Variant="Variant.Outlined"
+                        Class="editor-mono-field"
+                        @bind-Value="RagSettings.StartIndexInput" />
+    </MudItem>
+    @if (RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Start Index After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.StartIndexInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="End Index Template"
+                        Variant="Variant.Outlined"
+                        Class="editor-mono-field"
+                        @bind-Value="RagSettings.EndIndexInput" />
+    </MudItem>
+    @if (RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="End Index After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.EndIndexInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="Number Of Pages To Use Template"
+                        Variant="Variant.Outlined"
+                        Class="editor-mono-field"
+                        @bind-Value="RagSettings.NumberOfPagesInput" />
+    </MudItem>
+    @if (RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Number Of Pages To Use After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.NumberOfPagesInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudText Typo="Typo.body1">
+    Keywords:
+</MudText>
+
+<MudText Typo="Typo.caption">
+    The contents of the files that are used to get the InputContext for
+    this block are filtered by these keywords. If keyword is on the pages of
+    the document, the page is included in the InputContext. Note that
+    if the "Exclude pages that do not contain ALL keywords" option is selected,
+    the page must contain all keywords to be included in the InputContext.
+</MudText>
+
+@for (int i = 0; i < RagSettings.Keywords.Count; i++)
+{
+    int index = i;
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudGrid Spacing="2" Class="flex-grow-1 editor-twin-grid">
+            <MudItem xs="12" md="6">
+                <MudTextField Label="Keyword Template"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field"
+                              @bind-Value="@RagSettings.Keywords[index]" />
+            </MudItem>
+
+            @if (RagSettings.ExecutionState is not null
+                && RagSettings.ExecutionState.Keywords.Count > index)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Keyword After Execution"
+                                  Variant="Variant.Outlined"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Value="@RagSettings.ExecutionState.Keywords[index]" />
+                </MudItem>
+            }
+        </MudGrid>
+
+        <MudButton Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Delete"
+                   Color="Color.Error"
+                   Class="editor-soft-button"
+                   OnClick="() => RagSettings.Keywords.RemoveAt(index)">
+            Remove keyword
+        </MudButton>
+    </MudStack>
+}
+
+<div>
+    <MudButton StartIcon="@Icons.Material.Outlined.Add"
+               Variant="Variant.Text"
+               Class="editor-soft-button"
+               Color="Color.Primary"
+               Size="Size.Small"
+               OnClick="() => RagSettings.Keywords.Add(string.Empty)">
+        Add Keyword
+    </MudButton>
+</div>
+
+<MudText Typo="Typo.body1" Class="mt-4">
+    Keyword matching:
+</MudText>
+
+<MudRadioGroup @bind-Value="RagSettings.ShouldFilterKeyWordsExclusively">
+    <MudStack Spacing="1">
+        <MudRadio Value="false"
+                  Color="Color.Primary"
+                  Dense="true">
+            Match ANY keyword (pages containing at least one keyword)
+        </MudRadio>
+
+        <MudRadio Value="true"
+                  Color="Color.Primary"
+                  Dense="true">
+            Match ALL keywords (pages must contain every keyword)
+        </MudRadio>
+    </MudStack>
+</MudRadioGroup>
+
+<MudText Typo="Typo.body1" Class="mt-4">
+    Search options:
+</MudText>
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="4" Class="ml-2">
+    <MudCheckBox @bind-Value="RagSettings.ShouldSearchOverviews"
+                 Label="Search Page Overviews instead of full Page Text"
+                 Color="Color.Primary"
+                 Dense="true" />
+
+    <MudCheckBox @bind-Value="RagSettings.ShouldIncludeNeighboringPages"
+                 Label="Include neighboring pages (page before and after each match)"
+                 Color="Color.Primary"
+                 Dense="true" />
+</MudStack>
+
+<MudText Typo="Typo.body1" Class="mt-4">
+    Smart filter expressions:
+</MudText>
+
+<MudText Typo="Typo.caption">
+    The contents of the files that are used to get the InputContext for
+    the blocks in this workflow are filtered by these expressions.
+    The filtering is done using semantic search (embeddings).
+</MudText>
+
+@for (int i = 0; i < RagSettings.SmartFilterExpressions.Count(); i++)
+{
+    var index = i;
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudGrid Spacing="2" Class="flex-grow-1 editor-twin-grid">
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Smart Filter Expression Template"
+                              Class="editor-mono-field"
+                              @bind-Value="RagSettings.SmartFilterExpressions[index]" />
+            </MudItem>
+
+            @if (RagSettings.ExecutionState is not null
+                && RagSettings.ExecutionState.SmartFilterExpressions.Count > index)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Smart Filter Expression After Execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Value="@RagSettings.ExecutionState.SmartFilterExpressions[index]" />
+                </MudItem>
+            }
+        </MudGrid>
+
+        <MudButton Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Delete"
+                   Color="Color.Error"
+                   Class="editor-soft-button"
+                   OnClick="() => RagSettings.SmartFilterExpressions.RemoveAt(index)">
+            Remove expression
+        </MudButton>
+    </MudStack>
+}
+
+<div>
+    <MudButton StartIcon="@Icons.Material.Outlined.Add"
+               Variant="Variant.Text"
+               Class="editor-soft-button"
+               Color="Color.Primary"
+               Size="Size.Small"
+               OnClick="() => RagSettings.SmartFilterExpressions.Add(string.Empty)">
+        Add Expression
+    </MudButton>
+</div>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+}

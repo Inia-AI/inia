@@ -1,0 +1,480 @@
+@using ErrorOr
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.Core.Workflows.Diff
+@using IniaAi.WebApi.Contracts.Responses.WorkflowVersions
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.DependencyInjection
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+@inject IServiceScopeFactory ServiceScopeFactory
+
+<MudPaper Outlined="true" Elevation="0" Class="pa-4 my-3">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Outlined.History" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Saved versions</MudText>
+            @if (!_loading && _totalCount > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default" Class="ma-0">
+                    @_totalCount
+                </MudChip>
+            }
+        </MudStack>
+        <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                       Size="Size.Small"
+                       aria-label="Close saved versions"
+                       OnClick="async () => await OnClose.InvokeAsync()" />
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">
+        Every save is kept here. Expand a version to see what it changed, open an earlier version to bring it back into the editor, or compare any two.
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_versions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Normal" Variant="Variant.Outlined" Dense="true">
+            No saved versions yet. The first time you save, the history starts here.
+        </MudAlert>
+    }
+    else
+    {
+        @foreach (IGrouping<DateTime, WorkflowVersionSummaryDto> group in _versions.GroupBy(v => v.CreatedAtUtc.Date))
+        {
+            bool isCollapsed = _collapsedDays.Contains(group.Key);
+
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Default"
+                       Size="Size.Small"
+                       Class="mt-2 px-1 justify-start"
+                       StartIcon="@(isCollapsed ? Icons.Material.Outlined.ChevronRight : Icons.Material.Outlined.ExpandMore)"
+                       OnClick="() => ToggleDay(group.Key)"
+                       aria-expanded="@(!isCollapsed)">
+                <MudText Typo="Typo.subtitle2" Class="mud-text-secondary me-2">@GroupLabel(group.Key)</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-disabled" Style="text-transform: none;">
+                    @DayCountLabel(group.Count(), isPossiblyPartial: _hasMore && group.Key == _versions[^1].CreatedAtUtc.Date)
+                </MudText>
+            </MudButton>
+
+            <MudCollapse Expanded="@(!isCollapsed)">
+                <MudList T="string" Class="pa-0" ReadOnly="true">
+                    @{
+                        List<WorkflowVersionSummaryDto> groupVersions = [.. group];
+                    }
+                    @for (int index = 0; index < groupVersions.Count; index++)
+                    {
+                        WorkflowVersionSummaryDto version = groupVersions[index];
+                        bool isCurrent = version.Id == _versions[0].Id;
+                        bool isSelected = _selected.Contains(version.Id);
+                        bool isTrimmed = version.PayloadTrimmedAt is not null;
+                        bool isExpanded = _expandedVersionIds.Contains(version.Id);
+
+                        <MudListItem T="string" Class="px-0 py-2">
+                            <div class="d-flex" style="gap: 12px;">
+                                <MudStack AlignItems="AlignItems.Center" Spacing="0" Style="width: 20px;">
+                                    <MudIcon Icon="@(isCurrent ? Icons.Material.Filled.Circle : Icons.Material.Outlined.Circle)"
+                                             Color="@(isCurrent ? Color.Primary : Color.Default)"
+                                             Size="Size.Small"
+                                             Class="@(isCurrent ? string.Empty : "mud-text-disabled")"
+                                             Style="font-size: 0.85rem;" />
+                                    @if (index < groupVersions.Count - 1)
+                                    {
+                                        <div class="flex-grow-1"
+                                             style="width: 2px; min-height: 16px; background-color: var(--mud-palette-divider);"></div>
+                                    }
+                                </MudStack>
+
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-center flex-wrap" style="gap: 8px;">
+                                        @if (string.IsNullOrWhiteSpace(version.Narrative))
+                                        {
+                                            <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="font-style: italic;">
+                                                Saved without a change summary
+                                            </MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2"
+                                                     Style="font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                                @version.Narrative
+                                            </MudText>
+                                            @if (NarrativePartCount(version.Narrative) > 2)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default" Class="ma-0">
+                                                    @($"{NarrativePartCount(version.Narrative)} changes")
+                                                </MudChip>
+                                            }
+                                        }
+                                        @if (isCurrent)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="ma-0">
+                                                Current
+                                            </MudChip>
+                                        }
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(version.Note))
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1" data-testid="version-note">
+                                            @version.Note
+                                        </MudText>
+                                    }
+
+                                    <VersionStamp When="version.CreatedAtUtc"
+                                                  Author="@version.CreatedByName"
+                                                  VersionCode="@version.ShortCode"
+                                                  Class="mt-1" />
+
+                                    @if (isTrimmed)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-disabled mt-1" Style="font-style: italic;">
+                                            Content cleared to save storage, so this version can no longer be opened or compared.
+                                        </MudText>
+                                    }
+
+                                    <div class="d-flex align-center flex-wrap mt-1" style="gap: 4px;">
+                                        @if (!isTrimmed)
+                                        {
+                                            <MudButton Size="Size.Small"
+                                                       Variant="Variant.Text"
+                                                       StartIcon="@(isExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                                                       OnClick="async () => await ToggleChangesAsync(version.Id)">
+                                                @(isExpanded ? "Hide changes" : "Show changes")
+                                            </MudButton>
+                                        }
+                                        <MudTooltip Text="Tick to compare two versions">
+                                            <MudCheckBox T="bool"
+                                                         Value="@isSelected"
+                                                         ValueChanged="@((bool isChecked) => ToggleSelection(version.Id, isChecked))"
+                                                         Color="Color.Primary"
+                                                         Dense="true"
+                                                         Size="Size.Small"
+                                                         Disabled="@isTrimmed"
+                                                         Label="Select" />
+                                        </MudTooltip>
+                                        @if (!isCurrent)
+                                        {
+                                            <MudButton Size="Size.Small"
+                                                       Variant="Variant.Text"
+                                                       StartIcon="@Icons.Material.Outlined.Restore"
+                                                       Disabled="@isTrimmed"
+                                                       OnClick="async () => await LoadVersionAsync(version.Id)">
+                                                Open this version
+                                            </MudButton>
+                                            <MudButton Size="Size.Small"
+                                                       Variant="Variant.Text"
+                                                       StartIcon="@Icons.Material.Outlined.Difference"
+                                                       Disabled="@isTrimmed"
+                                                       OnClick="async () => await CompareToCurrentAsync(version.Id)">
+                                                Compare with current
+                                            </MudButton>
+                                        }
+                                    </div>
+
+                                    @if (isExpanded)
+                                    {
+                                        <MudPaper Outlined="true" Class="pa-3 mt-2">
+                                            @if (!_changesCache.TryGetValue(version.Id, out WorkflowVersionChangesResult? changes))
+                                            {
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                            }
+                                            else if (changes is null)
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                                    The change list for this version could not be loaded.
+                                                </MudText>
+                                            }
+                                            else if (changes.Status == WorkflowVersionChangeStatus.FirstVersion)
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                                    This is the first saved version of this workflow.
+                                                </MudText>
+                                            }
+                                            else if (changes.Status == WorkflowVersionChangeStatus.Unavailable)
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                                    The saved content needed to compute this change list has been cleared. The summary above is all that remains.
+                                                </MudText>
+                                            }
+                                            else if (changes.Diff is not null)
+                                            {
+                                                <WorkflowVersionChangesPanel Diff="changes.Diff" />
+                                            }
+                                        </MudPaper>
+                                    }
+                                </div>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudCollapse>
+        }
+
+        @if (_hasMore)
+        {
+            <MudButton Size="Size.Small"
+                       Variant="Variant.Outlined"
+                       Class="mt-2"
+                       StartIcon="@Icons.Material.Outlined.ExpandMore"
+                       Disabled="@_loadingMore"
+                       OnClick="LoadMoreAsync">
+                @(_loadingMore ? "Loading..." : $"Show older ({Math.Max(0, _totalCount - _versions.Count)} more)")
+            </MudButton>
+        }
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+            <MudButton Size="Size.Small"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Difference"
+                       Disabled="@(_selected.Count != 2)"
+                       OnClick="CompareSelectedAsync">
+                Compare the two selected
+            </MudButton>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                @(_selected.Count == 2 ? "Ready to compare." : $"Tick two versions to compare them ({_selected.Count}/2).")
+            </MudText>
+        </MudStack>
+
+        @if (_diff is not null)
+        {
+            <MudPaper Outlined="true" Class="pa-3 mt-3">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
+                    <MudIcon Icon="@Icons.Material.Outlined.Difference" Color="Color.Info" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle2">What changed</MudText>
+                </MudStack>
+                @if (_diff.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        These two versions are identical, nothing changed between them.
+                    </MudText>
+                }
+                else if (_diff.Count == 1)
+                {
+                    <MudText Typo="Typo.body2">@_diff[0]</MudText>
+                }
+                else
+                {
+                    <ul class="mud-typography-body2 my-0 ps-5">
+                        @foreach (string part in _diff)
+                        {
+                            <li>@part</li>
+                        }
+                    </ul>
+                }
+            </MudPaper>
+        }
+    }
+</MudPaper>
+
+@code {
+    private const int PAGE_SIZE = 10;
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<WorkflowVersionContentDto> OnLoadVersion { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private List<WorkflowVersionSummaryDto> _versions = [];
+    private readonly HashSet<string> _selected = [];
+    private readonly HashSet<DateTime> _collapsedDays = [];
+    private readonly HashSet<string> _expandedVersionIds = [];
+    private readonly Dictionary<string, WorkflowVersionChangesResult?> _changesCache = [];
+    private List<string>? _diff;
+    private bool _loading = true;
+    private bool _loadingMore;
+    private bool _hasMore;
+    private int _totalCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHistoryAsync();
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        _loading = true;
+
+        ErrorOr<WorkflowHistoryPageDto> result =
+            await SendAsync(new GetWorkflowHistoryQuery(OrganizationId, WorkflowTypeId, PAGE_SIZE));
+
+        if (result.IsError)
+        {
+            _versions = [];
+            _hasMore = false;
+            _totalCount = 0;
+        }
+        else
+        {
+            _versions = [.. result.Value.Versions];
+            _hasMore = result.Value.HasMore;
+            _totalCount = result.Value.TotalCount;
+        }
+
+        _loading = false;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_versions.Count == 0 || _loadingMore)
+        {
+            return;
+        }
+
+        _loadingMore = true;
+        WorkflowVersionSummaryDto cursor = _versions[^1];
+
+        ErrorOr<WorkflowHistoryPageDto> result = await SendAsync(
+            new GetWorkflowHistoryQuery(OrganizationId, WorkflowTypeId, PAGE_SIZE, cursor.CreatedAtUtc, cursor.Id));
+
+        if (!result.IsError)
+        {
+            HashSet<string> known = [.. _versions.Select(v => v.Id)];
+            _versions.AddRange(result.Value.Versions.Where(v => !known.Contains(v.Id)));
+            _hasMore = result.Value.HasMore;
+            _totalCount = result.Value.TotalCount;
+        }
+
+        _loadingMore = false;
+    }
+
+    private void ToggleDay(DateTime day)
+    {
+        if (!_collapsedDays.Remove(day))
+        {
+            _ = _collapsedDays.Add(day);
+        }
+    }
+
+    private async Task ToggleChangesAsync(string versionId)
+    {
+        if (_expandedVersionIds.Remove(versionId))
+        {
+            // A null cache entry means the fetch failed; drop it so re-expanding retries
+            // instead of showing the error forever.
+            if (_changesCache.TryGetValue(versionId, out WorkflowVersionChangesResult? cached) && cached is null)
+            {
+                _ = _changesCache.Remove(versionId);
+            }
+
+            return;
+        }
+
+        _ = _expandedVersionIds.Add(versionId);
+
+        if (_changesCache.ContainsKey(versionId))
+        {
+            return;
+        }
+
+        ErrorOr<WorkflowVersionChangesResult> result =
+            await SendAsync(new GetWorkflowVersionChangesQuery(OrganizationId, versionId));
+
+        _changesCache[versionId] = result.IsError ? null : result.Value;
+    }
+
+    private static string DayCountLabel(int loadedCount, bool isPossiblyPartial)
+    {
+        if (isPossiblyPartial)
+        {
+            return $"{loadedCount}+ saves";
+        }
+
+        return loadedCount == 1 ? "1 save" : $"{loadedCount} saves";
+    }
+
+    private static int NarrativePartCount(string narrative)
+    {
+        return narrative.Split("; ").Length;
+    }
+
+    private static string GroupLabel(DateTime dayUtc)
+    {
+        DateTime today = DateTime.UtcNow.Date;
+        if (dayUtc == today)
+        {
+            return "Today";
+        }
+
+        if (dayUtc == today.AddDays(-1))
+        {
+            return "Yesterday";
+        }
+
+        return dayUtc.ToString("d MMMM yyyy");
+    }
+
+    private void ToggleSelection(string versionId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            _ = _selected.Add(versionId);
+        }
+        else
+        {
+            _ = _selected.Remove(versionId);
+        }
+    }
+
+    private async Task LoadVersionAsync(string versionId)
+    {
+        ErrorOr<WorkflowVersionContentDto> result =
+            await SendAsync(new GetWorkflowVersionQuery(OrganizationId, versionId));
+
+        if (!result.IsError)
+        {
+            await OnLoadVersion.InvokeAsync(result.Value);
+        }
+    }
+
+    private async Task CompareToCurrentAsync(string versionId)
+    {
+        string? headVersionId = _versions.FirstOrDefault()?.Id;
+        if (headVersionId is null)
+        {
+            return;
+        }
+
+        await ComputeDiffAsync(versionId, headVersionId);
+    }
+
+    private async Task CompareSelectedAsync()
+    {
+        if (_selected.Count != 2)
+        {
+            return;
+        }
+
+        List<string> ids = [.. _selected];
+        await ComputeDiffAsync(ids[0], ids[1]);
+    }
+
+    private async Task ComputeDiffAsync(string versionIdA, string versionIdB)
+    {
+        ErrorOr<WorkflowDiff> result =
+            await SendAsync(new CompareWorkflowVersionsQuery(OrganizationId, versionIdA, versionIdB));
+
+        if (result.IsError)
+        {
+            _diff = null;
+            return;
+        }
+
+        _diff = [.. new WorkflowNarrativeGenerator().GenerateParts(result.Value)];
+    }
+
+    private Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
+    {
+        return ServiceScopeFactory.SendScopedAsync(request);
+    }
+}

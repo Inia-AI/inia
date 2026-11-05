@@ -1,0 +1,167 @@
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Services.CsvImport
+@using IniaAi.WebApp.Components.Components
+
+@inject AppState AppState
+@inject ICsvImportService CsvImportService
+@inject IJSRuntime JsRuntime
+@inject ILogger<UserCsvImportDialog> Logger
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudStack>
+            <MudText Typo="Typo.body2">
+                Upload a CSV file with a header row. Recognized columns:
+                Email (required), Password, FirstName, LastName, MiddleName, UserName, PhoneNumber.
+                Imported users receive the default User role. If the Password column is present, every row must include a
+                password that meets the password rules; omit the column entirely for SSO-only users.
+            </MudText>
+
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="DownloadTemplateAsync">
+                Download CSV Template
+            </MudButton>
+
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                           FilesChanged="async (files) => _usersFile = await UploadCsvFileAsync(files)"
+                           Accept=".csv"
+                           MaximumFileCount="1"
+                           Disabled="_isBusy">
+                <CustomContent>
+                    <MudButton Variant="Variant.Text"
+                               OnClick="@(async () => await context.OpenFilePickerAsync())"
+                               StartIcon="@GetIcon(_usersFile)">
+                        Select Users CSV
+                    </MudButton>
+                </CustomContent>
+            <SelectedTemplate />
+            </MudFileUpload>
+
+            @if (_importResult?.HasErrors == true)
+            {
+                <CsvImportErrorTable Errors="@_importResult.Errors" />
+            }
+
+            @if (_error is not null)
+            {
+                <MudText Typo="Typo.body1" Color="Color.Error">@_error</MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Disabled="_isBusy" Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Disabled="CanImport() == false" Color="Color.Primary" Variant="Variant.Text" OnClick="ImportAsync">Import</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string TEMPLATE_FILE_NAME = "users-import-template.csv";
+    private const string TEMPLATE_CSV =
+        "Email,Password,FirstName,LastName,MiddleName,UserName,PhoneNumber\n" +
+        "replace.me@example.com,ChangeMe1x,Jane,Doe,,,\n";
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    private byte[]? _usersFile;
+
+    private string? _error;
+
+    private CsvImportResult? _importResult;
+
+    private bool _isBusy = false;
+
+    #region Private
+
+    private async Task DownloadTemplateAsync()
+    {
+        _ = await JsRuntime.InvokeAsync<object>("downloadFile", TEMPLATE_FILE_NAME, TEMPLATE_CSV);
+    }
+
+    private static string? GetIcon(byte[]? file)
+    {
+        if (file is null)
+        {
+            return Icons.Material.Outlined.CloudUpload;
+        }
+
+        return Icons.Material.Outlined.Check;
+    }
+
+    private bool CanImport()
+    {
+        return _isBusy == false && _usersFile is not null;
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task ImportAsync()
+    {
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            _error = "No organization selected for user import.";
+            return;
+        }
+
+        await SetBusyAsync(true);
+
+        try
+        {
+            var csvContents = Encoding.UTF8.GetString(_usersFile!);
+
+            _importResult = await CsvImportService.ImportAsync<User>(csvContents, AppState.CurrentOrganizationId);
+
+            if (_importResult.HasErrors)
+            {
+                return;
+            }
+
+            MudDialog?.Close(DialogResult.Ok(_importResult.ImportedCount));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "User CSV import failed for organization {OrganizationId}", AppState.CurrentOrganizationId);
+            _error = ex.InnerException is not null
+                ? $"User import failed: {ex.Message} ({ex.InnerException.Message})"
+                : $"User import failed: {ex.Message}";
+        }
+        finally
+        {
+            _usersFile = null;
+            await SetBusyAsync(false);
+        }
+    }
+
+    private async Task SetBusyAsync(bool isBusy)
+    {
+        _isBusy = isBusy;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<byte[]?> UploadCsvFileAsync(IEnumerable<IBrowserFile> files)
+    {
+        if (files.FirstOrDefault() is IBrowserFile file)
+        {
+            if (_error is not null)
+            {
+                _error = null;
+
+                await InvokeAsync(StateHasChanged);
+            }
+
+            using var memoryStream = new MemoryStream();
+            using var fileStream = file.OpenReadStream();
+            await fileStream.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
+        }
+
+        return null;
+    }
+
+    #endregion
+}

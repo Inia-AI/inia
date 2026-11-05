@@ -1,0 +1,45 @@
+@inject IDialogService DialogService
+
+<NavigationLock OnBeforeInternalNavigation="ConfirmLeaveAsync" ConfirmExternalNavigation="@IsDirty" />
+
+@code {
+    public const string MESSAGE = "This page has changes that are not saved. If you leave now, they are lost.";
+    public const string STAY = "Stay";
+    public const string LEAVE = "Leave without saving";
+    private const string TITLE = "Unsaved changes";
+
+    /// <summary>
+    /// Arms the browser's own leave-page warning for a reload, a closed tab or a link out of the app.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public bool IsDirty { get; set; }
+
+    /// <summary>
+    /// The check run when the user follows a link inside the app. It reads the page's live state,
+    /// because a page often changes that state and navigates in one handler, before the guard
+    /// renders again: a save that redirects would otherwise ask about the changes it just saved.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Func<bool> IsDirtyNow { get; set; } = default!;
+
+    private async Task ConfirmLeaveAsync(LocationChangingContext context)
+    {
+        if (!IsDirtyNow())
+        {
+            return;
+        }
+
+        bool? leave = await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+        {
+            Title = TITLE,
+            Message = MESSAGE,
+            YesText = LEAVE,
+            CancelText = STAY,
+        });
+
+        if (leave is not true)
+        {
+            context.PreventNavigation();
+        }
+    }
+}

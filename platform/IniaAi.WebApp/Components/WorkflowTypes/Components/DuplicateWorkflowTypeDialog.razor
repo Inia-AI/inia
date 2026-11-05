@@ -1,0 +1,169 @@
+@using IniaAi.Application.Commands.WorkflowTemplates.DuplicateWorkflowType
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowTypes.Common
+@using ErrorOr
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject AppState AppState
+@inject ILogger<DuplicateWorkflowTypeDialog> Logger
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Copies <b>@Source.Name</b> into a new workflow type. Library links stay live, so future
+            component updates still reach the copy.
+        </MudText>
+
+        <MudTextField @bind-Value="@_newId"
+                      Label="New ID"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Disabled="@_isRunning" />
+
+        <MudTextField @bind-Value="@_name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Disabled="@_isRunning" />
+
+        <MudTextField @bind-Value="@_description"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Disabled="@_isRunning" />
+
+        <MudSelect T="string"
+                   @bind-Value="_categoryId"
+                   Label="Category"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   AnchorOrigin="Origin.BottomLeft"
+                   Disabled="@_isRunning">
+            <MudSelectItem Value="@((string?)null)">
+                None
+            </MudSelectItem>
+
+            @foreach (var category in Categories)
+            {
+                <MudSelectItem Value="@category.Id">
+                    @category.Name
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">
+            <MudText Typo="Typo.subtitle2">The copy will not inherit</MudText>
+            <MudList T="string" Dense="true" Class="pa-0" ReadOnly="true">
+                @foreach (var carrier in _skippedCarriers)
+                {
+                    <MudListItem T="string" Icon="@Icons.Material.Outlined.RemoveCircleOutline">
+                        <b>@carrier.Carrier.</b> @carrier.Reason
+                    </MudListItem>
+                }
+            </MudList>
+        </MudAlert>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="my-2">
+                @_errorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel"
+                   Disabled="@_isRunning">
+            Cancel
+        </MudButton>
+
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="@_isRunning">
+            @if (_isRunning)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+            }
+            Duplicate
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public WorkflowType Source { get; set; } = default!;
+
+    [Parameter]
+    public IEnumerable<WorkflowTypeCategory> Categories { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<string> TakenIds { get; set; } = [];
+
+    private string _newId = string.Empty;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string? _categoryId;
+    private string _errorMessage = string.Empty;
+    private bool _isRunning;
+    private IReadOnlyList<DuplicateSkippedCarrier> _skippedCarriers = [];
+
+    protected override void OnInitialized()
+    {
+        _newId = DuplicateWorkflowTypeFormRules.SuggestId(Source.Id, TakenIds);
+        _name = $"{Source.Name} (copy)";
+        _description = Source.Description ?? string.Empty;
+        _categoryId = Source.CategoryId;
+        _skippedCarriers = DuplicateWorkflowTypeCommandHandler.SkippedCarriers;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _errorMessage = DuplicateWorkflowTypeFormRules.Validate(Source.Id, _newId, _name, TakenIds) ?? string.Empty;
+        if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            return;
+        }
+
+        _isRunning = true;
+        try
+        {
+            ErrorOr<DuplicateWorkflowTypeResult> result = await ServiceScopeFactory.SendScopedAsync(new DuplicateWorkflowTypeCommand(
+                AppState.CurrentOrganizationId ?? string.Empty,
+                AppState.User?.Id ?? string.Empty,
+                Source.Id,
+                _newId,
+                _name,
+                string.IsNullOrWhiteSpace(_description) ? null : _description,
+                _categoryId));
+
+            if (result.IsError)
+            {
+                _errorMessage = result.FirstError.Description;
+                Logger.LogWarning(
+                    "Duplicating workflow type {SourceWorkflowTypeId} failed: {ErrorCode}",
+                    Source.Id,
+                    result.FirstError.Code);
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(result.Value));
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+}

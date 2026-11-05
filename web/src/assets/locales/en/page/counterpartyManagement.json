@@ -1,0 +1,132 @@
+{
+  "title": "@:{'terms.Company'} Management",
+  "createCounterpartyLabel": "Add @:{'terms.Company'}",
+  "emptyNoData": "No @:{'terms.companies'} yet. Click \"Add @:{'terms.Company'}\" to create one.",
+  "emptyNoMatches": "No @:{'terms.companies'} match your filters.",
+  "count": "{count} @:{'terms.company'} | {count} @:{'terms.companies'}",
+  "refineHint": "Showing the top {cap} matches — refine your search to see more.",
+  "contextRowAria": "Parent shown for context — only its children match your search",
+  "export": "Export",
+  "import": "Import",
+  "exportError": "The @:{'terms.companies'} could not be exported.",
+  "importNotABundle": "{name} is not a @:{'terms.company'} bundle. Pick the JSON file that Export produced.",
+  "importDialog": {
+    "title": "Import @:{'terms.companies'}",
+    "source": "From {organization} on {instance}, exported {date}.",
+    "contents": "{counterparties} and {types} in the file.",
+    "contentsCounterparties": "{count} @:{'terms.company'} | {count} @:{'terms.companies'}",
+    "contentsTypes": "{count} type | {count} types",
+    "planning": "Checking the file against this instance…",
+    "planned": "Nothing has been written yet. Review what the import would do, then apply it.",
+    "nothingToApply": "Every @:{'terms.company'} in the file already matches this instance. There is nothing to apply.",
+    "applied": "The import is complete.",
+    "typesToCreate": "Types this instance lacks, created by the import:",
+    "disposition": {
+      "Create": "New",
+      "UpdateById": "Updated by id",
+      "Resurrect": "Reactivated",
+      "UpdateByName": "Updated by name",
+      "Unchanged": "Unchanged",
+      "Skip": "Skipped"
+    },
+    "skipReason": {
+      "Invalid": "Breaks a field rule",
+      "DuplicateIdInBundle": "An earlier row in the file has the same id",
+      "IdHeldByAnotherOrganization": "The id belongs to another organization on this instance",
+      "AmbiguousName": "More than one @:{'terms.company'} here has this name",
+      "NameCollision": "The name is already taken",
+      "ParentNotLanded": "Its parent did not land"
+    },
+    "matchedByName": "lands on {targetId}",
+    "moreRows": "…and {n} more",
+    "apply": "Apply import",
+    "planError": "The file could not be checked against this instance.",
+    "applyError": "The import could not be applied."
+  },
+  "actions": {
+    "edit": "Edit @:{'terms.company'} {name}",
+    "addChild": "Add child to @:{'terms.company'} {name}",
+    "delete": "Delete @:{'terms.company'} {name}",
+    "copyId": "Copy ID of @:{'terms.company'} {name}",
+    "expandRow": "Expand @:{'terms.company'} {name} to show its children",
+    "collapseRow": "Collapse the children of @:{'terms.company'} {name}"
+  },
+  "filters": {
+    "search": "Search",
+    "searchPlaceholder": "Search by name, ID, or variant…",
+    "type": "Type",
+    "all": "All",
+    "clearFilters": "Clear filters"
+  },
+  "dialog": {
+    "createTitle": "Create @:{'terms.Company'}",
+    "createChildTitle": "Create Child @:{'terms.Company'}",
+    "editTitle": "Edit @:{'terms.Company'}",
+    "deleteTitle": "Delete @:{'terms.Company'}",
+    "deleteConfirm": "Delete {name}? Every @:{'terms.company'} beneath it is deleted too."
+  },
+  "toast": {
+    "addSuccess": "Successfully added @:{'terms.company'} {name}",
+    "editSuccess": "Successfully edited @:{'terms.company'} {name}",
+    "deleteSuccess": "Successfully deleted @:{'terms.company'} {name}",
+    "saveError": "The @:{'terms.company'} could not be saved. Try again in a moment.",
+    "deleteError": "The @:{'terms.company'} could not be deleted. Try again in a moment."
+  },
+  "form": {
+    "submitLabel": "Submit",
+    "cancelLabel": "Cancel",
+    "validation": {
+      "nameRequired": "Name is required",
+      "nameTooLong": "Name must be 250 characters or fewer",
+      "invalidEmail": "Invalid email",
+      "invalidUrl": "Invalid URL",
+      "typeRequired": "At least one type is required",
+      "nameForbiddenCharacters": "Double quotes, backslashes, braces, backticks, pipes, and angle brackets are not allowed (apostrophes are fine)",
+      "nameVariantsForbiddenCharacters": "Double quotes, backslashes, braces, backticks, and angle brackets are not allowed (apostrophes and pipe separators are fine)"
+    },
+    "properties": {
+      "heading": "Properties",
+      "description": "Freeform key/value details a workflow can pull in with {'{Counterparty.key}'} or {'{Funds.key}'} placeholders. A value can be plain text, a markdown table, or JSON that placeholders traverse.",
+      "keyPlaceholder": "Key, e.g. reportingStyle",
+      "valuePlaceholder": "Value — text, JSON, or a prompt snippet",
+      "addLabel": "Add property",
+      "removeLabel": "Remove",
+      "duplicateKey": "Duplicate key — only the last value is saved"
+    }
+  },
+  "manageTypes": "Manage types",
+  "types": {
+    "title": "@:{'terms.Company'} types",
+    "subtitle": "{count} types, shared by every organization",
+    "add": "Add type",
+    "addTitle": "Add @:{'terms.company'} type",
+    "editTitle": "Edit @:{'terms.company'} type",
+    "deleteTitle": "Delete @:{'terms.company'} type",
+    "deleteConfirmation": "Delete \"{name}\"? {count} of your @:{'terms.companies'} carry it. Every organization loses the type, and each @:{'terms.company'} keeps its other types.",
+    "delete": "Delete",
+    "builtIn": "Built-in",
+    "builtInNameHint": "Built-in type: the platform finds it by name, so the name cannot change.",
+    "builtInDeleteHint": "Built-in type: the platform finds it by name, so it cannot be deleted.",
+    "editAria": "Edit @:{'terms.company'} type {name}",
+    "deleteAria": "Delete @:{'terms.company'} type {name}",
+    "empty": "No @:{'terms.company'} types yet",
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "used": "Your @:{'terms.companies'}",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Name",
+      "description": "Description",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "toast": {
+      "saved": "Saved @:{'terms.company'} type \"{name}\"",
+      "deleted": "Deleted @:{'terms.company'} type \"{name}\"",
+      "saveError": "Could not save the @:{'terms.company'} type",
+      "deleteError": "Could not delete the @:{'terms.company'} type"
+    }
+  }
+}

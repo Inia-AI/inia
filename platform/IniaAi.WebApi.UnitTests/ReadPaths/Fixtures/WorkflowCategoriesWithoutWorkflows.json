@@ -1,0 +1,14 @@
+[
+  {
+    "id": "category-funds",
+    "name": "Funds",
+    "description": null,
+    "workflows": null
+  },
+  {
+    "id": "category-corporate",
+    "name": "Corporate",
+    "description": "Corporate credit.",
+    "workflows": null
+  }
+]

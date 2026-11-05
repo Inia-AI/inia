@@ -1,0 +1,1929 @@
+{
+  "WorkflowTypeId": "WebApiBlockExamples",
+  "Sections": [
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "json1",
+          "Name": "JSON 1",
+          "OutputTitleTemplate": "JSON 1",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "<json>\n{\n  \"counterpartyName1\": \"Electricite de France (EDF)\",\n  \"currency\": \"EUR\",\n  \"latestAnnualDate\": \"2024-12-31\",\n  \"latestInterimDate\": \"2025-06-30\",\n  \"interimPeriodMonths\": 6,\n  \"inputUnits\": 1000000,\n  \"outputUnits\": 1000000,\n  \"displayUnits\": \"Millions\",\n  \"periods\": {\n    \"annual\": [\"FY0\", \"FY-1\", \"FY-2\", \"FY-3\"],\n    \"interim\": [\"IP0\", \"IP-1\"]\n  },\n  \"cashFlowAvailability\": {\n    \"annualReport\": \"Yes\",\n    \"pastAnnualReport\": \"Yes\",\n    \"quarterlyReport\": \"Yes\"\n  },\n  \"sourcePages\": {\n    \"annualReport\": {\n      \"incomeStatement\": \"432\",\n      \"balanceSheet\": \"434\",\n      \"cashFlow\": \"435\",\n      \"revenueNotes\": \"451, 452, 453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 556, 557\",\n      \"interestAndTaxNotes\": \"464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 515, 516, 517, 518, 519, 520, 521, 522, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 547, 548, 549, 550\",\n      \"fixedAndVariableCostsNotes\": \"453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 556, 557, 558\",\n      \"depreciationAndAmortizationNotes\": \"443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 542, 543, 544, 545, 546, 547\",\n      \"cashReceivablesAndInventoryNotes\": \"443, 444, 445, 446, 447, 448, 449, 450, 453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 490, 491, 492, 493, 494, 495, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 556, 557\",\n      \"prepaymentsInvestmentAndTaxNotes\": \"443, 444, 445, 446, 447, 448, 449, 450, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 488, 489, 490, 491, 492, 493, 494, 495, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 551, 552, 553, 554, 555, 556, 557\",\n      \"ppeAndIntangiblesNotes\": \"443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 541, 542, 543, 544, 545, 546, 547\",\n      \"payablesDebtAndLeasesNotes\": \"442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 490, 491, 492, 493, 494, 495, 496, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 551, 552, 553, 554, 555, 556, 557\",\n      \"accruedLiabilitiesProvisionsAndTaxesNotes\": \"443, 444, 445, 446, 447, 448, 449, 450, 453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 486, 487, 488, 490, 491, 492, 493, 494, 495, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 556\",\n      \"equityNotes\": \"443, 444, 445, 446, 447, 448, 449, 450, 495, 496, 542, 543, 544, 545, 546, 547, 556, 557\",\n      \"pensionAndOPEBNotes\": \"453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 515, 516, 517, 518, 519, 520, 521, 522, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 556, 557\"\n    },\n    \"pastAnnualReport\": {\n      \"incomeStatement\": \"362\",\n      \"balanceSheet\": \"364\",\n      \"cashFlow\": \"365\",\n      \"revenueNotes\": \"372-373, 380-381, 382, 382-383, 384-389, 389, 392-393, 477-482, 482-483\",\n      \"interestAndTaxNotes\": \"394-395, 395, 396-398, 397, 398, 401-402, 402-404, 403, 405-409, 425-426, 441-443, 444-451, 459-463, 467-468, 469, 470-471\",\n      \"fixedAndVariableCostsNotes\": \"382-383, 390, 390-391, 391, 392-393, 475-476, 484\",\n      \"depreciationAndAmortizationNotes\": \"380-381, 382-383, 400-401, 401-402, 402-404, 403, 403, 404-405, 409-414, 415, 416, 417-418, 428-430, 433-435\",\n      \"cashReceivablesAndInventoryNotes\": \"376, 380-381, 384-389, 392-393, 395, 419-420, 420-421, 421-422, 423-424, 456-457, 457, 458-459, 459, 464, 465, 471, 482-483\",\n      \"prepaymentsInvestmentAndTaxNotes\": \"374-376, 376-379, 380-381, 395, 397, 398, 417-419, 417-418, 418, 418-419, 419-420, 421-422, 439-441, 441, 444, 444-451, 456-457, 457, 457-458, 458-459, 464, 465, 465-470, 466, 468-469, 469-470, 471, 475, 477-482, 482-483\",\n      \"ppeAndIntangiblesNotes\": \"372-373, 376, 380-381, 398, 399, 400-401, 401-402, 404-405, 405-409, 409, 409-414, 415, 416, 470-471, 471, 472-473, 474, 475, 475-476, 477-482\",\n      \"payablesDebtAndLeasesNotes\": \"380-381, 394-395, 398, 402-404, 403, 404, 409, 419-420, 422, 425-426, 426, 456-457, 459-463, 463, 464, 465, 465-470, 466, 467-468, 468-469, 469-470, 471, 474-475, 477-482, 482-483\",\n      \"accruedLiabilitiesProvisionsAndTaxesNotes\": \"372-373, 376, 390, 392-393, 394, 395, 401-402, 416-417, 418, 423-424, 428-430, 431-432, 431-433, 433-435, 436, 437-438, 439-441, 441, 441-443, 442, 443, 444, 444-451, 451-455, 451-452, 452-453, 453-455, 472-473, 473, 477-482\",\n      \"equityNotes\": \"372-373, 376-379, 380-381, 405-409, 417-418, 424-425, 425, 425-426, 426, 427, 428, 465-470, 467-468, 469, 471\",\n      \"pensionAndOPEBNotes\": \"390-391, 395, 398, 444-451, 458-459, 482-483\"\n    },\n    \"quarterlyReport\": {\n      \"incomeStatement\": \"34\",\n      \"balanceSheet\": \"36\",\n      \"cashFlow\": \"37\",\n      \"revenueNotes\": \"43, 44, 45, 46, 47\",\n      \"interestAndTaxNotes\": \"49, 50, 51, 52, 66, 67, 72, 73, 74, 76\",\n      \"fixedAndVariableCostsNotes\": \"44, 45, 47\",\n      \"depreciationAndAmortizationNotes\": \"43, 44, 45, 50, 51, 52\",\n      \"cashReceivablesAndInventoryNotes\": \"42, 57, 58, 59, 70, 71, 75\",\n      \"prepaymentsInvestmentAndTaxNotes\": \"49, 53, 54, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 70, 71, 72, 73, 74, 75, 77, 78, 79\",\n      \"ppeAndIntangiblesNotes\": \"41, 42, 43, 50, 51, 52, 53, 54, 75, 77, 78, 79\",\n      \"payablesDebtAndLeasesNotes\": \"42, 43, 49, 52, 57, 58, 59, 72, 73, 74, 75, 77, 78, 79\",\n      \"accruedLiabilitiesProvisionsAndTaxesNotes\": \"42, 47, 48, 49, 57, 58, 59, 61, 62, 63, 64, 65, 68, 69, 76\",\n      \"equityNotes\": \"60\",\n      \"pensionAndOPEBNotes\": \"49, 66, 67, 70, 71\"\n    }\n  }\n}\n</json>",
+            "Type": "Merge"
+          },
+          "Id": "cfc08a4e-6f8d-4d22-8074-11f224b0f285"
+        },
+        {
+          "ReplacementTag": "json2",
+          "Name": "JSON 2",
+          "OutputTitleTemplate": "JSON 2",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "<json>\n{\n  \"Depreciation\": { \"IP0\": \"\", \"IP-1\": \"\" },\n  \"Amortization\": { \"IP0\": \"\", \"IP-1\": \"\" },\n  \"Depreciation and Amortization\": { \"IP0\": -6059, \"IP-1\": -5772 }\n}\n</json>",
+            "Type": "Merge"
+          },
+          "Id": "8f51917f-db9d-4445-acbb-633ad8adf053"
+        },
+        {
+          "ReplacementTag": "json3",
+          "Name": "JSON 3",
+          "OutputTitleTemplate": "JSON 3",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "<json>\n{\n  \"Cash and Short-Term Investments\": { \"IP0\": 10728, \"IP-1\": \"\" },\n  \"Accounts Receivable\": { \"IP0\": 19438, \"IP-1\": \"\" },\n  \"Receivables from Related Parties (Current)\": { \"IP0\": \"\", \"IP-1\": \"\" },\n  \"Inventories\": { \"IP0\": 18341, \"IP-1\": \"\" }\n}\n</json>",
+            "Type": "Merge"
+          },
+          "Id": "4514ac05-f4c3-4694-93ed-3cd97c87bc44"
+        },
+        {
+          "ReplacementTag": "mergeJson",
+          "Name": "Merge JSON",
+          "OutputTitleTemplate": "Merge JSON",
+          "Order": 3,
+          "Type": "MergeJson",
+          "IsOutputSource": true,
+          "Properties": {
+            "JsonInputs": [
+              "{json1.json}",
+              "{json2.json}",
+              "{json3.json}"
+            ],
+            "Type": "MergeJson"
+          },
+          "RegressionSchema": "{\"currency\": {\"Type\": \"text\", \"Tolerance\": 0}, \"sourcePages\": {\"Type\": \"text\", \"Tolerance\": 0}}",
+          "Id": "28d51814-0f99-4edc-94e4-b964a0398cb9"
+        }
+      ],
+      "Name": "",
+      "Title": "Merge JSON",
+      "Description": null,
+      "Order": 0,
+      "Id": "61a359a2-c137-426b-a300-ad7c854130d1"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "numberSource",
+          "Name": "Number Source",
+          "OutputTitleTemplate": "Number Source",
+          "Order": 0,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "{ReportDate}{ReportDate}{ReportDate}{ReportDate}{ReportDate}\n\noutput any number from 1 to 4.\n\nput the number in an <answer> tag.\n\nexample:\n\n<answer>\n3\n</answer>",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "39ca815b-9e98-4436-9f93-cda9adf3f273"
+        },
+        {
+          "ReplacementTag": "switch",
+          "Name": "SWITCH",
+          "OutputTitleTemplate": "SWITCH",
+          "Order": 1,
+          "Type": "SwitchCase",
+          "IsOutputSource": true,
+          "Properties": {
+            "Cases": {
+              "1": "ONE",
+              "2": "TWO",
+              "3": "THREE",
+              "4": "FOUR"
+            },
+            "DefaultValue": "OH DAMN SOMETHING DIDN'T WORK IN SWITCH",
+            "InputTemplate": "{numberSource.answer}",
+            "Type": "SwitchCase"
+          },
+          "Id": "bfa97ba8-539a-4c09-9550-81d2a0e6c461"
+        }
+      ],
+      "Name": "",
+      "Title": "Switch",
+      "Description": null,
+      "Order": 1,
+      "GroupColor": 1,
+      "Id": "096b28b0-0334-4c5e-a106-f0625a3664dd"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "JSON2XLSX",
+          "Name": "JSON2XLSX - Should Create an Excel file",
+          "OutputTitleTemplate": "JSON2XLSX - Should Create an Excel file",
+          "Order": 0,
+          "Type": "Json2Xlsx",
+          "IsOutputSource": true,
+          "ShouldUpdateCounterpartyWithResult": true,
+          "CounterpartyResultType": "LastFinancialAnalysisResult",
+          "Properties": {
+            "JsonInputTemplate": "{\n  \"counterpartyName\": \"Northwind Traders\",\n  \"currency\": \"USD\",\n  \"latestAnnualDate\": \"2025-12-31\",\n  \"inputUnits\": 1000000,\n  \"outputUnits\": 1000000,\n  \"displayUnits\": \"Millions\",\n  \"conversionRate\": 1.0,\n  \"periods\": {\n    \"annual\": [\n      \"FY0\",\n      \"FY-1\"\n    ]\n  },\n  \"Core Revenues\": {\n    \"FY0\": 1200,\n    \"FY-1\": 1100\n  },\n  \"Net Income (Loss)\": {\n    \"FY0\": 96,\n    \"FY-1\": 81\n  },\n  \"Total Assets\": {\n    \"FY0\": 2400,\n    \"FY-1\": 2250\n  }\n}",
+            "ConversionType": "Corporate Credit Model - Type A",
+            "MappingJson": "{\n    \"sheets\": {\n        \"Financials Local\": {\n            \"Columns\": {\n                \"FY0\": \"C\",\n                \"FY-1\": \"D\"\n            },\n            \"MetricRows\": {\n                \"Core Revenues\": 43,\n                \"Net Income (Loss)\": 64,\n                \"Total Assets\": 83\n            },\n            \"StaticCells\": {\n                \"currency\": \"C3\",\n                \"displayUnits\": \"C4\",\n                \"latestAnnualDate\": \"C6\"\n            }\n        }\n    }\n}",
+            "CreatesDocumentClass": "Json2XlsxDoc",
+            "StampAnalysisConfig": true,
+            "Type": "Json2Xlsx"
+          },
+          "Id": "7339c75c-6a67-41b6-950f-0e413b487667"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "38342c5a-bb6c-4437-bfed-0a2dd04bf4b0"
+            }
+          ],
+          "ReplacementTag": "readingJson2Xlsx",
+          "Name": "Reading The JSON2XLSX file - should show first page, NO CITATIONS",
+          "OutputTitleTemplate": "Reading The JSON2XLSX file - should show first page, NO CITATIONS",
+          "Order": 1,
+          "Type": "SimpleRag",
+          "SupportedDocumentClasses": [
+            "Json2XlsxDoc"
+          ],
+          "IsOutputSource": true,
+          "ShouldExcludeBlockOutputFromCitationSources": true,
+          "Properties": {
+            "ShouldUseOverviews": false,
+            "Type": "SimpleRag"
+          },
+          "Id": "33a73457-3ea5-4d04-9c83-01343b704c89"
+        }
+      ],
+      "Name": "",
+      "Title": "JSON2XLSX",
+      "Description": null,
+      "Order": 2,
+      "GroupColor": 2,
+      "Id": "7fb3ed34-545a-4f2d-ba78-3266fa206ada"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "chart1",
+          "Name": "DSCR (Debt Service Coverage Ratio) - Annual Trend",
+          "Order": 0,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  {\"metric\": \"Adjusted Interest Expense\", \"year\": \"2021\", \"value\": 134},\n  {\"metric\": \"Adjusted Interest Expense\", \"year\": \"2022\", \"value\": 180},\n  {\"metric\": \"Adjusted Interest Expense\", \"year\": \"2023\", \"value\": 176},\n  {\"metric\": \"Adjusted Interest Expense\", \"year\": \"2024\", \"value\": 678}\n]",
+            "ChartType": "line",
+            "XAxisField": "year",
+            "YAxisField": "value",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "professional",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "4c464d8a-7cc4-4960-99c7-6334b7398814"
+        },
+        {
+          "ReplacementTag": "chart2",
+          "Name": "Liquidity Ratios - Multi-Series Annual",
+          "Order": 1,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  { \"year\": \"2020\", \"value\": 1.6, \"ratio_type\": \"Current Ratio\" },\n  { \"year\": \"2021\", \"value\": 1.8, \"ratio_type\": \"Current Ratio\" },\n  { \"year\": \"2022\", \"value\": 1.7, \"ratio_type\": \"Current Ratio\" },\n  { \"year\": \"2023\", \"value\": 2.0, \"ratio_type\": \"Current Ratio\" },\n  { \"year\": \"2024\", \"value\": 1.9, \"ratio_type\": \"Current Ratio\" },\n  { \"year\": \"2020\", \"value\": 1.0, \"ratio_type\": \"Quick Ratio\" },\n  { \"year\": \"2021\", \"value\": 1.2, \"ratio_type\": \"Quick Ratio\" },\n  { \"year\": \"2022\", \"value\": 1.1, \"ratio_type\": \"Quick Ratio\" },\n  { \"year\": \"2023\", \"value\": 1.3, \"ratio_type\": \"Quick Ratio\" },\n  { \"year\": \"2024\", \"value\": 1.3, \"ratio_type\": \"Quick Ratio\" },\n  { \"year\": \"2020\", \"value\": 0.3, \"ratio_type\": \"Cash Ratio\" },\n  { \"year\": \"2021\", \"value\": 0.4, \"ratio_type\": \"Cash Ratio\" },\n  { \"year\": \"2022\", \"value\": 0.3, \"ratio_type\": \"Cash Ratio\" },\n  { \"year\": \"2023\", \"value\": 0.5, \"ratio_type\": \"Cash Ratio\" },\n  { \"year\": \"2024\", \"value\": 0.5, \"ratio_type\": \"Cash Ratio\" }\n]",
+            "ChartType": "column",
+            "XAxisField": "year",
+            "YAxisField": "value",
+            "SeriesGroupField": "ratio_type",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "professional",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "b937f395-c8d1-4a99-b92d-01adbb06f97c"
+        },
+        {
+          "ReplacementTag": "chart3",
+          "Name": "Working Capital Components - Column Chart",
+          "Order": 2,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  { \"component\": \"Cash & Equivalents\", \"amount\": 8200 },\n  { \"component\": \"Accounts Receivable\", \"amount\": 12600 },\n  { \"component\": \"Inventory\", \"amount\": 4600 },\n  { \"component\": \"Other Current Assets\", \"amount\": 2400 },\n  { \"component\": \"Accounts Payable\", \"amount\": -9800 },\n  { \"component\": \"Short-term Debt\", \"amount\": -3400 },\n  { \"component\": \"Net Working Capital\", \"amount\": 14600 }\n]",
+            "ChartType": "column",
+            "XAxisField": "component",
+            "YAxisField": "amount",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "default",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "299a67bf-07ad-4001-9430-2424f2b6aed7"
+        },
+        {
+          "ReplacementTag": "chart4",
+          "Name": "Profitability Margins - Multi-Line Chart",
+          "Order": 3,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  { \"year\": \"2020\", \"value\": 42.5, \"margin_type\": \"Gross Margin\" },\n  { \"year\": \"2021\", \"value\": 44.1, \"margin_type\": \"Gross Margin\" },\n  { \"year\": \"2022\", \"value\": 41.8, \"margin_type\": \"Gross Margin\" },\n  { \"year\": \"2023\", \"value\": 43.6, \"margin_type\": \"Gross Margin\" },\n  { \"year\": \"2024\", \"value\": 45.2, \"margin_type\": \"Gross Margin\" },\n  { \"year\": \"2020\", \"value\": 15.2, \"margin_type\": \"Operating Margin\" },\n  { \"year\": \"2021\", \"value\": 16.8, \"margin_type\": \"Operating Margin\" },\n  { \"year\": \"2022\", \"value\": 14.9, \"margin_type\": \"Operating Margin\" },\n  { \"year\": \"2023\", \"value\": 16.1, \"margin_type\": \"Operating Margin\" },\n  { \"year\": \"2024\", \"value\": 17.4, \"margin_type\": \"Operating Margin\" },\n  { \"year\": \"2020\", \"value\": 8.7, \"margin_type\": \"Net Margin\" },\n  { \"year\": \"2021\", \"value\": 9.3, \"margin_type\": \"Net Margin\" },\n  { \"year\": \"2022\", \"value\": 7.8, \"margin_type\": \"Net Margin\" },\n  { \"year\": \"2023\", \"value\": 9.1, \"margin_type\": \"Net Margin\" },\n  { \"year\": \"2024\", \"value\": 10.2, \"margin_type\": \"Net Margin\" }\n]",
+            "ChartType": "line",
+            "XAxisField": "year",
+            "YAxisField": "value",
+            "SeriesGroupField": "margin_type",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "default",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "97abb203-39c6-45d6-90bc-6c7916e4912f"
+        },
+        {
+          "ReplacementTag": "chart5",
+          "Name": "Debt Composition - Pie Chart",
+          "Order": 4,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  { \"debt_type\": \"Term Loans\", \"amount\": 25600 },\n  { \"debt_type\": \"Credit Lines\", \"amount\": 8400 },\n  { \"debt_type\": \"Bonds\", \"amount\": 15000 },\n  { \"debt_type\": \"Equipment Finance\", \"amount\": 4200 },\n  { \"debt_type\": \"Other\", \"amount\": 2800 }\n]",
+            "ChartType": "pie",
+            "XAxisField": "debt_type",
+            "YAxisField": "amount",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "default",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "b4dd27c3-66eb-48e7-b2f9-657e4fe0f4af"
+        },
+        {
+          "ReplacementTag": "chart6",
+          "Name": "Coverage Ratios - Column Chart",
+          "Order": 5,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  { \"year\": \"2021\", \"value\": 8.2, \"coverage_type\": \"Interest Coverage\" },\n  { \"year\": \"2022\", \"value\": 7.8, \"coverage_type\": \"Interest Coverage\" },\n  { \"year\": \"2023\", \"value\": 9.1, \"coverage_type\": \"Interest Coverage\" },\n  { \"year\": \"2024\", \"value\": 10.5, \"coverage_type\": \"Interest Coverage\" },\n  { \"year\": \"2021\", \"value\": 3.4, \"coverage_type\": \"Fixed Charge Coverage\" },\n  { \"year\": \"2022\", \"value\": 3.1, \"coverage_type\": \"Fixed Charge Coverage\" },\n  { \"year\": \"2023\", \"value\": 3.8, \"coverage_type\": \"Fixed Charge Coverage\" },\n  { \"year\": \"2024\", \"value\": 4.2, \"coverage_type\": \"Fixed Charge Coverage\" }\n]",
+            "ChartType": "column",
+            "XAxisField": "year",
+            "YAxisField": "value",
+            "SeriesGroupField": "coverage_type",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "professional",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "d09d1c53-942c-40d6-85c3-a6b0deb364f8"
+        },
+        {
+          "ReplacementTag": "chart7",
+          "Name": "Asset Efficiency - Scatter Plot",
+          "Order": 6,
+          "Type": "DynamicChart",
+          "IsOutputSource": true,
+          "Properties": {
+            "DataSourceJson": "[\n  { \"metric\": \"Accounts Receivable\", \"days\": 42, \"turnover\": 8.7 },\n  { \"metric\": \"Inventory\", \"days\": 65, \"turnover\": 5.6 },\n  { \"metric\": \"Accounts Payable\", \"days\": 38, \"turnover\": 9.6 },\n  { \"metric\": \"Working Capital\", \"days\": 25, \"turnover\": 14.6 },\n  { \"metric\": \"Total Assets\", \"days\": 180, \"turnover\": 2.0 }\n]",
+            "ChartType": "scatter",
+            "XAxisField": "days",
+            "YAxisField": "turnover",
+            "ChartTitle": "TITLE",
+            "XAxisLabel": "XXXXXX",
+            "YAxisLabel": "YYYYYY",
+            "ColorScheme": "default",
+            "ChartHeight": "400",
+            "ChartWidth": "100%",
+            "DataFilters": "[]",
+            "ShowLegend": true,
+            "ShowGridLines": true,
+            "EnableAnimations": true,
+            "Stacking": "none",
+            "Type": "DynamicChart"
+          },
+          "Id": "d05040ee-51bb-4e41-9cc7-b5740d2968e3"
+        }
+      ],
+      "Name": "",
+      "Title": "Charts",
+      "Description": null,
+      "Configuration": {
+        "GridLayout": {
+          "Mode": "grid",
+          "Columns": 6,
+          "Elements": [
+            {
+              "BlockOrder": 0,
+              "Row": 1,
+              "Column": 1,
+              "RowSpan": 1,
+              "ColumnSpan": 3
+            },
+            {
+              "BlockOrder": 1,
+              "Row": 1,
+              "Column": 4,
+              "RowSpan": 1,
+              "ColumnSpan": 3
+            },
+            {
+              "BlockOrder": 2,
+              "Row": 2,
+              "Column": 1,
+              "RowSpan": 1,
+              "ColumnSpan": 2
+            },
+            {
+              "BlockOrder": 3,
+              "Row": 2,
+              "Column": 3,
+              "RowSpan": 1,
+              "ColumnSpan": 2
+            },
+            {
+              "BlockOrder": 4,
+              "Row": 2,
+              "Column": 5,
+              "RowSpan": 1,
+              "ColumnSpan": 2
+            },
+            {
+              "BlockOrder": 5,
+              "Row": 3,
+              "Column": 1,
+              "RowSpan": 1,
+              "ColumnSpan": 6
+            },
+            {
+              "BlockOrder": 6,
+              "Row": 4,
+              "Column": 1,
+              "RowSpan": 1,
+              "ColumnSpan": 2
+            },
+            {
+              "BlockOrder": 7,
+              "Row": 4,
+              "Column": 5,
+              "RowSpan": 1,
+              "ColumnSpan": 2
+            }
+          ]
+        },
+        "Version": "1.0"
+      },
+      "Order": 3,
+      "GroupColor": 3,
+      "Id": "11d8fff1-a1fb-4177-a2f5-acf6c105cf9a"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "TextInputs": [
+            {
+              "ReplacementTag": "perp_system",
+              "Value": "You are a credit research assistant. Be precise, factual, and concise. Always cite your sources.",
+              "ExecutionState": null,
+              "Id": "ec00efc7-6516-48bc-8654-502f05ebdb54"
+            },
+            {
+              "ReplacementTag": "perp_user",
+              "Value": "Provide a comprehensive history of {Counterparty.Name}. Cite all sources.",
+              "ExecutionState": null,
+              "Id": "a6fde90e-e75e-41ef-8588-31c1b72939a7"
+            }
+          ],
+          "ReplacementTag": "perplexitySearch",
+          "Name": "Perplexity Search",
+          "OutputTitleTemplate": "Perplexity Search",
+          "Order": 0,
+          "Type": "WebApiCall",
+          "IsOutputSource": true,
+          "Properties": {
+            "UrlTemplate": "https://api.perplexity.ai/chat/completions",
+            "RequestPayloadTemplate": "{\n  \"model\": \"sonar-pro\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"{perp_system}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{perp_user}\"\n    }\n  ],\n  \"search_domain_filter\": [\n    \"-wikipedia.org\",\n    \"-facebook.com\",\n    \"-youtube.com\",\n    \"{parentURL}\"\n  ]\n}",
+            "HttpMethod": "POST",
+            "ContentType": "application/json",
+            "AcceptHeader": "application/json",
+            "AdditionalHeaders": {
+              "authorization": "Bearer {Organization.PerplexityApiKey}"
+            },
+            "Type": "WebApiCall"
+          },
+          "Id": "a3e3a745-b312-4d4d-93b8-c1efeb92c841"
+        },
+        {
+          "ReplacementTag": "jsonIndexerAccess",
+          "Name": "Test JSON indexer access",
+          "OutputTitleTemplate": "Test JSON indexer access",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{perplexitySearch.choices[0].message.content}\n\n<source>\n{perplexitySearch.citations}\n</source>",
+            "Type": "Merge"
+          },
+          "Id": "4b107604-c5ee-44a6-bb86-6b54cf35f5a3"
+        },
+        {
+          "ReplacementTag": "delay",
+          "Name": "Delay Amount",
+          "OutputTitleTemplate": "Delay Amount",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "10",
+            "Type": "Merge"
+          },
+          "Id": "7330d8cd-87e2-4fb4-b681-a6faa972a999"
+        },
+        {
+          "ReplacementTag": "parallelSearch",
+          "Name": "Parallel Search",
+          "OutputTitleTemplate": "Parallel Search",
+          "Order": 3,
+          "Type": "WebApiCall",
+          "IsOutputSource": true,
+          "Properties": {
+            "UrlTemplate": "https://api.parallel.ai/v1beta/search",
+            "RequestPayloadTemplate": "{\n  \"search_queries\": [\n    \"{Counterparty.Name} history\"\n  ],\n  \"processor\": \"base\",\n  \"objective\": \"Find information about the {Counterparty.Name}'s history\"\n}",
+            "HttpMethod": "POST",
+            "ContentType": "application/json",
+            "AcceptHeader": "application/json",
+            "AdditionalHeaders": {
+              "x-api-key": "{Organization.ParallelApiKey}"
+            },
+            "Type": "WebApiCall"
+          },
+          "Id": "1843eae9-c187-4401-bb4e-836d8ce2eb83"
+        },
+        {
+          "ReplacementTag": "jsonIndexerAccess2",
+          "Name": "Test JSON indexer access 2",
+          "OutputTitleTemplate": "Test JSON indexer access",
+          "Order": 4,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{parallelSearch.results[0].title}\n\n{parallelSearch.results[0].excerpts[0]}\n\n<source>\n{parallelSearch.results[0].url}\n</source>",
+            "Type": "Merge"
+          },
+          "Id": "57c622c4-e44e-4248-988a-c2aebb420379"
+        },
+        {
+          "ReplacementTag": "Market_DeepSearch_Result",
+          "Name": "Result - Market Deep Search",
+          "OutputTitleTemplate": "Result - Market Deep Search",
+          "Order": 5,
+          "Type": "WebApiCall",
+          "IsOutputSource": true,
+          "ShouldExcludeBlockOutputFromCitationSources": true,
+          "ShouldDisplayInLogs": false,
+          "Properties": {
+            "UrlTemplate": "https://api.parallel.ai/v1/tasks/runs/trun_7616510ce8d141d58ad58b34fcbaad0e/result",
+            "RequestPayloadTemplate": "",
+            "HttpMethod": "GET",
+            "ContentType": "application/json",
+            "AcceptHeader": "application/json",
+            "AdditionalHeaders": {
+              "x-api-key": "{Organization.ParallelApiKey}"
+            },
+            "Type": "WebApiCall"
+          },
+          "Id": "c4ac3daf-8386-44dc-9df5-f80a2a1dc6a8"
+        }
+      ],
+      "Name": "",
+      "Title": "Web API Blocks",
+      "Description": null,
+      "Order": 4,
+      "GroupColor": 4,
+      "Id": "d57edfa2-c614-4437-837e-4c10cc8a6910"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "parametrizedBlockMerge",
+          "Name": "Parametrized Block - Merge",
+          "OutputTitleTemplate": "Parametrized Block - Merge",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{globalVarForParamSection}",
+            "Type": "Merge"
+          },
+          "Id": "b771acc8-3f16-4195-9bf7-bd6efa41e398"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 7,
+              "ExactIndexesInput": "1",
+              "Id": "0be30a97-88ae-474a-ad5e-09da52a127a1"
+            }
+          ],
+          "ReplacementTag": "parametrizedBlockRag",
+          "Name": "Parametrized Block - RAG",
+          "OutputTitleTemplate": "Parametrized Block - RAG",
+          "Order": 1,
+          "Type": "SimpleRag",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "ShouldUseOverviews": false,
+            "Type": "SimpleRag"
+          },
+          "Id": "8709881d-66d5-4455-9b9a-9663bda493bd"
+        }
+      ],
+      "Name": "",
+      "Title": "Parametrized Section, 2 Variants",
+      "Description": null,
+      "Order": 5,
+      "GroupColor": 5,
+      "ParameterizedConfig": "{\"Variants\":[{\"Key\":\"Key1\",\"Label\":\"Variant 1\",\"Params\":{\"globalVarForParamSection\":\"Value For Global Var For Param Section Variant 1\"},\"SectionStopGate\":null,\"SectionSupportedDocumentClasses\":[\"test_iterations\"]},{\"Key\":\"Key2\",\"Label\":\"Variant 2\",\"Params\":{\"globalVarForParamSection\":\"Value For Global Var For Param Section Variant 2\"},\"SectionStopGate\":null,\"SectionSupportedDocumentClasses\":[\"Image\"]}]}",
+      "Id": "99f6d5b6-7351-4d05-9746-868c241fd62f"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "testReferencingParametrizedSection",
+          "Name": "Test Referencing Parametrized Section - should show global parameter an two pages of diferent docs",
+          "OutputTitleTemplate": "Test Referencing Parametrized Section - should show global parameter an two pages of diferent docs",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "Merge Block Variant 1:\n{parametrizedBlockMerge_Key1}\n\nMerge Block Variant 2:\n{parametrizedBlockMerge_Key2}\n\nRAG Block Variant 1:\n{parametrizedBlockRag_Key1}\n\nRAG Block Variant 2:\n{parametrizedBlockRag_Key2}",
+            "Type": "Merge"
+          },
+          "Id": "551b7ade-1c80-4bc9-84a2-d6aaa8da4ae5"
+        }
+      ],
+      "Name": "",
+      "Title": "Test Referencing Parametrized Section",
+      "Description": null,
+      "Order": 6,
+      "GroupColor": 6,
+      "Id": "07ee6e63-09a4-48f8-aa34-d9930078173e"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "Inputs",
+          "Name": "Inputs",
+          "Order": 0,
+          "Type": "Merge",
+          "Properties": {
+            "TextTemplate": "<RUB>\nRUB\n</RUB>\n\n<EUR>\nEUR\n</EUR>\n\n<date>\n2022-02-24\n</date>",
+            "ExecutionState": {
+              "Text": "<RUB>\nRUB\n</RUB>\n\n<EUR>\nEUR\n</EUR>\n\n<date>\n2022-02-24\n</date>"
+            },
+            "Type": "Merge"
+          },
+          "Id": "4bf9a95c-db7f-49a7-9f69-7302b38dc27d"
+        },
+        {
+          "ReplacementTag": "getExchangeRate",
+          "Name": "Exchange Rate",
+          "Order": 1,
+          "Type": "ExchangeRate",
+          "Properties": {
+            "FromCurrency": "{Inputs.EUR}",
+            "ToCurrency": "{Inputs.RUB}",
+            "ExchangeDate": "{Inputs.date}",
+            "UseCurrentDate": true,
+            "OperationMode": 0,
+            "InputValue": null,
+            "ExecutionState": {
+              "FromCurrency": "EUR",
+              "ToCurrency": "RUB",
+              "ExchangeDate": "2022-02-24"
+            },
+            "Type": "ExchangeRate"
+          },
+          "Id": "62db0485-97d1-48eb-ad2a-f3171ec4970d"
+        },
+        {
+          "ReplacementTag": "getExchangeRateConvertJson",
+          "Name": "Exchange Rate - Convert JSON",
+          "OutputTitleTemplate": "Exchange Rate - Convert JSON",
+          "Order": 2,
+          "Type": "ExchangeRate",
+          "IsOutputSource": true,
+          "Properties": {
+            "FromCurrency": "{Inputs.EUR}",
+            "ToCurrency": "{Inputs.RUB}",
+            "ExchangeDate": "{Inputs.date}",
+            "UseCurrentDate": false,
+            "OperationMode": 1,
+            "InputValue": "{\n  \"Currency\": \"{Inputs.EUR}\",\n  \"Value\": 1\n}",
+            "ExecutionState": {
+              "FromCurrency": "EUR",
+              "ToCurrency": "RUB",
+              "ExchangeDate": "2022-02-24",
+              "InputValue": "{\n  \"Currency\": \"EUR\",\n  \"Value\": 1\n}"
+            },
+            "Type": "ExchangeRate"
+          },
+          "Id": "a8c48874-1d6e-4970-911a-cc91d84735e7"
+        },
+        {
+          "ReplacementTag": "getExchangeRateConvertNumber",
+          "Name": "Exchange Rate - Convert Number",
+          "OutputTitleTemplate": "Exchange Rate - Convert Number",
+          "Order": 3,
+          "Type": "ExchangeRate",
+          "IsOutputSource": true,
+          "Properties": {
+            "FromCurrency": "{Inputs.EUR}",
+            "ToCurrency": "{Inputs.RUB}",
+            "ExchangeDate": "{Inputs.date}",
+            "UseCurrentDate": false,
+            "OperationMode": 1,
+            "InputValue": "1",
+            "ExecutionState": {
+              "FromCurrency": "EUR",
+              "ToCurrency": "RUB",
+              "ExchangeDate": "2022-02-24",
+              "InputValue": "1"
+            },
+            "Type": "ExchangeRate"
+          },
+          "Id": "1119a169-6cd3-40ff-ab14-19036777f2a4"
+        },
+        {
+          "ReplacementTag": "testExchangeRateOutpus",
+          "Name": "Test Outputs For Exchange Rate",
+          "OutputTitleTemplate": "Test Outputs For Exchange Rate",
+          "Order": 4,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "Regular rate fetch raw:\n{getExchangeRate.rawValue}\n\nRegular rate fetch fromatted:\n{getExchangeRate.formattedValue}\n\nConvert json:\n{getExchangeRateConvertJson.convertedJson}\n\nConvert number:\n<convertNumber>\n{getExchangeRateConvertNumber.convertedValue}\n</convertNumber>",
+            "ExecutionState": {
+              "Text": "Regular rate fetch raw:\n88.289884\n\nRegular rate fetch fromatted:\nEUR/RUB on 2026-05-05: 88.289884\n\nConvert json:\n{\n  \"Currency\": \"RUB\",\n  \"Value\": 92.21\n}\n\nConvert number:\n92.21"
+            },
+            "Type": "Merge"
+          },
+          "RegressionSchema": "{\"convertNumber\": {\"Type\": \"numeric\", \"Tolerance\": 0}}",
+          "Id": "6bf4d10f-e2f2-4d5c-9e8b-6c49e453cac4"
+        }
+      ],
+      "Name": "",
+      "Title": "Exchange Rate",
+      "Description": null,
+      "Order": 7,
+      "GroupColor": 7,
+      "Id": "ba5c0ba3-f936-42c3-b776-4c5a705197aa"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "exaSearchBlock",
+          "Name": "Intelligent Search Block",
+          "OutputTitleTemplate": "Intelligent Search Block",
+          "Order": 0,
+          "Type": "IntelligentSearch",
+          "IsOutputSource": true,
+          "Properties": {
+            "SearchTermTemplate": "Unilever Year of Inception",
+            "CreatesDocumentClass": "ExaSearchDocs",
+            "SearchType": "auto",
+            "NumResults": 2,
+            "TextEnabled": true,
+            "HighlightsEnabled": false,
+            "SummaryEnabled": false,
+            "IncludeDomains": [
+              "unilever.com"
+            ],
+            "Category": "company",
+            "LiveCrawlStrategy": "preferred",
+            "Subpages": 3,
+            "Type": "IntelligentSearch"
+          },
+          "Id": "5ff0deaa-8815-4b77-ba96-0295fdaadc01"
+        },
+        {
+          "ReplacementTag": "exaSearchBlockSourcesCheck",
+          "Name": "Sources Check",
+          "OutputTitleTemplate": "Sources Check",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{exaSearchBlock.searchResults}",
+            "Type": "Merge"
+          },
+          "Id": "2701eff6-9376-48a4-a5b6-970a2ccf154f"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 7,
+              "ExactIndexesInput": "1",
+              "Id": "4c4592e8-620d-4698-ae84-f989c70ce64a"
+            }
+          ],
+          "ReplacementTag": "exaDocumentCreationCheckPageText",
+          "Name": "Document Creation Check - Page Text",
+          "OutputTitleTemplate": "Document Creation Check - Page Text",
+          "Order": 2,
+          "Type": "SimpleRag",
+          "SupportedDocumentClasses": [
+            "ExaSearchDocs"
+          ],
+          "IsOutputSource": true,
+          "ShouldExcludeBlockOutputFromCitationSources": true,
+          "Properties": {
+            "ShouldUseOverviews": false,
+            "Type": "SimpleRag"
+          },
+          "Id": "3e1ef3d8-9681-42ec-a2a2-fe9e99b2d219"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 7,
+              "ExactIndexesInput": "1",
+              "Id": "19bf7cdd-936f-4e09-a981-49663748662d"
+            }
+          ],
+          "ReplacementTag": "exaDocumentCreationCheckPageTextOverview",
+          "Name": "Document Creation Check - Page Overview - SHOULD BE EMPTY",
+          "OutputTitleTemplate": "Document Creation Check - Page Overview - SHOULD BE EMPTY",
+          "Order": 3,
+          "Type": "SimpleRag",
+          "SupportedDocumentClasses": [
+            "ExaSearchDocs"
+          ],
+          "IsOutputSource": true,
+          "ShouldExcludeBlockOutputFromCitationSources": true,
+          "Properties": {
+            "ShouldUseOverviews": true,
+            "Type": "SimpleRag"
+          },
+          "Id": "2efc85b8-1374-44d2-855b-d9c03510c37c"
+        }
+      ],
+      "Name": "",
+      "Title": "Exa Search",
+      "Description": null,
+      "Order": 8,
+      "Id": "10892773-b543-466d-8b2a-7918c222f111"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "RagSettings": [
+            {
+              "Type": 7,
+              "ExactIndexesInput": "2-5, 6-9",
+              "Id": "2e493db6-f448-41fd-81d9-fc19e95b3b02"
+            }
+          ],
+          "ReplacementTag": "buildTopicsBlock",
+          "Name": "Build Topics Block",
+          "OutputTitleTemplate": "Build Topics Block",
+          "Order": 0,
+          "Type": "BuildTopicsForAllDocuments",
+          "SupportedDocumentClasses": [
+            "test_iterations"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "TopicsModelTemplate": "Air Vehicles\nLand Vehicles",
+            "Type": "BuildTopicsForAllDocuments"
+          },
+          "Id": "1a1434dd-b3b4-4fcb-a825-fa9221b7abe2"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 9,
+              "TopicsQuery": "Rockets",
+              "Id": "541e7c28-8d52-4859-b57e-3372783172f5"
+            }
+          ],
+          "ReplacementTag": "useBuiltTopics",
+          "Name": "Block that uses topics built",
+          "OutputTitleTemplate": "Block that uses topics built",
+          "Order": 1,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "test_iterations"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Requests a single-word summary or categorization of provided content overviews.\n\nPlaceholders: {InputContext.Overviews}",
+            "UserPromptTemplatePreview": "Requests a single-word summary or categorization of provided content overviews.\n\nPlaceholders: {InputContext.Overviews}",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldUseOverviews": true,
+            "Type": "AiQuery"
+          },
+          "RegressionSchema": "{\"topic_name\": {\"Type\": \"text\", \"Tolerance\": 0}}",
+          "Id": "c864ae83-d2ad-418e-bc9b-b594e962e089"
+        }
+      ],
+      "Name": "",
+      "Title": "Build topics",
+      "Description": null,
+      "Order": 9,
+      "GroupColor": 1,
+      "Id": "ed286a1c-a434-466b-8102-b678995fcdd7"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "stopTermBlock",
+          "Name": "Stop Term Block",
+          "OutputTitleTemplate": "Stop Term Block",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "<stop>AF11</stop>",
+            "Type": "Merge"
+          },
+          "Id": "a558cc51-9b39-460f-b18b-e38d7f4472d4"
+        },
+        {
+          "TextInputs": [
+            {
+              "ReplacementTag": "input_1",
+              "Value": "{stopTermBlock.stop}",
+              "ExecutionState": null,
+              "Id": "4ae851ca-617c-4266-9e4d-9ec909a8e775"
+            }
+          ],
+          "ReplacementTag": "stoppedBlock",
+          "Name": "THIS BLOCK SHOULD NOT APEAR OR BE EXECUTED, AS IT HAS STOP TERM TRIGGERED",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD NOT APEAR OR BE EXECUTED, AS IT HAS STOP TERM TRIGGERED",
+          "Order": 1,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Hi",
+            "UserPromptTemplatePreview": "Request for a simple greeting or conversation starter.\n\nPlaceholders: (none)",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "7450cd16-4c94-40bc-b10c-9004664f0465"
+        },
+        {
+          "ReplacementTag": "blockAfterStoppedBock",
+          "Name": "Block after the stopped block",
+          "OutputTitleTemplate": "Block after the stopped block",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "Block after the stopped block",
+            "Type": "Merge"
+          },
+          "Id": "a8e21b12-6351-492d-9840-4acf7d6e0118"
+        },
+        {
+          "ReplacementTag": "failingAiBlock",
+          "Name": "THIS BLOCK SHOULD NOT APEAR, AS IT HAS AN ERROR MODEL ID",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD NOT APEAR, AS IT HAS AN ERROR MODEL ID",
+          "Order": 3,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "",
+            "UserPromptTemplatePreview": "",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ModelIdOverride": "error_model_id",
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "a4218a6b-2358-4ad4-a032-2018b842b889"
+        },
+        {
+          "ReplacementTag": "referencingErrorBlock",
+          "Name": "Referencing The Error Block",
+          "OutputTitleTemplate": "Referencing The Error Block",
+          "Order": 4,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{failingAiBlock}",
+            "Type": "Merge"
+          },
+          "Id": "8c4485a2-d502-4fb3-8184-c05cd521f1c3"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 7,
+              "ExactIndexesInput": "error",
+              "Id": "f9b14b3b-dbd8-4588-a565-f29c13f6f031"
+            }
+          ],
+          "ReplacementTag": "blockWithRagSettingsError",
+          "Name": "THIS BLOCK SHOULD NOT APEAR, AS IT HAS AN ERROR IN RAG SETTINGS",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD NOT APEAR, AS IT HAS AN ERROR IN RAG SETTINGS",
+          "Order": 5,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Test",
+            "UserPromptTemplatePreview": "Create a simple test or evaluation, likely for verification or demonstration purposes.\n\nPlaceholders: None",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "8052cea7-4c9f-4380-b57e-18f3846d5c66"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "e6feaa99-8051-4d09-80df-019f62e66e2b"
+            }
+          ],
+          "ReplacementTag": "blockWithNoDocs",
+          "Name": "THIS BLOCK SHOULD NOT APEAR, AS IT HAS NO DOCUMENTS PROVIDED FOR IT",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD NOT APEAR, AS IT HAS AN ERROR IN RAG SETTINGS",
+          "Order": 6,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "DONTSELECTTHISCLASS"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Test",
+            "UserPromptTemplatePreview": "Create a simple test or evaluation, likely for verification or demonstration purposes.\n\nPlaceholders: None",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "46aafe67-b97c-4652-9ea8-ff9ef39d67f2"
+        }
+      ],
+      "Name": "",
+      "Title": "Test For Partially Executed Section",
+      "Description": null,
+      "Order": 10,
+      "GroupColor": 2,
+      "Id": "5f1f9dee-8fec-4f1b-918b-09325db8ad9c"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "blockInStoppedSection",
+          "Name": "THIS BLOCK SHOULD NOT APEAR OR BE EXECUTED, AS THE SECTION SHOULD BE SKIPPED",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD NOT APEAR OR BE EXECUTED, AS THE SECTION SHOULD BE SKIPPED",
+          "Order": 0,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Hi",
+            "UserPromptTemplatePreview": "Request for a simple greeting or conversation starter.\n\nPlaceholders: (none)",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "Id": "785cf6d1-7920-4334-baf3-75b44cfd902f"
+        }
+      ],
+      "Name": "",
+      "Title": "THIS SECTION SHOULD NOT APEAR OR BE EXECUTED, AS IT HAS STOP TERM TRIGGERED",
+      "Description": null,
+      "Order": 11,
+      "GroupColor": 3,
+      "TextInputTemplate": "{stopTermBlock.stop}",
+      "Id": "36c801a4-8f74-43c1-9336-e67b30effed3"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "ae72a224-6810-4a45-bfd0-8a02b7c8bb83"
+            }
+          ],
+          "ReplacementTag": "skippedSectionBlock0",
+          "Name": "Skipped Block 0",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD BE SKIPPED BECAUSE OF NO DOCUMENTS 0",
+          "Order": 0,
+          "Type": "SimpleRag",
+          "SupportedDocumentClasses": [
+            "DONTSELECTTHISCLASS"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "ShouldUseOverviews": false,
+            "Type": "SimpleRag"
+          },
+          "Id": "c0a5b7e6-929d-45f2-91b8-34451a0ef105"
+        },
+        {
+          "ReplacementTag": "skippedSectionBlock1",
+          "Name": "Skipped Block 1",
+          "OutputTitleTemplate": "THIS BLOCK SHOULD BE SKIPPED BECAUSE OF NO DOCUMENTS 1",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{skippedSectionBlock0}",
+            "Type": "Merge"
+          },
+          "Id": "49807a87-d367-40e6-87c7-72e2138755ca"
+        }
+      ],
+      "Name": "",
+      "Title": "THIS SECTION SHOULD BE SKIPPED BECAUSE OF NO DOCUMENTS",
+      "Description": null,
+      "Order": 12,
+      "GroupColor": 4,
+      "Id": "ee9b4e20-46fc-440b-8277-a11bb8e83be5"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "7a1f96d7-9706-4577-82ed-8253a80fb9f7"
+            }
+          ],
+          "ReplacementTag": "ImageContent",
+          "Name": "Image Content",
+          "OutputTitleTemplate": "Image Content",
+          "Order": 0,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Image"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "What is on the image? Ignore the content below in the <page1..> tag. Only describe specifically the image.\n\n{InputContext}\n\nEnd your response with your confidence as a decimal: <confidence>0.75</confidence>.",
+            "UserPromptTemplatePreview": "Analyze and describe the visual content of an image while ignoring any additional text content provided in specific tags, then provide a confidence rating for the response.\n\nPlaceholders: {InputContext}",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": true,
+            "Type": "AiQuery"
+          },
+          "RegressionSchema": "{\"animal_in_one_word\": {\"Type\": \"text\", \"Tolerance\": 0}}",
+          "Id": "94cbf02e-4e85-4689-b83c-d514c2ac5630"
+        }
+      ],
+      "Name": "",
+      "Title": "Image Content",
+      "Description": null,
+      "Order": 13,
+      "GroupColor": 5,
+      "Id": "840e8004-a4ef-46ce-8af0-c3ce4d3055a1"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "14555b8c-74ea-49d6-a496-9f6891dace45"
+            }
+          ],
+          "ReplacementTag": "webPageContent",
+          "Name": "WebPage Content",
+          "OutputTitleTemplate": "WebPage Content",
+          "Order": 0,
+          "Type": "SimpleRag",
+          "SupportedDocumentClasses": [
+            "WebPage"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "ShouldUseOverviews": false,
+            "Type": "SimpleRag"
+          },
+          "Id": "6a40158f-f4a2-460b-a008-eb2a5442e83b"
+        }
+      ],
+      "Name": "",
+      "Title": "WebPage Content",
+      "Description": null,
+      "Order": 14,
+      "GroupColor": 6,
+      "Id": "1b7d5929-f848-4def-bc71-c91d9f114f08"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "RagSettings": [
+            {
+              "Type": 8,
+              "TableOfContentsInput": "{\"Sections\": [{\"Title\": \"Section 1\", \"StartPage\": \"1\", \"EndPage\": \"4\"}, {\"Title\": \"Section 2\", \"StartPage\": 5, \"EndPage\": 9}]}",
+              "Id": "8974bfd1-bee8-44d8-813a-8eb3c1acad16"
+            }
+          ],
+          "ReplacementTag": "iterateOverToc",
+          "Name": "Iterate over Table of contents",
+          "OutputTitleTemplate": "Iterate over Table of contents",
+          "Order": 0,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "test_iterations"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "List numbers of the pages you see in this text\n\n<text>\n{InputContext}\n</text>\n\nPut your answer in <answer> tag.\n\nExample:\n\n<answer>\n1, 2, 3, 4\n</answer>",
+            "UserPromptTemplatePreview": "Extract and list page numbers found within provided text content, formatting the results in a specified answer tag structure.\n\nPlaceholders: {InputContext}",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldChunkLargeInputContexts": true,
+            "ChunkSize": 20,
+            "ChunkingMode": "FixedPageCount",
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "82dba0fb-1301-46e4-b9f6-c5e4b966f651"
+        },
+        {
+          "ReplacementTag": "iterateOverToc_get",
+          "Name": "Test \"Answer\"",
+          "OutputTitleTemplate": "Test \"Answer\"",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{iterateOverToc.answer}",
+            "Type": "Merge"
+          },
+          "Id": "ca5bbaf0-a473-41e6-b9fa-8341d5b9e6e2"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "c0ebf8f2-9b7a-4b38-8932-8f7012092d27"
+            }
+          ],
+          "ReplacementTag": "iterateNormally",
+          "Name": "Iterate normally",
+          "OutputTitleTemplate": "Iterate normally",
+          "Order": 2,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "test_iterations"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "List numbers of the pages you see in this text\n\n<text>\n{InputContext}\n</text>\n\nPut your answer in <answer> tag.\n\nExample:\n\n<answer>\n1, 2, 3, 4\n</answer>",
+            "UserPromptTemplatePreview": "Extract and list page numbers found within provided text content, formatting the results in a specified answer tag structure.\n\nPlaceholders: {InputContext}",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldChunkLargeInputContexts": true,
+            "ChunkSize": 5,
+            "ChunkingMode": "FixedPageCount",
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "d9c64bb8-a723-42cf-8381-95961d8e8c26"
+        },
+        {
+          "ReplacementTag": "iterateNormally_get",
+          "Name": "Test \"Answer\"",
+          "OutputTitleTemplate": "Test \"Answer\"",
+          "Order": 3,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{iterateNormally.answer}\n\n<rating>0</rating>",
+            "Type": "Merge"
+          },
+          "Id": "61ac7749-399a-460e-a4f8-848b721be3ee"
+        }
+      ],
+      "Name": "",
+      "Title": "Iteration",
+      "Description": null,
+      "Order": 15,
+      "GroupColor": 7,
+      "Id": "762e359b-203f-447c-b51b-39ad7217dffd"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "worfklowVariables",
+          "Name": "Worfklow Variables",
+          "OutputTitleTemplate": "Worfklow Variables",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{testDateTimeVar_1}\n{testDropdownVar_1}\n{testListVar_1}\n{testMutiselectVar_1}\n{testNumVar_1}\n{testStringVar_1}",
+            "Type": "Merge"
+          },
+          "Id": "4d1031e0-9484-4cac-9b92-a65d7392c3d1"
+        }
+      ],
+      "Name": "",
+      "Title": "Worfklow Variables",
+      "Description": null,
+      "Order": 16,
+      "Id": "807a95f7-df73-4fd8-8d10-16812043cc94"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "lastFinancialAnalysisResult",
+          "Name": "Last Financial Analysis Result",
+          "OutputTitleTemplate": "Last Financial Analysis Result",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{Counterparty.LastFinancialAnalysisResult}",
+            "Type": "Merge"
+          },
+          "Id": "98c7db23-2d6e-4497-9b49-a97346325d01"
+        },
+        {
+          "ReplacementTag": "updateCounterparty",
+          "Name": "Update Counterparty",
+          "Order": 1,
+          "Type": "Merge",
+          "ShouldUpdateCounterpartyWithResult": true,
+          "CounterpartyResultType": "LastFinancialAnalysisResult",
+          "Properties": {
+            "TextTemplate": "Test",
+            "Type": "Merge"
+          },
+          "Id": "50c19e56-f290-477f-a9f9-df67d6e784a6"
+        },
+        {
+          "ReplacementTag": "getCpData",
+          "Name": "Get Counterparty Data",
+          "OutputTitleTemplate": "Get Counterparty Data",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{Counterparty}\n\n{Counterparty.Name}\n\n{Counterparty.Id}\n\n{Counterparty.LastFinancialAnalysisResult}",
+            "Type": "Merge"
+          },
+          "Id": "10edd478-6126-46dc-844c-ce74e75587dd"
+        },
+        {
+          "ReplacementTag": "putBackLastAnalysisResult",
+          "Name": "Put Back Last Analysis Result",
+          "Order": 3,
+          "Type": "Merge",
+          "ShouldUpdateCounterpartyWithResult": true,
+          "CounterpartyResultType": "LastFinancialAnalysisResult",
+          "Properties": {
+            "TextTemplate": "{lastFinancialAnalysisResult}",
+            "Type": "Merge"
+          },
+          "Id": "aa630631-6f38-4ef6-a731-f8e97ea98e47"
+        },
+        {
+          "ReplacementTag": "getPeerCompanyData",
+          "Name": "Get PeerCompany Data",
+          "OutputTitleTemplate": "Get PeerCompany Data",
+          "Order": 4,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{PeerCompanies}\n\n{PeerCompanies[1].Name}\n{PeerCompanies[2].Name}\n{PeerCompanies[3].Name}\n\n{PeerCompanies[1].Id}\n{PeerCompanies[2].Id}\n{PeerCompanies[3].Id}\n\n{PeerCompanies[1].LastFinancialAnalysisResult}\n{PeerCompanies[2].LastFinancialAnalysisResult}\n{PeerCompanies[3].LastFinancialAnalysisResult}\n\n<rating>1</rating>",
+            "Type": "Merge"
+          },
+          "Id": "3c34e650-a4f1-4d7f-8290-d4b80f9563f3"
+        }
+      ],
+      "Name": "",
+      "Title": "Counterparty and Peer Company",
+      "Description": null,
+      "Order": 17,
+      "GroupColor": 1,
+      "Id": "591b696b-1ff9-4beb-9a4d-ab1d2ae579db"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "loopSource",
+          "Name": "Loop source",
+          "OutputTitleTemplate": "Loop source",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "<list>\nItem 1\nItem 2\nItem 3\n</list>\n\n<rating>2</rating>",
+            "Type": "Merge"
+          },
+          "Id": "9074b4c3-209a-4090-96ec-fd7d7bcaf7d8"
+        }
+      ],
+      "Name": "",
+      "Title": "Loop source",
+      "Description": null,
+      "Order": 18,
+      "GroupColor": 2,
+      "Id": "759da2fa-ca7a-4702-ac35-e78ff9c8b3c2"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "loopStart",
+          "Name": "Loop Start",
+          "Order": 0,
+          "Type": "LoopStart",
+          "Properties": {
+            "ListTitle": "loopItems",
+            "LoopedListTemplate": "{loopSource.list}",
+            "Type": "LoopStart"
+          },
+          "Id": "b128e811-9363-40d8-85f5-6009fe0614bd"
+        },
+        {
+          "ReplacementTag": "inLoop1",
+          "Name": "In Loop 1",
+          "OutputTitleTemplate": "InLoop1 {loopItems}",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "<answer>\n{loopItems}\n</answer>",
+            "Type": "Merge"
+          },
+          "Id": "0c0e3b2d-d6b2-46ea-80b2-9a01e03cb801"
+        },
+        {
+          "ReplacementTag": "inLoop2",
+          "Name": "In Loop 2",
+          "OutputTitleTemplate": "inLoop2 {loopItems}",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{inLoop1.answer}",
+            "Type": "Merge"
+          },
+          "Id": "d206df0b-6c1b-4e1f-9fd4-67ed3eb582ec"
+        },
+        {
+          "ReplacementTag": "loopEnd",
+          "Name": "",
+          "Order": 3,
+          "Type": "LoopEnd",
+          "Properties": {
+            "TextTemplate": null,
+            "Type": "Merge"
+          },
+          "Id": "d64562fb-3ded-413f-a72b-aca91b8babaf"
+        }
+      ],
+      "Name": "",
+      "Title": "Loop",
+      "Description": null,
+      "Order": 19,
+      "GroupColor": 3,
+      "Id": "2984554e-4063-475b-8b86-4e278ae45a9a"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "outside1",
+          "Name": "Referencing inLoop1 from outside loop",
+          "OutputTitleTemplate": "Referencing inLoop1 from outside loop",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{inLoop1}\n\n<rating>3</rating>",
+            "Type": "Merge"
+          },
+          "Id": "cac44e7b-50f6-49c8-aad7-75cfd3d18fc1"
+        },
+        {
+          "ReplacementTag": "outside2",
+          "Name": "Referencing inLoop2 from outside loop",
+          "OutputTitleTemplate": "Referencing inLoop2 from outside loop",
+          "Order": 1,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{inLoop2}",
+            "Type": "Merge"
+          },
+          "Id": "07afc126-3536-4d67-83cf-a99d3b816d59"
+        },
+        {
+          "ReplacementTag": "outside3",
+          "Name": "Referencing inLoop1.answer from outside loop",
+          "OutputTitleTemplate": "Referencing inLoop1.answer from outside loop",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "{inLoop1.answer}",
+            "Type": "Merge"
+          },
+          "Id": "2d91be93-1eec-473d-b39f-16e965a8b320"
+        }
+      ],
+      "Name": "",
+      "Title": "Outside Loop",
+      "Description": null,
+      "Order": 20,
+      "GroupColor": 4,
+      "Id": "a2a0dbb4-4336-496e-affb-105ff13782fb"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "e43303b3-30be-4e22-b37c-21d0eb7cf095"
+            }
+          ],
+          "ReplacementTag": "section4SetupBlock1",
+          "Name": "Fact tracking test",
+          "OutputTitleTemplate": "Fact tracking test",
+          "Order": 0,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "{testingTheSignatures}\n\nEnd your response with your confidence as a decimal, for example: <confidence>0.75</confidence>.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "SignatureFields": {
+              "testingTheSignatures": {
+                "DisplayName": "Testing the signatures",
+                "Description": "Testing the signatures",
+                "DefaultValue": "Reply with numbers of pages listed above."
+              }
+            },
+            "Type": "AiQuery"
+          },
+          "Id": "9f2668c8-3173-4155-9d69-04227efbdb4a"
+        },
+        {
+          "ReplacementTag": "section4SetupBlock2",
+          "Name": "Referencing the fact tracking test",
+          "OutputTitleTemplate": "Referencing the fact tracking test, the facts should persist here",
+          "Order": 1,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "Any"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Reply with what is listed in the <output>\n\n<output>\n{section4SetupBlock1}\n</output>\n",
+            "UserPromptTemplatePreview": "Reply with the content from a specified section or block as requested by the user.\n\nPlaceholders: {section4SetupBlock1}",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "bb15fa5f-15e8-45a0-a851-7d5a2bc5dd0d"
+        },
+        {
+          "ReplacementTag": "section4SetupBlock3",
+          "Name": "Referencing the block referencing the fact tracking test",
+          "OutputTitleTemplate": "Referencing the block referencing the fact tracking test, the facts should persist here",
+          "Order": 2,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "Previous block was:\n\n{section4SetupBlock2}",
+            "Type": "Merge"
+          },
+          "Id": "3769b4ec-a99e-4f0e-9151-09fdb0d5fa78"
+        },
+        {
+          "RagSettings": [
+            {
+              "Type": 0,
+              "Id": "33bc10da-58af-40eb-9d02-4c3b524154bc"
+            }
+          ],
+          "ReplacementTag": "testCitationsFromExa",
+          "Name": "Test The Citations from Exa",
+          "OutputTitleTemplate": "Test The Citations from Exa",
+          "Order": 3,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "ExaSearchDocs"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "Here are the results of the search for Unilever's founding date.\n\nRespond with a year of Unilever's foundation based on the text above. Put the answer in the <answer> tag.\n\nEnd your response with your confidence as a decimal: <confidence>0.75</confidence>.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "df4962cb-2224-4bc6-8670-429d0512d391"
+        },
+        {
+          "ReplacementTag": "testCitationsFromPerplexity",
+          "Name": "Test The Citations from Perplexity",
+          "OutputTitleTemplate": "Test The Citations from Perplexity",
+          "Order": 4,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "None"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "{perplexitySearch}\n\nHere are the results of the search for Unilever's founding date.\n\nRespond with a year of Unilever's foundation based on the text above. Put the answer in the <answer> tag.\n\nEnd your response with your confidence as a decimal: <confidence>0.75</confidence>.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "72026a3e-d7a2-45e3-8d11-b31b8b1d9588"
+        },
+        {
+          "ReplacementTag": "testCitationsFromParallel",
+          "Name": "Test The Citations from Parallel",
+          "OutputTitleTemplate": "Test The Citations from Parallel",
+          "Order": 5,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "None"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "{parallelSearch}\n\nHere are the results of the search for Unilever's founding date.\n\nRespond with a year of Unilever's foundation based on the text above. Put the answer in the <answer> tag.\n\nEnd your response with your confidence as a decimal: <confidence>0.75</confidence>.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "9236d420-a624-453f-85a7-8cd228e3062f"
+        },
+        {
+          "ReplacementTag": "section4SetupBlock6",
+          "Name": "Summarizing the ouputs of the search blocks",
+          "OutputTitleTemplate": "Summarizing the ouputs of the search blocks, the sources shoud be combined and visible here",
+          "Order": 6,
+          "Type": "AiQuery",
+          "SupportedDocumentClasses": [
+            "None"
+          ],
+          "IsOutputSource": true,
+          "Properties": {
+            "UserPromptTemplate": "{testCitationsFromExa}\n\n{testCitationsFromPerplexity}\n\n{testCitationsFromParallel}\n\nRespond with a year of Unilever's foundation based on the text above. Put the answer in the <answer> tag.\n\nEnd your response with your confidence as a decimal: <confidence>0.75</confidence>.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "ShouldGetCitationsFromModel": true,
+            "Type": "AiQuery"
+          },
+          "Id": "9f97ab0b-37c4-42b3-8b7c-0d0f914f7ddd"
+        }
+      ],
+      "Name": "",
+      "Title": "Test for source tracking, genral tests, search block tests",
+      "Description": null,
+      "Order": 21,
+      "GroupColor": 5,
+      "Id": "66514d58-b050-44ef-91ac-76b624d076e2"
+    },
+    {
+      "WorkflowTypeId": "WebApiBlockExamples",
+      "Blocks": [
+        {
+          "ReplacementTag": "section4Block1",
+          "Name": "Tests for referecing blocks in the previous section, keeping all the source info",
+          "OutputTitleTemplate": "Tests for referecing blocks in the previous section, keeping all the source info",
+          "Order": 0,
+          "Type": "Merge",
+          "IsOutputSource": true,
+          "Properties": {
+            "TextTemplate": "Content from skipped section (should be replaced with default no content messages): \n\n{skippedSectionBlock0}\n{skippedSectionBlock1}\n\nBlock 1\n\n{section4SetupBlock1}\n\nBlock 2\n\n{section4SetupBlock2}\n\nBlock 3\n\n{section4SetupBlock3}\n\nBlock 6\n\n{section4SetupBlock6}\n\n<rating>5</rating>",
+            "Type": "Merge"
+          },
+          "Id": "1ee5d7bc-be15-4802-91be-347fa470510a"
+        }
+      ],
+      "Name": "",
+      "Title": "Tests for referecing blocks in the previous section, keeping all the source info",
+      "Description": null,
+      "Order": 22,
+      "GroupColor": 6,
+      "Id": "3bfa7b86-2996-432b-81eb-19879b7050e8"
+    }
+  ],
+  "Variables": [
+    {
+      "ReplacementTag": "hasParent",
+      "DisplayName": "Has Parent Company",
+      "Description": "Indicates whether the organization has a parent company. Selecting 'No' will skip parent-related workflow sections.",
+      "Type": "Dropdown",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "Options": {
+        "Yes": "Yes",
+        "AF11": "No"
+      }
+    },
+    {
+      "ReplacementTag": "testStringVar_1",
+      "DisplayName": "Test String Variable",
+      "Description": "It's a test",
+      "Type": "String",
+      "IsRequired": true,
+      "IsHidden": true,
+      "IsConfidential": false,
+      "DefaultValue": "Default Value To Test"
+    },
+    {
+      "ReplacementTag": "testDropdownVar_1",
+      "DisplayName": "Test Dropdown Variable",
+      "Description": "its a test",
+      "Type": "Dropdown",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "Option 3",
+      "Options": {
+        "Option 1": "OPTION 1",
+        "Option 2": "OPTION 2",
+        "Option 3": "OPTION 3"
+      }
+    },
+    {
+      "ReplacementTag": "testNumVar_1",
+      "DisplayName": "Test Number Variable",
+      "Description": "Its a test",
+      "Type": "Number",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "777"
+    },
+    {
+      "ReplacementTag": "parentURL",
+      "DisplayName": "Parent Company URL",
+      "Description": "The website URL of the parent company.",
+      "Type": "String",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "unilever.com"
+    },
+    {
+      "ReplacementTag": "skipGoogleSearch",
+      "DisplayName": "Skip Google Search",
+      "Description": "Skip Google Search",
+      "Type": "Dropdown",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "AF11",
+      "Options": {
+        "No": "No",
+        "AF11": "Yes"
+      }
+    },
+    {
+      "ReplacementTag": "testMutiselectVar_1",
+      "DisplayName": "Test Mutiselect Variable",
+      "Description": "Its a test",
+      "Type": "MultiSelect",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "Option 2|Option 3",
+      "Options": {
+        "Option 1": "OPTION 1",
+        "Option 2": "OPTION 2",
+        "Option 3": "OPTION 3"
+      }
+    },
+    {
+      "ReplacementTag": "testDateTimeVar_1",
+      "DisplayName": "Test DateTime Variable",
+      "Description": "Its a test",
+      "Type": "DateTime",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "2025-04-15"
+    },
+    {
+      "ReplacementTag": "nameParent",
+      "DisplayName": "Parent Company Name",
+      "Description": "The name of the parent company.",
+      "Type": "String",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false
+    },
+    {
+      "ReplacementTag": "requiredTestVariable",
+      "DisplayName": "Required Test Variable To Throw Validation Error If Not Set",
+      "Description": "Required Test Variable To Throw Validation Error If Not Set",
+      "Type": "String",
+      "IsRequired": true,
+      "IsHidden": false,
+      "IsConfidential": false
+    },
+    {
+      "ReplacementTag": "testListVar_1",
+      "DisplayName": "Test List Variable",
+      "Description": "its a test",
+      "Type": "List",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false,
+      "DefaultValue": "Item 1|Item 2"
+    },
+    {
+      "ReplacementTag": "parentReputation",
+      "DisplayName": "Parent Company Reputation",
+      "Description": "Information about the parent company's reputation or standing.",
+      "Type": "String",
+      "IsRequired": false,
+      "IsHidden": false,
+      "IsConfidential": false
+    }
+  ],
+  "Configuration": {
+    "PageOverviews": {
+      "Pages": {
+        "UserPrompt": "Summarise page {0} in two sentences."
+      }
+    }
+  },
+  "DocumentClasses": [
+    {
+      "Key": "DONTSELECTTHISCLASS",
+      "DisplayName": "DONTSELECTTHISCLASS",
+      "Description": "",
+      "Requirement": "Suggested",
+      "ShouldBeSingular": false,
+      "DocumentCategoryId": null,
+      "Id": "05f1b8f3-be0c-4dff-9fd6-f9286193d71a"
+    },
+    {
+      "Key": "WebPage",
+      "DisplayName": "WebPage",
+      "Description": "",
+      "Requirement": "Optional",
+      "ShouldBeSingular": false,
+      "DocumentCategoryId": null,
+      "Id": "6575bb8f-9f4c-450c-a472-4f9498990012"
+    },
+    {
+      "Key": "test_iterations",
+      "DisplayName": "test_iterations",
+      "Description": "",
+      "Requirement": "Required",
+      "ShouldBeSingular": false,
+      "DocumentCategoryId": null,
+      "Id": "85f66809-19d1-4825-945d-11c0c2683199"
+    },
+    {
+      "Key": "ExaSearchDocs",
+      "DisplayName": "Exa Search Docs",
+      "Description": "",
+      "Requirement": "Optional",
+      "ShouldBeSingular": false,
+      "IsOutputDocument": true,
+      "DocumentCategoryId": null,
+      "Id": "a7d92d01-29ab-4ebd-9bdf-4c0222ccb2eb"
+    },
+    {
+      "Key": "Json2XlsxDoc",
+      "DisplayName": "Json2Xlsx Doc",
+      "Description": "Json2Xlsx Doc",
+      "Requirement": "Optional",
+      "ShouldBeSingular": false,
+      "IsOutputDocument": true,
+      "DocumentCategoryId": null,
+      "Id": "e13ad9c3-93e3-478c-92e4-aa6240a013fc"
+    },
+    {
+      "Key": "Image",
+      "DisplayName": "Image",
+      "Description": "",
+      "Requirement": "Required",
+      "ShouldBeSingular": true,
+      "DocumentCategoryId": null,
+      "Id": "ffeb39d9-8c58-4b0b-b540-de35473abe8b"
+    }
+  ],
+  "Name": "Workflow Handler Functionality Test - Apr 13 2026",
+  "Title": "Workflow Handler Functionality Test - Apr 13 2026",
+  "Description": "Workflow Handler Functionality Test",
+  "Id": "235bf36d-2778-42a0-be24-970d7a16da2d"
+}

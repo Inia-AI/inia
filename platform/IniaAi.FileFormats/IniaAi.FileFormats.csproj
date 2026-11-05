@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>$(AssemblyName).Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ClosedXML" />
+        <PackageReference Include="DocumentFormat.OpenXml" />
+        <PackageReference Include="ExcelNumberFormat" />
+        <PackageReference Include="FileSignatures" />
+        <PackageReference Include="HtmlToOpenXml.dll" />
+        <PackageReference Include="OpenMcdf" />
+        <PackageReference Include="SkiaSharp" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+        <PackageReference Include="SkiaSharp.NativeAssets.macOS" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Common.Interfaces\IniaAi.Common.Interfaces.csproj" />
+        <ProjectReference Include="..\IniaAi.Common\IniaAi.Common.csproj" />
+        <ProjectReference Include="..\IniaAi.Configuration\IniaAi.Configuration.csproj" />
+        <ProjectReference Include="..\IniaAi.Domain\IniaAi.Domain.csproj" />
+        <!-- Built and copied beside every application, which starts it as a process. Nothing here calls its code. -->
+        <ProjectReference Include="..\IniaAi.FileFormats.PdfiumWorker\IniaAi.FileFormats.PdfiumWorker.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\inia-banner.jpg" />
+    </ItemGroup>
+</Project>

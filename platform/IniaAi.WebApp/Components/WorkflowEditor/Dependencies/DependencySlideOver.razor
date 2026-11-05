@@ -1,0 +1,91 @@
+@implements IDisposable
+
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+@* A block's dependency chain over the right of the editor, opened by the block's Dependency chain
+   button. It starts closed on every visit and leaves the editor usable behind it. *@
+@if (_open)
+{
+    <aside class="dep-slideover" aria-label="Dependency chain">
+        <div class="dep-slideover__resize"
+             role="separator"
+             aria-orientation="vertical"
+             aria-label="Resize the dependency chain"
+             tabindex="0"></div>
+
+        <DependencyGraphView @ref="_view"
+                             State="_state"
+                             IsSlideOver="true"
+                             OpenInEditor="RevealBlock"
+                             SeeOnFullGraph="ShowOnFullGraph"
+                             OnClose="Close" />
+    </aside>
+}
+
+@code {
+    private DependencyViewState _state = new();
+    private DependencyGraphView? _view;
+    private bool _open;
+
+    [CascadingParameter]
+    public EditorSurfaceState SurfaceState { get; set; } = default!;
+
+    /// <summary>Opens the block's section in the editor and scrolls to and highlights the block.</summary>
+    [Parameter]
+    public Func<Block, Task>? RevealBlock { get; set; }
+
+    protected override void OnInitialized()
+    {
+        SurfaceState.DependencyChainRequested += OnDependencyChainRequested;
+    }
+
+    /// <summary>Marks the chain stale after a change the slide-over was not told about.</summary>
+    public void ScheduleRefresh()
+    {
+        if (_open)
+        {
+            _view?.ScheduleRefresh();
+        }
+    }
+
+    private void OnDependencyChainRequested(Block block)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (!_open)
+            {
+                _state = _state.WithSwitchesOnly();
+                _ = _state.Focus(block.Id);
+                _view = null;
+                _open = true;
+                StateHasChanged();
+
+                return;
+            }
+
+            _ = _state.Focus(block.Id);
+            if (_view is not null)
+            {
+                await _view.RefreshAsync();
+            }
+        });
+    }
+
+    private void ShowOnFullGraph(string blockId)
+    {
+        Close();
+        SurfaceState.RequestGraphTab(blockId);
+    }
+
+    private void Close()
+    {
+        _open = false;
+        _view = null;
+    }
+
+    public void Dispose()
+    {
+        SurfaceState.DependencyChainRequested -= OnDependencyChainRequested;
+    }
+}

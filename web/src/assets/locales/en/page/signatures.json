@@ -1,0 +1,242 @@
+{
+  "title": "Signatures",
+  "picker": {
+    "subtitle": "Choose a workflow to customise.",
+    "loadingWorkflows": "Loading workflows…",
+    "loadError": "Could not load workflows.",
+    "emptyWorkflows": "No workflows available."
+  },
+  "editor": {
+    "subtitle": "Customise how this workflow analyses your documents.",
+    "loading": "Loading signatures…",
+    "loadError": "Could not load signatures: {message}",
+    "unknownError": "unknown error",
+    "retry": "Retry",
+    "back": "Back to workflows",
+    "emptySurface": "This workflow has no signature surface yet.",
+    "noWorkflowForType": "This workflow type isn't set up for your organization.",
+    "outdatedTitle": "Sorry, this workflow has changed",
+    "outdatedDescription": "Someone updated this workflow while you were editing, so your pending changes can't be saved. Refresh to load the latest version.",
+    "refresh": "Refresh",
+    "columns": {
+      "sections": "Sections",
+      "blocks": "Blocks",
+      "dependencies": "Dependencies"
+    },
+    "fieldCount": "{count} field | {count} fields",
+    "noFields": "This block has no signature fields.",
+    "pickBlock": "Pick a block to customise its signature.",
+    "graph": {
+      "readsFrom": "Reads from",
+      "feedsInto": "Feeds into",
+      "noConnections": "This block has no connected siblings."
+    },
+    "connectionsTooltip": "Has connections — click to see them in the right panel",
+    "usedBy": {
+      "label": "Used by {count} blocks",
+      "tooltip": "This field is shared. One value applies to every block listed here — click a block to jump to it."
+    },
+    "overriddenTooltip": "Overridden",
+    "needsReviewTooltip": "{count} field awaiting your review | {count} fields awaiting your review",
+    "needsProposerActionTooltip": "{count} counter-suggestion awaiting your decision | {count} counter-suggestions awaiting your decision",
+    "defaultLabel": "Default",
+    "overrideValueLabel": "Override",
+    "override": "Override",
+    "removeOverride": "Remove override",
+    "tryOnPastExecution": "Test an override",
+    "saveSuccess": "Signature recorded.",
+    "saveFailed": "Save failed. Try again.",
+    "saving": "Saving…",
+    "save": "Save changes",
+    "saveCount": "Save changes ({count})",
+    "saveConfirm": {
+      "title": "Apply overrides to this workflow?",
+      "description": "These overrides change how the model analyses this step. The change applies to every user who runs this workflow, not just you.",
+      "newOverrides": "Adding {count} override | Adding {count} overrides",
+      "editedOverrides": "Editing {count} override | Editing {count} overrides",
+      "removedOverrides": "Removing {count} override | Removing {count} overrides",
+      "cancel": "Cancel",
+      "confirm": "Apply overrides"
+    },
+    "badges": {
+      "default": "Default",
+      "override": "Override",
+      "pendingMine": "Pending (yours)",
+      "pendingOther": "Pending"
+    },
+    "pending": {
+      "proposed": "Proposed value",
+      "proposedBy": "Proposed by {name}",
+      "proposedRemovalLabel": "Proposed change",
+      "proposedRemoval": "Remove the override (field falls back to the staff default)",
+      "approvalCount": "{count} of {total} approvals",
+      "rejectionCount": "{count} of {total} rejections",
+      "youApproved": "You approved",
+      "youRejected": "You rejected",
+      "commentsToggle": "Show {count} review comments",
+      "approve": "Approve",
+      "reject": "Reject…",
+      "approveSuccess": "Vote recorded.",
+      "voteFailed": "Vote failed. Try again.",
+      "rejectDialog": {
+        "title": "Reject this proposal",
+        "description": "Leave a reason and (optionally) a counter-suggestion. The proposer can accept any suggestion to replace their pending value.",
+        "commentLabel": "Reason",
+        "commentPlaceholder": "Why does this value need to change?",
+        "suggestionLabel": "Suggested value (optional)",
+        "suggestionToggle": "Suggest a different value for the proposer to consider",
+        "suggestionPlaceholder": "Alternative wording the proposer can accept.",
+        "counter": "{count} / {max}",
+        "submit": "Submit rejection",
+        "cancel": "Cancel"
+      },
+      "suggestions": {
+        "title": "Counter-suggestions",
+        "by": "from",
+        "mine": "by you",
+        "valueLabel": "Suggested value",
+        "reasonLabel": "Reason",
+        "byLabel": "From",
+        "accept": "Accept",
+        "accepted": "Suggestion accepted.",
+        "acceptFailed": "Couldn't accept the suggestion. Try again."
+      },
+      "edit": "Edit proposal",
+      "cancel": "Cancel proposal",
+      "cancelling": "Cancelling…",
+      "cancelled": "Proposal cancelled.",
+      "cancelFailed": "Couldn't cancel the proposal. Try again.",
+      "cancelConfirm": {
+        "title": "Cancel this proposal?",
+        "description": "The pending override, every vote on it, and any counter-suggestions will be removed. You can submit a new proposal afterwards if needed.",
+        "keep": "Keep proposal",
+        "confirm": "Cancel proposal"
+      },
+      "withdraw": "Change vote",
+      "withdrawing": "Changing…",
+      "withdrawn": "Vote cleared.",
+      "withdrawFailed": "Couldn't clear your vote. Try again."
+    },
+    "submit": {
+      "submitForReview": "Submit for review",
+      "submitting": "Submitting…",
+      "submitSuccess": "Submitted for review.",
+      "submitFailed": "Submit failed. Try again.",
+      "noChanges": "No changes to submit",
+      "removalLabel": "Propose removing the override"
+    }
+  },
+  "test": {
+    "title": "Test a signature change",
+    "subtitle": "Editing “{field}”",
+    "back": "Back",
+    "noExecutionSelected": "Open this page from a workflow report or a signature field to start.",
+    "loadError": "Couldn't load blocks for this execution.",
+    "noAiQueryBlocks": "This execution has no AI Query blocks to replay against.",
+    "blockNotFoundInExecution": "This block didn't run in the selected execution — pick a different run.",
+    "deepLinkNotInList": "The run you came from isn't in this list. Showing the most recent execution instead — pick another from the dropdown if needed.",
+    "entryPoint": "Signatures",
+    "phases": {
+      "pickRun": "Pick a past run",
+      "testOverride": "Test your override"
+    },
+    "section": {
+      "editValue": "Edit the signature value",
+      "compareOutput": "Compare the output"
+    },
+    "executionPicker": {
+      "label": "Past execution",
+      "loading": "Loading executions…",
+      "empty": "No executions found for this workflow"
+    },
+    "filters": {
+      "counterpartyLabel": "Show runs from",
+      "anyCounterparty": "Any"
+    },
+    "blockPicker": {
+      "label": "Step"
+    },
+    "fieldPicker": {
+      "label": "Signature field"
+    },
+    "fieldEditor": {
+      "currentValue": "Value used in this run",
+      "testValue": "Test value",
+      "testValuePlaceholder": "Edit the signature value to test a change…",
+      "asUsed": "As used",
+      "edited": "Edited",
+      "run": "Run test",
+      "running": "Running…",
+      "submitAsProposal": "Propose as override",
+      "preCaptureRunNote": "This run predates signature replay — run the workflow again to use this feature.",
+      "multipleOccurrencesReplaced": "Applied to {count} places in this block's prompt.",
+      "sharedFieldNote": "This field is shared — the override applies to all {count} blocks using it."
+    },
+    "output": {
+      "original": "Original output",
+      "test": "Test output",
+      "noOriginal": "This block has no captured output.",
+      "noTestYet": "Run the test to see how the change affects this block's output.",
+      "tokenCount": "{input} in · {output} out",
+      "model": "Model: {model}"
+    },
+    "errors": {
+      "runFailed": "The test couldn't complete. Try again."
+    }
+  },
+  "tabs": {
+    "ariaLabel": "Signature views",
+    "settings": "Settings",
+    "history": "History"
+  },
+  "history": {
+    "title": "Override history",
+    "subtitle": "Every change to signature override values for this workflow, newest first.",
+    "loading": "Loading history…",
+    "loadError": "Could not load history.",
+    "retry": "Retry",
+    "empty": "No overrides have been changed yet.",
+    "emptyFiltered": "No history rows match the current filters.",
+    "filter": {
+      "placeholder": "Field",
+      "actor": "Proposed by",
+      "any": "Any",
+      "from": "From",
+      "to": "To",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "date": "Date",
+      "time": "Time",
+      "field": "Field",
+      "action": "Action",
+      "previous": "Previous",
+      "new": "New",
+      "actor": "Proposed by",
+      "approvers": "Approved by",
+      "actions": "Actions"
+    },
+    "action": {
+      "Created": "Created",
+      "Updated": "Updated",
+      "Removed": "Removed",
+      "Renamed": "Renamed",
+      "unknown": "Unknown"
+    },
+    "usedBy": "used by {blocks}",
+    "removedMarker": "(reverted to default)",
+    "noPreviousValue": "(none)",
+    "unknownActor": "Unknown",
+    "row": {
+      "openDetail": "Open detail for {field} on {date}",
+      "view": "View"
+    },
+    "moreApprovers": "{count} more approver | {count} more approvers",
+    "noApprovers": "None",
+    "pagination": {
+      "showing": "Showing {from} to {to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  }
+}

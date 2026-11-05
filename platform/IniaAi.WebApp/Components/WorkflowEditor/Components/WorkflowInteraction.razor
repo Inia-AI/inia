@@ -1,0 +1,1715 @@
+@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+@implements IDisposable
+
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using ErrorOr
+@using IniaAi.Application.Commands.Workflows.SaveWorkflow
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Core.Services.AgentRuntime
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.Common.Interfaces.GitHub
+@using IniaAi.Domain.Entities.Workflows.Blocks.ExecutionStates.Abstractions
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.Workflows.Properties
+@using IniaAi.WebApp.Components.WorkflowEditor.Dependencies
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.Options
+
+@inject ILogger<WorkflowInteraction> Logger
+@inject AppState AppState
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject WorkflowTextExportService TextExportService
+@inject IGitHubWorkflowVersioningService GitHubWorkflowVersioningService
+@inject IOptions<IniaAi.Configuration.Platform.AgentRuntimeSettings> AgentRuntimeSettingsOptions
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+
+<MudStack Row="true" Class="@RootClass">
+    <MudItem xs="9">
+        @if (_isShowingBlocks)
+        {
+            <WorkflowItem Section="@_activeWorkflowItem"
+                          ExecuteBlockCallback="@ExecuteBlock"
+                          MoveBlockCallback="@MoveBlock"
+                          ExecuteSectionCallback="@ExecuteSection"
+                          DuplicateSectionCallback="@DuplicateSection"
+                          MoveSectionCallback="@MoveSection"
+                          CopySectionToCoreWorkflowCallback="@CopySectionToCoreWorkflow"
+                          CopyBlockToCoreWorkflowCallback="@CopyBlockToCoreWorkflow"
+                          RemoveSectionCallback="@RemoveSection"
+                          HideBlocksCallback="@HideBlocks"
+                          CopyBlockAsTextCallback="@CopyBlockAsText"
+                          CopySectionAsTextCallback="@CopySectionAsText"
+                          IsolateBlockCallback="@IsolateBlock"
+                          ToggleCitationsCallback="@ToggleCitations"
+                          ShareBlockToLibraryCallback="@ShareBlockToLibraryCallback"
+                          ShareSectionToLibraryCallback="@ShareSectionToLibrary"
+                          RemoveLinkedEntryCallback="@RemoveLinkedEntryCallback"
+                          OpenLibrarySyncCallback="@OpenLibrarySyncCallback"
+                          InsertBlockFromLibraryCallback="@InsertBlockFromLibraryAt"
+                          WorkflowMap="@_workflowMap"/>
+        }
+        else
+        {
+            <MudTabs @ref="_workflowTabs"
+                     id="@WORKFLOW_TABS_ID"
+                     Elevation="2"
+                     Outlined="true"
+                     Rounded="true"
+                     ApplyEffectsToContainer="false"
+                     ActivePanelIndexChanged="OnActiveTabChanged">
+                <MudTabPanel Text="Sections">
+                    <InsertControls @key="@("gap_head")"
+                                    Class="pl-4 my-3"
+                                    Label="Add Section"
+                                    OnInsert="() => AddSection(0)"
+                                    OnInsertSeparator="() => AddSeparator(0)"
+                                    OnInsertFromLibrary="@(InsertSectionFromLibraryCallback.HasDelegate ? EventCallback.Factory.Create(this, () => InsertSectionFromLibraryCallback.InvokeAsync(0)) : default)" />
+
+                    @for (var i = 0; i < EditorContext.Workflow.Sections.Count; i++)
+                    {
+                        var index = i;
+                        var newIndex = index + 1;
+
+                        var currentItem = EditorContext.Workflow.Sections.FirstOrDefault(s => s.Order == index);
+
+                        @if (currentItem is null)
+                        {
+                            continue;
+                        }
+
+                        if (currentItem.IsSeparator)
+                        {
+                            <div class="workflow-separator-row" @key="@($"sep_{currentItem.Id}")">
+                                <div class="workflow-separator"></div>
+                                <MudTooltip Text="Remove separator">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   Class="editor-soft-button"
+                                                   aria-label="Remove separator"
+                                                   OnClick="() => RemoveSection(index)" />
+                                </MudTooltip>
+                            </div>
+                        }
+                        else
+                        {
+                            <WorkflowItemDescriptor @key="@currentItem.Id"
+                                                    Section="@currentItem"
+                                                    InternalStateHasChangedCallback="@UpdateWorkflowStateAsync"
+                                                    ExecuteSectionCallback="@ExecuteSection"
+                                                    DuplicateSectionCallback="@DuplicateSection"
+                                                    MoveSectionCallback="@MoveSection"
+                                                    CopySectionToCoreWorkflowCallback="@CopySectionToCoreWorkflow"
+                                                    RemoveSectionCallback="@RemoveSection"
+                                                    ShowBlocksCallback="@ShowBlocks"
+                                                    ToggleCitationsCallback="@ToggleCitations"
+                                                    CopySectionAsTextCallback="@CopySectionAsText"
+                                                    ShareSectionToLibraryCallback="@ShareSectionToLibrary"
+                                                    OpenLibrarySyncCallback="@OpenLibrarySyncCallback" />
+                        }
+
+                        <InsertControls @key="@($"gap_{currentItem.Id}")"
+                                        Class="pl-4 my-3"
+                                        Label="Add Section"
+                                        OnInsert="() => AddSection(newIndex)"
+                                        OnInsertSeparator="() => AddSeparator(newIndex)"
+                                        OnInsertFromLibrary="@(InsertSectionFromLibraryCallback.HasDelegate ? EventCallback.Factory.Create(this, () => InsertSectionFromLibraryCallback.InvokeAsync(newIndex)) : default)" />
+                    }
+                </MudTabPanel>
+
+                <MudTabPanel @ref="_variablesTabPanel" Text="Variables">
+                    <WorkflowVariablesManager Workflow="@EditorContext.Workflow"
+                                              WorkflowVariablesChanged="async () =>
+                                              {
+                                                  await InternalStateHasChangedCallback.InvokeAsync();
+                                                  await VariablesChangedCallback.InvokeAsync();
+                                              }" />
+                </MudTabPanel>
+
+                <MudTabPanel @ref="_signaturesTabPanel" Text="Signatures">
+                    <WorkflowSignatureFieldsManager Workflow="@EditorContext.Workflow"
+                                                    ScrollToBlockCallback="@ScrollToBlock"
+                                                    FieldRenamed="@RecordSignatureFieldRename"
+                                                    SignatureFieldsChanged="async () =>
+                                                    {
+                                                        await InternalStateHasChangedCallback.InvokeAsync();
+                                                    }" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="Document Classes">
+                    <DocumentClassManager Workflow="@EditorContext.Workflow"
+                                         DocumentClassesChanged="async () =>
+                                         {
+                                             await InternalStateHasChangedCallback.InvokeAsync();
+                                         }" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="Report Layout">
+                    <MudCard Outlined="true" Class="pa-4 mt-2">
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Class="mb-4">Document Export Settings</MudText>
+                            <MudText Typo="Typo.body2" Class="mb-4">
+                                Configure how this workflow's output is exported to Word and PDF documents.
+                            </MudText>
+
+                            <MudDivider Class="my-4" />
+
+                            <MudSelect T="string"
+                                       Label="Page Orientation"
+                                       @bind-Value="_reportOrientation"
+                                       @bind-Value:after="SaveReportLayoutConfiguration"
+                                       Variant="Variant.Outlined"
+                                       HelperText="Select the page orientation for exported documents"
+                                       Class="mb-4">
+                                <MudSelectItem Value="@("Portrait")">Portrait (Default)</MudSelectItem>
+                                <MudSelectItem Value="@("Landscape")">Landscape</MudSelectItem>
+                            </MudSelect>
+
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                                <MudText Typo="Typo.caption">
+                                    <strong>Portrait:</strong> Standard vertical page layout (8.5" × 11")<br/>
+                                    <strong>Landscape:</strong> Horizontal page layout (11" × 8.5") - useful for wide charts and tables
+                                </MudText>
+                            </MudAlert>
+                        </MudCardContent>
+                    </MudCard>
+                </MudTabPanel>
+
+                <MudTabPanel @ref="_graphTabPanel" Text="Graph">
+                    <DependencyGraphView @ref="_graphView"
+                                         State="_graphState"
+                                         OpenInEditor="OpenBlockInEditorAsync" />
+                </MudTabPanel>
+            </MudTabs>
+        }
+    </MudItem>
+
+    <MudItem xs="3">
+        <WorkflowMap @ref="_workflowMap"
+                     WorkflowChangedCallBack="@StateHasChanged"
+                     ScrollToBlockCallback="@ScrollToBlock"
+                     ScrollToWorkflowCallback="@ScrollToWorkflow"
+                     ExecuteAllSectionsCallback="@ExecuteAllSectionsAsync" />
+    </MudItem>
+</MudStack>
+
+@code {
+    private const string TARGET_CHANGED_MESSAGE =
+        "The target Core workflow changed while you were copying. Nothing was saved. Please retry the copy.";
+
+    private const string ROOT_CLASS = "workflow-editor-root";
+    private const string WIDE_ROOT_CLASS = "workflow-editor-root workflow-editor-root--wide";
+    private const string REVEAL_BLOCK_JS = "revealEditorBlock";
+    private const string SCROLL_TO_ELEMENT_JS = "scrollToElement";
+    private const string WORKFLOW_TABS_ID = "workflow-tabs";
+
+    private bool _isShowingBlocks = false;
+    private User _user = default!;
+    private WorkflowMap _workflowMap = default!;
+    private MudTabs? _workflowTabs;
+    private MudTabPanel? _signaturesTabPanel;
+    private MudTabPanel? _variablesTabPanel;
+    private MudTabPanel? _graphTabPanel;
+    private DependencyGraphView? _graphView;
+    private readonly DependencyViewState _graphState = new();
+    private bool _isGraphTabActive;
+    private Func<MudTabPanel?>? _pendingTab;
+    private bool _focusPendingTab;
+    private Section? _activeWorkflowItem;
+    private string _reportOrientation = "Portrait";
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    [CascadingParameter]
+    public EditorSurfaceState SurfaceState { get; set; } = default!;
+
+    /// <summary>
+    /// Callback to notify the parent component that the document processing
+    /// has started. The int parameter is the index of the block in the
+    /// workflow for which the document processing has started.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public EventCallback DocumentProcessingCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback UpdateDocumentClassesListCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<Workflow> VariablesChangedCallback { get; set; }
+
+
+    [Parameter]
+    public bool ShouldClearExecutionStates { get; set; } = true;
+
+    [Parameter]
+    public EventCallback InternalStateHasChangedCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> ShareBlockToLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> RemoveLinkedEntryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OpenLibrarySyncCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Section> ShareSectionToLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<(Section Section, int Index)> InsertBlockFromLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<int> InsertSectionFromLibraryCallback { get; set; }
+
+    /// <summary>The Graph tab takes the full editor width; the workflow map beside the tabs steps aside.</summary>
+    private string RootClass => _isGraphTabActive && !_isShowingBlocks ? WIDE_ROOT_CLASS : ROOT_CLASS;
+
+    public async Task UpdateWorkflowStateAsync()
+    {
+        // The map must be refreshed explicitly: its only parameters are method-group
+        // EventCallbacks, which the diff proves unchanged (cached delegates) — so a
+        // parent render SKIPS it (verified live). WorkflowItem, by contrast, receives
+        // the Section object and re-renders with the StateHasChanged below; calling
+        // its refresh here too would diff it and the map a second time.
+        await _workflowMap.UpdateWorkflowStateAsync();
+
+        SyncActiveWorkflowItem();
+        _graphView?.ScheduleRefresh();
+
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User, nameof(AppState.User));
+
+        _user = AppState.User;
+
+        SurfaceState.SectionChanged += OnSurfaceSectionChanged;
+        SurfaceState.BlockChanged += OnSurfaceBlockChanged;
+        SurfaceState.DocumentClassesChanged += OnSurfaceDocumentClassesChanged;
+        SurfaceState.SignaturesTabRequested += OnSignaturesTabRequested;
+        SurfaceState.BlockOpenRequested += OnBlockOpenRequested;
+        SurfaceState.GraphTabRequested += OnGraphTabRequested;
+        EditorContext.VariablesTabRequested += OnVariablesTabRequested;
+
+        Logger.LogInformation(
+            "Workflow interaction component initialized for workflow type {WorkflowTypeId} ({WorkflowTypeName})",
+            GetWorkflowTypeId(),
+            GetWorkflowTypeName());
+    }
+
+    public void Dispose()
+    {
+        SurfaceState.SectionChanged -= OnSurfaceSectionChanged;
+        SurfaceState.BlockChanged -= OnSurfaceBlockChanged;
+        SurfaceState.DocumentClassesChanged -= OnSurfaceDocumentClassesChanged;
+        SurfaceState.SignaturesTabRequested -= OnSignaturesTabRequested;
+        SurfaceState.BlockOpenRequested -= OnBlockOpenRequested;
+        SurfaceState.GraphTabRequested -= OnGraphTabRequested;
+        EditorContext.VariablesTabRequested -= OnVariablesTabRequested;
+    }
+
+    private void OnBlockOpenRequested(Block block)
+    {
+        _ = InvokeAsync(() => ScrollToBlock((block, block.Id)));
+    }
+
+    private void OnSignaturesTabRequested()
+    {
+        _ = InvokeAsync(() => ShowTab(() => _signaturesTabPanel));
+    }
+
+    private void OnVariablesTabRequested()
+    {
+        _ = InvokeAsync(() => ShowTab(() => _variablesTabPanel, focus: true));
+    }
+
+    private void OnGraphTabRequested(string blockId)
+    {
+        _ = InvokeAsync(() =>
+        {
+            _graphState.RequestMapFocus(blockId);
+            ShowTab(() => _graphTabPanel);
+        });
+    }
+
+    /// <summary>
+    /// The tab strip only renders on the workflow surface, and the MudTabs @ref is only populated
+    /// after that render, so the tab is activated from OnAfterRenderAsync.
+    /// </summary>
+    private void ShowTab(Func<MudTabPanel?> panel, bool focus = false)
+    {
+        _isShowingBlocks = false;
+        _pendingTab = panel;
+        _focusPendingTab = focus;
+        StateHasChanged();
+    }
+
+    private void OnActiveTabChanged(int index)
+    {
+        _isGraphTabActive = _graphTabPanel is not null
+            && ReferenceEquals(_workflowTabs?.Panels.ElementAtOrDefault(index), _graphTabPanel);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_workflowTabs is not null && _pendingTab?.Invoke() is { } panel)
+        {
+            bool focus = _focusPendingTab;
+            _pendingTab = null;
+            await _workflowTabs.ActivatePanelAsync(panel);
+            if (focus)
+            {
+                await JsRuntime.InvokeVoidAsync(SCROLL_TO_ELEMENT_JS, WORKFLOW_TABS_ID);
+                await panel.PanelRef.FocusAsync(preventScroll: true);
+            }
+        }
+    }
+
+    private void RecordSignatureFieldRename((string OldName, string NewName) rename)
+    {
+        EditorContext.PendingSignatureFieldRenames.Add(
+            new Application.Common.Signatures.SignatureFieldRename(rename.OldName, rename.NewName));
+    }
+
+    /// <summary>
+    /// Definitions live at workflow level, so copied blocks arrive referencing tokens the target
+    /// workflow may not define — carry each referenced definition across under the same
+    /// merge-identical / rename-divergent policy as the hoist, rewriting the copied block's
+    /// tokens when a divergent name is renamed. Returns the count of referenced definitions.
+    /// </summary>
+    private int CarrySignatureDefinitionsToTarget(IEnumerable<Block> copiedBlocks, Workflow targetWorkflow)
+    {
+        Workflow? source = EditorContext.Workflow;
+        if (source is null || source.SignatureFields.Count == 0)
+        {
+            return 0;
+        }
+
+        var carriedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Block copied in copiedBlocks)
+        {
+            if (copied.Properties is not IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions.IHasSignatureFields)
+            {
+                continue;
+            }
+
+            foreach (WorkflowSignatureField field in source.SignatureFields)
+            {
+                if (!copied.Properties.HasPlaceholder(
+                        Workflow.SignatureFieldToken(field.Name), StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string finalName = IniaAi.Domain.Signatures.SignatureFieldsLegacyMigrator.HoistDefinition(
+                    targetWorkflow,
+                    field.Name,
+                    new SignatureFieldDefinition(field.DisplayName, field.Description, field.DefaultValue),
+                    copied.ReplacementTag);
+                if (!string.Equals(finalName, field.Name, StringComparison.Ordinal))
+                {
+                    copied.Properties.RewriteToken(field.Name, finalName, StringComparison.OrdinalIgnoreCase);
+                }
+
+                _ = carriedNames.Add(finalName);
+            }
+        }
+
+        return carriedNames.Count;
+    }
+
+    private void NotifyCarriedSignatureDefinitions(int carriedDefinitions, string targetWorkflowTypeName)
+    {
+        if (carriedDefinitions > 0)
+        {
+            AppState.Notify(
+                $"{carriedDefinitions} signature field definition(s) carried to '{targetWorkflowTypeName}'",
+                Severity.Info);
+        }
+    }
+
+    private void OnSurfaceSectionChanged(Section section)
+    {
+        _ = InvokeAsync(UpdateWorkflowStateAsync);
+    }
+
+    private void OnSurfaceBlockChanged(Block block)
+    {
+        _ = InvokeAsync(_workflowMap.UpdateWorkflowStateAsync);
+    }
+
+    private void OnSurfaceDocumentClassesChanged()
+    {
+        _ = InvokeAsync(() => UpdateDocumentClassesListCallback.InvokeAsync());
+    }
+
+    private string GetWorkflowTypeId() => EditorContext?.WorkflowTypeId
+        ?? "Unknown";
+
+    private string GetWorkflowTypeName() => EditorContext?.Workflow?.WorkflowType?.Name
+        ?? "Unknown";
+
+    private string GetWorkflowTypeDisplayName() => $"{GetWorkflowTypeId()} ({GetWorkflowTypeName()})";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        // Load report orientation from workflow configuration
+        if (EditorContext?.Workflow?.Configuration?.ReportLayout is not null)
+        {
+            _reportOrientation = EditorContext.Workflow.Configuration.ReportLayout.Orientation ?? "Portrait";
+        }
+        else
+        {
+            _reportOrientation = "Portrait";
+        }
+    }
+
+    private async Task SaveReportLayoutConfiguration()
+    {
+        // Initialize Configuration if null
+        EditorContext.Workflow.Configuration ??= new IniaAi.Domain.Entities.Workflows.WorkflowConfiguration();
+
+        // Create a new ReportLayout instance to ensure EF Core detects the change
+        // EF Core uses ValueComparer which compares serialized JSON - creating new instance forces change detection
+        EditorContext.Workflow.Configuration.ReportLayout = new IniaAi.Domain.Entities.WorkflowExecutions.ReportLayout
+        {
+            Orientation = _reportOrientation,
+            Version = EditorContext.Workflow.Configuration.ReportLayout?.Version ?? "1.0"
+        };
+
+        EditorContext.Workflow.Configuration = EditorContext.Workflow.Configuration.Clone();
+
+        await InternalStateHasChangedCallback.InvokeAsync();
+
+        Logger.LogInformation(
+            "Report layout configuration updated: Orientation = {Orientation}",
+            _reportOrientation);
+    }
+
+    /// <summary>
+    /// Syncs the _activeWorkflowItem with the current workflow tree.
+    /// This is necessary when the EditorContext.Workflow is replaced (e.g., after saving),
+    /// to ensure _activeWorkflowItem references the correct child workflow in the new tree.
+    /// </summary>
+    private void SyncActiveWorkflowItem()
+    {
+        if (_activeWorkflowItem is null || !_isShowingBlocks)
+        {
+            return;
+        }
+
+        // Find the corresponding section in the current tree by Order
+        var correspondingSection = EditorContext.Workflow.Sections
+            .FirstOrDefault(s => s.Order == _activeWorkflowItem.Order);
+
+        if (correspondingSection is not null)
+        {
+            _activeWorkflowItem = correspondingSection;
+        }
+        else
+        {
+            // If we can't find the corresponding section, reset to hide blocks
+            _activeWorkflowItem = null;
+            _isShowingBlocks = false;
+        }
+    }
+
+    /// <summary>
+    /// Opens the block's section in the editor when another one is showing; the caller scrolls.
+    /// Returns true when it switched section.
+    /// </summary>
+    public async Task<bool> RevealBlockAsync(Block block)
+    {
+        if ((!_isShowingBlocks || _activeWorkflowItem?.Id != block.SectionId) && block.SectionId is not null)
+        {
+            await ShowBlocks(block.SectionId);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Shows the block in the Sections view, opening its section when another is showing, then scrolls
+    /// to it and highlights it.
+    /// </summary>
+    public async Task OpenBlockInEditorAsync(Block block)
+    {
+        _ = await RevealBlockAsync(block);
+        await JsRuntime.InvokeVoidAsync(REVEAL_BLOCK_JS, block.Id);
+    }
+
+    private async Task ScrollToBlock((Block, string) tuple)
+    {
+        if (await RevealBlockAsync(tuple.Item1))
+        {
+            await Task.Delay(100);
+        }
+
+        await JsRuntime.InvokeVoidAsync(SCROLL_TO_ELEMENT_JS, tuple.Item2);
+    }
+
+    private async Task ScrollToWorkflow(string elementId)
+    {
+        if (_isShowingBlocks)
+        {
+            await HideBlocks(elementId);
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync(SCROLL_TO_ELEMENT_JS, elementId);
+        }
+
+    }
+
+    private Dictionary<string, string> GetInputsFromVariables()
+    {
+        Dictionary<string, string> inputs = [];
+
+        foreach ((string replacementTag, string value) in EditorContext.VariableValues)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                continue;
+            }
+
+            inputs[replacementTag] = value;
+        }
+
+        return inputs;
+    }
+
+    private async Task ExecuteAllSectionsAsync()
+    {
+        if (EditorContext.WorkflowHandler is null)
+        {
+            AppState.Notify(
+                "Workflow handler was not initialized",
+                Severity.Error);
+
+            Logger.LogError(
+                "Workflow handler was not initialized for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+            return;
+        }
+
+        Logger.LogInformation(
+            "Starting execution of all sections for workflow type {WorkflowType}",
+            GetWorkflowTypeDisplayName());
+
+        for (int i = 0; i < EditorContext.Workflow.Sections.Count; i++)
+        {
+            int countBefore = EditorContext.Workflow.Sections.Count;
+            await ExecuteSection(i);
+
+            // If a parameterized section expanded into variants, skip past them —
+            // they were already executed inside ExecuteSection.
+            int added = EditorContext.Workflow.Sections.Count - countBefore;
+            i += added;
+        }
+
+        Logger.LogInformation(
+            "Completed execution of all sections for workflow type {WorkflowType}",
+            GetWorkflowTypeDisplayName());
+
+        AppState.Notify(
+            "All sections executed successfully",
+            Severity.Success);
+    }
+
+    private async Task ExecuteSection(int index)
+    {
+        if (EditorContext.WorkflowHandler is null)
+        {
+            AppState.Notify(
+                "Workflow handler was not initialized",
+                Severity.Error);
+
+            Logger.LogError(
+                "Workflow handler was not initialized for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+            return;
+        }
+
+        EditorContext.WorkflowHandler.ExecutionContext =
+            IniaAi.Domain.Entities.TokenUsage.Enums.ExecutionContext.SectionTest;
+
+        Section? candidateSection = EditorContext.Workflow.Sections
+            .FirstOrDefault(s => s.Order == index);
+        if (candidateSection?.IsSeparator == true)
+        {
+            return;
+        }
+
+        int sectionNumber = index;
+
+        Logger.LogInformation(
+            "Starting execution of section {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        AppState.Notify(
+            $"Processing documents for section {sectionNumber} ...",
+            Severity.Info);
+
+        // Trigger UI update to show processing state
+        StateHasChanged();
+
+        try
+        {
+            AppState.Notify(
+                $"Documents processed successfully for section {sectionNumber}, executing ...",
+                Severity.Info);
+
+            Section? sectionToExecute = EditorContext.Workflow.Sections
+                .FirstOrDefault(s => s.Order == index);
+
+            if (sectionToExecute is null)
+            {
+                AppState.Notify(
+                    $"Failed to execute section {sectionNumber}: Section not found",
+                    Severity.Error);
+
+                Logger.LogError(
+                    "Failed to execute section {Index} for workflow type {WorkflowType}: Section not found",
+                    index,
+                    GetWorkflowTypeDisplayName());
+
+                return;
+            }
+
+            if (ShouldClearExecutionStates)
+            {
+                Logger.LogInformation(
+                    "Clearing execution states of section {Index} for workflow type {WorkflowType}",
+                    index,
+                    GetWorkflowTypeDisplayName());
+
+                sectionToExecute.ClearExecutionState();
+            }
+
+            bool isParameterized = !string.IsNullOrWhiteSpace(sectionToExecute.ParameterizedConfig);
+
+            if (!isParameterized)
+            {
+                foreach (var block in sectionToExecute.Blocks)
+                {
+                    if (block.ExecutionState is null)
+                    {
+                        block.ExecutionState = new BlockExecutionState(block);
+                    }
+                    block.ExecutionState.MarkAsStarted();
+                }
+
+                StateHasChanged();
+            }
+
+            await DocumentProcessingCallback.InvokeAsync();
+
+            EditorContext.WorkflowHandler.CounterpartyId = EditorContext.Counterparty?.Id;
+            EditorContext.WorkflowHandler.PeerCompanyIds = EditorContext.PeerCompanies?.Select(x => x.Id).ToList();
+
+            Dictionary<string, string> inputs = GetInputsFromVariables();
+
+            Workflow rootWorkflow = sectionToExecute.Workflow;
+            rootWorkflow.OrganizationId = AppState.CurrentOrganizationId;
+
+            Logger.LogDebug(
+                "[WorkflowInteraction] Setting OrganizationId to '{OrganizationId}' on root workflow '{RootWorkflowId}' for section '{SectionId}' execution",
+                AppState.CurrentOrganizationId, rootWorkflow.Id, sectionToExecute.Id);
+
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            IUserDataUnitOfWork userDataUnitOfWork = scope.ServiceProvider.GetRequiredService<IUserDataUnitOfWork>();
+
+            if (isParameterized)
+            {
+                List<Section> expandedSections = await EditorContext.WorkflowHandler
+                    .ExpandParameterizedSectionAsync(sectionToExecute, userDataUnitOfWork);
+
+                _activeWorkflowItem = null;
+                _isShowingBlocks = false;
+                await UpdateWorkflowStateAsync();
+
+                foreach (var variantSection in expandedSections)
+                {
+                    foreach (var block in variantSection.Blocks)
+                    {
+                        block.ExecutionState ??= new BlockExecutionState(block);
+                        block.ExecutionState.MarkAsStarted();
+                    }
+
+                    await UpdateWorkflowStateAsync();
+
+                    await EditorContext.WorkflowHandler.ExecuteSectionAsync(
+                        variantSection,
+                        anonymisationMap: [],
+                        userDataUnitOfWork,
+                        inputs: inputs);
+
+                    await UpdateWorkflowStateAsync();
+                }
+            }
+            else
+            {
+                StateHasChanged();
+
+                await EditorContext.WorkflowHandler.ExecuteSectionAsync(
+                    sectionToExecute,
+                    anonymisationMap: [],
+                    userDataUnitOfWork,
+                    inputs: inputs);
+            }
+
+            Logger.LogInformation(
+                "Successfully executed section {Index} for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Section {sectionNumber} executed successfully",
+                Severity.Success);
+
+            // The execution path pulled the latest SignatureFieldOverride rows fresh from
+            // DB and applied them to the run, so the response reflects the current value.
+            // The Razor signature editor caches its own copy at mount time though, so kick
+            // the invalidation event to keep the staff editor's "Client Override" preview
+            // in sync with what just ran.
+            AppState.NotifySignatureOverridesInvalidated();
+
+            // Trigger UI update after successful execution (uses UpdateWorkflowStateAsync
+            // instead of StateHasChanged to sync _activeWorkflowItem — needed when a
+            // parameterized section is expanded into variants during execution)
+            await UpdateWorkflowStateAsync();
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to execute section {Index} for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to execute section {sectionNumber}: {e.Message}",
+                Severity.Error);
+
+            // Trigger UI update after error to show failed state
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExecuteBlock(Block block)
+    {
+        if (EditorContext.WorkflowHandler is null)
+        {
+            AppState.Notify(
+                "Workflow handler was not initialized",
+                Severity.Error);
+
+            Logger.LogError(
+                "Workflow handler was not initialized for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+            return;
+        }
+
+        EditorContext.WorkflowHandler.ExecutionContext =
+            IniaAi.Domain.Entities.TokenUsage.Enums.ExecutionContext.BlockTest;
+
+        if (block.Section is null)
+        {
+            Logger.LogWarning(
+                "Block {Index} has no section for workflow type {WorkflowType}",
+                block.Order,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to execute block {block.Order}: Block has no section",
+                Severity.Error);
+
+            return;
+        }
+
+        // The same pre-spend gate the submit paths apply, scoped to this block: the run below
+        // processes the block's documents before executing it, and a file upload can fill the
+        // editor without a save, so the save-time gate alone does not bound what reaches here.
+        if (AgentBlockGuard.DescribeBlockRunRefusal(
+                block,
+                AgentRuntimeSettingsOptions.Value,
+                AgentModelTiers.For(
+                    AgentRuntimeSettingsOptions.Value,
+                    PlatformSettingsOptions.Value.ModelRouting,
+                    AppState.CurrentOrganizationId))
+            is { } agentRefusal)
+        {
+            AppState.Notify(agentRefusal.Message, Severity.Warning);
+            return;
+        }
+
+        if (ShouldClearExecutionStates)
+        {
+            Logger.LogInformation(
+                "Clearing execution state of block {BlockIndex} for workflow type {WorkflowType}",
+                block.Order,
+                GetWorkflowTypeDisplayName());
+
+            // Only clear the current block's execution state, not all blocks in the section
+            block.ClearExecutionState();
+        }
+
+        // Immediately set block status to Running for instant visual feedback
+        if (block.ExecutionState is null)
+        {
+            block.ExecutionState = new BlockExecutionState(block);
+        }
+        block.ExecutionState.MarkAsStarted();
+
+        // Trigger immediate UI update to show running status
+        StateHasChanged();
+
+        Logger.LogInformation(
+            "Starting execution of block {BlockIndex} for workflow type {WorkflowType}",
+            block.Order,
+            GetWorkflowTypeDisplayName());
+
+        AppState.Notify(
+            $"Processing documents for block {block.Order} ...",
+            Severity.Info);
+
+        try
+        {
+            await DocumentProcessingCallback.InvokeAsync();
+
+            AppState.Notify(
+                $"Documents processed successfully for block {block.Order}, executing ...",
+                Severity.Info);
+
+
+            EditorContext.WorkflowHandler.CounterpartyId = EditorContext.Counterparty?.Id;
+            EditorContext.WorkflowHandler.PeerCompanyIds = EditorContext.PeerCompanies?.Select(x => x.Id).ToList();
+
+            Dictionary<string, string> inputs = GetInputsFromVariables();
+
+            // Trigger UI update before execution starts
+            StateHasChanged();
+
+            Workflow rootWorkflow = block.Section.Workflow;
+            rootWorkflow.OrganizationId = AppState.CurrentOrganizationId;
+
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            IUserDataUnitOfWork userDataUnitOfWork = scope.ServiceProvider.GetRequiredService<IUserDataUnitOfWork>();
+
+            await EditorContext.WorkflowHandler.ExecuteBlockAsync(
+                block.Section,
+                block.Order,
+                anonymisationMap: [],
+                userDataUnitOfWork,
+                inputs: inputs);
+
+            Logger.LogInformation(
+                "Successfully executed block {BlockIndex} for workflow type {WorkflowType}",
+                block.Order,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Block {block.Order} executed successfully",
+                Severity.Success);
+
+            // The execution path pulled the latest SignatureFieldOverride rows fresh from
+            // DB and applied them to the run, so the response reflects the current value.
+            // The Razor signature editor caches its own copy at mount time though, so kick
+            // the invalidation event to keep the staff editor's "Client Override" preview
+            // in sync with what just ran.
+            AppState.NotifySignatureOverridesInvalidated();
+
+            // Trigger UI update after successful execution (uses UpdateWorkflowStateAsync
+            // to sync _activeWorkflowItem when a parameterized section is expanded during execution)
+            await UpdateWorkflowStateAsync();
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to execute block {BlockIndex} for workflow type {WorkflowType}",
+                block.Order,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to execute block {block.Order}: {e.Message}",
+                Severity.Error);
+
+            // Trigger UI update after error to show failed state
+            StateHasChanged();
+        }
+    }
+
+    private async Task MoveSection(int index)
+    {
+        Logger.LogInformation(
+            "Moving section at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        Section? section = EditorContext
+            .Workflow
+            .Sections
+            .FirstOrDefault(s => s.Order == index);
+
+        if (section is null)
+        {
+            Logger.LogWarning(
+                "Section not found at index {Index} for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Failed to move section: Section not found",
+                Severity.Error);
+            return;
+        }
+
+        if (section.Workflow is null)
+        {
+            Logger.LogWarning(
+                "Section at index {Index} has no parent for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Failed to move section: Section has no parent",
+                Severity.Error);
+            return;
+        }
+
+        DialogParameters<MoveSectionDialog> parameters = [];
+        parameters.Add(x => x.NewIndex, index);
+        var dialog = await DialogService.ShowAsync<MoveSectionDialog>("Move Section To", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            Logger.LogWarning(
+                "Move section dialog was canceled for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+
+            return;
+        }
+
+        if (result.Data is null
+            || result.Data is not int newIndex)
+        {
+            Logger.LogWarning(
+                "Invalid result from move section dialog for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+
+            return;
+        }
+
+        try
+        {
+            section.MoveToWorkflow(section.Workflow, newIndex);
+
+            await UpdateWorkflowStateAsync();
+
+            Logger.LogInformation(
+                "Section moved to index {Index} for workflow type {WorkflowType}",
+                newIndex,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Section moved successfully",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to move section to index {Index} for workflow type {WorkflowType}",
+                newIndex,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to move section: {e.Message}",
+                Severity.Error);
+        }
+    }
+
+    private async Task MoveBlock(Block block)
+    {
+        var index = block.Order;
+        Section? section = block.Section;
+
+        if (section is null)
+        {
+            Logger.LogWarning(
+                "Block at index {Index} has no section for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Failed to move block: Block has no section",
+                Severity.Error);
+
+            return;
+        }
+
+        Logger.LogInformation(
+            "Moving block at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        DialogParameters<MoveBlockDialog> parameters = [];
+        parameters.Add(x => x.NewIndex, index);
+        parameters.Add(x => x.TopLevelWorkflow, section.Workflow);
+        parameters.Add(x => x.SelectedSection, section);
+        var dialog = await DialogService.ShowAsync<MoveBlockDialog>("Move Block To", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            Logger.LogWarning(
+                "Move block dialog was canceled for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+
+            return;
+        }
+
+        if (result.Data is null
+            || result.Data is not (Section sectionToMoveTo, int newIndex))
+        {
+            Logger.LogWarning(
+                "Invalid result from move block dialog for workflow type {WorkflowType}",
+                GetWorkflowTypeDisplayName());
+
+            return;
+        }
+
+        try
+        {
+            SurfaceState.MoveBlock(block, sectionToMoveTo, newIndex);
+
+            Logger.LogInformation(
+                "Block moved to section {Section} at index {Index} for workflow type {WorkflowType}",
+                sectionToMoveTo.Title,
+                newIndex,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Block moved successfully",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to move block to section {Section} at index {Index} for workflow type {WorkflowType}",
+                sectionToMoveTo.Name,
+                newIndex,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to move block: {e.Message}",
+                Severity.Error);
+        }
+    }
+
+    private async Task AddSection(int index)
+    {
+        Logger.LogInformation(
+            "Adding new section at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        _ = new Section("", EditorContext.Workflow, index);
+
+        await UpdateWorkflowStateAsync();
+
+        Logger.LogInformation(
+            "Successfully added section at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+    }
+
+    private async Task AddSeparator(int index)
+    {
+        Logger.LogInformation(
+            "Adding separator at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        _ = new Section("", EditorContext.Workflow, index)
+        {
+            Properties = new SectionProperties { IsSeparator = true },
+        };
+
+        await UpdateWorkflowStateAsync();
+    }
+
+    private async Task RemoveSection(int index)
+    {
+        Logger.LogInformation(
+            "Removing section at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        EditorContext.Workflow.RemoveSectionAt(index);
+
+        await UpdateDocumentClassesListCallback.InvokeAsync();
+        await UpdateWorkflowStateAsync();
+
+        Logger.LogInformation(
+            "Successfully removed section at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+    }
+
+    /// <summary>
+    /// Shows the blocks for the workflow item with the specified <paramref name="workflowId"/>.
+    /// </summary>
+    /// <remarks>
+    /// Side effects:
+    /// - Sets <c>_isShowingBlocks</c> to <c>true</c>.
+    /// - Sets <c>_activeWorkflowItem</c> to the workflow child matching <paramref name="workflowId"/>.
+    /// - Updates workflow state and scrolls to the active workflow item in the UI.
+    /// </remarks>
+    /// <param name="workflowId">The ID of the workflow whose blocks should be displayed.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// Usage context:
+    /// - Intended to be invoked externally via a parent component using <c>@ref</c>.
+    /// </remarks>
+    public async Task ShowBlocks(string workflowId)
+    {
+        _isShowingBlocks = true;
+        _isGraphTabActive = false;
+        _activeWorkflowItem = EditorContext.Workflow.Sections.FirstOrDefault(s => s.Id == workflowId);
+
+        await UpdateWorkflowStateAsync();
+
+        // Wait for the component to render, then scroll to it. Target the non-sticky
+        // shell anchor rather than the section card: the card is position:sticky, so
+        // scrolling to it is a no-op when it is already pinned at the top.
+        await Task.Delay(200);
+
+        if (_activeWorkflowItem is not null)
+        {
+            await JsRuntime.InvokeVoidAsync(SCROLL_TO_ELEMENT_JS, $"sectiontop_{_activeWorkflowItem.Id}");
+        }
+    }
+
+    private async Task GoBack()
+    {
+        await HideBlocks(null);
+    }
+
+    private async Task HideBlocks(string? idToScrollTo = null)
+    {
+        _isShowingBlocks = false;
+
+        await UpdateWorkflowStateAsync();
+
+        await Task.Delay(100);
+        await JsRuntime.InvokeVoidAsync(SCROLL_TO_ELEMENT_JS, idToScrollTo ?? _activeWorkflowItem?.Id);
+    }
+
+    private async Task DuplicateSection(int index)
+    {
+        Logger.LogInformation(
+            "Duplicating section at index {Index} for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        try
+        {
+            EditorContext.Workflow.DuplicateSectionAt(index);
+
+            await UpdateWorkflowStateAsync();
+
+            Logger.LogInformation(
+                "Successfully duplicated section at index {Index} for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Section duplicated",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to duplicate section at index {Index} for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to duplicate section: {e.Message}",
+                Severity.Error);
+        }
+    }
+
+    private async Task CopySectionToCoreWorkflow(int index)
+    {
+        Logger.LogInformation(
+            "Copying section at index {Index} to a Core workflow for workflow type {WorkflowType}",
+            index,
+            GetWorkflowTypeDisplayName());
+
+        Section? section = EditorContext
+            .Workflow
+            .Sections
+            .FirstOrDefault(s => s.Order == index);
+
+        if (section is null)
+        {
+            Logger.LogWarning(
+                "Section not found at index {Index} for workflow type {WorkflowType}",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                "Failed to copy section: Section not found",
+                Severity.Error);
+            return;
+        }
+
+        try
+        {
+            DialogParameters<CopySectionToCoreDialog> parameters = [];
+            var dialog = await DialogService.ShowAsync<CopySectionToCoreDialog>("Copy Section to Core Workflow", parameters);
+            var result = await dialog.Result;
+
+            if (result is null || result.Canceled)
+            {
+                Logger.LogWarning(
+                    "Copy section to Core dialog was canceled for workflow type {WorkflowType}",
+                    GetWorkflowTypeDisplayName());
+                return;
+            }
+
+            if (result.Data is null
+                || result.Data is not (WorkflowType targetWorkflowType, int targetIndex))
+            {
+                Logger.LogWarning(
+                    "Invalid result from copy section to Core dialog for workflow type {WorkflowType}",
+                    GetWorkflowTypeDisplayName());
+                return;
+            }
+
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            Workflow? coreWorkflow = await coreUnitOfWork
+                .Workflows
+                .GetByTypeIdAsNoTrackingAsync(targetWorkflowType.Id);
+
+            if (coreWorkflow is null)
+            {
+                Logger.LogWarning(
+                    "Target Core workflow not found for workflow type {TargetWorkflowTypeId} when copying from workflow type {WorkflowType}",
+                    targetWorkflowType.Id,
+                    GetWorkflowTypeDisplayName());
+
+                AppState.Notify(
+                    $"Failed to copy section: Target Core workflow not found for workflow type {targetWorkflowType.Name}",
+                    Severity.Error);
+                return;
+            }
+
+            string? targetHeadVersionId = await GetTargetHeadVersionIdAsync(scope, coreWorkflow, targetWorkflowType.Id);
+
+            Section clonedSection = section.CloneToWorkflow(coreWorkflow, targetIndex);
+            int carriedDefinitions = CarrySignatureDefinitionsToTarget(clonedSection.Blocks, coreWorkflow);
+
+            ErrorOr<SaveWorkflowResult> saveResult = await SaveTargetWorkflowAsync(scope, coreWorkflow, targetWorkflowType.Id, targetHeadVersionId);
+            if (saveResult.IsError)
+            {
+                AppState.Notify(
+                    SaveWorkflowCommandHandler.IsVersionConflict(saveResult.FirstError)
+                        ? TARGET_CHANGED_MESSAGE
+                        : $"Failed to copy section: {saveResult.FirstError.Description}",
+                    Severity.Error);
+                return;
+            }
+
+            NotifyCarriedSignatureDefinitions(carriedDefinitions, targetWorkflowType.Name);
+
+            Logger.LogInformation(
+                "Section '{SectionTitle}' copied from workflow type {WorkflowType} to Core workflow {TargetWorkflowType} at index {TargetIndex}",
+                section.Title,
+                GetWorkflowTypeDisplayName(),
+                targetWorkflowType.Name,
+                targetIndex);
+
+            AppState.Notify(
+                $"Section '{section.Title}' successfully copied to Core workflow '{targetWorkflowType.Name}'",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to copy section at index {Index} from workflow type {WorkflowType} to Core workflow",
+                index,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to copy section to Core workflow: {e.Message}",
+                Severity.Error);
+        }
+    }
+
+    private async Task CopyBlockToCoreWorkflow(Block block)
+    {
+        Logger.LogInformation("Copying block at index {Index} to a Core workflow", block.Order);
+
+        if (block.Section is null)
+        {
+            Logger.LogWarning("Block has no section");
+
+            AppState.Notify(
+                "Failed to copy block: Block has no section",
+                Severity.Error);
+            return;
+        }
+
+        try
+        {
+            DialogParameters<CopyBlockToCoreDialog> parameters = [];
+            var dialog = await DialogService.ShowAsync<CopyBlockToCoreDialog>("Copy Block to Core Workflow", parameters);
+            var result = await dialog.Result;
+
+            if (result is null || result.Canceled)
+            {
+                Logger.LogWarning("Copy block to Core dialog was canceled.");
+                return;
+            }
+
+            if (result.Data is null
+                || result.Data is not (WorkflowType targetWorkflowType, Section targetSection, int targetIndex))
+            {
+                Logger.LogWarning("Invalid result from dialog.");
+                return;
+            }
+
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            Workflow? coreWorkflow = await coreUnitOfWork
+                .Workflows
+                .GetByTypeIdAsNoTrackingAsync(targetWorkflowType.Id);
+
+            if (coreWorkflow is null)
+            {
+                Logger.LogWarning("Target Core workflow not found for workflow type {WorkflowTypeId}", targetWorkflowType.Id);
+
+                AppState.Notify(
+                    $"Failed to copy block: Target Core workflow not found for workflow type {targetWorkflowType.Name}",
+                    Severity.Error);
+                return;
+            }
+
+            // Find the target section in the core workflow. Filter separators so a
+            // separator can't be picked up as the target by Order.
+            Section? coreTargetSection = coreWorkflow.Sections
+                .Where(s => !s.IsSeparator)
+                .FirstOrDefault(s => s.Order == targetSection.Order);
+
+            if (coreTargetSection is null)
+            {
+                Logger.LogWarning("Target section not found in Core workflow");
+
+                AppState.Notify(
+                    "Failed to copy block: Target section not found in Core workflow",
+                    Severity.Error);
+                return;
+            }
+
+            string? targetHeadVersionId = await GetTargetHeadVersionIdAsync(scope, coreWorkflow, targetWorkflowType.Id);
+
+            Block copiedBlock = block.CopyToSection(coreTargetSection, targetIndex);
+            coreTargetSection.NormalizeBlockOrdering();
+            int carriedDefinitions = CarrySignatureDefinitionsToTarget([copiedBlock], coreWorkflow);
+
+            ErrorOr<SaveWorkflowResult> saveResult = await SaveTargetWorkflowAsync(scope, coreWorkflow, targetWorkflowType.Id, targetHeadVersionId);
+            if (saveResult.IsError)
+            {
+                AppState.Notify(
+                    SaveWorkflowCommandHandler.IsVersionConflict(saveResult.FirstError)
+                        ? TARGET_CHANGED_MESSAGE
+                        : $"Failed to copy block: {saveResult.FirstError.Description}",
+                    Severity.Error);
+                return;
+            }
+
+            NotifyCarriedSignatureDefinitions(carriedDefinitions, targetWorkflowType.Name);
+
+            Logger.LogInformation(
+                "Block '{BlockName}' copied to Core workflow {WorkflowType}, section {SectionTitle} at index {Index}",
+                block.Name,
+                targetWorkflowType.Name,
+                coreTargetSection.Title,
+                targetIndex);
+
+            AppState.Notify(
+                $"Block '{block.Name}' successfully copied to Core workflow '{targetWorkflowType.Name}', section '{coreTargetSection.Title}'",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to copy block to Core workflow");
+
+            AppState.Notify(
+                $"Failed to copy block to Core workflow: {e.Message}",
+                Severity.Error);
+        }
+    }
+
+    private async Task ShareSectionToLibrary(int index)
+    {
+        Section? section = EditorContext.Workflow.Sections.FirstOrDefault(s => s.Order == index);
+        if (section is null)
+        {
+            Logger.LogWarning("Section not found at index {Index} for sharing to the Library", index);
+
+            AppState.Notify(
+                "Could not share the section: section not found",
+                Severity.Error);
+            return;
+        }
+
+        await ShareSectionToLibraryCallback.InvokeAsync(section);
+    }
+
+    private async Task InsertBlockFromLibraryAt(int blockIndex)
+    {
+        if (_activeWorkflowItem is null)
+        {
+            AppState.Notify(
+                "Could not insert from the Library: section not found",
+                Severity.Error);
+            return;
+        }
+
+        await InsertBlockFromLibraryCallback.InvokeAsync((_activeWorkflowItem, blockIndex));
+    }
+
+    private string ResolveTargetOrganizationId(Workflow targetWorkflow)
+    {
+        return string.IsNullOrWhiteSpace(targetWorkflow.OrganizationId)
+            ? _user.OrganizationId
+            : targetWorkflow.OrganizationId;
+    }
+
+    private async Task<string?> GetTargetHeadVersionIdAsync(
+        IServiceScope scope,
+        Workflow targetWorkflow,
+        string targetWorkflowTypeId)
+    {
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<WorkflowHeadVersionResult> head = await sender.Send(
+            new GetWorkflowHeadVersionQuery(
+                ResolveTargetOrganizationId(targetWorkflow),
+                targetWorkflowTypeId));
+
+        if (head.IsError)
+        {
+            Logger.LogWarning(
+                "Could not read the head version of target Core workflow {WorkflowTypeId} before copy: {Error}",
+                targetWorkflowTypeId,
+                head.FirstError.Description);
+            return null;
+        }
+
+        return head.Value.VersionId;
+    }
+
+    private async Task<ErrorOr<SaveWorkflowResult>> SaveTargetWorkflowAsync(
+        IServiceScope scope,
+        Workflow targetWorkflow,
+        string targetWorkflowTypeId,
+        string? targetHeadVersionId)
+    {
+        string organizationId = ResolveTargetOrganizationId(targetWorkflow);
+
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<SaveWorkflowResult> saveResult = await sender.Send(new SaveWorkflowCommand(
+            organizationId,
+            _user.Id,
+            targetWorkflowTypeId,
+            targetWorkflow,
+            targetHeadVersionId,
+            EnforceOptimisticConcurrency: true));
+
+        if (saveResult.IsError)
+        {
+            Logger.LogError(
+                "Versioned save of target Core workflow {WorkflowTypeId} failed after copy: {Error}",
+                targetWorkflowTypeId,
+                saveResult.FirstError.Description);
+
+            return saveResult;
+        }
+
+        foreach (string saveWarning in saveResult.Value.Warnings ?? [])
+        {
+            AppState.Notify(saveWarning, Severity.Warning);
+        }
+
+        // Mirror the saved target template to the GitHub workflow repository, matching the
+        // editor's own save path. Skip a deduped save (unchanged content, nothing to commit).
+        if (!saveResult.Value.WasDeduped)
+        {
+            await TryMirrorTargetWorkflowToGitHubAsync(targetWorkflow, targetWorkflowTypeId);
+        }
+
+        return saveResult;
+    }
+
+    private async Task TryMirrorTargetWorkflowToGitHubAsync(Workflow targetWorkflow, string targetWorkflowTypeId)
+    {
+        // Best-effort: the save is already persisted, so a mirror failure must not surface as a
+        // copy failure. Mirrors the error handling of the editor's own GitHub auto-commit.
+        try
+        {
+            GitHubCommitResult result = await GitHubWorkflowVersioningService.CommitWorkflowAsync(
+                workflowTypeId: targetWorkflowTypeId,
+                area: string.Empty,
+                function: string.Empty,
+                content: targetWorkflow.ToExportJson(),
+                commitMessage: $"Save workflow {targetWorkflowTypeId}",
+                authorName: _user.UserName ?? "Unknown",
+                authorEmail: _user.Email ?? "unknown@example.com");
+
+            // An empty Sha means the mirror was a no-op (disabled), so don't claim it committed.
+            if (!string.IsNullOrEmpty(result.Sha))
+            {
+                Logger.LogInformation(
+                    "Mirrored target workflow {WorkflowTypeId} to GitHub after copy ({Sha})",
+                    targetWorkflowTypeId,
+                    result.Sha);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(
+                ex,
+                "Failed to mirror target workflow {WorkflowTypeId} to GitHub after copy; the save succeeded",
+                targetWorkflowTypeId);
+
+            AppState.Notify($"GitHub mirror failed: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task CopySectionAsText(int sectionOrder)
+    {
+        var section = EditorContext.Workflow.Sections
+            .FirstOrDefault(s => s.Order == sectionOrder);
+
+        if (section is null)
+        {
+            AppState.Notify("Section not found", Severity.Error);
+            return;
+        }
+
+        if (section.IsSeparator)
+        {
+            AppState.Notify("Cannot copy a separator", Severity.Warning);
+            return;
+        }
+
+        string text = TextExportService.ExportSectionToText(section);
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        AppState.Notify($"Section '{section.Title}' copied to clipboard", Severity.Success);
+    }
+
+    private async Task CopyBlockAsText(Block block)
+    {
+        string text = TextExportService.ExportBlockToText(block);
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        AppState.Notify($"Block '{block.Name}' copied to clipboard", Severity.Success);
+    }
+
+    private async Task IsolateBlock(Block block)
+    {
+        Logger.LogInformation(
+            "Isolating block '{BlockName}' with its dependencies for workflow type {WorkflowType}",
+            block.Name,
+            GetWorkflowTypeDisplayName());
+
+        try
+        {
+            EditorContext.Workflow.IsolateBlockWithDependencies(block);
+
+            await UpdateDocumentClassesListCallback.InvokeAsync();
+            await UpdateWorkflowStateAsync();
+
+            Logger.LogInformation(
+                "Successfully isolated block '{BlockName}' for workflow type {WorkflowType}",
+                block.Name,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Block '{block.Name}' isolated with its dependencies",
+                Severity.Success);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(
+                e,
+                "Failed to isolate block '{BlockName}' for workflow type {WorkflowType}",
+                block.Name,
+                GetWorkflowTypeDisplayName());
+
+            AppState.Notify(
+                $"Failed to isolate block: {e.Message}",
+                Severity.Error);
+        }
+    }
+
+    private void ToggleCitations(Section section)
+    {
+        bool newCitationsSetting = SurfaceState.ToggleSectionCitations(section);
+
+        Logger.LogInformation(
+            "Toggling citations setting for section '{SectionName}' in workflow type {WorkflowType}, new setting: {NewSetting}",
+            section.Name,
+            GetWorkflowTypeDisplayName(),
+            newCitationsSetting);
+
+        AppState.Notify(
+            $"Citations {(newCitationsSetting ? "enabled" : "disabled")} for section '{section.Name}'",
+            Severity.Success);
+    }
+
+    public async Task ToggleCitationsForAllSections()
+    {
+        bool newCitationsSetting = !EditorContext.Workflow.GetAllBlocks()
+            .Any(b => b.Properties is AiQueryProperties props && props.ShouldGetCitationsFromModel == true);
+
+        Logger.LogInformation(
+            "Toggling citations setting for all sections in workflow type {WorkflowType}, new setting: {NewSetting}",
+            GetWorkflowTypeDisplayName(),
+            newCitationsSetting);
+
+        foreach (Section section in EditorContext.Workflow.Sections)
+        {
+            SurfaceState.ApplySectionCitations(section, newCitationsSetting);
+        }
+
+        AppState.Notify(
+            $"Citations {(newCitationsSetting ? "enabled" : "disabled")} for all sections",
+            Severity.Success);
+    }
+}

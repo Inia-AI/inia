@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- A library of abstract test classes, which the test project of each implementation subclasses and runs, with the fixtures they use. -->
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3.assert" />
+        <PackageReference Include="xunit.v3.extensibility.core" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.FileFormats\IniaAi.FileFormats.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.Ooxml\IniaAi.Testing.Ooxml.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="ContractFixtures\**" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\CreditReviewTemplate.xlsm" Link="ContractFixtures\Excel\credit-review-template.xlsm" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\MultiPage.docx" Link="ContractFixtures\Word\ten-pages.docx" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\Email\body-text-only-sample.eml" Link="ContractFixtures\Email\body-text-only-sample.eml" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\Email\body-signature-only-sample.eml" Link="ContractFixtures\Email\body-signature-only-sample.eml" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\Email\body-pasted-table-sample.eml" Link="ContractFixtures\Email\body-pasted-table-sample.eml" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.Testing\TestResources\Email\Monthly Newsletter.msg" Link="ContractFixtures\Email\monthly-newsletter.msg" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\Templates\EditableWorkbook.xlsx" Link="ContractFixtures\Templates\editable-workbook.xlsx" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\Templates\FillableDocument.docx" Link="ContractFixtures\Templates\fillable-document.docx" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="..\IniaAi.FileFormats.Tests\TestResources\Templates\FillableDocument.docm" Link="ContractFixtures\Templates\fillable-document.docm" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+</Project>

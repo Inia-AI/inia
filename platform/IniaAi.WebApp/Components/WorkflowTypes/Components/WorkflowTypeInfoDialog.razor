@@ -1,0 +1,233 @@
+@using IniaAi.Common.Constants
+@using ErrorOr
+@using IniaAi.Application.Commands.WorkflowTemplates.CreateWorkflowType
+@using IniaAi.Common.Text
+@using IniaAi.Domain.Entities.Counterparties
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using System.ComponentModel.DataAnnotations
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject AppState AppState
+@inject ILogger<WorkflowTypeInfoDialog> Logger
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="@_id"
+                      Label="ID"
+                      Variant="Variant.Outlined"
+                      For="@(() => _id)"
+                      Required="true"
+                      Disabled="@(!_isNew)"
+                      Immediate="true" />
+
+        <MudTextField @bind-Value="@_name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      For="@(() => _name)"
+                      Required="true"
+                      Immediate="true" />
+
+        <MudTextField @bind-Value="@_description"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Lines="3" />
+
+        <MudSelect T="string"
+                   @bind-Value="_categoryId"
+                   Label="Category"
+                   Variant="Variant.Outlined"
+                   HelperText="Analysts find a workflow type under its category. A type with no category is not offered to them."
+                   Clearable="true"
+                   AnchorOrigin="Origin.BottomLeft">
+            <MudSelectItem Value="@((string?)null)">
+                None
+            </MudSelectItem>
+
+            @foreach (var category in Categories)
+            {
+                <MudSelectItem Value="@category.Id">
+                    @category.Name
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="string"
+                   Label="@($"Allowed {CounterpartyTerms.SINGULAR} Types")"
+                   Variant="Variant.Outlined"
+                   MultiSelection="true"
+                   Clearable="true"
+                   SelectedValues="_selectedCounterpartyTypeIds"
+                   SelectedValuesChanged="OnCounterpartyTypesChanged"
+                   ToStringFunc="@(id => CounterpartyTypes.FirstOrDefault(ct => ct.Id == id)?.Name ?? id)"
+                   AnchorOrigin="Origin.BottomLeft">
+            @foreach (var counterpartyType in CounterpartyTypes)
+            {
+                <MudSelectItem Value="@counterpartyType.Id">
+                    @counterpartyType.Name
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="my-2">
+                @_errorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Disabled="@_isRunning"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@_isRunning"
+                   OnClick="SubmitAsync">
+            @(_isNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public WorkflowType WorkflowType { get; set; } = default!;
+
+    [Parameter]
+    public bool IsNew { get; set; } = true;
+
+    [Parameter]
+    public IEnumerable<WorkflowTypeCategory> Categories { get; set; } = [];
+
+    [Parameter]
+    public IEnumerable<CounterpartyType> CounterpartyTypes { get; set; } = [];
+
+    private string _id = string.Empty;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string? _categoryId = null;
+    private string _errorMessage = string.Empty;
+    private bool _isNew;
+    private bool _isRunning;
+    private IReadOnlyCollection<string> _selectedCounterpartyTypeIds = [];
+
+    protected override void OnInitialized()
+    {
+        _isNew = IsNew;
+
+        _id = WorkflowType.Id;
+        _name = WorkflowType.Name;
+        _description = WorkflowType.Description ?? string.Empty;
+        _categoryId = WorkflowType.CategoryId;
+        _selectedCounterpartyTypeIds = WorkflowType.CounterpartyTypeMappings?
+            .Select(m => m.CounterpartyTypeId)
+            .ToList() ?? [];
+    }
+
+    private void OnCounterpartyTypesChanged(IReadOnlyCollection<string> selectedIds)
+    {
+        _selectedCounterpartyTypeIds = selectedIds;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _errorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_id))
+        {
+            _errorMessage = "ID is required";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "Name is required";
+            return;
+        }
+
+        if (_isNew)
+        {
+            await CreateAsync();
+            return;
+        }
+
+        // Update the workflow type
+        WorkflowType.Id = _id;
+        WorkflowType.Name = _name;
+        WorkflowType.Description = !string.IsNullOrWhiteSpace(_description) ? _description : null;
+        WorkflowType.CategoryId = _categoryId;
+
+        // Sync counterparty type mappings
+        WorkflowType.CounterpartyTypeMappings ??= new List<WorkflowTypeCounterpartyTypeMap>();
+        var currentIds = WorkflowType.CounterpartyTypeMappings
+            .Select(m => m.CounterpartyTypeId)
+            .ToHashSet();
+        var selectedIds = _selectedCounterpartyTypeIds.ToHashSet();
+
+        // Remove mappings that are no longer selected
+        var toRemove = WorkflowType.CounterpartyTypeMappings
+            .Where(m => !selectedIds.Contains(m.CounterpartyTypeId))
+            .ToList();
+        foreach (var mapping in toRemove)
+        {
+            WorkflowType.CounterpartyTypeMappings.Remove(mapping);
+        }
+
+        // Add new mappings
+        foreach (var typeId in selectedIds.Where(id => !currentIds.Contains(id)))
+        {
+            WorkflowType.CounterpartyTypeMappings.Add(new WorkflowTypeCounterpartyTypeMap
+            {
+                WorkflowTypeId = WorkflowType.Id,
+                CounterpartyTypeId = typeId
+            });
+        }
+
+        MudDialog.Close(DialogResult.Ok(WorkflowType));
+    }
+
+    private async Task CreateAsync()
+    {
+        _isRunning = true;
+        try
+        {
+            ErrorOr<Created> created = await ServiceScopeFactory.SendScopedAsync(new CreateWorkflowTypeCommand(
+                AppState.CurrentOrganizationId ?? string.Empty,
+                AppState.User?.Id ?? string.Empty,
+                _id,
+                _name,
+                string.IsNullOrWhiteSpace(_description) ? null : _description,
+                _categoryId,
+                _selectedCounterpartyTypeIds));
+
+            if (created.IsError)
+            {
+                _errorMessage = created.FirstError.Description;
+                Logger.LogWarning(
+                    "Creating workflow type {WorkflowTypeId} failed: {ErrorCode}",
+                    LogSanitizer.ForLog(_id),
+                    created.FirstError.Code);
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(_id));
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+}

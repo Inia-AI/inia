@@ -1,0 +1,223 @@
+{
+  "newWorkflowType": {
+    "name": "Sample: block showcase",
+    "description": "Shows how the blocks of a workflow pass data to each other, on the sample annual report."
+  },
+  "workflow": {
+    "Name": "Sample: block showcase",
+    "Title": "Block showcase",
+    "Description": "One AI Query block reads the figures of the sample annual report as data. The other blocks read a page, calculate, look up, reshape, chart and loop over that data without another model call.",
+    "Sections": [
+      {
+        "Name": "Read the figures",
+        "Title": "Read the figures",
+        "Order": 0,
+        "Blocks": [
+          {
+            "Type": "AiQuery",
+            "Name": "Figures as data",
+            "ReplacementTag": "figures",
+            "Order": 0,
+            "RagSettings": [
+              {
+                "Type": 0
+              }
+            ],
+            "Properties": {
+              "Type": "AiQuery",
+              "SystemPromptTemplate": "You read annual reports and return their figures as data.",
+              "UserPromptTemplate": "From the annual report, return a JSON object with these fields:\n\n- company_name: the company's name, exactly as the report writes it\n- currency: the three-letter code of the currency of the figures\n- revenue_2024 and revenue_2025: revenue for each year, in millions\n- net_profit_2024 and net_profit_2025: net profit for each year, in millions\n\nWrite each number without units or separators. Return the JSON object and nothing else.",
+              "OutputFormatType": "Json",
+              "OutputFormatJsonSchema": "{\"type\": \"object\", \"properties\": {\"company_name\": {\"type\": \"string\"}, \"currency\": {\"type\": \"string\"}, \"revenue_2024\": {\"type\": \"number\"}, \"revenue_2025\": {\"type\": \"number\"}, \"net_profit_2024\": {\"type\": \"number\"}, \"net_profit_2025\": {\"type\": \"number\"}}, \"required\": [\"company_name\", \"currency\", \"revenue_2024\", \"revenue_2025\", \"net_profit_2024\", \"net_profit_2025\"], \"additionalProperties\": false}",
+              "ShouldUseAdvancedModel": false,
+              "MaxTokens": 1000
+            }
+          },
+          {
+            "Type": "SimpleRag",
+            "Name": "Page 2 as the platform reads it",
+            "ReplacementTag": "pageTwo",
+            "Order": 1,
+            "RagSettings": [
+              {
+                "Type": 7,
+                "ExactIndexesInput": "2"
+              }
+            ],
+            "Properties": {
+              "Type": "SimpleRag"
+            }
+          },
+          {
+            "Type": "StringManipulation",
+            "Name": "Page 2 of the report",
+            "ReplacementTag": "pageTwoText",
+            "Order": 2,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Page 2, read by Retrieve Data From Documents and cleaned by String Manipulation",
+            "Properties": {
+              "Type": "StringManipulation",
+              "InputTemplate": "{pageTwo}",
+              "Operation": "ReplaceUsingPattern",
+              "Find": "</?page\\d+\\([^)]*\\)>|\\n[ \\t]+Page \\d+[ \\t]*",
+              "ReplaceWith": ""
+            }
+          }
+        ]
+      },
+      {
+        "Name": "Calculate",
+        "Title": "Calculate",
+        "Order": 1,
+        "Blocks": [
+          {
+            "Type": "CalculateNumber",
+            "Name": "Revenue growth, in percent",
+            "ReplacementTag": "revenueGrowth",
+            "Order": 0,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Revenue growth in percent, from Calculate Formula",
+            "Properties": {
+              "Type": "CalculateNumber",
+              "FormulaTemplate": "Round(({figures.revenue_2025} - {figures.revenue_2024}) / {figures.revenue_2024} * 100, 1)"
+            }
+          },
+          {
+            "Type": "CalculateNumber",
+            "Name": "Net margin, in percent",
+            "ReplacementTag": "netMargin",
+            "Order": 1,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Net margin in percent, from Calculate Formula",
+            "Properties": {
+              "Type": "CalculateNumber",
+              "FormulaTemplate": "Round({figures.net_profit_2025} / {figures.revenue_2025} * 100, 1)"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "Combine as data",
+        "Title": "Combine as data",
+        "Order": 2,
+        "Blocks": [
+          {
+            "Type": "MergeJson",
+            "Name": "Figures and ratios",
+            "ReplacementTag": "summaryData",
+            "Order": 0,
+            "DataOutputName": "figures_and_ratios",
+            "Properties": {
+              "Type": "MergeJson",
+              "JsonInputs": [
+                "{figures.Json}",
+                "{\"revenue_growth_percent\": {revenueGrowth}, \"net_margin_percent\": {netMargin}}"
+              ]
+            }
+          },
+          {
+            "Type": "DynamicChart",
+            "Name": "Revenue and net profit",
+            "ReplacementTag": "figuresChart",
+            "Order": 1,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Revenue and net profit, drawn by Dynamic Chart from the data that Merge JSON combined",
+            "Properties": {
+              "Type": "DynamicChart",
+              "DataSourceJson": "[\n  {\"year\": \"2024\", \"measure\": \"Revenue\", \"value\": {summaryData.revenue_2024}},\n  {\"year\": \"2025\", \"measure\": \"Revenue\", \"value\": {summaryData.revenue_2025}},\n  {\"year\": \"2024\", \"measure\": \"Net profit\", \"value\": {summaryData.net_profit_2024}},\n  {\"year\": \"2025\", \"measure\": \"Net profit\", \"value\": {summaryData.net_profit_2025}}\n]",
+              "ChartType": "column",
+              "XAxisField": "year",
+              "YAxisField": "value",
+              "SeriesGroupField": "measure",
+              "ChartTitle": "Revenue and net profit",
+              "XAxisLabel": "Year",
+              "YAxisLabel": "Millions"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "Summary",
+        "Title": "Summary",
+        "Order": 3,
+        "Blocks": [
+          {
+            "Type": "SwitchCase",
+            "Name": "Currency name",
+            "ReplacementTag": "currencyName",
+            "Order": 0,
+            "Properties": {
+              "Type": "SwitchCase",
+              "InputTemplate": "{figures.currency}",
+              "Cases": {
+                "EUR": "euros",
+                "USD": "US dollars",
+                "GBP": "pounds sterling"
+              },
+              "DefaultValue": "{figures.currency}"
+            }
+          },
+          {
+            "Type": "StringManipulation",
+            "Name": "Company name in capitals",
+            "ReplacementTag": "companyName",
+            "Order": 1,
+            "Properties": {
+              "Type": "StringManipulation",
+              "InputTemplate": "{figures.company_name}",
+              "Operation": "ChangeCase",
+              "CaseType": "Upper"
+            }
+          },
+          {
+            "Type": "LoopStart",
+            "Name": "Each measure",
+            "ReplacementTag": "measures",
+            "Order": 2,
+            "Properties": {
+              "Type": "LoopStart",
+              "ListTitle": "measure",
+              "LoopedListTemplate": "Revenue\nNet profit"
+            }
+          },
+          {
+            "Type": "SwitchCase",
+            "Name": "Measure line",
+            "ReplacementTag": "measureLine",
+            "Order": 3,
+            "Properties": {
+              "Type": "SwitchCase",
+              "InputTemplate": "{measure}",
+              "Cases": {
+                "Revenue": "Revenue: {summaryData.revenue_2024} million in 2024, {summaryData.revenue_2025} million in 2025",
+                "Net profit": "Net profit: {summaryData.net_profit_2024} million in 2024, {summaryData.net_profit_2025} million in 2025"
+              }
+            }
+          },
+          {
+            "Type": "LoopEnd",
+            "Name": "End of the loop",
+            "ReplacementTag": "measuresEnd",
+            "Order": 4,
+            "Properties": {
+              "Type": "Merge",
+              "TextTemplate": null
+            }
+          },
+          {
+            "Type": "Merge",
+            "Name": "Summary",
+            "ReplacementTag": "summary",
+            "Order": 5,
+            "IsOutputSource": true,
+            "OutputTitleTemplate": "Summary, written by Apply Template To Data, with one line per measure from a loop",
+            "Properties": {
+              "Type": "Merge",
+              "TextTemplate": "{companyName} grew its revenue by {revenueGrowth}% in 2025, and its net margin was {netMargin}%. The report states its figures in {currencyName}.\n\n{measureLine}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,114 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject ILogger<CopySectionToCoreDialog> Logger
+
+@implements IDisposable
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudSelect T="WorkflowType"
+                   Label="Select Workflow Type to Copy Section To"
+                   Variant="Variant.Outlined"
+                   @bind-Value="SelectedWorkflowType">
+            @if (!_workflowTypes.Any())
+            {
+                <MudSelectItem T="WorkflowType" Disabled>
+                    No Workflow Types Available
+                </MudSelectItem>
+            }
+            else
+            {
+                foreach (var workflowType in _workflowTypes)
+                {
+                    <MudSelectItem T="WorkflowType" Value="@workflowType">
+                        @workflowType.Name
+                    </MudSelectItem>
+                }
+            }
+        </MudSelect>
+
+        <MudTextField Label="Position in Target Workflow"
+                      Variant="Variant.Outlined"
+                      Margin="0"
+                      @bind-Value="@TargetPosition" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm"
+                   Disabled="@(SelectedWorkflowType is null)">
+            Confirm
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<WorkflowType> _workflowTypes = [];
+
+    private ICoreUnitOfWork _coreUnitOfWork = default!;
+    private IServiceScope _serviceScope = default!;
+
+    [Parameter]
+    public WorkflowType? SelectedWorkflowType { get; set; }
+
+    [Parameter]
+    public int TargetIndex { get; set; } = 0;
+
+    private int TargetPosition
+    {
+        get => TargetIndex;
+        set => TargetIndex = Math.Max(0, value);
+    }
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        _serviceScope?.Dispose();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _serviceScope = ServiceScopeFactory.CreateScope();
+        _coreUnitOfWork = _serviceScope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+        await LoadWorkflowTypes();
+    }
+
+    private async Task LoadWorkflowTypes()
+    {
+        try
+        {
+            var workflowTypes = await _coreUnitOfWork.WorkflowTypes.GetAllAsync();
+            _workflowTypes = workflowTypes.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load workflow types for the copy-section dialog");
+            _workflowTypes = [];
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Confirm()
+    {
+        if (SelectedWorkflowType is not null)
+        {
+            MudDialog?.Close(DialogResult.Ok((SelectedWorkflowType, TargetIndex)));
+        }
+    }
+}

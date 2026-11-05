@@ -1,0 +1,304 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.WebApp.Models
+@inject IDialogService DialogService
+
+@if (IsShown)
+{
+    <MudExpansionPanels Elevation="0" Outlined="true" Class="mt-4">
+        <MudExpansionPanel Text="@PANEL_TITLE" KeepContentAlive="false" ExpandedChanged="@OnExpandedChanged">
+            @if (Block.CitationTrace is null)
+            {
+                <MudText Typo="Typo.body2">
+                    No citation trace. Either this run was made before the platform recorded citation traces, or this block's output reaches no report paragraph, so it is not a citation source.
+                </MudText>
+            }
+            else if (_view is null)
+            {
+                <MudText Typo="Typo.body2">The citation trace of this block could not be read.</MudText>
+            }
+            else
+            {
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-3">
+                    @foreach (string chip in _view.Chips)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@chip</MudChip>
+                    }
+                </MudStack>
+
+                <MudTextField T="string"
+                              Value="@_followQuery"
+                              ValueChanged="@OnFollowQueryChanged"
+                              Immediate="true"
+                              DebounceInterval="250"
+                              Label="Follow a figure"
+                              Placeholder="A figure as the report writes it, e.g. £41.5m"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.Search"
+                              Clearable="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-2" />
+
+                @if (!string.IsNullOrWhiteSpace(_followQuery))
+                {
+                    @if (_followed.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Class="mb-3" Style="display: block;">No block of this run states that figure.</MudText>
+                    }
+                    else
+                    {
+                        <div class="citation-trace-follow mb-3">
+                            @foreach (CitationTraceFollowedBlock followed in _followed)
+                            {
+                                <div class="mb-1">
+                                    <MudLink Typo="Typo.body2" OnClick="@(() => OpenBlock(followed.Block))">@followed.Name</MudLink>
+                                    @foreach (string line in followed.Lines)
+                                    {
+                                        <MudText Typo="Typo.body2" Class="ml-4">@line</MudText>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+
+                <MudTabs Elevation="0" Outlined="true" Rounded="true" ApplyEffectsToContainer="false">
+                    <MudTabPanel Text="Facts">
+                        @if (_view.Facts.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Class="pa-2">The block carried no facts.</MudText>
+                        }
+                        else
+                        {
+                            <MudSimpleTable Dense="true" Elevation="0">
+                                <thead>
+                                    <tr><th>Figure</th><th>How it got here</th><th>Source</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (CitationTraceFactRow row in _view.Facts)
+                                    {
+                                        <tr>
+                                            <td class="citation-trace-figure">@row.Figure</td>
+                                            <td>
+                                                @row.How
+                                                @if (row.Detail is not null)
+                                                {
+                                                    <MudText Typo="Typo.caption" Style="display: block; opacity: .7;">@row.Detail</MudText>
+                                                }
+                                            </td>
+                                            <td>@SourceList(row.Sources)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        }
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Turned down">
+                        @if (_view.TurnedDown.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Class="pa-2">No figure or source was turned down.</MudText>
+                        }
+                        else
+                        {
+                            @RejectionTable(_view.TurnedDown)
+                        }
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Report">
+                        @if (_view.Report is null)
+                        {
+                            <MudText Typo="Typo.body2" Class="pa-2">This block built no report paragraph in this run.</MudText>
+                        }
+                        else
+                        {
+                            <MudSimpleTable Dense="true" Elevation="0">
+                                <thead>
+                                    <tr><th>Marker</th><th>Figure</th><th>Sources in the report</th><th>Placed</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (CitationTraceReportRow row in _view.Report)
+                                    {
+                                        <tr>
+                                            <td class="citation-trace-figure">@row.Marker</td>
+                                            <td class="citation-trace-figure">@row.Figure</td>
+                                            <td>
+                                                @SourceList(row.Sources)
+                                                <MudText Typo="Typo.caption" Style="display: block; opacity: .7;">@row.Settled</MudText>
+                                            </td>
+                                            <td>@row.Placed</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+
+                            @if (_view.ReportTurnedDown.Count > 0)
+                            {
+                                @RejectionTable(_view.ReportTurnedDown)
+                            }
+                        }
+                    </MudTabPanel>
+                </MudTabs>
+            }
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+}
+
+<style>
+    .citation-trace-figure {
+        font-family: monospace;
+        min-width: 10rem;
+        max-width: 22rem;
+        overflow-wrap: break-word;
+    }
+
+    .citation-trace-excerpt {
+        display: block;
+        opacity: .8;
+        font-style: italic;
+        word-break: break-word;
+    }
+
+    .citation-trace-follow {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+</style>
+
+@code {
+    private const string PANEL_TITLE = "Citation trace";
+
+    private CitationTraceRun? _run;
+    private CitationTraceBlockView? _view;
+    private string? _viewedContent;
+    private bool _isExpanded;
+    private string? _followQuery;
+    private IReadOnlyList<CitationTraceFollowedBlock> _followed = [];
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext? EditorContext { get; set; }
+
+    [CascadingParameter]
+    public EditorSurfaceState? SurfaceState { get; set; }
+
+    /// <summary>
+    /// A traced block always shows the panel. An executed block without a trace shows it only when
+    /// no block of the run has one, which marks a run made before traces were recorded; in a
+    /// traced run such a block simply took no part in citations.
+    /// </summary>
+    private bool IsShown => Block.CitationTrace is not null
+        || (Block.BlockResponse is not null && !CitationTraceRun.RecordsTraces(Block.Section?.Workflow));
+
+    /// <summary>The block's parent re-renders on every edit; the view is rebuilt only when the block's trace changed.</summary>
+    protected override void OnParametersSet()
+    {
+        if (_isExpanded && !ReferenceEquals(Block.CitationTrace?.Content, _viewedContent))
+        {
+            BuildView();
+        }
+    }
+
+    private void OnExpandedChanged(bool expanded)
+    {
+        _isExpanded = expanded;
+        if (expanded)
+        {
+            BuildView();
+        }
+    }
+
+    private void BuildView()
+    {
+        _run = CitationTraceRun.Of(Block.Section?.Workflow, EditorContext?.WorkflowHandler.AllPages);
+        _view = _run.ViewOf(Block);
+        _viewedContent = Block.CitationTrace?.Content;
+        Refollow();
+    }
+
+    private void OnFollowQueryChanged(string? query)
+    {
+        _followQuery = query;
+        Refollow();
+    }
+
+    private void Refollow()
+    {
+        _followed = _run is null || string.IsNullOrWhiteSpace(_followQuery) ? [] : _run.Follow(_followQuery);
+    }
+
+    private void OpenBlock(Block block)
+    {
+        SurfaceState?.RequestOpenBlock(block);
+    }
+
+    private async Task OpenPageAsync(CitationTraceSourceView source)
+    {
+        var parameters = new DialogParameters<CitationTracePageDialog>
+        {
+            { dialog => dialog.Text, source.PageId is null ? null : _run?.PageText(source.PageId) },
+            { dialog => dialog.Span, source.Span },
+        };
+
+        _ = await DialogService.ShowAsync<CitationTracePageDialog>(
+            source.Label,
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+    }
+
+    private RenderFragment RejectionTable(IReadOnlyList<CitationTraceRejectionRow> rows) =>
+        @<MudSimpleTable Dense="true" Elevation="0">
+            <thead>
+                <tr><th>Figure</th><th>Why</th><th>Where</th></tr>
+            </thead>
+            <tbody>
+                @foreach (CitationTraceRejectionRow row in rows)
+                {
+                    <tr>
+                        <td class="citation-trace-figure">@row.Figure</td>
+                        <td>
+                            @foreach (string reason in row.Reasons)
+                            {
+                                <MudText Typo="Typo.body2">@reason</MudText>
+                            }
+                        </td>
+                        <td>@SourceList(row.Where)</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>;
+
+    private RenderFragment SourceList(IReadOnlyList<CitationTraceSourceView> sources) =>
+        @<div>
+            @foreach (CitationTraceSourceView source in sources)
+            {
+                <div class="mb-1">
+                    @if (source.PageId is not null)
+                    {
+                        <MudLink Typo="Typo.body2" OnClick="@(() => OpenPageAsync(source))">@source.Label</MudLink>
+                    }
+                    else if (source.Url is not null)
+                    {
+                        <MudLink Typo="Typo.body2" Href="@source.Url" Target="_blank" rel="noopener noreferrer" Style="word-break: break-all;">@source.Label</MudLink>
+                    }
+                    else if (source.Block is not null)
+                    {
+                        <MudLink Typo="Typo.body2" OnClick="@(() => OpenBlock(source.Block))">@source.Label</MudLink>
+                    }
+                    else if (source.Label.Length > 0)
+                    {
+                        <MudText Typo="Typo.body2">@source.Label</MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(source.Excerpt))
+                    {
+                        <MudText Typo="Typo.caption" Class="citation-trace-excerpt">“@source.Excerpt”</MudText>
+                    }
+                </div>
+            }
+        </div>;
+}

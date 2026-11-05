@@ -1,0 +1,26 @@
+{
+  "title": "Reports",
+  "createWorkflowLabel": "Create New Report",
+  "emptyFinancialAnalysesText": "No reports have been created yet.",
+  "emptyFilteredText": "No reports match the current filters.",
+  "clearFilters": "Clear filters",
+  "viewReport": "View Report",
+  "viewReportOf": "View Report {report}",
+  "reportTypeForCounterparty": "{type} for {counterparty}",
+  "reportAdded": "{report}, added {date}",
+  "filters": {
+    "reportType": "Report type",
+    "counterparty": "@:{'terms.Company'}",
+    "user": "User",
+    "all": "All"
+  },
+  "columns": {
+    "analystName": "Analyst Name",
+    "counterparty": "@:{'terms.Company'}",
+    "type": "Type",
+    "status": "Status",
+    "dateAdded": "Date Added",
+    "duration": "Duration",
+    "actions": "Actions"
+  }
+}

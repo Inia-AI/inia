@@ -1,0 +1,28 @@
+{
+  "@odata.count": 3,
+  "@odata.skip": 0,
+  "@odata.top": 50,
+  "value": [
+    {
+      "id": "type-corporation",
+      "name": "Corporation",
+      "description": "A company.",
+      "counterpartyCount": 2,
+      "isBuiltIn": true
+    },
+    {
+      "id": "type-hedge-fund",
+      "name": "Hedge Fund",
+      "description": "A fund.",
+      "counterpartyCount": 2,
+      "isBuiltIn": false
+    },
+    {
+      "id": "type-insurer",
+      "name": "Insurer",
+      "description": "A custom type.",
+      "counterpartyCount": 0,
+      "isBuiltIn": false
+    }
+  ]
+}

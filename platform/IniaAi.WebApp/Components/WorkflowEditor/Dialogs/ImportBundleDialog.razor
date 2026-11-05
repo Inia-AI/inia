@@ -1,0 +1,375 @@
+@using ErrorOr
+@using IniaAi.Application.Commands.WorkflowTransfer.ImportWorkflowTemplateApply
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.WorkflowTransfer.ImportWorkflowTemplatePreview
+@using IniaAi.WebApi.Contracts.Dto.WorkflowTransfer
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using Arm = IniaAi.Domain.Entities.SharedComponents.Enums.SharedComponentTransferArm
+@using Method = IniaAi.Domain.Entities.SharedComponents.Enums.SharedComponentTransferCorrelationMethod
+@using Relation = IniaAi.Domain.Entities.SharedComponents.Enums.SharedComponentTransferRelation
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Bundle of <strong>@Bundle.WorkflowTypeName</strong> (@Bundle.OriginWorkflowTypeId),
+            exported @Bundle.ExportedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC.
+        </MudText>
+
+        @if (_templatePlan.WillCreate)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-2">
+                This deployment has no saved template for this workflow type yet — importing lands
+                the bundle's template as its first version.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="d-flex align-center flex-wrap gap-3 mb-2">
+                <MudText Typo="Typo.body2"><strong>Template</strong></MudText>
+                <MudChip T="string" Size="Size.Small" Color="@RelationColor(_templatePlan.Row.Relation)">
+                    @RelationLabel(_templatePlan.Row.Relation)
+                </MudChip>
+                @if (_templatePlan.Control == BundleRowControl.Choice)
+                {
+                    <MudRadioGroup T="Arm?" Value="@TemplateValue" ValueChanged="@(v => _templatePick = v)">
+                        <MudRadio T="Arm?" Value="@((Arm?)Arm.KeepMine)" Dense="true" Size="Size.Small" Color="Color.Primary">
+                            Keep my template
+                        </MudRadio>
+                        <MudRadio T="Arm?" Value="@((Arm?)Arm.TakeTheirs)" Dense="true" Size="Size.Small" Color="Color.Primary">
+                            Adopt the bundle template
+                        </MudRadio>
+                    </MudRadioGroup>
+                }
+                else if (_templatePlan.Control == BundleRowControl.NoOp)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Already in sync — nothing to change.</MudText>
+                }
+            </div>
+            @if (_templatePlan.Row.Relation == Relation.Diverged && TemplateValue is null)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2 d-block">
+                    The template histories have diverged — choose which side wins before applying.
+                </MudText>
+            }
+        }
+
+        @if (_rowPlans.Count > 0)
+        {
+            <MudSimpleTable Dense="true" Class="mb-2">
+                <thead>
+                    <tr>
+                        <th>Shared component</th>
+                        <th>Relation</th>
+                        <th>Matched by</th>
+                        <th>Decision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (BundleImportRowPlan plan in _rowPlans)
+                    {
+                        <tr>
+                            <td>
+                                <MudIcon Icon="@SharedComponentKindIcon.For(plan.Row.Kind)" Size="Size.Small" Class="me-1" />
+                                @plan.Row.Name
+                            </td>
+                            <td>
+                                <MudChip T="string" Size="Size.Small" Color="@RelationColor(plan.Row.Relation)">
+                                    @RelationLabel(plan.Row.Relation)
+                                </MudChip>
+                            </td>
+                            <td>
+                                <MudText Typo="Typo.caption">@MethodLabel(plan.Row.CorrelationMethod)</MudText>
+                            </td>
+                            <td>
+                                @switch (plan.Control)
+                                {
+                                    case BundleRowControl.AutoCreate:
+                                        <MudText Typo="Typo.body2">Will be created</MudText>
+                                        break;
+                                    case BundleRowControl.NoOp:
+                                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Already in sync</MudText>
+                                        break;
+                                    case BundleRowControl.LockedKeepMine:
+                                        <MudText Typo="Typo.body2">Keeping yours</MudText>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                            @plan.TakeTheirsDisabledReason
+                                        </MudText>
+                                        break;
+                                    default:
+                                        <MudRadioGroup T="Arm?"
+                                                       Value="@RowValue(plan)"
+                                                       ValueChanged="@(v => SetRow(plan, v))">
+                                            <MudRadio T="Arm?" Value="@((Arm?)Arm.KeepMine)" Dense="true" Size="Size.Small" Color="Color.Primary">
+                                                Keep mine
+                                            </MudRadio>
+                                            <MudRadio T="Arm?" Value="@((Arm?)Arm.TakeTheirs)" Dense="true" Size="Size.Small" Color="Color.Primary" Disabled="@plan.TakeTheirsDisabled">
+                                                Take the bundle's
+                                            </MudRadio>
+                                        </MudRadioGroup>
+                                        break;
+                                }
+                            </td>
+                        </tr>
+                        @if (plan.Row.RefWarnings is { Count: > 0 })
+                        {
+                            <tr>
+                                <td colspan="4">
+                                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (string warning in plan.Row.RefWarnings)
+                                        {
+                                            <div>@warning</div>
+                                        }
+                                    </MudAlert>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">
+                The bundle carries no shared components.
+            </MudText>
+        }
+
+        @if (Preview.SkippedCarriers.Count > 0)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-1">
+                Never transferred by a bundle: @string.Join(", ", Preview.SkippedCarriers).
+            </MudText>
+        }
+
+        @if (_applyError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">@_applyError</MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(!IsReady || _applying)"
+                   OnClick="ApplyAsync">
+            @(_applying ? "Applying…" : "Apply import")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public WorkflowTransferBundle Bundle { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public ImportWorkflowTemplatePreviewResult Preview { get; set; } = default!;
+
+    private static readonly DialogOptions _confirmOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+    };
+
+    private BundleTemplatePlan _templatePlan = default!;
+    private IReadOnlyList<BundleImportRowPlan> _rowPlans = [];
+    private readonly Dictionary<string, Arm> _picks = [];
+    private Arm? _templatePick;
+    private bool _applying;
+    private string? _applyError;
+
+    protected override void OnInitialized()
+    {
+        Replan();
+    }
+
+    private Arm? TemplateValue => _templatePick ?? _templatePlan.DefaultArm;
+
+    private bool IsReady => BundleImportPlanner.IsReadyToApply(_templatePlan, _templatePick, _rowPlans, _picks);
+
+    private void Replan()
+    {
+        _templatePlan = BundleImportPlanner.PlanTemplate(Preview);
+        _rowPlans = BundleImportPlanner.PlanComponents(Preview);
+        _picks.Clear();
+        _templatePick = null;
+    }
+
+    private Arm? RowValue(BundleImportRowPlan plan)
+    {
+        return _picks.TryGetValue(plan.Row.BundleComponentId, out Arm picked) ? picked : plan.DefaultArm;
+    }
+
+    private void SetRow(BundleImportRowPlan plan, Arm? arm)
+    {
+        if (arm is { } value)
+        {
+            _picks[plan.Row.BundleComponentId] = value;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task ApplyAsync()
+    {
+        await ApplyCoreAsync(acknowledgeUnrelatedHistory: false, acknowledgeSignatureOrphans: false);
+    }
+
+    private async Task ApplyCoreAsync(bool acknowledgeUnrelatedHistory, bool acknowledgeSignatureOrphans)
+    {
+        _applying = true;
+        _applyError = null;
+        try
+        {
+            Arm templateArm = _templatePick ?? _templatePlan.DefaultArm ?? Arm.KeepMine;
+            ImportWorkflowTemplateApplyCommand command = BundleImportPlanner.BuildApplyCommand(
+                OrganizationId,
+                UserId,
+                WorkflowTypeId,
+                Bundle,
+                _rowPlans,
+                Preview.BaseVersionId,
+                templateArm,
+                _picks,
+                acknowledgeUnrelatedHistory,
+                acknowledgeSignatureOrphans);
+
+            ErrorOr<ImportWorkflowTemplateApplyResult> result = await ServiceScopeFactory.SendScopedAsync(command);
+            if (result.IsError)
+            {
+                await HandleApplyErrorAsync(result.FirstError, acknowledgeUnrelatedHistory, acknowledgeSignatureOrphans);
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok(result.Value));
+        }
+        finally
+        {
+            _applying = false;
+        }
+    }
+
+    private async Task HandleApplyErrorAsync(
+        Error error,
+        bool acknowledgeUnrelatedHistory,
+        bool acknowledgeSignatureOrphans)
+    {
+        if (error.Code == SharedComponentErrorCodes.DIVERGED_LINEAGE)
+        {
+            var options = new MessageBoxOptions
+            {
+                Title = "Unrelated histories",
+                Message = error.Description,
+                YesText = "Adopt anyway",
+                CancelText = "Go back",
+            };
+            bool? confirmed = await DialogService.ShowMessageBoxAsync(options, _confirmOptions);
+            if (confirmed is true)
+            {
+                await ApplyCoreAsync(acknowledgeUnrelatedHistory: true, acknowledgeSignatureOrphans);
+            }
+
+            return;
+        }
+
+        if (error.Code == SharedComponentErrorCodes.ORPHANS_NEED_ACKNOWLEDGEMENT)
+        {
+            IReadOnlyList<SharedComponentOverrideImpact> orphans =
+                SharedComponentOrphanMetadata.ReadOrphanedOverrides(error);
+            if (orphans.Count == 0)
+            {
+                _applyError = error.Description;
+                return;
+            }
+
+            if (await SignatureOrphanAckDialog.ConfirmAsync(DialogService, orphans))
+            {
+                await ApplyCoreAsync(acknowledgeUnrelatedHistory, acknowledgeSignatureOrphans: true);
+            }
+
+            return;
+        }
+
+        if (SharedComponentErrorCodes.IsStaleHeadToken(error))
+        {
+            await RefreshPreviewAsync();
+            return;
+        }
+
+        _applyError = error.Description;
+    }
+
+    private async Task RefreshPreviewAsync()
+    {
+        ErrorOr<ImportWorkflowTemplatePreviewResult> fresh = await ServiceScopeFactory.SendScopedAsync(
+            new ImportWorkflowTemplatePreviewQuery(OrganizationId, UserId, WorkflowTypeId, Bundle));
+        if (fresh.IsError)
+        {
+            _applyError = fresh.FirstError.Description;
+            return;
+        }
+
+        Preview = fresh.Value;
+        Replan();
+        _applyError = "Something moved on this deployment since the preview — the rows have been refreshed. Review and apply again.";
+    }
+
+    private static string RelationLabel(Relation relation)
+    {
+        return relation switch
+        {
+            Relation.New => "New here",
+            Relation.InSync => "In sync",
+            Relation.LocalAhead => "Yours is ahead",
+            Relation.BundleAhead => "Bundle is ahead",
+            Relation.Diverged => "Diverged",
+            Relation.LocalRetired => "Retired here",
+            _ => relation.ToString(),
+        };
+    }
+
+    private static Color RelationColor(Relation relation)
+    {
+        return relation switch
+        {
+            Relation.New => Color.Success,
+            Relation.InSync => Color.Default,
+            Relation.LocalAhead => Color.Info,
+            Relation.BundleAhead => Color.Warning,
+            Relation.Diverged => Color.Warning,
+            Relation.LocalRetired => Color.Error,
+            _ => Color.Default,
+        };
+    }
+
+    private static string MethodLabel(Method method)
+    {
+        return method switch
+        {
+            Method.Anchor => "Same slot in the template",
+            Method.HashTrail => "Shared content history",
+            Method.GuidEquality => "Same id, no shared history",
+            Method.Create => "No local match",
+            _ => method.ToString(),
+        };
+    }
+}

@@ -1,0 +1,373 @@
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Services
+@using IniaAi.WebApp.Services.Signatures
+
+@inject IJSRuntime JsRuntime
+@inject ISignatureOverrideReader SignatureOverrideReader
+@inject AppState AppState
+@implements IAsyncDisposable
+
+<div class="prompt-editor">
+    <fieldset class="prompt-editor__frame" aria-hidden="true">
+        <legend>@Label</legend>
+    </fieldset>
+
+    <div @ref="_host"
+         class="prompt-editor__host"
+         style="--prompt-editor-min: @(MinLines * 23 + 22)px; --prompt-editor-max: @(MaxLines * 23 + 22)px;"></div>
+
+    @if (GetPopover() is { } popover)
+    {
+        <div class="prompt-editor__scrim" @onclick="ClosePopover"></div>
+        <div class="prompt-editor__popover"
+             style="left: clamp(0px, @(_popoverX)px, calc(100% - 540px)); top: @(_popoverY + 6)px;">
+            <div class="d-flex align-center gap-2 mb-1">
+                <MudText Typo="Typo.subtitle1" Class="editor-card-title">
+                    @(string.IsNullOrWhiteSpace(popover.Def.DisplayName) ? popover.Key : popover.Def.DisplayName)
+                </MudText>
+
+                @if (popover.Override is not null)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                        Client override active
+                    </MudChip>
+                }
+
+                <MudSpacer />
+
+                <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                               Size="Size.Small"
+                               aria-label="Close signature details"
+                               OnClick="ClosePopover" />
+            </div>
+
+            <MudText Typo="Typo.caption" Class="editor-mono-field" Style="opacity: 0.7;">
+                {@popover.Key}
+            </MudText>
+
+            @if (!string.IsNullOrWhiteSpace(popover.Def.Description))
+            {
+                <MudText Typo="Typo.body2" Class="mt-2" Style="opacity: 0.75;">
+                    @popover.Def.Description
+                </MudText>
+            }
+
+            <MudTextField T="string"
+                          Variant="Variant.Outlined"
+                          Label="Default Value"
+                          Class="mt-3 editor-mono-field"
+                          Lines="4"
+                          MaxLines="12"
+                          Sizing="InputSizing.Auto"
+                          Value="@popover.Def.DefaultValue"
+                          ValueChanged="@OnPopoverDefaultChanged" />
+
+            @if (popover.Override is not null)
+            {
+                <MudTextField T="string"
+                              Variant="Variant.Outlined"
+                              Label="Client Override"
+                              HelperText="Read-only. The override wins at runtime; clients author it from the Signatures page."
+                              Class="mt-3 editor-mono-field editor-resolved"
+                              Lines="4"
+                              MaxLines="12"
+                              Sizing="InputSizing.Auto"
+                              ReadOnly="true"
+                              Value="@popover.Override" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public Dictionary<string, SignatureFieldDefinition>? SignatureFields { get; set; }
+
+    [Parameter]
+    public string? BlockId { get; set; }
+
+    [Parameter]
+    public string? WorkflowTypeId { get; set; }
+
+    [Parameter]
+    public EventCallback BlockChanged { get; set; }
+
+    [Parameter]
+    public int MinLines { get; set; } = 3;
+
+    [Parameter]
+    public int MaxLines { get; set; } = 30;
+
+    /// <summary>
+    /// Autocomplete inserts tags in the host's grammar: agent-block prompts render under the
+    /// strict double-brace agent-template grammar, so their completions must insert
+    /// <c>{{tag}}</c> — every other block keeps the engine's single-brace <c>{tag}</c>.
+    /// </summary>
+    [Parameter]
+    public bool DoubleBraceTags { get; set; }
+
+    [CascadingParameter(Name = "TagValidation")]
+    public TagValidationSnapshot? TagValidation { get; set; }
+
+    private ElementReference _host;
+    private DotNetObjectReference<PromptEditor>? _selfRef;
+    private bool _created;
+    private string _lastKnownValue = string.Empty;
+    private string _lastPushedSignatures = string.Empty;
+    private string _lastPushedTags = string.Empty;
+    private IReadOnlyDictionary<string, string>? _overrides;
+    private string? _overridesFingerprint;
+    private string? _popoverKey;
+    private double _popoverX;
+    private double _popoverY;
+
+    protected override void OnInitialized()
+    {
+        AppState.OrganizationChanged += OnOrganizationChanged;
+        AppState.SignatureOverridesInvalidated += OnSignatureOverridesInvalidated;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadOverridesIfStaleAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            _lastKnownValue = Value ?? string.Empty;
+            _lastPushedSignatures = ComputeSignatureFingerprint();
+
+            await JsRuntime.InvokeVoidAsync(
+                "iniaPromptEditor.create",
+                _host,
+                _selfRef,
+                new
+                {
+                    value = _lastKnownValue,
+                    signatures = BuildSignatureMap(),
+                    ariaLabel = Label,
+                    tagGrammar = DoubleBraceTags ? "double" : "single",
+                });
+
+            _created = true;
+            return;
+        }
+
+        if (!_created)
+        {
+            return;
+        }
+
+        string current = Value ?? string.Empty;
+        if (!string.Equals(current, _lastKnownValue, StringComparison.Ordinal))
+        {
+            _lastKnownValue = current;
+            await JsRuntime.InvokeVoidAsync("iniaPromptEditor.setValue", _host, current);
+        }
+
+        string fingerprint = ComputeSignatureFingerprint();
+        if (!string.Equals(fingerprint, _lastPushedSignatures, StringComparison.Ordinal))
+        {
+            _lastPushedSignatures = fingerprint;
+            await JsRuntime.InvokeVoidAsync("iniaPromptEditor.setSignatures", _host, BuildSignatureMap());
+        }
+
+        string tagsFingerprint = ComputeTagsFingerprint();
+        if (!string.Equals(tagsFingerprint, _lastPushedTags, StringComparison.Ordinal))
+        {
+            _lastPushedTags = tagsFingerprint;
+            await JsRuntime.InvokeVoidAsync(
+                "iniaPromptEditor.setTags",
+                _host,
+                new
+                {
+                    available = TagValidation?.AvailableTags ?? [],
+                    invalid = TagValidation?.InvalidTags ?? [],
+                });
+        }
+    }
+
+    private string ComputeTagsFingerprint()
+    {
+        if (TagValidation is null)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(",", TagValidation.AvailableTags) + "§" + string.Join(",", TagValidation.InvalidTags);
+    }
+
+    [JSInvokable]
+    public async Task OnPromptEditorDocChanged(string text)
+    {
+        _lastKnownValue = text;
+        await ValueChanged.InvokeAsync(text);
+    }
+
+    [JSInvokable]
+    public void OnPromptEditorChipClicked(string placeholderKey, double x, double y)
+    {
+        _popoverKey = placeholderKey;
+        _popoverX = x;
+        _popoverY = y;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        AppState.OrganizationChanged -= OnOrganizationChanged;
+        AppState.SignatureOverridesInvalidated -= OnSignatureOverridesInvalidated;
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("iniaPromptEditor.destroy", _host);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        _selfRef?.Dispose();
+    }
+
+    private void OnOrganizationChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _overridesFingerprint = null;
+            await LoadOverridesIfStaleAsync();
+            StateHasChanged();
+        });
+    }
+
+    private void OnSignatureOverridesInvalidated(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _overridesFingerprint = null;
+            await LoadOverridesIfStaleAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadOverridesIfStaleAsync()
+    {
+        string? organizationId = AppState.CurrentOrganizationId;
+        bool hasSignatures = SignatureFields is { Count: > 0 };
+
+        if (!hasSignatures || string.IsNullOrEmpty(organizationId) || string.IsNullOrEmpty(WorkflowTypeId))
+        {
+            _overrides = null;
+            _overridesFingerprint = null;
+            return;
+        }
+
+        string fingerprint = $"{WorkflowTypeId}|{organizationId}";
+        if (string.Equals(fingerprint, _overridesFingerprint, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _overridesFingerprint = fingerprint;
+        _overrides = await SignatureOverrideReader.LoadForWorkflowAsync(
+            organizationId, WorkflowTypeId, CancellationToken.None);
+    }
+
+    private Dictionary<string, object> BuildSignatureMap()
+    {
+        Dictionary<string, object> map = [];
+
+        if (SignatureFields is null)
+        {
+            return map;
+        }
+
+        foreach (KeyValuePair<string, SignatureFieldDefinition> entry in SignatureFields)
+        {
+            string? overrideValue = GetOverrideValue(entry.Key);
+            map[entry.Key] = new
+            {
+                value = overrideValue ?? entry.Value.DefaultValue,
+                isOverride = overrideValue is not null,
+                displayName = entry.Value.DisplayName,
+            };
+        }
+
+        return map;
+    }
+
+    private string ComputeSignatureFingerprint()
+    {
+        if (SignatureFields is null || SignatureFields.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        IEnumerable<string> parts = SignatureFields
+            .OrderBy(e => e.Key, StringComparer.Ordinal)
+            .Select(e => $"{e.Key}{e.Value.DisplayName}{GetOverrideValue(e.Key) ?? e.Value.DefaultValue}{GetOverrideValue(e.Key) is not null}");
+
+        return string.Join("|", parts);
+    }
+
+    private string? GetOverrideValue(string placeholderKey)
+    {
+        if (_overrides is null)
+        {
+            return null;
+        }
+
+        return _overrides.TryGetValue(placeholderKey, out string? value) ? value : null;
+    }
+
+    private (string Key, SignatureFieldDefinition Def, string? Override)? GetPopover()
+    {
+        if (_popoverKey is null || SignatureFields is null)
+        {
+            return null;
+        }
+
+        if (!SignatureFields.TryGetValue(_popoverKey, out SignatureFieldDefinition? def))
+        {
+            return null;
+        }
+
+        return (_popoverKey, def, GetOverrideValue(_popoverKey));
+    }
+
+    private void ClosePopover()
+    {
+        _popoverKey = null;
+    }
+
+    private async Task OnPopoverDefaultChanged(string newDefault)
+    {
+        if (_popoverKey is null
+            || SignatureFields is null
+            || !SignatureFields.TryGetValue(_popoverKey, out SignatureFieldDefinition? def))
+        {
+            return;
+        }
+
+        SignatureFields[_popoverKey] = def with { DefaultValue = newDefault ?? string.Empty };
+        await BlockChanged.InvokeAsync();
+    }
+}

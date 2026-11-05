@@ -1,0 +1,42 @@
+{
+  "id": "execution-started",
+  "workflowId": "workflow-started",
+  "createdAt": "2026-09-07T08:00:00Z",
+  "workflowState": "Queued",
+  "failureKind": "ModelError",
+  "failureDetail": "The model refused once.",
+  "workflowTypeId": "CorpRead",
+  "workflowTypeName": null,
+  "counterpartyId": "counterparty-started",
+  "counterpartyName": "Example Corp",
+  "analystName": "Ada Lovelace",
+  "reviewDate": "2026-06-30T00:00:00Z",
+  "userId": "user-workflow-read",
+  "title": "Annual review",
+  "variables": {
+    "reviewYear": "2025",
+    "peerCount": 3,
+    "ratio": 0.25,
+    "includeAppendix": true,
+    "peers": [
+      "peer-1",
+      "peer-2"
+    ]
+  },
+  "jobId": "job-started",
+  "workflowExecutionDocuments": null,
+  "excludedDocuments": null,
+  "variableValues": null,
+  "isBaseline": true,
+  "baselineVerified": null,
+  "freezeSourceExecutionId": "execution-source",
+  "freezeSourceCaseId": "case-1",
+  "freezeReplayedCount": 2,
+  "freezeEligibleCount": 4,
+  "startedAt": "2026-09-07T08:01:00Z",
+  "completedAt": "2026-09-07T08:05:00Z",
+  "duration": "00:04:00",
+  "intakeSkippedFiles": null,
+  "agentActivity": null,
+  "workflowActivity": null
+}

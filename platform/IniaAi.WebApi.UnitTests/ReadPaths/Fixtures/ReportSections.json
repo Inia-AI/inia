@@ -1,0 +1,258 @@
+[
+  {
+    "id": "section-summary",
+    "order": 0,
+    "title": "Summary",
+    "layout": {
+      "outputType": "GridLayout",
+      "mode": "grid",
+      "columns": 3,
+      "elements": [
+        {
+          "blockOrder": 1,
+          "row": 1,
+          "column": 1,
+          "rowSpan": 2,
+          "columnSpan": 1
+        },
+        {
+          "blockOrder": 2,
+          "row": 1,
+          "column": 2,
+          "rowSpan": 1,
+          "columnSpan": 2
+        }
+      ],
+      "name": "Summary grid"
+    },
+    "excludeFromWordExport": false,
+    "paragraphs": [
+      {
+        "id": "paragraph-text",
+        "kind": "Paragraph",
+        "order": 1,
+        "title": "Overview",
+        "subtitle": null,
+        "confidence": 0.82,
+        "content": "Revenue rose 12 percent.",
+        "replacementTag": "overview",
+        "chartPayload": null,
+        "tablePayload": null,
+        "sources": [
+          "Annual report",
+          "Website"
+        ],
+        "citations": [
+          {
+            "id": "citation-1",
+            "sources": [
+              {
+                "$type": "Document",
+                "type": "Document",
+                "pageId": "page-4",
+                "pageNumber": 4,
+                "documentName": "Annual report",
+                "filePageNumber": 6,
+                "unverified": true,
+                "citedText": "Revenue 4.2m"
+              },
+              {
+                "$type": "Url",
+                "type": "Url",
+                "url": "https://example.com/results",
+                "citedText": "Results"
+              },
+              {
+                "$type": "Block",
+                "type": "Block",
+                "blockId": "block-upstream",
+                "blockTitle": "Upstream",
+                "upstreamSources": [
+                  {
+                    "$type": "Document",
+                    "type": "Document",
+                    "pageId": "page-1",
+                    "pageNumber": 1,
+                    "documentName": null,
+                    "filePageNumber": 1,
+                    "unverified": false,
+                    "citedText": "Upstream text"
+                  }
+                ],
+                "matchingSources": [
+                  {
+                    "$type": "Url",
+                    "type": "Url",
+                    "url": "https://example.com/match",
+                    "citedText": "Match"
+                  }
+                ],
+                "citedText": "From upstream"
+              }
+            ],
+            "isNumerical": true
+          }
+        ],
+        "citedSourcesByBlock": [
+          {
+            "blockId": "block-upstream",
+            "sources": [
+              {
+                "$type": "Url",
+                "type": "Url",
+                "url": "https://example.com/cited",
+                "citedText": "Cited"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "paragraph-table",
+        "kind": "Table",
+        "order": 2,
+        "title": "Key figures",
+        "subtitle": "In millions",
+        "confidence": null,
+        "content": null,
+        "replacementTag": "key_figures",
+        "chartPayload": null,
+        "tablePayload": {
+          "outputType": "Table",
+          "tableName": "Key figures",
+          "tableConfig": [
+            {
+              "header": "Year",
+              "format": "text",
+              "groupName": "Period"
+            }
+          ],
+          "tableData": [
+            [
+              "Year",
+              "Revenue"
+            ],
+            [
+              "2025",
+              "4.2"
+            ]
+          ],
+          "name": "Key figures"
+        },
+        "sources": [],
+        "citations": [],
+        "citedSourcesByBlock": []
+      }
+    ]
+  },
+  {
+    "id": "section-appendix",
+    "order": 1,
+    "title": "Appendix",
+    "layout": null,
+    "excludeFromWordExport": true,
+    "paragraphs": [
+      {
+        "id": "paragraph-divider",
+        "kind": "Divider",
+        "order": 0,
+        "title": null,
+        "subtitle": null,
+        "confidence": null,
+        "content": null,
+        "replacementTag": null,
+        "chartPayload": null,
+        "tablePayload": null,
+        "sources": [],
+        "citations": [],
+        "citedSourcesByBlock": []
+      },
+      {
+        "id": "paragraph-chart",
+        "kind": "DynamicChart",
+        "order": 1,
+        "title": "Revenue trend",
+        "subtitle": null,
+        "confidence": null,
+        "content": null,
+        "replacementTag": null,
+        "chartPayload": {
+          "outputType": "Chart",
+          "chartData": [
+            {
+              "x": "2024",
+              "y": 3.7,
+              "series": "Revenue",
+              "rawData": {
+                "note": "restated"
+              }
+            }
+          ],
+          "chartConfig": {
+            "type": "bar",
+            "title": "Revenue by year",
+            "data": [
+              {
+                "x": "2025",
+                "y": 4.2,
+                "series": "Revenue",
+                "rawData": {}
+              }
+            ],
+            "xAxis": {
+              "type": "category",
+              "field": "year",
+              "label": "Year"
+            },
+            "yAxis": {
+              "type": "linear",
+              "field": "revenue",
+              "label": "Revenue"
+            },
+            "series": [
+              {
+                "name": "Revenue",
+                "data": [
+                  {
+                    "x": "2025",
+                    "y": 4.2
+                  }
+                ],
+                "color": "#336699"
+              }
+            ],
+            "options": {
+              "responsive": true,
+              "showLegend": false,
+              "colorScheme": "muted",
+              "showGridLines": true,
+              "enableAnimations": true,
+              "maintainAspectRatio": false,
+              "enableExport": true,
+              "seriesGroupField": "segment",
+              "stacking": "Percent"
+            },
+            "layout": {
+              "width": "50%",
+              "height": "300"
+            },
+            "metadata": {
+              "fields": {
+                "year": "Year"
+              },
+              "dataPoints": 2,
+              "generatedAt": "2026-09-07T08:00:00Z",
+              "currency": "USD",
+              "unit": "m"
+            }
+          },
+          "name": "Revenue"
+        },
+        "tablePayload": null,
+        "sources": [],
+        "citations": [],
+        "citedSourcesByBlock": []
+      }
+    ]
+  }
+]

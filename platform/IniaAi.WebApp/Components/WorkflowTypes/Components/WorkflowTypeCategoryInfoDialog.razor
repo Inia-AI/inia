@@ -1,0 +1,108 @@
+@using IniaAi.Domain.Entities.Workflows
+@using System.ComponentModel.DataAnnotations
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="@_id"
+                      Label="ID"
+                      Variant="Variant.Outlined"
+                      For="@(() => _id)"
+                      Required="true"
+                      Disabled="@(!_isNew)"
+                      Immediate="true" />
+
+        <MudTextField @bind-Value="@_name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      For="@(() => _name)"
+                      Required="true"
+                      Immediate="true" />
+
+        <MudTextField @bind-Value="@_description"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Lines="3" />
+
+        <MudNumericField @bind-Value="_displayOrder"
+                         Label="Display Order"
+                         Variant="Variant.Outlined"
+                         Min="1"
+                         HelperText="Optional. Categories will be ordered by this value, then by name." />
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="my-2">
+                @_errorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit">
+            @(_isNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public WorkflowTypeCategory Category { get; set; } = default!;
+
+    [Parameter]
+    public bool IsNew { get; set; } = true;
+
+    private string _id = string.Empty;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private int? _displayOrder;
+    private string _errorMessage = string.Empty;
+    private bool _isNew;
+
+    protected override void OnInitialized()
+    {
+        _isNew = IsNew;
+
+        _id = Category.Id;
+        _name = Category.Name;
+        _description = Category.Description ?? string.Empty;
+        _displayOrder = Category.DisplayOrder;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        _errorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_id))
+        {
+            _errorMessage = "ID is required";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "Name is required";
+            return;
+        }
+
+        Category.Id = _id;
+        Category.Name = _name;
+        Category.Description = !string.IsNullOrWhiteSpace(_description) ? _description : null;
+        Category.DisplayOrder = _displayOrder;
+
+        MudDialog.Close(DialogResult.Ok(Category));
+    }
+}

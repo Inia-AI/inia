@@ -1,0 +1,4834 @@
+{
+  "_meta": {
+    "source": "Unicode CLDR via python-babel",
+    "babel_version": "2.18.0",
+    "locale": "en",
+    "currency_count": 170,
+    "unit_count": 188,
+    "categories": [
+      "acceleration",
+      "angle",
+      "area",
+      "concentr",
+      "consumption",
+      "digital",
+      "duration",
+      "electric",
+      "energy",
+      "force",
+      "frequency",
+      "graphics",
+      "length",
+      "light",
+      "mass",
+      "power",
+      "pressure",
+      "speed",
+      "temperature",
+      "torque",
+      "volume"
+    ],
+    "notes": [
+      "names[] is a deduped list of forms (singular/plural × long/short/narrow), intended for case-insensitive matching during fact extraction.",
+      "long/short/narrow each map plural categories (one, other, ...) to forms — use these if you need to know which form is singular vs plural.",
+      "Currency 'symbol' is omitted when CLDR uses the code itself.",
+      "currencies filtered to those legal-tender or non-tender (e.g. precious metals) somewhere in the world on 2026-05-01; XTS and XXX placeholders excluded."
+    ]
+  },
+  "currencies": {
+    "AED": {
+      "names": [
+        "UAE dirhams",
+        "UAE dirham"
+      ]
+    },
+    "AFN": {
+      "names": [
+        "Afghan Afghanis",
+        "Afghan Afghani"
+      ]
+    },
+    "ALL": {
+      "names": [
+        "Albanian lekë",
+        "Albanian lek"
+      ]
+    },
+    "AMD": {
+      "names": [
+        "Armenian drams",
+        "Armenian dram"
+      ]
+    },
+    "AOA": {
+      "names": [
+        "Angolan kwanzas",
+        "Angolan kwanza"
+      ]
+    },
+    "ARS": {
+      "names": [
+        "Argentine pesos",
+        "Argentine peso"
+      ]
+    },
+    "AUD": {
+      "names": [
+        "Australian dollars",
+        "Australian dollar"
+      ],
+      "symbol": "A$"
+    },
+    "AWG": {
+      "names": [
+        "Aruban florin"
+      ]
+    },
+    "AZN": {
+      "names": [
+        "Azerbaijani manats",
+        "Azerbaijani manat"
+      ]
+    },
+    "BAM": {
+      "names": [
+        "Bosnia-Herzegovina convertible marks",
+        "Bosnia-Herzegovina convertible mark"
+      ]
+    },
+    "BBD": {
+      "names": [
+        "Barbadian dollars",
+        "Barbadian dollar"
+      ]
+    },
+    "BDT": {
+      "names": [
+        "Bangladeshi takas",
+        "Bangladeshi taka"
+      ]
+    },
+    "BGN": {
+      "names": [
+        "Bulgarian leva",
+        "Bulgarian lev"
+      ]
+    },
+    "BHD": {
+      "names": [
+        "Bahraini dinars",
+        "Bahraini dinar"
+      ]
+    },
+    "BIF": {
+      "names": [
+        "Burundian francs",
+        "Burundian franc"
+      ]
+    },
+    "BMD": {
+      "names": [
+        "Bermudan dollars",
+        "Bermudan dollar"
+      ]
+    },
+    "BND": {
+      "names": [
+        "Brunei dollars",
+        "Brunei dollar"
+      ]
+    },
+    "BOB": {
+      "names": [
+        "Bolivian bolivianos",
+        "Bolivian boliviano"
+      ]
+    },
+    "BOV": {
+      "names": [
+        "Bolivian mvdols",
+        "Bolivian mvdol"
+      ]
+    },
+    "BRL": {
+      "names": [
+        "Brazilian reals",
+        "Brazilian real"
+      ],
+      "symbol": "R$"
+    },
+    "BSD": {
+      "names": [
+        "Bahamian dollars",
+        "Bahamian dollar"
+      ]
+    },
+    "BTN": {
+      "names": [
+        "Bhutanese ngultrums",
+        "Bhutanese ngultrum"
+      ]
+    },
+    "BWP": {
+      "names": [
+        "Botswanan pulas",
+        "Botswanan pula"
+      ]
+    },
+    "BYN": {
+      "names": [
+        "Belarusian rubles",
+        "Belarusian ruble"
+      ]
+    },
+    "BZD": {
+      "names": [
+        "Belize dollars",
+        "Belize dollar"
+      ]
+    },
+    "CAD": {
+      "names": [
+        "Canadian dollars",
+        "Canadian dollar"
+      ],
+      "symbol": "CA$"
+    },
+    "CDF": {
+      "names": [
+        "Congolese francs",
+        "Congolese franc"
+      ]
+    },
+    "CHE": {
+      "names": [
+        "WIR euros",
+        "WIR euro"
+      ]
+    },
+    "CHF": {
+      "names": [
+        "Swiss francs",
+        "Swiss franc"
+      ]
+    },
+    "CHW": {
+      "names": [
+        "WIR francs",
+        "WIR franc"
+      ]
+    },
+    "CLP": {
+      "names": [
+        "Chilean pesos",
+        "Chilean peso"
+      ]
+    },
+    "CNY": {
+      "names": [
+        "Chinese yuan"
+      ],
+      "symbol": "CN¥"
+    },
+    "COP": {
+      "names": [
+        "Colombian pesos",
+        "Colombian peso"
+      ]
+    },
+    "COU": {
+      "names": [
+        "Colombian real value units",
+        "Colombian real value unit"
+      ]
+    },
+    "CRC": {
+      "names": [
+        "Costa Rican colóns",
+        "Costa Rican colón"
+      ]
+    },
+    "CUP": {
+      "names": [
+        "Cuban pesos",
+        "Cuban peso"
+      ]
+    },
+    "CVE": {
+      "names": [
+        "Cape Verdean escudos",
+        "Cape Verdean escudo"
+      ]
+    },
+    "CZK": {
+      "names": [
+        "Czech korunas",
+        "Czech koruna"
+      ]
+    },
+    "DJF": {
+      "names": [
+        "Djiboutian francs",
+        "Djiboutian franc"
+      ]
+    },
+    "DKK": {
+      "names": [
+        "Danish kroner",
+        "Danish krone"
+      ]
+    },
+    "DOP": {
+      "names": [
+        "Dominican pesos",
+        "Dominican peso"
+      ]
+    },
+    "DZD": {
+      "names": [
+        "Algerian dinars",
+        "Algerian dinar"
+      ]
+    },
+    "EGP": {
+      "names": [
+        "Egyptian pounds",
+        "Egyptian pound"
+      ]
+    },
+    "ERN": {
+      "names": [
+        "Eritrean nakfas",
+        "Eritrean nakfa"
+      ]
+    },
+    "ETB": {
+      "names": [
+        "Ethiopian birrs",
+        "Ethiopian birr"
+      ]
+    },
+    "EUR": {
+      "names": [
+        "euros",
+        "euro"
+      ],
+      "symbol": "€"
+    },
+    "FJD": {
+      "names": [
+        "Fijian dollars",
+        "Fijian dollar"
+      ]
+    },
+    "FKP": {
+      "names": [
+        "Falkland Islands pounds",
+        "Falkland Islands pound"
+      ]
+    },
+    "GBP": {
+      "names": [
+        "British pounds",
+        "British pound"
+      ],
+      "symbol": "£"
+    },
+    "GEL": {
+      "names": [
+        "Georgian laris",
+        "Georgian lari"
+      ]
+    },
+    "GHS": {
+      "names": [
+        "Ghanaian cedis",
+        "Ghanaian cedi"
+      ]
+    },
+    "GIP": {
+      "names": [
+        "Gibraltar pounds",
+        "Gibraltar pound"
+      ]
+    },
+    "GMD": {
+      "names": [
+        "Gambian dalasis",
+        "Gambian dalasi"
+      ]
+    },
+    "GNF": {
+      "names": [
+        "Guinean francs",
+        "Guinean franc"
+      ]
+    },
+    "GTQ": {
+      "names": [
+        "Guatemalan quetzals",
+        "Guatemalan quetzal"
+      ]
+    },
+    "GYD": {
+      "names": [
+        "Guyanaese dollars",
+        "Guyanaese dollar"
+      ]
+    },
+    "HKD": {
+      "names": [
+        "Hong Kong dollars",
+        "Hong Kong dollar"
+      ],
+      "symbol": "HK$"
+    },
+    "HNL": {
+      "names": [
+        "Honduran lempiras",
+        "Honduran lempira"
+      ]
+    },
+    "HTG": {
+      "names": [
+        "Haitian gourdes",
+        "Haitian gourde"
+      ]
+    },
+    "HUF": {
+      "names": [
+        "Hungarian forints",
+        "Hungarian forint"
+      ]
+    },
+    "IDR": {
+      "names": [
+        "Indonesian rupiahs",
+        "Indonesian rupiah"
+      ]
+    },
+    "ILS": {
+      "names": [
+        "Israeli new shekels",
+        "Israeli new shekel"
+      ],
+      "symbol": "₪"
+    },
+    "INR": {
+      "names": [
+        "Indian rupees",
+        "Indian rupee"
+      ],
+      "symbol": "₹"
+    },
+    "IQD": {
+      "names": [
+        "Iraqi dinars",
+        "Iraqi dinar"
+      ]
+    },
+    "IRR": {
+      "names": [
+        "Iranian rials",
+        "Iranian rial"
+      ]
+    },
+    "ISK": {
+      "names": [
+        "Icelandic krónur",
+        "Icelandic króna"
+      ]
+    },
+    "JMD": {
+      "names": [
+        "Jamaican dollars",
+        "Jamaican dollar"
+      ]
+    },
+    "JOD": {
+      "names": [
+        "Jordanian dinars",
+        "Jordanian dinar"
+      ]
+    },
+    "JPY": {
+      "names": [
+        "Japanese yen"
+      ],
+      "symbol": "¥"
+    },
+    "KES": {
+      "names": [
+        "Kenyan shillings",
+        "Kenyan shilling"
+      ]
+    },
+    "KGS": {
+      "names": [
+        "Kyrgystani soms",
+        "Kyrgystani som"
+      ]
+    },
+    "KHR": {
+      "names": [
+        "Cambodian riels",
+        "Cambodian riel"
+      ]
+    },
+    "KMF": {
+      "names": [
+        "Comorian francs",
+        "Comorian franc"
+      ]
+    },
+    "KPW": {
+      "names": [
+        "North Korean won"
+      ]
+    },
+    "KRW": {
+      "names": [
+        "South Korean won"
+      ],
+      "symbol": "₩"
+    },
+    "KWD": {
+      "names": [
+        "Kuwaiti dinars",
+        "Kuwaiti dinar"
+      ]
+    },
+    "KYD": {
+      "names": [
+        "Cayman Islands dollars",
+        "Cayman Islands dollar"
+      ]
+    },
+    "KZT": {
+      "names": [
+        "Kazakhstani tenges",
+        "Kazakhstani tenge"
+      ]
+    },
+    "LAK": {
+      "names": [
+        "Laotian kips",
+        "Laotian kip"
+      ]
+    },
+    "LBP": {
+      "names": [
+        "Lebanese pounds",
+        "Lebanese pound"
+      ]
+    },
+    "LKR": {
+      "names": [
+        "Sri Lankan rupees",
+        "Sri Lankan rupee"
+      ]
+    },
+    "LRD": {
+      "names": [
+        "Liberian dollars",
+        "Liberian dollar"
+      ]
+    },
+    "LSL": {
+      "names": [
+        "Lesotho lotis",
+        "Lesotho loti"
+      ]
+    },
+    "LYD": {
+      "names": [
+        "Libyan dinars",
+        "Libyan dinar"
+      ]
+    },
+    "MAD": {
+      "names": [
+        "Moroccan dirhams",
+        "Moroccan dirham"
+      ]
+    },
+    "MDL": {
+      "names": [
+        "Moldovan lei",
+        "Moldovan leu"
+      ]
+    },
+    "MGA": {
+      "names": [
+        "Malagasy ariaries",
+        "Malagasy ariary"
+      ]
+    },
+    "MKD": {
+      "names": [
+        "Macedonian denari",
+        "Macedonian denar"
+      ]
+    },
+    "MMK": {
+      "names": [
+        "Myanmar kyats",
+        "Myanmar kyat"
+      ]
+    },
+    "MNT": {
+      "names": [
+        "Mongolian tugriks",
+        "Mongolian tugrik"
+      ]
+    },
+    "MOP": {
+      "names": [
+        "Macanese patacas",
+        "Macanese pataca"
+      ]
+    },
+    "MRU": {
+      "names": [
+        "Mauritanian ouguiyas",
+        "Mauritanian ouguiya"
+      ]
+    },
+    "MUR": {
+      "names": [
+        "Mauritian rupees",
+        "Mauritian rupee"
+      ]
+    },
+    "MVR": {
+      "names": [
+        "Maldivian rufiyaas",
+        "Maldivian rufiyaa"
+      ]
+    },
+    "MWK": {
+      "names": [
+        "Malawian kwachas",
+        "Malawian kwacha"
+      ]
+    },
+    "MXN": {
+      "names": [
+        "Mexican pesos",
+        "Mexican peso"
+      ],
+      "symbol": "MX$"
+    },
+    "MXV": {
+      "names": [
+        "Mexican investment units",
+        "Mexican investment unit"
+      ]
+    },
+    "MYR": {
+      "names": [
+        "Malaysian ringgits",
+        "Malaysian ringgit"
+      ]
+    },
+    "MZN": {
+      "names": [
+        "Mozambican meticals",
+        "Mozambican metical"
+      ]
+    },
+    "NAD": {
+      "names": [
+        "Namibian dollars",
+        "Namibian dollar"
+      ]
+    },
+    "NGN": {
+      "names": [
+        "Nigerian nairas",
+        "Nigerian naira"
+      ]
+    },
+    "NIO": {
+      "names": [
+        "Nicaraguan córdobas",
+        "Nicaraguan córdoba"
+      ]
+    },
+    "NOK": {
+      "names": [
+        "Norwegian kroner",
+        "Norwegian krone"
+      ]
+    },
+    "NPR": {
+      "names": [
+        "Nepalese rupees",
+        "Nepalese rupee"
+      ]
+    },
+    "NZD": {
+      "names": [
+        "New Zealand dollars",
+        "New Zealand dollar"
+      ],
+      "symbol": "NZ$"
+    },
+    "OMR": {
+      "names": [
+        "Omani rials",
+        "Omani rial"
+      ]
+    },
+    "PAB": {
+      "names": [
+        "Panamanian balboas",
+        "Panamanian balboa"
+      ]
+    },
+    "PEN": {
+      "names": [
+        "Peruvian soles",
+        "Peruvian sol"
+      ]
+    },
+    "PGK": {
+      "names": [
+        "Papua New Guinean kina"
+      ]
+    },
+    "PHP": {
+      "names": [
+        "Philippine pesos",
+        "Philippine peso"
+      ],
+      "symbol": "₱"
+    },
+    "PKR": {
+      "names": [
+        "Pakistani rupees",
+        "Pakistani rupee"
+      ]
+    },
+    "PLN": {
+      "names": [
+        "Polish zlotys",
+        "Polish zloty"
+      ]
+    },
+    "PYG": {
+      "names": [
+        "Paraguayan guaranis",
+        "Paraguayan guarani"
+      ]
+    },
+    "QAR": {
+      "names": [
+        "Qatari riyals",
+        "Qatari riyal"
+      ]
+    },
+    "RON": {
+      "names": [
+        "Romanian lei",
+        "Romanian leu"
+      ]
+    },
+    "RSD": {
+      "names": [
+        "Serbian dinars",
+        "Serbian dinar"
+      ]
+    },
+    "RUB": {
+      "names": [
+        "Russian rubles",
+        "Russian ruble"
+      ]
+    },
+    "RWF": {
+      "names": [
+        "Rwandan francs",
+        "Rwandan franc"
+      ]
+    },
+    "SAR": {
+      "names": [
+        "Saudi riyals",
+        "Saudi riyal"
+      ]
+    },
+    "SBD": {
+      "names": [
+        "Solomon Islands dollars",
+        "Solomon Islands dollar"
+      ]
+    },
+    "SCR": {
+      "names": [
+        "Seychellois rupees",
+        "Seychellois rupee"
+      ]
+    },
+    "SDG": {
+      "names": [
+        "Sudanese pounds",
+        "Sudanese pound"
+      ]
+    },
+    "SEK": {
+      "names": [
+        "Swedish kronor",
+        "Swedish krona"
+      ]
+    },
+    "SGD": {
+      "names": [
+        "Singapore dollars",
+        "Singapore dollar"
+      ]
+    },
+    "SHP": {
+      "names": [
+        "St. Helena pounds",
+        "St. Helena pound"
+      ]
+    },
+    "SLE": {
+      "names": [
+        "Sierra Leonean leones",
+        "Sierra Leonean leone"
+      ]
+    },
+    "SOS": {
+      "names": [
+        "Somali shillings",
+        "Somali shilling"
+      ]
+    },
+    "SRD": {
+      "names": [
+        "Surinamese dollars",
+        "Surinamese dollar"
+      ]
+    },
+    "SSP": {
+      "names": [
+        "South Sudanese pounds",
+        "South Sudanese pound"
+      ]
+    },
+    "STN": {
+      "names": [
+        "São Tomé & Príncipe dobras",
+        "São Tomé & Príncipe dobra"
+      ]
+    },
+    "SYP": {
+      "names": [
+        "Syrian pounds",
+        "Syrian pound"
+      ]
+    },
+    "SZL": {
+      "names": [
+        "Swazi emalangeni",
+        "Swazi lilangeni"
+      ]
+    },
+    "THB": {
+      "names": [
+        "Thai baht"
+      ]
+    },
+    "TJS": {
+      "names": [
+        "Tajikistani somonis",
+        "Tajikistani somoni"
+      ]
+    },
+    "TMT": {
+      "names": [
+        "Turkmenistani manat"
+      ]
+    },
+    "TND": {
+      "names": [
+        "Tunisian dinars",
+        "Tunisian dinar"
+      ]
+    },
+    "TOP": {
+      "names": [
+        "Tongan paʻanga"
+      ]
+    },
+    "TRY": {
+      "names": [
+        "Turkish Lira",
+        "Turkish lira"
+      ]
+    },
+    "TTD": {
+      "names": [
+        "Trinidad & Tobago dollars",
+        "Trinidad & Tobago dollar"
+      ]
+    },
+    "TWD": {
+      "names": [
+        "New Taiwan dollars",
+        "New Taiwan dollar"
+      ],
+      "symbol": "NT$"
+    },
+    "TZS": {
+      "names": [
+        "Tanzanian shillings",
+        "Tanzanian shilling"
+      ]
+    },
+    "UAH": {
+      "names": [
+        "Ukrainian hryvnias",
+        "Ukrainian hryvnia"
+      ]
+    },
+    "UGX": {
+      "names": [
+        "Ugandan shillings",
+        "Ugandan shilling"
+      ]
+    },
+    "USD": {
+      "names": [
+        "US dollars",
+        "US dollar"
+      ],
+      "symbol": "$"
+    },
+    "UYU": {
+      "names": [
+        "Uruguayan pesos",
+        "Uruguayan peso"
+      ]
+    },
+    "UYW": {
+      "names": [
+        "Uruguayan nominal wage index units",
+        "Uruguayan nominal wage index unit"
+      ]
+    },
+    "UZS": {
+      "names": [
+        "Uzbekistani som"
+      ]
+    },
+    "VED": {
+      "names": [
+        "Bolívar Soberanos",
+        "Bolívar Soberano"
+      ]
+    },
+    "VES": {
+      "names": [
+        "Venezuelan bolívars",
+        "Venezuelan bolívar"
+      ]
+    },
+    "VND": {
+      "names": [
+        "Vietnamese dong"
+      ],
+      "symbol": "₫"
+    },
+    "VUV": {
+      "names": [
+        "Vanuatu vatus",
+        "Vanuatu vatu"
+      ]
+    },
+    "WST": {
+      "names": [
+        "Samoan tala"
+      ]
+    },
+    "XAF": {
+      "names": [
+        "Central African CFA francs",
+        "Central African CFA franc"
+      ],
+      "symbol": "FCFA"
+    },
+    "XAG": {
+      "names": [
+        "troy ounces of silver",
+        "troy ounce of silver"
+      ]
+    },
+    "XAU": {
+      "names": [
+        "troy ounces of gold",
+        "troy ounce of gold"
+      ]
+    },
+    "XBA": {
+      "names": [
+        "European composite units",
+        "European composite unit"
+      ]
+    },
+    "XBB": {
+      "names": [
+        "European monetary units",
+        "European monetary unit"
+      ]
+    },
+    "XCD": {
+      "names": [
+        "East Caribbean dollars",
+        "East Caribbean dollar"
+      ],
+      "symbol": "EC$"
+    },
+    "XCG": {
+      "names": [
+        "Caribbean guilders",
+        "Caribbean guilder"
+      ],
+      "symbol": "Cg."
+    },
+    "XDR": {
+      "names": [
+        "special drawing rights"
+      ]
+    },
+    "XOF": {
+      "names": [
+        "West African CFA francs",
+        "West African CFA franc"
+      ],
+      "symbol": "F CFA"
+    },
+    "XPD": {
+      "names": [
+        "troy ounces of palladium",
+        "troy ounce of palladium"
+      ]
+    },
+    "XPF": {
+      "names": [
+        "CFP francs",
+        "CFP franc"
+      ],
+      "symbol": "CFPF"
+    },
+    "XPT": {
+      "names": [
+        "troy ounces of platinum",
+        "troy ounce of platinum"
+      ]
+    },
+    "XSU": {
+      "names": [
+        "Sucres",
+        "Sucre"
+      ]
+    },
+    "XUA": {
+      "names": [
+        "ADB units of account",
+        "ADB unit of account"
+      ]
+    },
+    "YER": {
+      "names": [
+        "Yemeni rials",
+        "Yemeni rial"
+      ]
+    },
+    "ZAR": {
+      "names": [
+        "South African rand"
+      ]
+    },
+    "ZMW": {
+      "names": [
+        "Zambian kwachas",
+        "Zambian kwacha"
+      ]
+    },
+    "ZWG": {
+      "names": [
+        "Zimbabwean gold"
+      ]
+    }
+  },
+  "units": {
+    "acceleration-g-force": {
+      "category": "acceleration",
+      "long": {
+        "one": "g-force",
+        "other": "g-force"
+      },
+      "short": {
+        "one": "G",
+        "other": "G"
+      },
+      "narrow": {
+        "one": "G",
+        "other": "Gs"
+      },
+      "names": [
+        "g-force",
+        "G",
+        "Gs"
+      ]
+    },
+    "acceleration-meter-per-square-second": {
+      "category": "acceleration",
+      "long": {
+        "one": "meter per second squared",
+        "other": "meters per second squared"
+      },
+      "short": {
+        "one": "m/s²",
+        "other": "m/s²"
+      },
+      "narrow": {
+        "one": "m/s²",
+        "other": "m/s²"
+      },
+      "names": [
+        "meter per second squared",
+        "meters per second squared",
+        "m/s²"
+      ]
+    },
+    "angle-arc-minute": {
+      "category": "angle",
+      "long": {
+        "one": "arcminute",
+        "other": "arcminutes"
+      },
+      "short": {
+        "one": "arcmin",
+        "other": "arcmins"
+      },
+      "narrow": {
+        "one": "′",
+        "other": "′"
+      },
+      "names": [
+        "arcminute",
+        "arcminutes",
+        "arcmin",
+        "arcmins",
+        "′"
+      ]
+    },
+    "angle-arc-second": {
+      "category": "angle",
+      "long": {
+        "one": "arcsecond",
+        "other": "arcseconds"
+      },
+      "short": {
+        "one": "arcsec",
+        "other": "arcsecs"
+      },
+      "narrow": {
+        "one": "″",
+        "other": "″"
+      },
+      "names": [
+        "arcsecond",
+        "arcseconds",
+        "arcsec",
+        "arcsecs",
+        "″"
+      ]
+    },
+    "angle-degree": {
+      "category": "angle",
+      "long": {
+        "one": "degree",
+        "other": "degrees"
+      },
+      "short": {
+        "one": "deg",
+        "other": "deg"
+      },
+      "narrow": {
+        "one": "°",
+        "other": "°"
+      },
+      "names": [
+        "degree",
+        "degrees",
+        "deg",
+        "°"
+      ]
+    },
+    "angle-radian": {
+      "category": "angle",
+      "long": {
+        "one": "radian",
+        "other": "radians"
+      },
+      "short": {
+        "one": "rad",
+        "other": "rad"
+      },
+      "narrow": {
+        "one": "rad",
+        "other": "rad"
+      },
+      "names": [
+        "radian",
+        "radians",
+        "rad"
+      ]
+    },
+    "angle-revolution": {
+      "category": "angle",
+      "long": {
+        "one": "revolution",
+        "other": "revolutions"
+      },
+      "short": {
+        "one": "rev",
+        "other": "rev"
+      },
+      "narrow": {
+        "one": "rev",
+        "other": "rev"
+      },
+      "names": [
+        "revolution",
+        "revolutions",
+        "rev"
+      ]
+    },
+    "area-acre": {
+      "category": "area",
+      "long": {
+        "one": "acre",
+        "other": "acres"
+      },
+      "short": {
+        "one": "ac",
+        "other": "ac"
+      },
+      "narrow": {
+        "one": "ac",
+        "other": "ac"
+      },
+      "names": [
+        "acre",
+        "acres",
+        "ac"
+      ]
+    },
+    "area-dunam": {
+      "category": "area",
+      "long": {
+        "one": "dunam",
+        "other": "dunams"
+      },
+      "short": {
+        "one": "dunam",
+        "other": "dunam"
+      },
+      "narrow": {
+        "one": "dunam",
+        "other": "dunam"
+      },
+      "names": [
+        "dunam",
+        "dunams"
+      ]
+    },
+    "area-hectare": {
+      "category": "area",
+      "long": {
+        "one": "hectare",
+        "other": "hectares"
+      },
+      "short": {
+        "one": "ha",
+        "other": "ha"
+      },
+      "narrow": {
+        "one": "ha",
+        "other": "ha"
+      },
+      "names": [
+        "hectare",
+        "hectares",
+        "ha"
+      ]
+    },
+    "area-square-centimeter": {
+      "category": "area",
+      "long": {
+        "one": "square centimeter",
+        "other": "square centimeters"
+      },
+      "short": {
+        "one": "cm²",
+        "other": "cm²"
+      },
+      "narrow": {
+        "one": "cm²",
+        "other": "cm²"
+      },
+      "names": [
+        "square centimeter",
+        "square centimeters",
+        "cm²"
+      ]
+    },
+    "area-square-foot": {
+      "category": "area",
+      "long": {
+        "one": "square foot",
+        "other": "square feet"
+      },
+      "short": {
+        "one": "sq ft",
+        "other": "sq ft"
+      },
+      "narrow": {
+        "one": "ft²",
+        "other": "ft²"
+      },
+      "names": [
+        "square foot",
+        "square feet",
+        "sq ft",
+        "ft²"
+      ]
+    },
+    "area-square-inch": {
+      "category": "area",
+      "long": {
+        "one": "square inch",
+        "other": "square inches"
+      },
+      "short": {
+        "one": "in²",
+        "other": "in²"
+      },
+      "narrow": {
+        "one": "in²",
+        "other": "in²"
+      },
+      "names": [
+        "square inch",
+        "square inches",
+        "in²"
+      ]
+    },
+    "area-square-kilometer": {
+      "category": "area",
+      "long": {
+        "one": "square kilometer",
+        "other": "square kilometers"
+      },
+      "short": {
+        "one": "km²",
+        "other": "km²"
+      },
+      "narrow": {
+        "one": "km²",
+        "other": "km²"
+      },
+      "names": [
+        "square kilometer",
+        "square kilometers",
+        "km²"
+      ]
+    },
+    "area-square-meter": {
+      "category": "area",
+      "long": {
+        "one": "square meter",
+        "other": "square meters"
+      },
+      "short": {
+        "one": "m²",
+        "other": "m²"
+      },
+      "narrow": {
+        "one": "m²",
+        "other": "m²"
+      },
+      "names": [
+        "square meter",
+        "square meters",
+        "m²"
+      ]
+    },
+    "area-square-mile": {
+      "category": "area",
+      "long": {
+        "one": "square mile",
+        "other": "square miles"
+      },
+      "short": {
+        "one": "sq mi",
+        "other": "sq mi"
+      },
+      "narrow": {
+        "one": "mi²",
+        "other": "mi²"
+      },
+      "names": [
+        "square mile",
+        "square miles",
+        "sq mi",
+        "mi²"
+      ]
+    },
+    "area-square-yard": {
+      "category": "area",
+      "long": {
+        "one": "square yard",
+        "other": "square yards"
+      },
+      "short": {
+        "one": "yd²",
+        "other": "yd²"
+      },
+      "narrow": {
+        "one": "yd²",
+        "other": "yd²"
+      },
+      "names": [
+        "square yard",
+        "square yards",
+        "yd²"
+      ]
+    },
+    "concentr-item": {
+      "category": "concentr",
+      "long": {
+        "one": "item",
+        "other": "items"
+      },
+      "short": {
+        "one": "item",
+        "other": "items"
+      },
+      "narrow": {
+        "one": "item",
+        "other": "items"
+      },
+      "names": [
+        "item",
+        "items"
+      ]
+    },
+    "concentr-karat": {
+      "category": "concentr",
+      "long": {
+        "one": "karat",
+        "other": "karats"
+      },
+      "short": {
+        "one": "kt",
+        "other": "kt"
+      },
+      "narrow": {
+        "one": "kt",
+        "other": "kt"
+      },
+      "names": [
+        "karat",
+        "karats",
+        "kt"
+      ]
+    },
+    "concentr-milligram-ofglucose-per-deciliter": {
+      "category": "concentr",
+      "long": {
+        "one": "milligram per deciliter",
+        "other": "milligrams per deciliter"
+      },
+      "short": {
+        "one": "mg/dL",
+        "other": "mg/dL"
+      },
+      "narrow": {
+        "one": "mg/dL",
+        "other": "mg/dL"
+      },
+      "names": [
+        "milligram per deciliter",
+        "milligrams per deciliter",
+        "mg/dL"
+      ]
+    },
+    "concentr-millimole-per-liter": {
+      "category": "concentr",
+      "long": {
+        "one": "millimole per liter",
+        "other": "millimoles per liter"
+      },
+      "short": {
+        "one": "mmol/L",
+        "other": "mmol/L"
+      },
+      "narrow": {
+        "one": "mmol/L",
+        "other": "mmol/L"
+      },
+      "names": [
+        "millimole per liter",
+        "millimoles per liter",
+        "mmol/L"
+      ]
+    },
+    "concentr-mole": {
+      "category": "concentr",
+      "long": {
+        "one": "mole",
+        "other": "moles"
+      },
+      "short": {
+        "one": "mol",
+        "other": "mol"
+      },
+      "narrow": {
+        "one": "mol",
+        "other": "mol"
+      },
+      "names": [
+        "mole",
+        "moles",
+        "mol"
+      ]
+    },
+    "concentr-percent": {
+      "category": "concentr",
+      "long": {
+        "one": "percent",
+        "other": "percent"
+      },
+      "short": {
+        "one": "%",
+        "other": "%"
+      },
+      "narrow": {
+        "one": "%",
+        "other": "%"
+      },
+      "names": [
+        "percent",
+        "%"
+      ]
+    },
+    "concentr-permille": {
+      "category": "concentr",
+      "long": {
+        "one": "permille",
+        "other": "permille"
+      },
+      "short": {
+        "one": "‰",
+        "other": "‰"
+      },
+      "narrow": {
+        "one": "‰",
+        "other": "‰"
+      },
+      "names": [
+        "permille",
+        "‰"
+      ]
+    },
+    "concentr-permillion": {
+      "category": "concentr",
+      "long": {
+        "one": "part per million",
+        "other": "parts per million"
+      },
+      "short": {
+        "one": "ppm",
+        "other": "ppm"
+      },
+      "narrow": {
+        "one": "ppm",
+        "other": "ppm"
+      },
+      "names": [
+        "part per million",
+        "parts per million",
+        "ppm"
+      ]
+    },
+    "concentr-permyriad": {
+      "category": "concentr",
+      "long": {
+        "one": "permyriad",
+        "other": "permyriad"
+      },
+      "short": {
+        "one": "‱",
+        "other": "‱"
+      },
+      "narrow": {
+        "one": "‱",
+        "other": "‱"
+      },
+      "names": [
+        "permyriad",
+        "‱"
+      ]
+    },
+    "concentr-portion-per-1e9": {
+      "category": "concentr",
+      "long": {
+        "one": "part per billion",
+        "other": "parts per billion"
+      },
+      "short": {
+        "one": "ppb",
+        "other": "ppb"
+      },
+      "narrow": {
+        "one": "ppb",
+        "other": "ppb"
+      },
+      "names": [
+        "part per billion",
+        "parts per billion",
+        "ppb"
+      ]
+    },
+    "consumption-liter-per-100-kilometer": {
+      "category": "consumption",
+      "long": {
+        "one": "liter per 100 kilometers",
+        "other": "liters per 100 kilometers"
+      },
+      "short": {
+        "one": "L/100 km",
+        "other": "L/100 km"
+      },
+      "narrow": {
+        "one": "L/100km",
+        "other": "L/100km"
+      },
+      "names": [
+        "liter per 100 kilometers",
+        "liters per 100 kilometers",
+        "L/100 km",
+        "L/100km"
+      ]
+    },
+    "consumption-liter-per-kilometer": {
+      "category": "consumption",
+      "long": {
+        "one": "liter per kilometer",
+        "other": "liters per kilometer"
+      },
+      "short": {
+        "one": "L/km",
+        "other": "L/km"
+      },
+      "narrow": {
+        "one": "L/km",
+        "other": "L/km"
+      },
+      "names": [
+        "liter per kilometer",
+        "liters per kilometer",
+        "L/km"
+      ]
+    },
+    "consumption-mile-per-gallon": {
+      "category": "consumption",
+      "long": {
+        "one": "mile per gallon",
+        "other": "miles per gallon"
+      },
+      "short": {
+        "one": "mpg",
+        "other": "mpg"
+      },
+      "narrow": {
+        "one": "mpg",
+        "other": "mpg"
+      },
+      "names": [
+        "mile per gallon",
+        "miles per gallon",
+        "mpg"
+      ]
+    },
+    "consumption-mile-per-gallon-imperial": {
+      "category": "consumption",
+      "long": {
+        "one": "mile per Imp. gallon",
+        "other": "miles per Imp. gallon"
+      },
+      "short": {
+        "one": "mpg Imp.",
+        "other": "mpg Imp."
+      },
+      "narrow": {
+        "one": "m/gUK",
+        "other": "m/gUK"
+      },
+      "names": [
+        "mile per Imp. gallon",
+        "miles per Imp. gallon",
+        "mpg Imp.",
+        "m/gUK"
+      ]
+    },
+    "digital-bit": {
+      "category": "digital",
+      "long": {
+        "one": "bit",
+        "other": "bits"
+      },
+      "short": {
+        "one": "bit",
+        "other": "bit"
+      },
+      "narrow": {
+        "one": "bit",
+        "other": "bit"
+      },
+      "names": [
+        "bit",
+        "bits"
+      ]
+    },
+    "digital-byte": {
+      "category": "digital",
+      "long": {
+        "one": "byte",
+        "other": "bytes"
+      },
+      "short": {
+        "one": "byte",
+        "other": "byte"
+      },
+      "narrow": {
+        "one": "B",
+        "other": "B"
+      },
+      "names": [
+        "byte",
+        "bytes",
+        "B"
+      ]
+    },
+    "digital-gigabit": {
+      "category": "digital",
+      "long": {
+        "one": "gigabit",
+        "other": "gigabits"
+      },
+      "short": {
+        "one": "Gb",
+        "other": "Gb"
+      },
+      "narrow": {
+        "one": "Gb",
+        "other": "Gb"
+      },
+      "names": [
+        "gigabit",
+        "gigabits",
+        "Gb"
+      ]
+    },
+    "digital-gigabyte": {
+      "category": "digital",
+      "long": {
+        "one": "gigabyte",
+        "other": "gigabytes"
+      },
+      "short": {
+        "one": "GB",
+        "other": "GB"
+      },
+      "narrow": {
+        "one": "GB",
+        "other": "GB"
+      },
+      "names": [
+        "gigabyte",
+        "gigabytes",
+        "GB"
+      ]
+    },
+    "digital-kilobit": {
+      "category": "digital",
+      "long": {
+        "one": "kilobit",
+        "other": "kilobits"
+      },
+      "short": {
+        "one": "kb",
+        "other": "kb"
+      },
+      "narrow": {
+        "one": "kb",
+        "other": "kb"
+      },
+      "names": [
+        "kilobit",
+        "kilobits",
+        "kb"
+      ]
+    },
+    "digital-kilobyte": {
+      "category": "digital",
+      "long": {
+        "one": "kilobyte",
+        "other": "kilobytes"
+      },
+      "short": {
+        "one": "kB",
+        "other": "kB"
+      },
+      "narrow": {
+        "one": "kB",
+        "other": "kB"
+      },
+      "names": [
+        "kilobyte",
+        "kilobytes",
+        "kB"
+      ]
+    },
+    "digital-megabit": {
+      "category": "digital",
+      "long": {
+        "one": "megabit",
+        "other": "megabits"
+      },
+      "short": {
+        "one": "Mb",
+        "other": "Mb"
+      },
+      "narrow": {
+        "one": "Mb",
+        "other": "Mb"
+      },
+      "names": [
+        "megabit",
+        "megabits",
+        "Mb"
+      ]
+    },
+    "digital-megabyte": {
+      "category": "digital",
+      "long": {
+        "one": "megabyte",
+        "other": "megabytes"
+      },
+      "short": {
+        "one": "MB",
+        "other": "MB"
+      },
+      "narrow": {
+        "one": "MB",
+        "other": "MB"
+      },
+      "names": [
+        "megabyte",
+        "megabytes",
+        "MB"
+      ]
+    },
+    "digital-petabyte": {
+      "category": "digital",
+      "long": {
+        "one": "petabyte",
+        "other": "petabytes"
+      },
+      "short": {
+        "one": "PB",
+        "other": "PB"
+      },
+      "narrow": {
+        "one": "PB",
+        "other": "PB"
+      },
+      "names": [
+        "petabyte",
+        "petabytes",
+        "PB"
+      ]
+    },
+    "digital-terabit": {
+      "category": "digital",
+      "long": {
+        "one": "terabit",
+        "other": "terabits"
+      },
+      "short": {
+        "one": "Tb",
+        "other": "Tb"
+      },
+      "narrow": {
+        "one": "Tb",
+        "other": "Tb"
+      },
+      "names": [
+        "terabit",
+        "terabits",
+        "Tb"
+      ]
+    },
+    "digital-terabyte": {
+      "category": "digital",
+      "long": {
+        "one": "terabyte",
+        "other": "terabytes"
+      },
+      "short": {
+        "one": "TB",
+        "other": "TB"
+      },
+      "narrow": {
+        "one": "TB",
+        "other": "TB"
+      },
+      "names": [
+        "terabyte",
+        "terabytes",
+        "TB"
+      ]
+    },
+    "duration-century": {
+      "category": "duration",
+      "long": {
+        "one": "century",
+        "other": "centuries"
+      },
+      "short": {
+        "one": "c",
+        "other": "c"
+      },
+      "narrow": {
+        "one": "c",
+        "other": "c"
+      },
+      "names": [
+        "century",
+        "centuries",
+        "c"
+      ]
+    },
+    "duration-day": {
+      "category": "duration",
+      "long": {
+        "one": "day",
+        "other": "days"
+      },
+      "short": {
+        "one": "day",
+        "other": "days"
+      },
+      "narrow": {
+        "one": "d",
+        "other": "d"
+      },
+      "names": [
+        "day",
+        "days",
+        "d"
+      ]
+    },
+    "duration-decade": {
+      "category": "duration",
+      "long": {
+        "one": "decade",
+        "other": "decades"
+      },
+      "short": {
+        "one": "dec",
+        "other": "dec"
+      },
+      "narrow": {
+        "one": "dec",
+        "other": "dec"
+      },
+      "names": [
+        "decade",
+        "decades",
+        "dec"
+      ]
+    },
+    "duration-hour": {
+      "category": "duration",
+      "long": {
+        "one": "hour",
+        "other": "hours"
+      },
+      "short": {
+        "one": "hr",
+        "other": "hr"
+      },
+      "narrow": {
+        "one": "h",
+        "other": "h"
+      },
+      "names": [
+        "hour",
+        "hours",
+        "hr",
+        "h"
+      ]
+    },
+    "duration-microsecond": {
+      "category": "duration",
+      "long": {
+        "one": "microsecond",
+        "other": "microseconds"
+      },
+      "short": {
+        "one": "μs",
+        "other": "μs"
+      },
+      "narrow": {
+        "one": "μs",
+        "other": "μs"
+      },
+      "names": [
+        "microsecond",
+        "microseconds",
+        "μs"
+      ]
+    },
+    "duration-millisecond": {
+      "category": "duration",
+      "long": {
+        "one": "millisecond",
+        "other": "milliseconds"
+      },
+      "short": {
+        "one": "ms",
+        "other": "ms"
+      },
+      "narrow": {
+        "one": "ms",
+        "other": "ms"
+      },
+      "names": [
+        "millisecond",
+        "milliseconds",
+        "ms"
+      ]
+    },
+    "duration-minute": {
+      "category": "duration",
+      "long": {
+        "one": "minute",
+        "other": "minutes"
+      },
+      "short": {
+        "one": "min",
+        "other": "min"
+      },
+      "narrow": {
+        "one": "m",
+        "other": "m"
+      },
+      "names": [
+        "minute",
+        "minutes",
+        "min",
+        "m"
+      ]
+    },
+    "duration-month": {
+      "category": "duration",
+      "long": {
+        "one": "month",
+        "other": "months"
+      },
+      "short": {
+        "one": "mth",
+        "other": "mths"
+      },
+      "narrow": {
+        "one": "m",
+        "other": "m"
+      },
+      "names": [
+        "month",
+        "months",
+        "mth",
+        "mths",
+        "m"
+      ]
+    },
+    "duration-nanosecond": {
+      "category": "duration",
+      "long": {
+        "one": "nanosecond",
+        "other": "nanoseconds"
+      },
+      "short": {
+        "one": "ns",
+        "other": "ns"
+      },
+      "narrow": {
+        "one": "ns",
+        "other": "ns"
+      },
+      "names": [
+        "nanosecond",
+        "nanoseconds",
+        "ns"
+      ]
+    },
+    "duration-night": {
+      "category": "duration",
+      "long": {
+        "one": "night",
+        "other": "nights"
+      },
+      "short": {
+        "one": "night",
+        "other": "nights"
+      },
+      "narrow": {
+        "one": "night",
+        "other": "nights"
+      },
+      "names": [
+        "night",
+        "nights"
+      ]
+    },
+    "duration-quarter": {
+      "category": "duration",
+      "long": {
+        "one": "quarter",
+        "other": "quarters"
+      },
+      "short": {
+        "one": "qtr",
+        "other": "qtrs"
+      },
+      "narrow": {
+        "one": "q",
+        "other": "q"
+      },
+      "names": [
+        "quarter",
+        "quarters",
+        "qtr",
+        "qtrs",
+        "q"
+      ]
+    },
+    "duration-second": {
+      "category": "duration",
+      "long": {
+        "one": "second",
+        "other": "seconds"
+      },
+      "short": {
+        "one": "sec",
+        "other": "sec"
+      },
+      "narrow": {
+        "one": "s",
+        "other": "s"
+      },
+      "names": [
+        "second",
+        "seconds",
+        "sec",
+        "s"
+      ]
+    },
+    "duration-week": {
+      "category": "duration",
+      "long": {
+        "one": "week",
+        "other": "weeks"
+      },
+      "short": {
+        "one": "wk",
+        "other": "wks"
+      },
+      "narrow": {
+        "one": "w",
+        "other": "w"
+      },
+      "names": [
+        "week",
+        "weeks",
+        "wk",
+        "wks",
+        "w"
+      ]
+    },
+    "duration-year": {
+      "category": "duration",
+      "long": {
+        "one": "year",
+        "other": "years"
+      },
+      "short": {
+        "one": "yr",
+        "other": "yrs"
+      },
+      "narrow": {
+        "one": "y",
+        "other": "y"
+      },
+      "names": [
+        "year",
+        "years",
+        "yr",
+        "yrs",
+        "y"
+      ]
+    },
+    "electric-ampere": {
+      "category": "electric",
+      "long": {
+        "one": "ampere",
+        "other": "amperes"
+      },
+      "short": {
+        "one": "A",
+        "other": "A"
+      },
+      "narrow": {
+        "one": "A",
+        "other": "A"
+      },
+      "names": [
+        "ampere",
+        "amperes",
+        "A"
+      ]
+    },
+    "electric-milliampere": {
+      "category": "electric",
+      "long": {
+        "one": "milliampere",
+        "other": "milliamperes"
+      },
+      "short": {
+        "one": "mA",
+        "other": "mA"
+      },
+      "narrow": {
+        "one": "mA",
+        "other": "mA"
+      },
+      "names": [
+        "milliampere",
+        "milliamperes",
+        "mA"
+      ]
+    },
+    "electric-ohm": {
+      "category": "electric",
+      "long": {
+        "one": "ohm",
+        "other": "ohms"
+      },
+      "short": {
+        "one": "Ω",
+        "other": "Ω"
+      },
+      "narrow": {
+        "one": "Ω",
+        "other": "Ω"
+      },
+      "names": [
+        "ohm",
+        "ohms",
+        "Ω"
+      ]
+    },
+    "electric-volt": {
+      "category": "electric",
+      "long": {
+        "one": "volt",
+        "other": "volts"
+      },
+      "short": {
+        "one": "V",
+        "other": "V"
+      },
+      "narrow": {
+        "one": "V",
+        "other": "V"
+      },
+      "names": [
+        "volt",
+        "volts",
+        "V"
+      ]
+    },
+    "energy-british-thermal-unit": {
+      "category": "energy",
+      "long": {
+        "one": "British thermal unit",
+        "other": "British thermal units"
+      },
+      "short": {
+        "one": "Btu",
+        "other": "Btu"
+      },
+      "narrow": {
+        "one": "Btu",
+        "other": "Btu"
+      },
+      "names": [
+        "British thermal unit",
+        "British thermal units",
+        "Btu"
+      ]
+    },
+    "energy-calorie": {
+      "category": "energy",
+      "long": {
+        "one": "calorie",
+        "other": "calories"
+      },
+      "short": {
+        "one": "cal",
+        "other": "cal"
+      },
+      "narrow": {
+        "one": "cal",
+        "other": "cal"
+      },
+      "names": [
+        "calorie",
+        "calories",
+        "cal"
+      ]
+    },
+    "energy-electronvolt": {
+      "category": "energy",
+      "long": {
+        "one": "electronvolt",
+        "other": "electronvolts"
+      },
+      "short": {
+        "one": "eV",
+        "other": "eV"
+      },
+      "narrow": {
+        "one": "eV",
+        "other": "eV"
+      },
+      "names": [
+        "electronvolt",
+        "electronvolts",
+        "eV"
+      ]
+    },
+    "energy-foodcalorie": {
+      "category": "energy",
+      "long": {
+        "one": "Calorie",
+        "other": "Calories"
+      },
+      "short": {
+        "one": "Cal",
+        "other": "Cal"
+      },
+      "narrow": {
+        "one": "Cal",
+        "other": "Cal"
+      },
+      "names": [
+        "Calorie",
+        "Calories",
+        "Cal"
+      ]
+    },
+    "energy-joule": {
+      "category": "energy",
+      "long": {
+        "one": "joule",
+        "other": "joules"
+      },
+      "short": {
+        "one": "J",
+        "other": "J"
+      },
+      "narrow": {
+        "one": "J",
+        "other": "J"
+      },
+      "names": [
+        "joule",
+        "joules",
+        "J"
+      ]
+    },
+    "energy-kilocalorie": {
+      "category": "energy",
+      "long": {
+        "one": "kilocalorie",
+        "other": "kilocalories"
+      },
+      "short": {
+        "one": "kcal",
+        "other": "kcal"
+      },
+      "narrow": {
+        "one": "kcal",
+        "other": "kcal"
+      },
+      "names": [
+        "kilocalorie",
+        "kilocalories",
+        "kcal"
+      ]
+    },
+    "energy-kilojoule": {
+      "category": "energy",
+      "long": {
+        "one": "kilojoule",
+        "other": "kilojoules"
+      },
+      "short": {
+        "one": "kJ",
+        "other": "kJ"
+      },
+      "narrow": {
+        "one": "kJ",
+        "other": "kJ"
+      },
+      "names": [
+        "kilojoule",
+        "kilojoules",
+        "kJ"
+      ]
+    },
+    "energy-kilowatt-hour": {
+      "category": "energy",
+      "long": {
+        "one": "kilowatt hour",
+        "other": "kilowatt-hours"
+      },
+      "short": {
+        "one": "kWh",
+        "other": "kWh"
+      },
+      "narrow": {
+        "one": "kWh",
+        "other": "kWh"
+      },
+      "names": [
+        "kilowatt hour",
+        "kilowatt-hours",
+        "kWh"
+      ]
+    },
+    "energy-therm-us": {
+      "category": "energy",
+      "long": {
+        "one": "US therm",
+        "other": "US therms"
+      },
+      "short": {
+        "one": "US therm",
+        "other": "US therms"
+      },
+      "narrow": {
+        "one": "US therm",
+        "other": "US therms"
+      },
+      "names": [
+        "US therm",
+        "US therms"
+      ]
+    },
+    "force-kilowatt-hour-per-100-kilometer": {
+      "category": "force",
+      "long": {
+        "one": "kilowatt-hour per 100 kilometers",
+        "other": "kilowatt-hours per 100 kilometers"
+      },
+      "short": {
+        "one": "kWh/100km",
+        "other": "kWh/100km"
+      },
+      "narrow": {
+        "one": "kWh/100km",
+        "other": "kWh/100km"
+      },
+      "names": [
+        "kilowatt-hour per 100 kilometers",
+        "kilowatt-hours per 100 kilometers",
+        "kWh/100km"
+      ]
+    },
+    "force-newton": {
+      "category": "force",
+      "long": {
+        "one": "newton",
+        "other": "newtons"
+      },
+      "short": {
+        "one": "N",
+        "other": "N"
+      },
+      "narrow": {
+        "one": "N",
+        "other": "N"
+      },
+      "names": [
+        "newton",
+        "newtons",
+        "N"
+      ]
+    },
+    "force-pound-force": {
+      "category": "force",
+      "long": {
+        "one": "pound of force",
+        "other": "pounds of force"
+      },
+      "short": {
+        "one": "lbf",
+        "other": "lbf"
+      },
+      "narrow": {
+        "one": "lbf",
+        "other": "lbf"
+      },
+      "names": [
+        "pound of force",
+        "pounds of force",
+        "lbf"
+      ]
+    },
+    "frequency-gigahertz": {
+      "category": "frequency",
+      "long": {
+        "one": "gigahertz",
+        "other": "gigahertz"
+      },
+      "short": {
+        "one": "GHz",
+        "other": "GHz"
+      },
+      "narrow": {
+        "one": "GHz",
+        "other": "GHz"
+      },
+      "names": [
+        "gigahertz",
+        "GHz"
+      ]
+    },
+    "frequency-hertz": {
+      "category": "frequency",
+      "long": {
+        "one": "hertz",
+        "other": "hertz"
+      },
+      "short": {
+        "one": "Hz",
+        "other": "Hz"
+      },
+      "narrow": {
+        "one": "Hz",
+        "other": "Hz"
+      },
+      "names": [
+        "hertz",
+        "Hz"
+      ]
+    },
+    "frequency-kilohertz": {
+      "category": "frequency",
+      "long": {
+        "one": "kilohertz",
+        "other": "kilohertz"
+      },
+      "short": {
+        "one": "kHz",
+        "other": "kHz"
+      },
+      "narrow": {
+        "one": "kHz",
+        "other": "kHz"
+      },
+      "names": [
+        "kilohertz",
+        "kHz"
+      ]
+    },
+    "frequency-megahertz": {
+      "category": "frequency",
+      "long": {
+        "one": "megahertz",
+        "other": "megahertz"
+      },
+      "short": {
+        "one": "MHz",
+        "other": "MHz"
+      },
+      "narrow": {
+        "one": "MHz",
+        "other": "MHz"
+      },
+      "names": [
+        "megahertz",
+        "MHz"
+      ]
+    },
+    "graphics-dot": {
+      "category": "graphics",
+      "long": {
+        "one": "dot",
+        "other": "dots"
+      },
+      "short": {
+        "one": "dot",
+        "other": "dots"
+      },
+      "narrow": {
+        "one": "dot",
+        "other": "dot"
+      },
+      "names": [
+        "dot",
+        "dots"
+      ]
+    },
+    "graphics-dot-per-centimeter": {
+      "category": "graphics",
+      "long": {
+        "one": "dot per centimeter",
+        "other": "dots per centimeter"
+      },
+      "short": {
+        "one": "dpcm",
+        "other": "dpcm"
+      },
+      "narrow": {
+        "one": "dpcm",
+        "other": "dpcm"
+      },
+      "names": [
+        "dot per centimeter",
+        "dots per centimeter",
+        "dpcm"
+      ]
+    },
+    "graphics-dot-per-inch": {
+      "category": "graphics",
+      "long": {
+        "one": "dot per inch",
+        "other": "dots per inch"
+      },
+      "short": {
+        "one": "dpi",
+        "other": "dpi"
+      },
+      "narrow": {
+        "one": "dpi",
+        "other": "dpi"
+      },
+      "names": [
+        "dot per inch",
+        "dots per inch",
+        "dpi"
+      ]
+    },
+    "graphics-em": {
+      "category": "graphics",
+      "long": {
+        "one": "em",
+        "other": "ems"
+      },
+      "short": {
+        "one": "em",
+        "other": "em"
+      },
+      "narrow": {
+        "one": "em",
+        "other": "em"
+      },
+      "names": [
+        "em",
+        "ems"
+      ]
+    },
+    "graphics-megapixel": {
+      "category": "graphics",
+      "long": {
+        "one": "megapixel",
+        "other": "megapixels"
+      },
+      "short": {
+        "one": "MP",
+        "other": "MP"
+      },
+      "narrow": {
+        "one": "MP",
+        "other": "MP"
+      },
+      "names": [
+        "megapixel",
+        "megapixels",
+        "MP"
+      ]
+    },
+    "graphics-pixel": {
+      "category": "graphics",
+      "long": {
+        "one": "pixel",
+        "other": "pixels"
+      },
+      "short": {
+        "one": "px",
+        "other": "px"
+      },
+      "narrow": {
+        "one": "px",
+        "other": "px"
+      },
+      "names": [
+        "pixel",
+        "pixels",
+        "px"
+      ]
+    },
+    "graphics-pixel-per-centimeter": {
+      "category": "graphics",
+      "long": {
+        "one": "pixel per centimeter",
+        "other": "pixels per centimeter"
+      },
+      "short": {
+        "one": "ppcm",
+        "other": "ppcm"
+      },
+      "narrow": {
+        "one": "ppcm",
+        "other": "ppcm"
+      },
+      "names": [
+        "pixel per centimeter",
+        "pixels per centimeter",
+        "ppcm"
+      ]
+    },
+    "graphics-pixel-per-inch": {
+      "category": "graphics",
+      "long": {
+        "one": "pixel per inch",
+        "other": "pixels per inch"
+      },
+      "short": {
+        "one": "ppi",
+        "other": "ppi"
+      },
+      "narrow": {
+        "one": "ppi",
+        "other": "ppi"
+      },
+      "names": [
+        "pixel per inch",
+        "pixels per inch",
+        "ppi"
+      ]
+    },
+    "length-astronomical-unit": {
+      "category": "length",
+      "long": {
+        "one": "astronomical unit",
+        "other": "astronomical units"
+      },
+      "short": {
+        "one": "au",
+        "other": "au"
+      },
+      "narrow": {
+        "one": "au",
+        "other": "au"
+      },
+      "names": [
+        "astronomical unit",
+        "astronomical units",
+        "au"
+      ]
+    },
+    "length-centimeter": {
+      "category": "length",
+      "long": {
+        "one": "centimeter",
+        "other": "centimeters"
+      },
+      "short": {
+        "one": "cm",
+        "other": "cm"
+      },
+      "narrow": {
+        "one": "cm",
+        "other": "cm"
+      },
+      "names": [
+        "centimeter",
+        "centimeters",
+        "cm"
+      ]
+    },
+    "length-decimeter": {
+      "category": "length",
+      "long": {
+        "one": "decimeter",
+        "other": "decimeters"
+      },
+      "short": {
+        "one": "dm",
+        "other": "dm"
+      },
+      "narrow": {
+        "one": "dm",
+        "other": "dm"
+      },
+      "names": [
+        "decimeter",
+        "decimeters",
+        "dm"
+      ]
+    },
+    "length-earth-radius": {
+      "category": "length",
+      "long": {
+        "one": "earth radius",
+        "other": "earth radius"
+      },
+      "short": {
+        "one": "R⊕",
+        "other": "R⊕"
+      },
+      "narrow": {
+        "one": "R⊕",
+        "other": "R⊕"
+      },
+      "names": [
+        "earth radius",
+        "R⊕"
+      ]
+    },
+    "length-fathom": {
+      "category": "length",
+      "long": {
+        "one": "fathom",
+        "other": "fathoms"
+      },
+      "short": {
+        "one": "fth",
+        "other": "fth"
+      },
+      "narrow": {
+        "one": "fth",
+        "other": "fth"
+      },
+      "names": [
+        "fathom",
+        "fathoms",
+        "fth"
+      ]
+    },
+    "length-foot": {
+      "category": "length",
+      "long": {
+        "one": "foot",
+        "other": "feet"
+      },
+      "short": {
+        "one": "ft",
+        "other": "ft"
+      },
+      "narrow": {
+        "one": "′",
+        "other": "′"
+      },
+      "names": [
+        "foot",
+        "feet",
+        "ft",
+        "′"
+      ]
+    },
+    "length-furlong": {
+      "category": "length",
+      "long": {
+        "one": "furlong",
+        "other": "furlongs"
+      },
+      "short": {
+        "one": "fur",
+        "other": "fur"
+      },
+      "narrow": {
+        "one": "fur",
+        "other": "fur"
+      },
+      "names": [
+        "furlong",
+        "furlongs",
+        "fur"
+      ]
+    },
+    "length-inch": {
+      "category": "length",
+      "long": {
+        "one": "inch",
+        "other": "inches"
+      },
+      "short": {
+        "one": "in",
+        "other": "in"
+      },
+      "narrow": {
+        "one": "″",
+        "other": "″"
+      },
+      "names": [
+        "inch",
+        "inches",
+        "in",
+        "″"
+      ]
+    },
+    "length-kilometer": {
+      "category": "length",
+      "long": {
+        "one": "kilometer",
+        "other": "kilometers"
+      },
+      "short": {
+        "one": "km",
+        "other": "km"
+      },
+      "narrow": {
+        "one": "km",
+        "other": "km"
+      },
+      "names": [
+        "kilometer",
+        "kilometers",
+        "km"
+      ]
+    },
+    "length-light-year": {
+      "category": "length",
+      "long": {
+        "one": "light year",
+        "other": "light years"
+      },
+      "short": {
+        "one": "ly",
+        "other": "ly"
+      },
+      "narrow": {
+        "one": "ly",
+        "other": "ly"
+      },
+      "names": [
+        "light year",
+        "light years",
+        "ly"
+      ]
+    },
+    "length-meter": {
+      "category": "length",
+      "long": {
+        "one": "meter",
+        "other": "meters"
+      },
+      "short": {
+        "one": "m",
+        "other": "m"
+      },
+      "narrow": {
+        "one": "m",
+        "other": "m"
+      },
+      "names": [
+        "meter",
+        "meters",
+        "m"
+      ]
+    },
+    "length-micrometer": {
+      "category": "length",
+      "long": {
+        "one": "micrometer",
+        "other": "micrometers"
+      },
+      "short": {
+        "one": "μm",
+        "other": "μm"
+      },
+      "narrow": {
+        "one": "μm",
+        "other": "μm"
+      },
+      "names": [
+        "micrometer",
+        "micrometers",
+        "μm"
+      ]
+    },
+    "length-mile": {
+      "category": "length",
+      "long": {
+        "one": "mile",
+        "other": "miles"
+      },
+      "short": {
+        "one": "mi",
+        "other": "mi"
+      },
+      "narrow": {
+        "one": "mi",
+        "other": "mi"
+      },
+      "names": [
+        "mile",
+        "miles",
+        "mi"
+      ]
+    },
+    "length-mile-scandinavian": {
+      "category": "length",
+      "long": {
+        "one": "mile-scandinavian",
+        "other": "miles-scandinavian"
+      },
+      "short": {
+        "one": "smi",
+        "other": "smi"
+      },
+      "narrow": {
+        "one": "smi",
+        "other": "smi"
+      },
+      "names": [
+        "mile-scandinavian",
+        "miles-scandinavian",
+        "smi"
+      ]
+    },
+    "length-millimeter": {
+      "category": "length",
+      "long": {
+        "one": "millimeter",
+        "other": "millimeters"
+      },
+      "short": {
+        "one": "mm",
+        "other": "mm"
+      },
+      "narrow": {
+        "one": "mm",
+        "other": "mm"
+      },
+      "names": [
+        "millimeter",
+        "millimeters",
+        "mm"
+      ]
+    },
+    "length-nanometer": {
+      "category": "length",
+      "long": {
+        "one": "nanometer",
+        "other": "nanometers"
+      },
+      "short": {
+        "one": "nm",
+        "other": "nm"
+      },
+      "narrow": {
+        "one": "nm",
+        "other": "nm"
+      },
+      "names": [
+        "nanometer",
+        "nanometers",
+        "nm"
+      ]
+    },
+    "length-nautical-mile": {
+      "category": "length",
+      "long": {
+        "one": "nautical mile",
+        "other": "nautical miles"
+      },
+      "short": {
+        "one": "nmi",
+        "other": "nmi"
+      },
+      "narrow": {
+        "one": "nmi",
+        "other": "nmi"
+      },
+      "names": [
+        "nautical mile",
+        "nautical miles",
+        "nmi"
+      ]
+    },
+    "length-parsec": {
+      "category": "length",
+      "long": {
+        "one": "parsec",
+        "other": "parsecs"
+      },
+      "short": {
+        "one": "pc",
+        "other": "pc"
+      },
+      "narrow": {
+        "one": "pc",
+        "other": "pc"
+      },
+      "names": [
+        "parsec",
+        "parsecs",
+        "pc"
+      ]
+    },
+    "length-picometer": {
+      "category": "length",
+      "long": {
+        "one": "picometer",
+        "other": "picometers"
+      },
+      "short": {
+        "one": "pm",
+        "other": "pm"
+      },
+      "narrow": {
+        "one": "pm",
+        "other": "pm"
+      },
+      "names": [
+        "picometer",
+        "picometers",
+        "pm"
+      ]
+    },
+    "length-point": {
+      "category": "length",
+      "long": {
+        "one": "point",
+        "other": "points"
+      },
+      "short": {
+        "one": "pt",
+        "other": "pt"
+      },
+      "narrow": {
+        "one": "pt",
+        "other": "pt"
+      },
+      "names": [
+        "point",
+        "points",
+        "pt"
+      ]
+    },
+    "length-solar-radius": {
+      "category": "length",
+      "long": {
+        "one": "solar radius",
+        "other": "solar radii"
+      },
+      "short": {
+        "one": "R☉",
+        "other": "R☉"
+      },
+      "narrow": {
+        "one": "R☉",
+        "other": "R☉"
+      },
+      "names": [
+        "solar radius",
+        "solar radii",
+        "R☉"
+      ]
+    },
+    "length-yard": {
+      "category": "length",
+      "long": {
+        "one": "yard",
+        "other": "yards"
+      },
+      "short": {
+        "one": "yd",
+        "other": "yd"
+      },
+      "narrow": {
+        "one": "yd",
+        "other": "yd"
+      },
+      "names": [
+        "yard",
+        "yards",
+        "yd"
+      ]
+    },
+    "light-candela": {
+      "category": "light",
+      "long": {
+        "one": "candela",
+        "other": "candela"
+      },
+      "short": {
+        "one": "cd",
+        "other": "cd"
+      },
+      "narrow": {
+        "one": "cd",
+        "other": "cd"
+      },
+      "names": [
+        "candela",
+        "cd"
+      ]
+    },
+    "light-lumen": {
+      "category": "light",
+      "long": {
+        "one": "lumen",
+        "other": "lumen"
+      },
+      "short": {
+        "one": "lm",
+        "other": "lm"
+      },
+      "narrow": {
+        "one": "lm",
+        "other": "lm"
+      },
+      "names": [
+        "lumen",
+        "lm"
+      ]
+    },
+    "light-lux": {
+      "category": "light",
+      "long": {
+        "one": "lux",
+        "other": "lux"
+      },
+      "short": {
+        "one": "lx",
+        "other": "lx"
+      },
+      "narrow": {
+        "one": "lx",
+        "other": "lx"
+      },
+      "names": [
+        "lux",
+        "lx"
+      ]
+    },
+    "light-solar-luminosity": {
+      "category": "light",
+      "long": {
+        "one": "solar luminosity",
+        "other": "solar luminosities"
+      },
+      "short": {
+        "one": "L☉",
+        "other": "L☉"
+      },
+      "narrow": {
+        "one": "L☉",
+        "other": "L☉"
+      },
+      "names": [
+        "solar luminosity",
+        "solar luminosities",
+        "L☉"
+      ]
+    },
+    "mass-carat": {
+      "category": "mass",
+      "long": {
+        "one": "carat",
+        "other": "carats"
+      },
+      "short": {
+        "one": "CD",
+        "other": "CD"
+      },
+      "narrow": {
+        "one": "CD",
+        "other": "CD"
+      },
+      "names": [
+        "carat",
+        "carats",
+        "CD"
+      ]
+    },
+    "mass-dalton": {
+      "category": "mass",
+      "long": {
+        "one": "dalton",
+        "other": "daltons"
+      },
+      "short": {
+        "one": "Da",
+        "other": "Da"
+      },
+      "narrow": {
+        "one": "Da",
+        "other": "Da"
+      },
+      "names": [
+        "dalton",
+        "daltons",
+        "Da"
+      ]
+    },
+    "mass-earth-mass": {
+      "category": "mass",
+      "long": {
+        "one": "Earth mass",
+        "other": "Earth masses"
+      },
+      "short": {
+        "one": "M⊕",
+        "other": "M⊕"
+      },
+      "narrow": {
+        "one": "M⊕",
+        "other": "M⊕"
+      },
+      "names": [
+        "Earth mass",
+        "Earth masses",
+        "M⊕"
+      ]
+    },
+    "mass-grain": {
+      "category": "mass",
+      "long": {
+        "one": "grain",
+        "other": "grains"
+      },
+      "short": {
+        "one": "gr",
+        "other": "gr"
+      },
+      "narrow": {
+        "one": "gr",
+        "other": "gr"
+      },
+      "names": [
+        "grain",
+        "grains",
+        "gr"
+      ]
+    },
+    "mass-gram": {
+      "category": "mass",
+      "long": {
+        "one": "gram",
+        "other": "grams"
+      },
+      "short": {
+        "one": "g",
+        "other": "g"
+      },
+      "narrow": {
+        "one": "g",
+        "other": "g"
+      },
+      "names": [
+        "gram",
+        "grams",
+        "g"
+      ]
+    },
+    "mass-kilogram": {
+      "category": "mass",
+      "long": {
+        "one": "kilogram",
+        "other": "kilograms"
+      },
+      "short": {
+        "one": "kg",
+        "other": "kg"
+      },
+      "narrow": {
+        "one": "kg",
+        "other": "kg"
+      },
+      "names": [
+        "kilogram",
+        "kilograms",
+        "kg"
+      ]
+    },
+    "mass-microgram": {
+      "category": "mass",
+      "long": {
+        "one": "microgram",
+        "other": "micrograms"
+      },
+      "short": {
+        "one": "μg",
+        "other": "μg"
+      },
+      "narrow": {
+        "one": "μg",
+        "other": "μg"
+      },
+      "names": [
+        "microgram",
+        "micrograms",
+        "μg"
+      ]
+    },
+    "mass-milligram": {
+      "category": "mass",
+      "long": {
+        "one": "milligram",
+        "other": "milligrams"
+      },
+      "short": {
+        "one": "mg",
+        "other": "mg"
+      },
+      "narrow": {
+        "one": "mg",
+        "other": "mg"
+      },
+      "names": [
+        "milligram",
+        "milligrams",
+        "mg"
+      ]
+    },
+    "mass-ounce": {
+      "category": "mass",
+      "long": {
+        "one": "ounce",
+        "other": "ounces"
+      },
+      "short": {
+        "one": "oz",
+        "other": "oz"
+      },
+      "narrow": {
+        "one": "oz",
+        "other": "oz"
+      },
+      "names": [
+        "ounce",
+        "ounces",
+        "oz"
+      ]
+    },
+    "mass-ounce-troy": {
+      "category": "mass",
+      "long": {
+        "one": "troy ounce",
+        "other": "troy ounces"
+      },
+      "short": {
+        "one": "oz t",
+        "other": "oz t"
+      },
+      "narrow": {
+        "one": "oz t",
+        "other": "oz t"
+      },
+      "names": [
+        "troy ounce",
+        "troy ounces",
+        "oz t"
+      ]
+    },
+    "mass-pound": {
+      "category": "mass",
+      "long": {
+        "one": "pound",
+        "other": "pounds"
+      },
+      "short": {
+        "one": "lb",
+        "other": "lb"
+      },
+      "narrow": {
+        "one": "#",
+        "other": "#"
+      },
+      "names": [
+        "pound",
+        "pounds",
+        "lb",
+        "#"
+      ]
+    },
+    "mass-solar-mass": {
+      "category": "mass",
+      "long": {
+        "one": "solar mass",
+        "other": "solar masses"
+      },
+      "short": {
+        "one": "M☉",
+        "other": "M☉"
+      },
+      "narrow": {
+        "one": "M☉",
+        "other": "M☉"
+      },
+      "names": [
+        "solar mass",
+        "solar masses",
+        "M☉"
+      ]
+    },
+    "mass-stone": {
+      "category": "mass",
+      "long": {
+        "one": "stone",
+        "other": "stones"
+      },
+      "short": {
+        "one": "st",
+        "other": "st"
+      },
+      "narrow": {
+        "one": "st",
+        "other": "st"
+      },
+      "names": [
+        "stone",
+        "stones",
+        "st"
+      ]
+    },
+    "mass-ton": {
+      "category": "mass",
+      "long": {
+        "one": "ton",
+        "other": "tons"
+      },
+      "short": {
+        "one": "tn",
+        "other": "tn"
+      },
+      "narrow": {
+        "one": "tn",
+        "other": "tn"
+      },
+      "names": [
+        "ton",
+        "tons",
+        "tn"
+      ]
+    },
+    "mass-tonne": {
+      "category": "mass",
+      "long": {
+        "one": "metric ton",
+        "other": "metric tons"
+      },
+      "short": {
+        "one": "t",
+        "other": "t"
+      },
+      "narrow": {
+        "one": "t",
+        "other": "t"
+      },
+      "names": [
+        "metric ton",
+        "metric tons",
+        "t"
+      ]
+    },
+    "power-gigawatt": {
+      "category": "power",
+      "long": {
+        "one": "gigawatt",
+        "other": "gigawatts"
+      },
+      "short": {
+        "one": "GW",
+        "other": "GW"
+      },
+      "narrow": {
+        "one": "GW",
+        "other": "GW"
+      },
+      "names": [
+        "gigawatt",
+        "gigawatts",
+        "GW"
+      ]
+    },
+    "power-horsepower": {
+      "category": "power",
+      "long": {
+        "one": "horsepower",
+        "other": "horsepower"
+      },
+      "short": {
+        "one": "hp",
+        "other": "hp"
+      },
+      "narrow": {
+        "one": "hp",
+        "other": "hp"
+      },
+      "names": [
+        "horsepower",
+        "hp"
+      ]
+    },
+    "power-kilowatt": {
+      "category": "power",
+      "long": {
+        "one": "kilowatt",
+        "other": "kilowatts"
+      },
+      "short": {
+        "one": "kW",
+        "other": "kW"
+      },
+      "narrow": {
+        "one": "kW",
+        "other": "kW"
+      },
+      "names": [
+        "kilowatt",
+        "kilowatts",
+        "kW"
+      ]
+    },
+    "power-megawatt": {
+      "category": "power",
+      "long": {
+        "one": "megawatt",
+        "other": "megawatts"
+      },
+      "short": {
+        "one": "MW",
+        "other": "MW"
+      },
+      "narrow": {
+        "one": "MW",
+        "other": "MW"
+      },
+      "names": [
+        "megawatt",
+        "megawatts",
+        "MW"
+      ]
+    },
+    "power-milliwatt": {
+      "category": "power",
+      "long": {
+        "one": "milliwatt",
+        "other": "milliwatts"
+      },
+      "short": {
+        "one": "mW",
+        "other": "mW"
+      },
+      "narrow": {
+        "one": "mW",
+        "other": "mW"
+      },
+      "names": [
+        "milliwatt",
+        "milliwatts",
+        "mW"
+      ]
+    },
+    "power-watt": {
+      "category": "power",
+      "long": {
+        "one": "watt",
+        "other": "watts"
+      },
+      "short": {
+        "one": "W",
+        "other": "W"
+      },
+      "narrow": {
+        "one": "W",
+        "other": "W"
+      },
+      "names": [
+        "watt",
+        "watts",
+        "W"
+      ]
+    },
+    "pressure-atmosphere": {
+      "category": "pressure",
+      "long": {
+        "one": "atmosphere",
+        "other": "atmospheres"
+      },
+      "short": {
+        "one": "atm",
+        "other": "atm"
+      },
+      "narrow": {
+        "one": "atm",
+        "other": "atm"
+      },
+      "names": [
+        "atmosphere",
+        "atmospheres",
+        "atm"
+      ]
+    },
+    "pressure-bar": {
+      "category": "pressure",
+      "long": {
+        "one": "bar",
+        "other": "bars"
+      },
+      "short": {
+        "one": "bar",
+        "other": "bar"
+      },
+      "narrow": {
+        "one": "bar",
+        "other": "bar"
+      },
+      "names": [
+        "bar",
+        "bars"
+      ]
+    },
+    "pressure-gasoline-energy-density": {
+      "category": "pressure",
+      "long": {
+        "one": "of gasoline equivalent",
+        "other": "of gasoline equivalent"
+      },
+      "short": {
+        "one": "gas-equiv",
+        "other": "gas-equiv"
+      },
+      "narrow": {
+        "one": "gas-equiv",
+        "other": "gas-equiv"
+      },
+      "names": [
+        "of gasoline equivalent",
+        "gas-equiv"
+      ]
+    },
+    "pressure-hectopascal": {
+      "category": "pressure",
+      "long": {
+        "one": "hectopascal",
+        "other": "hectopascals"
+      },
+      "short": {
+        "one": "hPa",
+        "other": "hPa"
+      },
+      "narrow": {
+        "one": "hPa",
+        "other": "hPa"
+      },
+      "names": [
+        "hectopascal",
+        "hectopascals",
+        "hPa"
+      ]
+    },
+    "pressure-inch-ofhg": {
+      "category": "pressure",
+      "long": {
+        "one": "inch of mercury",
+        "other": "inches of mercury"
+      },
+      "short": {
+        "one": "inHg",
+        "other": "inHg"
+      },
+      "narrow": {
+        "one": "″ Hg",
+        "other": "″ Hg"
+      },
+      "names": [
+        "inch of mercury",
+        "inches of mercury",
+        "inHg",
+        "″ Hg"
+      ]
+    },
+    "pressure-kilopascal": {
+      "category": "pressure",
+      "long": {
+        "one": "kilopascal",
+        "other": "kilopascals"
+      },
+      "short": {
+        "one": "kPa",
+        "other": "kPa"
+      },
+      "narrow": {
+        "one": "kPa",
+        "other": "kPa"
+      },
+      "names": [
+        "kilopascal",
+        "kilopascals",
+        "kPa"
+      ]
+    },
+    "pressure-megapascal": {
+      "category": "pressure",
+      "long": {
+        "one": "megapascal",
+        "other": "megapascals"
+      },
+      "short": {
+        "one": "MPa",
+        "other": "MPa"
+      },
+      "narrow": {
+        "one": "MPa",
+        "other": "MPa"
+      },
+      "names": [
+        "megapascal",
+        "megapascals",
+        "MPa"
+      ]
+    },
+    "pressure-millibar": {
+      "category": "pressure",
+      "long": {
+        "one": "millibar",
+        "other": "millibars"
+      },
+      "short": {
+        "one": "mbar",
+        "other": "mbar"
+      },
+      "narrow": {
+        "one": "mb",
+        "other": "mb"
+      },
+      "names": [
+        "millibar",
+        "millibars",
+        "mbar",
+        "mb"
+      ]
+    },
+    "pressure-millimeter-ofhg": {
+      "category": "pressure",
+      "long": {
+        "one": "millimeter of mercury",
+        "other": "millimeters of mercury"
+      },
+      "short": {
+        "one": "mmHg",
+        "other": "mmHg"
+      },
+      "narrow": {
+        "one": "mmHg",
+        "other": "mmHg"
+      },
+      "names": [
+        "millimeter of mercury",
+        "millimeters of mercury",
+        "mmHg"
+      ]
+    },
+    "pressure-pascal": {
+      "category": "pressure",
+      "long": {
+        "one": "pascal",
+        "other": "pascals"
+      },
+      "short": {
+        "one": "Pa",
+        "other": "Pa"
+      },
+      "narrow": {
+        "one": "Pa",
+        "other": "Pa"
+      },
+      "names": [
+        "pascal",
+        "pascals",
+        "Pa"
+      ]
+    },
+    "pressure-pound-force-per-square-inch": {
+      "category": "pressure",
+      "long": {
+        "one": "pound-force per square inch",
+        "other": "pounds-force per square inch"
+      },
+      "short": {
+        "one": "psi",
+        "other": "psi"
+      },
+      "narrow": {
+        "one": "psi",
+        "other": "psi"
+      },
+      "names": [
+        "pound-force per square inch",
+        "pounds-force per square inch",
+        "psi"
+      ]
+    },
+    "speed-beaufort": {
+      "category": "speed",
+      "long": {
+        "one": "Beaufort",
+        "other": "Beaufort"
+      },
+      "short": {
+        "one": "B",
+        "other": "B"
+      },
+      "narrow": {
+        "one": "B",
+        "other": "B"
+      },
+      "names": [
+        "Beaufort",
+        "B"
+      ]
+    },
+    "speed-kilometer-per-hour": {
+      "category": "speed",
+      "long": {
+        "one": "kilometer per hour",
+        "other": "kilometers per hour"
+      },
+      "short": {
+        "one": "km/h",
+        "other": "km/h"
+      },
+      "narrow": {
+        "one": "km/h",
+        "other": "km/h"
+      },
+      "names": [
+        "kilometer per hour",
+        "kilometers per hour",
+        "km/h"
+      ]
+    },
+    "speed-knot": {
+      "category": "speed",
+      "long": {
+        "one": "knot",
+        "other": "knots"
+      },
+      "short": {
+        "one": "kn",
+        "other": "kn"
+      },
+      "narrow": {
+        "one": "kn",
+        "other": "kn"
+      },
+      "names": [
+        "knot",
+        "knots",
+        "kn"
+      ]
+    },
+    "speed-light-speed": {
+      "category": "speed",
+      "long": {
+        "one": "light",
+        "other": "light"
+      },
+      "short": {
+        "one": "light",
+        "other": "light"
+      },
+      "narrow": {
+        "one": "light",
+        "other": "light"
+      },
+      "names": [
+        "light"
+      ]
+    },
+    "speed-meter-per-second": {
+      "category": "speed",
+      "long": {
+        "one": "meter per second",
+        "other": "meters per second"
+      },
+      "short": {
+        "one": "m/s",
+        "other": "m/s"
+      },
+      "narrow": {
+        "one": "m/s",
+        "other": "m/s"
+      },
+      "names": [
+        "meter per second",
+        "meters per second",
+        "m/s"
+      ]
+    },
+    "speed-mile-per-hour": {
+      "category": "speed",
+      "long": {
+        "one": "mile per hour",
+        "other": "miles per hour"
+      },
+      "short": {
+        "one": "mph",
+        "other": "mph"
+      },
+      "narrow": {
+        "one": "mph",
+        "other": "mph"
+      },
+      "names": [
+        "mile per hour",
+        "miles per hour",
+        "mph"
+      ]
+    },
+    "temperature-celsius": {
+      "category": "temperature",
+      "long": {
+        "one": "degree Celsius",
+        "other": "degrees Celsius"
+      },
+      "short": {
+        "one": "°C",
+        "other": "°C"
+      },
+      "narrow": {
+        "one": "°C",
+        "other": "°C"
+      },
+      "names": [
+        "degree Celsius",
+        "degrees Celsius",
+        "°C"
+      ]
+    },
+    "temperature-fahrenheit": {
+      "category": "temperature",
+      "long": {
+        "one": "degree Fahrenheit",
+        "other": "degrees Fahrenheit"
+      },
+      "short": {
+        "one": "°F",
+        "other": "°F"
+      },
+      "narrow": {
+        "one": "°",
+        "other": "°"
+      },
+      "names": [
+        "degree Fahrenheit",
+        "degrees Fahrenheit",
+        "°F",
+        "°"
+      ]
+    },
+    "temperature-generic": {
+      "category": "temperature",
+      "long": {
+        "one": "degree temperature",
+        "other": "degrees temperature"
+      },
+      "short": {
+        "one": "°",
+        "other": "°"
+      },
+      "narrow": {
+        "one": "°",
+        "other": "°"
+      },
+      "names": [
+        "degree temperature",
+        "degrees temperature",
+        "°"
+      ]
+    },
+    "temperature-kelvin": {
+      "category": "temperature",
+      "long": {
+        "one": "kelvin",
+        "other": "kelvins"
+      },
+      "short": {
+        "one": "K",
+        "other": "K"
+      },
+      "narrow": {
+        "one": "K",
+        "other": "K"
+      },
+      "names": [
+        "kelvin",
+        "kelvins",
+        "K"
+      ]
+    },
+    "torque-newton-meter": {
+      "category": "torque",
+      "long": {
+        "one": "newton-meter",
+        "other": "newton-meters"
+      },
+      "short": {
+        "one": "N⋅m",
+        "other": "N⋅m"
+      },
+      "narrow": {
+        "one": "N⋅m",
+        "other": "N⋅m"
+      },
+      "names": [
+        "newton-meter",
+        "newton-meters",
+        "N⋅m"
+      ]
+    },
+    "torque-pound-force-foot": {
+      "category": "torque",
+      "long": {
+        "one": "pound-force-foot",
+        "other": "pound-force-feet"
+      },
+      "short": {
+        "one": "lbf⋅ft",
+        "other": "lbf⋅ft"
+      },
+      "narrow": {
+        "one": "lbf⋅ft",
+        "other": "lbf⋅ft"
+      },
+      "names": [
+        "pound-force-foot",
+        "pound-force-feet",
+        "lbf⋅ft"
+      ]
+    },
+    "volume-acre-foot": {
+      "category": "volume",
+      "long": {
+        "one": "acre-foot",
+        "other": "acre-feet"
+      },
+      "short": {
+        "one": "ac ft",
+        "other": "ac ft"
+      },
+      "narrow": {
+        "one": "ac ft",
+        "other": "ac ft"
+      },
+      "names": [
+        "acre-foot",
+        "acre-feet",
+        "ac ft"
+      ]
+    },
+    "volume-barrel": {
+      "category": "volume",
+      "long": {
+        "one": "barrel",
+        "other": "barrels"
+      },
+      "short": {
+        "one": "bbl",
+        "other": "bbl"
+      },
+      "narrow": {
+        "one": "bbl",
+        "other": "bbl"
+      },
+      "names": [
+        "barrel",
+        "barrels",
+        "bbl"
+      ]
+    },
+    "volume-bushel": {
+      "category": "volume",
+      "long": {
+        "one": "bushel",
+        "other": "bushels"
+      },
+      "short": {
+        "one": "bu",
+        "other": "bu"
+      },
+      "narrow": {
+        "one": "bu",
+        "other": "bu"
+      },
+      "names": [
+        "bushel",
+        "bushels",
+        "bu"
+      ]
+    },
+    "volume-centiliter": {
+      "category": "volume",
+      "long": {
+        "one": "centiliter",
+        "other": "centiliters"
+      },
+      "short": {
+        "one": "cL",
+        "other": "cL"
+      },
+      "narrow": {
+        "one": "cL",
+        "other": "cL"
+      },
+      "names": [
+        "centiliter",
+        "centiliters",
+        "cL"
+      ]
+    },
+    "volume-cubic-centimeter": {
+      "category": "volume",
+      "long": {
+        "one": "cubic centimeter",
+        "other": "cubic centimeters"
+      },
+      "short": {
+        "one": "cm³",
+        "other": "cm³"
+      },
+      "narrow": {
+        "one": "cm³",
+        "other": "cm³"
+      },
+      "names": [
+        "cubic centimeter",
+        "cubic centimeters",
+        "cm³"
+      ]
+    },
+    "volume-cubic-foot": {
+      "category": "volume",
+      "long": {
+        "one": "cubic foot",
+        "other": "cubic feet"
+      },
+      "short": {
+        "one": "ft³",
+        "other": "ft³"
+      },
+      "narrow": {
+        "one": "ft³",
+        "other": "ft³"
+      },
+      "names": [
+        "cubic foot",
+        "cubic feet",
+        "ft³"
+      ]
+    },
+    "volume-cubic-inch": {
+      "category": "volume",
+      "long": {
+        "one": "cubic inch",
+        "other": "cubic inches"
+      },
+      "short": {
+        "one": "in³",
+        "other": "in³"
+      },
+      "narrow": {
+        "one": "in³",
+        "other": "in³"
+      },
+      "names": [
+        "cubic inch",
+        "cubic inches",
+        "in³"
+      ]
+    },
+    "volume-cubic-kilometer": {
+      "category": "volume",
+      "long": {
+        "one": "cubic kilometer",
+        "other": "cubic kilometers"
+      },
+      "short": {
+        "one": "km³",
+        "other": "km³"
+      },
+      "narrow": {
+        "one": "km³",
+        "other": "km³"
+      },
+      "names": [
+        "cubic kilometer",
+        "cubic kilometers",
+        "km³"
+      ]
+    },
+    "volume-cubic-meter": {
+      "category": "volume",
+      "long": {
+        "one": "cubic meter",
+        "other": "cubic meters"
+      },
+      "short": {
+        "one": "m³",
+        "other": "m³"
+      },
+      "narrow": {
+        "one": "m³",
+        "other": "m³"
+      },
+      "names": [
+        "cubic meter",
+        "cubic meters",
+        "m³"
+      ]
+    },
+    "volume-cubic-mile": {
+      "category": "volume",
+      "long": {
+        "one": "cubic mile",
+        "other": "cubic miles"
+      },
+      "short": {
+        "one": "mi³",
+        "other": "mi³"
+      },
+      "narrow": {
+        "one": "mi³",
+        "other": "mi³"
+      },
+      "names": [
+        "cubic mile",
+        "cubic miles",
+        "mi³"
+      ]
+    },
+    "volume-cubic-yard": {
+      "category": "volume",
+      "long": {
+        "one": "cubic yard",
+        "other": "cubic yards"
+      },
+      "short": {
+        "one": "yd³",
+        "other": "yd³"
+      },
+      "narrow": {
+        "one": "yd³",
+        "other": "yd³"
+      },
+      "names": [
+        "cubic yard",
+        "cubic yards",
+        "yd³"
+      ]
+    },
+    "volume-cup": {
+      "category": "volume",
+      "long": {
+        "one": "cup",
+        "other": "cups"
+      },
+      "short": {
+        "one": "c",
+        "other": "c"
+      },
+      "narrow": {
+        "one": "c",
+        "other": "c"
+      },
+      "names": [
+        "cup",
+        "cups",
+        "c"
+      ]
+    },
+    "volume-cup-metric": {
+      "category": "volume",
+      "long": {
+        "one": "metric cup",
+        "other": "metric cups"
+      },
+      "short": {
+        "one": "mc",
+        "other": "mc"
+      },
+      "narrow": {
+        "one": "mc",
+        "other": "mc"
+      },
+      "names": [
+        "metric cup",
+        "metric cups",
+        "mc"
+      ]
+    },
+    "volume-deciliter": {
+      "category": "volume",
+      "long": {
+        "one": "deciliter",
+        "other": "deciliters"
+      },
+      "short": {
+        "one": "dL",
+        "other": "dL"
+      },
+      "narrow": {
+        "one": "dL",
+        "other": "dL"
+      },
+      "names": [
+        "deciliter",
+        "deciliters",
+        "dL"
+      ]
+    },
+    "volume-dessert-spoon": {
+      "category": "volume",
+      "long": {
+        "one": "dessert spoon",
+        "other": "dessert spoons"
+      },
+      "short": {
+        "one": "dsp",
+        "other": "dsp"
+      },
+      "narrow": {
+        "one": "dsp",
+        "other": "dsp"
+      },
+      "names": [
+        "dessert spoon",
+        "dessert spoons",
+        "dsp"
+      ]
+    },
+    "volume-dessert-spoon-imperial": {
+      "category": "volume",
+      "long": {
+        "one": "Imp. dessert spoon",
+        "other": "Imp. dessert spoons"
+      },
+      "short": {
+        "one": "dsp-Imp.",
+        "other": "dsp-Imp."
+      },
+      "narrow": {
+        "one": "dsp-Imp",
+        "other": "dsp-Imp"
+      },
+      "names": [
+        "Imp. dessert spoon",
+        "Imp. dessert spoons",
+        "dsp-Imp.",
+        "dsp-Imp"
+      ]
+    },
+    "volume-dram": {
+      "category": "volume",
+      "long": {
+        "one": "dram",
+        "other": "drams"
+      },
+      "short": {
+        "one": "dram",
+        "other": "drams"
+      },
+      "narrow": {
+        "one": "fl.dr.",
+        "other": "fl.dr."
+      },
+      "names": [
+        "dram",
+        "drams",
+        "fl.dr."
+      ]
+    },
+    "volume-drop": {
+      "category": "volume",
+      "long": {
+        "one": "drop",
+        "other": "drops"
+      },
+      "short": {
+        "one": "dr",
+        "other": "drdrops"
+      },
+      "narrow": {
+        "one": "dr",
+        "other": "dr"
+      },
+      "names": [
+        "drop",
+        "drops",
+        "dr",
+        "drdrops"
+      ]
+    },
+    "volume-fluid-ounce": {
+      "category": "volume",
+      "long": {
+        "one": "fluid ounce",
+        "other": "fluid ounces"
+      },
+      "short": {
+        "one": "fl oz",
+        "other": "fl oz"
+      },
+      "narrow": {
+        "one": "fl oz",
+        "other": "fl oz"
+      },
+      "names": [
+        "fluid ounce",
+        "fluid ounces",
+        "fl oz"
+      ]
+    },
+    "volume-fluid-ounce-imperial": {
+      "category": "volume",
+      "long": {
+        "one": "Imp. fluid ounce",
+        "other": "Imp. fluid ounces"
+      },
+      "short": {
+        "one": "fl oz Imp.",
+        "other": "fl oz Imp."
+      },
+      "narrow": {
+        "one": "fl oz Im",
+        "other": "fl oz Im"
+      },
+      "names": [
+        "Imp. fluid ounce",
+        "Imp. fluid ounces",
+        "fl oz Imp.",
+        "fl oz Im"
+      ]
+    },
+    "volume-gallon": {
+      "category": "volume",
+      "long": {
+        "one": "gallon",
+        "other": "gallons"
+      },
+      "short": {
+        "one": "gal",
+        "other": "gal"
+      },
+      "narrow": {
+        "one": "gal",
+        "other": "gal"
+      },
+      "names": [
+        "gallon",
+        "gallons",
+        "gal"
+      ]
+    },
+    "volume-gallon-imperial": {
+      "category": "volume",
+      "long": {
+        "one": "Imp. gallon",
+        "other": "Imp. gallons"
+      },
+      "short": {
+        "one": "gal Imp.",
+        "other": "gal Imp."
+      },
+      "narrow": {
+        "one": "galIm",
+        "other": "galIm"
+      },
+      "names": [
+        "Imp. gallon",
+        "Imp. gallons",
+        "gal Imp.",
+        "galIm"
+      ]
+    },
+    "volume-hectoliter": {
+      "category": "volume",
+      "long": {
+        "one": "hectoliter",
+        "other": "hectoliters"
+      },
+      "short": {
+        "one": "hL",
+        "other": "hL"
+      },
+      "narrow": {
+        "one": "hL",
+        "other": "hL"
+      },
+      "names": [
+        "hectoliter",
+        "hectoliters",
+        "hL"
+      ]
+    },
+    "volume-jigger": {
+      "category": "volume",
+      "long": {
+        "one": "jigger",
+        "other": "jiggers"
+      },
+      "short": {
+        "one": "jigger",
+        "other": "jiggers"
+      },
+      "narrow": {
+        "one": "jigger",
+        "other": "jigger"
+      },
+      "names": [
+        "jigger",
+        "jiggers"
+      ]
+    },
+    "volume-liter": {
+      "category": "volume",
+      "long": {
+        "one": "liter",
+        "other": "liters"
+      },
+      "short": {
+        "one": "L",
+        "other": "L"
+      },
+      "narrow": {
+        "one": "L",
+        "other": "L"
+      },
+      "names": [
+        "liter",
+        "liters",
+        "L"
+      ]
+    },
+    "volume-megaliter": {
+      "category": "volume",
+      "long": {
+        "one": "megaliter",
+        "other": "megaliters"
+      },
+      "short": {
+        "one": "ML",
+        "other": "ML"
+      },
+      "narrow": {
+        "one": "ML",
+        "other": "ML"
+      },
+      "names": [
+        "megaliter",
+        "megaliters",
+        "ML"
+      ]
+    },
+    "volume-milliliter": {
+      "category": "volume",
+      "long": {
+        "one": "milliliter",
+        "other": "milliliters"
+      },
+      "short": {
+        "one": "mL",
+        "other": "mL"
+      },
+      "narrow": {
+        "one": "mL",
+        "other": "mL"
+      },
+      "names": [
+        "milliliter",
+        "milliliters",
+        "mL"
+      ]
+    },
+    "volume-pinch": {
+      "category": "volume",
+      "long": {
+        "one": "pinch",
+        "other": "pinches"
+      },
+      "short": {
+        "one": "pn",
+        "other": "pn"
+      },
+      "narrow": {
+        "one": "pn",
+        "other": "pn"
+      },
+      "names": [
+        "pinch",
+        "pinches",
+        "pn"
+      ]
+    },
+    "volume-pint": {
+      "category": "volume",
+      "long": {
+        "one": "pint",
+        "other": "pints"
+      },
+      "short": {
+        "one": "pt",
+        "other": "pt"
+      },
+      "narrow": {
+        "one": "pt",
+        "other": "pt"
+      },
+      "names": [
+        "pint",
+        "pints",
+        "pt"
+      ]
+    },
+    "volume-pint-metric": {
+      "category": "volume",
+      "long": {
+        "one": "metric pint",
+        "other": "metric pints"
+      },
+      "short": {
+        "one": "mpt",
+        "other": "mpt"
+      },
+      "narrow": {
+        "one": "mpt",
+        "other": "mpt"
+      },
+      "names": [
+        "metric pint",
+        "metric pints",
+        "mpt"
+      ]
+    },
+    "volume-quart": {
+      "category": "volume",
+      "long": {
+        "one": "quart",
+        "other": "quarts"
+      },
+      "short": {
+        "one": "qt",
+        "other": "qt"
+      },
+      "narrow": {
+        "one": "qt",
+        "other": "qt"
+      },
+      "names": [
+        "quart",
+        "quarts",
+        "qt"
+      ]
+    },
+    "volume-quart-imperial": {
+      "category": "volume",
+      "long": {
+        "one": "Imp. quart",
+        "other": "Imp. quarts"
+      },
+      "short": {
+        "one": "qt-Imp.",
+        "other": "qt-Imp."
+      },
+      "narrow": {
+        "one": "qt-Imp.",
+        "other": "qt-Imp."
+      },
+      "names": [
+        "Imp. quart",
+        "Imp. quarts",
+        "qt-Imp."
+      ]
+    },
+    "volume-tablespoon": {
+      "category": "volume",
+      "long": {
+        "one": "tablespoon",
+        "other": "tablespoons"
+      },
+      "short": {
+        "one": "tbsp",
+        "other": "tbsp"
+      },
+      "narrow": {
+        "one": "tbsp",
+        "other": "tbsp"
+      },
+      "names": [
+        "tablespoon",
+        "tablespoons",
+        "tbsp"
+      ]
+    },
+    "volume-teaspoon": {
+      "category": "volume",
+      "long": {
+        "one": "teaspoon",
+        "other": "teaspoons"
+      },
+      "short": {
+        "one": "tsp",
+        "other": "tsp"
+      },
+      "narrow": {
+        "one": "tsp",
+        "other": "tsp"
+      },
+      "names": [
+        "teaspoon",
+        "teaspoons",
+        "tsp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+    "git.autofetch": true,
+    "git.confirmSync": true,
+    "git.inputValidationSubjectLength": 120,
+    "git.suggestSmartCommit": false,
+
+    "files.associations": {
+        "*.csproj": "xml",
+        "*.query": "jsonc",
+        "*.sequence": "jsonc",
+        "*.workflow": "jsonc",
+        "*.json": "jsonc"
+    },
+    "files.defaultLanguage": "",
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "dotnet.defaultSolution": "IniaAi.Platform.slnx",
+}

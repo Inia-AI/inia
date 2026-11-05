@@ -1,0 +1,116 @@
+@using IniaAi.Domain.Entities.DocumentAnalysis
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack>
+            <MudText Typo="Typo.h5">Excel Analysis Prompts</MudText>
+            <MudText Typo="Typo.subtitle1">
+                Prompts that read a spreadsheet before it is cut into pages: first the layout of each sheet, then the header rows for that layout.
+            </MudText>
+            <ToolsSettingsScopeNotice />
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Spacing="5">
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.LayoutAnalysisSystemPrompt"
+                          Label="Layout System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="The role of the model that classifies a worksheet layout."
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.LayoutAnalysisUserPrompt"
+                          Label="Layout Prompt"
+                          Class="editor-mono-field"
+                          HelperText="{0} is a sample of the worksheet. The answer names the layout type and its shared columns, which the platform parses."
+                          Sizing="InputSizing.Auto"
+                          Lines="12"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.HeaderDatabaseSystemPrompt"
+                          Label="Single-Table Headers System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="The role of the model that finds the header rows of a sheet holding one table."
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.HeaderDatabaseUserPrompt"
+                          Label="Single-Table Headers Prompt"
+                          Class="editor-mono-field"
+                          HelperText="{0} is a sample of the worksheet."
+                          Sizing="InputSizing.Auto"
+                          Lines="12"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.HeaderMultiNoSharedSystemPrompt"
+                          Label="Several Tables Headers System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="The role of the model that finds the tables of a sheet whose tables share no columns."
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.HeaderMultiNoSharedUserPrompt"
+                          Label="Several Tables Headers Prompt"
+                          Class="editor-mono-field"
+                          HelperText="{0} is a sample of the worksheet."
+                          Sizing="InputSizing.Auto"
+                          Lines="12"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.HeaderMultiSharedSystemPrompt"
+                          Label="Shared Columns Headers System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="The role of the model that finds the tables of a sheet whose tables share columns."
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.HeaderMultiSharedUserPrompt"
+                          Label="Shared Columns Headers Prompt"
+                          Class="editor-mono-field"
+                          HelperText="{0} is a sample of the worksheet, {1} the shared columns."
+                          Sizing="InputSizing.Auto"
+                          Lines="12"
+                          MaxLines="30" />
+
+            <PromptsToolbar Prompts="@Prompts"
+                            Title="@nameof(ExcelAnalysisPrompts)"
+                            SaveChangesCallback="@SaveChangesCallback"
+                            PromptsUploaded="@((ExcelAnalysisPrompts uploaded) => uploaded.CopyTo(Prompts))" />
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public ExcelAnalysisPrompts Prompts { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback SaveChangesCallback { get; set; }
+}

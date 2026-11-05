@@ -1,0 +1,17 @@
+{
+  "id": "counterparty-updated",
+  "parentId": "counterparty-parent",
+  "counterpartyTypeIds": [
+    "type-hedge-fund"
+  ],
+  "name": "After Holdings",
+  "nameVariants": "After Holdings; AFTER",
+  "email": "after@example.com",
+  "phoneNumber": "\u002B44 20 7946 0001",
+  "website": "https://after.example.com",
+  "address": "2 Example Street, London",
+  "lastFinancialAnalysisResult": "Watch",
+  "properties": {
+    "lei": "5493001KJTIIGC8Y1R99"
+  }
+}

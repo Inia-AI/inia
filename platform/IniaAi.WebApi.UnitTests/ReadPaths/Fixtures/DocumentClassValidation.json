@@ -1,0 +1,28 @@
+{
+  "isValid": false,
+  "hasWarnings": false,
+  "errors": [
+    "Only one \u0027Annual Report\u0027 document is allowed, but 2 were uploaded"
+  ],
+  "warnings": [],
+  "documentClassStatuses": [
+    {
+      "key": "AnnualReport",
+      "displayName": "Annual Report",
+      "requirement": "Required",
+      "shouldBeSingular": true,
+      "uploadedCount": 2,
+      "isSatisfied": false,
+      "validationMessage": "Only one \u0027Annual Report\u0027 document is allowed, but 2 were uploaded"
+    },
+    {
+      "key": "Output",
+      "displayName": "Output",
+      "requirement": "Optional",
+      "shouldBeSingular": false,
+      "uploadedCount": 0,
+      "isSatisfied": true,
+      "validationMessage": null
+    }
+  ]
+}

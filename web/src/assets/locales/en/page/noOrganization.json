@@ -1,0 +1,5 @@
+{
+  "title": "Your account has no organization",
+  "description": "You are signed in, but your account is not a member of any active organization, so there is nothing to show. Ask an administrator of your organization to add you, then sign in again.",
+  "signOut": "Sign out"
+}

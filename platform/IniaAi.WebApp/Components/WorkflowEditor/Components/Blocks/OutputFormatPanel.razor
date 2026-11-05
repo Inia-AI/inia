@@ -1,0 +1,335 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.OutputFormat
+
+<MudExpansionPanels Elevation="0" Class="mt-4">
+    <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+        <TitleContent>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <span class="editor-card-title">Output format validation</span>
+
+                @if (_props.OutputFormatType != OutputFormatType.None)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Variant="Variant.Text"
+                             Color="Color.Default">
+                        @_props.OutputFormatType.ToString()
+                    </MudChip>
+                }
+            </MudStack>
+        </TitleContent>
+        <ChildContent>
+        <MudStack Class="mt-3">
+            <MudSelect T="OutputFormatType"
+                       Label="Format"
+                       Variant="Variant.Outlined"
+                       Value="@_props.OutputFormatType"
+                       ValueChanged="@OnFormatTypeChanged">
+                <MudSelectItem Value="@OutputFormatType.None">None (no validation)</MudSelectItem>
+                <MudSelectItem Value="@OutputFormatType.SingleTag">Single Tag</MudSelectItem>
+                <MudSelectItem Value="@OutputFormatType.MultiTag">Multi Tag</MudSelectItem>
+                <MudSelectItem Value="@OutputFormatType.Json">JSON</MudSelectItem>
+                <MudSelectItem Value="@OutputFormatType.JsonInTag">JSON in Tag</MudSelectItem>
+            </MudSelect>
+
+            @if (_props.OutputFormatType != OutputFormatType.None)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mt-n1 py-1">
+                    <MudText Typo="Typo.caption">@GetFormatDescription(_props.OutputFormatType)</MudText>
+                </MudAlert>
+            }
+
+            @if (_props.OutputFormatType is OutputFormatType.SingleTag or OutputFormatType.JsonInTag)
+            {
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Tag name"
+                              Class="editor-mono-field"
+                              Placeholder="answer"
+                              HelperText="Enter just the name, no angle brackets. Letters, digits, underscore or hyphen; must start with a letter or underscore."
+                              Value="@_props.OutputFormatTagName"
+                              ValueChanged="@((string v) => OnTagNameChanged(v))" />
+
+                @if (!string.IsNullOrWhiteSpace(_props.OutputFormatTagName) && TagMatcher.IsValidTagName(_props.OutputFormatTagName))
+                {
+                    string tag = _props.OutputFormatTagName!;
+                    string innerPreview = _props.OutputFormatType is OutputFormatType.JsonInTag
+                        ? "{ ... }"
+                        : "...";
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary editor-mono-field">
+                        Expected in response: &lt;@tag&gt;@innerPreview&lt;/@tag&gt;
+                    </MudText>
+
+                    if (_props.OutputFormatType is OutputFormatType.JsonInTag)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Inner content must be valid JSON.
+                        </MudText>
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(_props.OutputFormatTagName))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        Invalid tag name. Use letters, digits, underscore or hyphen, starting with a letter or underscore.
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        Tag name is required.
+                    </MudText>
+                }
+            }
+
+            @if (_props.OutputFormatType is OutputFormatType.MultiTag)
+            {
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Tag names"
+                              Class="editor-mono-field"
+                              Placeholder="reasoning, answer"
+                              HelperText="Comma-separated names, no angle brackets. Order doesn't matter; each tag must appear at least once."
+                              Value="@_props.OutputFormatTagNames"
+                              ValueChanged="@((string v) => OnTagNamesChanged(v))" />
+
+                IReadOnlyList<string> parsedNames = TagMatcher.SplitTagNames(_props.OutputFormatTagNames);
+                IReadOnlyList<string> uniqueNames = parsedNames.Distinct(StringComparer.Ordinal).ToArray();
+                bool allValid = parsedNames.Count > 0 && parsedNames.All(TagMatcher.IsValidTagName);
+                bool hasDuplicates = uniqueNames.Count < parsedNames.Count;
+
+                if (parsedNames.Count > 0 && allValid)
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary editor-mono-field">
+                        Expected in response: @string.Join(" ", uniqueNames.Select(n => $"<{n}>...</{n}>"))
+                    </MudText>
+
+                    if (hasDuplicates)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                            Duplicate names ignored. Each tag only needs to appear once in the response.
+                        </MudText>
+                    }
+                }
+                else if (parsedNames.Count > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        One or more tag names are invalid. Use letters, digits, underscore or hyphen, starting with a letter or underscore.
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        Enter at least one tag name.
+                    </MudText>
+                }
+            }
+
+            @if (_props.OutputFormatType is OutputFormatType.Json or OutputFormatType.JsonInTag)
+            {
+                <MudStack Class="mt-2" Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.subtitle2">Schema rules</MudText>
+                        <MudSpacer />
+                        <MudSwitch T="bool"
+                                   Label="Advanced (raw JSON Schema)"
+                                   Color="Color.Primary"
+                                   Value="@_advancedSchemaMode"
+                                   ValueChanged="@OnAdvancedToggled" />
+                    </MudStack>
+
+                    @if (_advancedSchemaMode)
+                    {
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="JSON Schema (raw)"
+                                      HelperText="Leave blank to require any valid JSON. Switch off Advanced for the field-by-field builder."
+                                      Class="editor-mono-field"
+                                      Lines="6"
+                                      MaxLines="20"
+                                      Value="@_props.OutputFormatJsonSchema"
+                                      ValueChanged="@((string v) => OnJsonSchemaChanged(v))" />
+
+                        string? schemaParseError = TryGetSchemaParseError(_props.OutputFormatJsonSchema);
+                        if (!string.IsNullOrEmpty(schemaParseError))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Error">
+                                JSON Schema is invalid: @schemaParseError
+                            </MudText>
+                        }
+                    }
+                    else
+                    {
+                        @if (_schemaTooComplex)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mb-1">
+                                The current schema uses features the simple builder can't show (e.g. patterns, nested objects).
+                                Switch to Advanced to keep them, or remove and re-add fields here.
+                            </MudAlert>
+                        }
+                        <SimpleSchemaBuilder JsonSchema="@_props.OutputFormatJsonSchema"
+                                             JsonSchemaChanged="@OnJsonSchemaChanged"
+                                             BlockKey="@Block.Id"
+                                             NotRepresentableDetected="@OnNotRepresentableDetected" />
+                    }
+                </MudStack>
+            }
+
+            @if (Block.ExecutionState?.Status is ExecutionStatus.Completed or ExecutionStatus.Failed
+                && _props.OutputFormatAttemptCount > 1
+                && _props.OutputFormatLastError is not null)
+            {
+                bool blockFailed = Block.ExecutionState?.HasFailed == true;
+                <MudAlert Severity="@(blockFailed ? Severity.Error : Severity.Warning)" Class="mt-2">
+                    <MudStack Spacing="1">
+                        @if (blockFailed)
+                        {
+                            <MudText Typo="Typo.body2">
+                                Format validation failed after @_props.OutputFormatAttemptCount attempts. Last error: @_props.OutputFormatLastError
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2">
+                                Format validation succeeded after @(_props.OutputFormatAttemptCount - 1) retry. First attempt failed: @_props.OutputFormatLastError
+                            </MudText>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_props.OutputFormatFailedAttemptResponse))
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       OnClick="@(() => _showFailedAttempt = !_showFailedAttempt)">
+                                @(_showFailedAttempt ? "Hide rejected response" : "View rejected response")
+                            </MudButton>
+
+                            @if (_showFailedAttempt)
+                            {
+                                <MudPaper Outlined="true"
+                                          Class="pa-2 editor-mono-field"
+                                          Style="background-color: color-mix(in srgb, var(--mud-palette-black) 20%, transparent); white-space: pre-wrap; max-height: 300px; overflow: auto;">
+                                    @_props.OutputFormatFailedAttemptResponse
+                                </MudPaper>
+                            }
+                        }
+                    </MudStack>
+                </MudAlert>
+            }
+        </MudStack>
+        </ChildContent>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    private AiQueryProperties _props => Block.Properties as AiQueryProperties
+        ?? throw new InvalidOperationException("Block properties must be of type AiQueryProperties");
+
+    private bool _advancedSchemaMode;
+    private bool _schemaTooComplex;
+    private bool _showFailedAttempt;
+
+    private void OnAdvancedToggled(bool value)
+    {
+        _advancedSchemaMode = value;
+    }
+
+    private void OnNotRepresentableDetected(bool value)
+    {
+        _schemaTooComplex = value;
+    }
+
+    private async Task OnFormatTypeChanged(OutputFormatType value)
+    {
+        _props.OutputFormatType = value;
+        ClearUnusedFields(value);
+        await BlockChanged.InvokeAsync();
+    }
+
+    private void ClearUnusedFields(OutputFormatType value)
+    {
+        bool usesTagName = value is OutputFormatType.SingleTag or OutputFormatType.JsonInTag;
+        bool usesTagNames = value is OutputFormatType.MultiTag;
+        bool usesJsonSchema = value is OutputFormatType.Json or OutputFormatType.JsonInTag;
+
+        if (!usesTagName)
+        {
+            _props.OutputFormatTagName = null;
+        }
+
+        if (!usesTagNames)
+        {
+            _props.OutputFormatTagNames = null;
+        }
+
+        if (!usesJsonSchema)
+        {
+            _props.OutputFormatJsonSchema = null;
+        }
+
+        _props.OutputFormatAttemptCount = 0;
+        _props.OutputFormatLastError = null;
+        _props.OutputFormatFailedAttemptResponse = null;
+        _showFailedAttempt = false;
+    }
+
+    private async Task OnTagNameChanged(string value)
+    {
+        _props.OutputFormatTagName = value;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnTagNamesChanged(string value)
+    {
+        _props.OutputFormatTagNames = value;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task OnJsonSchemaChanged(string value)
+    {
+        _props.OutputFormatJsonSchema = value;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private static string GetFormatDescription(OutputFormatType type) => type switch
+    {
+        OutputFormatType.SingleTag => "The response must contain one tag wrapping the answer. Use when you want the model to think freely and then deliver a single parseable answer.",
+        OutputFormatType.MultiTag => "The response must contain a separate tag for each labelled section. Use when you want the model to surface multiple named pieces.",
+        OutputFormatType.Json => "The entire response must be valid JSON. Use when the response will be consumed by downstream code.",
+        OutputFormatType.JsonInTag => "Valid JSON inside a single tag. Use when you also want the model to write reasoning outside the tag.",
+        _ => string.Empty,
+    };
+
+    private string? _lastParsedSchema;
+    private string? _lastSchemaParseError;
+
+    private string? TryGetSchemaParseError(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (string.Equals(value, _lastParsedSchema, StringComparison.Ordinal))
+        {
+            return _lastSchemaParseError;
+        }
+
+        _lastParsedSchema = value;
+
+        try
+        {
+            _ = IniaAi.Domain.JsonSchemas.JsonSchemaEvaluation.CompileSchema(value);
+            _lastSchemaParseError = null;
+        }
+        catch (Exception ex)
+        {
+            _lastSchemaParseError = ex.Message;
+        }
+
+        return _lastSchemaParseError;
+    }
+}

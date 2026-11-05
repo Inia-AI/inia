@@ -1,0 +1,299 @@
+@page "/workflows/compare-deployments"
+@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+
+@using System.Text.Json
+@using ErrorOr
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.WebApi.Contracts.Enums
+@using IniaAi.WebApi.Contracts.Responses.WorkflowVersions
+@using IniaAi.WebApp.Services
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.DependencyInjection
+
+@inject AppState AppState
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IJSRuntime JsRuntime
+
+<PageTitle>Inia AI - Compare deployments</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="my-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
+        <MudIcon Icon="@Icons.Material.Outlined.CompareArrows" Color="Color.Primary" Size="Size.Large" />
+        <MudText Typo="Typo.h5">Compare workflows across deployments</MudText>
+    </MudStack>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+        Each deployment keeps its own saved versions. Download this deployment's report, gather the
+        reports from your other deployments, and drop them in below to see which deployment holds the
+        newest of each workflow — and where deployments have diverged.
+    </MudText>
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-6">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   OnClick="GenerateReportAsync">
+            Download this deployment's report
+        </MudButton>
+
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                       FilesChanged="OnFilesChanged"
+                       Accept=".json"
+                       MaximumFileCount="50">
+            <CustomContent>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.UploadFile"
+                           OnClick="@(async () => await context.OpenFilePickerAsync())">
+                    Add reports from other deployments
+                </MudButton>
+            </CustomContent>
+            <SelectedTemplate />
+        </MudFileUpload>
+    </MudStack>
+
+    @if (_cards.Count == 0)
+    {
+        <MudPaper Outlined="true" Class="pa-8 d-flex flex-column align-center">
+            <MudIcon Icon="@Icons.Material.Outlined.Difference"
+                     Size="Size.Large"
+                     Class="mud-text-disabled mb-2" />
+            <MudText Typo="Typo.body1" Class="mud-text-secondary">No deployment reports loaded yet.</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-disabled mt-1">
+                Add this deployment's report and at least one other to start comparing.
+            </MudText>
+        </MudPaper>
+    }
+    else if (_comparison is not null)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudText Typo="Typo.subtitle2">
+                Comparing @_comparison.InstanceNames.Count deployment(s) across @_comparison.Rows.Count workflow(s)
+            </MudText>
+        </MudStack>
+
+        <MudStack Row="true" Spacing="6" Wrap="Wrap.Wrap" Class="mb-3">
+            @foreach (CurrencyCellStatus status in new[] { CurrencyCellStatus.Match, CurrencyCellStatus.Behind, CurrencyCellStatus.Ahead, CurrencyCellStatus.Diverged, CurrencyCellStatus.Missing })
+            {
+                <div class="d-inline-flex align-center" style="gap: 6px; color: @StatusColorVar(status);">
+                    <MudIcon Icon="@StatusIcon(status)" Color="Color.Inherit" Size="Size.Small" />
+                    <span style="font-weight: 500;">@StatusLabel(status)</span>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">— @StatusHint(status)</MudText>
+                </div>
+            }
+        </MudStack>
+
+        <MudSimpleTable Dense="true" Bordered="true" Hover="true" Elevation="0" Class="border-solid mud-border-lines-default">
+            <thead>
+                <tr>
+                    <th>Workflow</th>
+                    @foreach (string instanceName in _comparison.InstanceNames)
+                    {
+                        <th style="text-align: center;">
+                            <div class="d-inline-flex align-center" style="gap: 6px;">
+                                <MudIcon Icon="@Icons.Material.Outlined.Dns" Size="Size.Small" Color="Color.Primary" />
+                                <span>@instanceName</span>
+                            </div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (CurrencyComparisonRowDto row in _comparison.Rows)
+                {
+                    <tr>
+                        <td style="font-weight: 600;" title="@row.WorkflowTypeId">@row.WorkflowTypeName</td>
+                        @foreach (CurrencyComparisonCellDto cell in row.Cells)
+                        {
+                            <td style="@CellTint(cell.Status)">
+                                <div class="d-flex flex-column align-center justify-center"
+                                     style="gap: 2px; min-width: 116px; color: @StatusColorVar(cell.Status);">
+                                    <div class="d-inline-flex align-center" style="gap: 4px;">
+                                        <MudIcon Icon="@StatusIcon(cell.Status)" Color="Color.Inherit" Size="Size.Small" />
+                                        <span style="font-weight: 500;">@StatusLabel(cell.Status)</span>
+                                    </div>
+                                    @if (cell.Status != CurrencyCellStatus.Missing && !string.IsNullOrEmpty(cell.ShortCode))
+                                    {
+                                        <MudTooltip Text="Version fingerprint — identical content shares this code across deployments.">
+                                            <span class="mud-text-secondary editor-mono-field" style="font-size: 0.72rem;">
+                                                @cell.ShortCode
+                                            </span>
+                                        </MudTooltip>
+                                    }
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudContainer>
+
+@code {
+    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private readonly List<CurrencyCardDto> _cards = [];
+    private CurrencyComparisonDto? _comparison;
+
+    private async Task GenerateReportAsync()
+    {
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            return;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+
+        ErrorOr<CurrencyCardDto> result = await sender.Send(
+            new GenerateCurrencyCardQuery(AppState.CurrentOrganizationId));
+
+        if (result.IsError)
+        {
+            AppState.Notify("Could not generate the version report.", Severity.Error);
+            return;
+        }
+
+        byte[] data = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result.Value, _jsonOptions));
+        string filename = $"{result.Value.InstanceName}_workflow-versions.json";
+
+        _ = await JsRuntime.InvokeAsync<object>("downloadFile", filename, data);
+    }
+
+    private async Task OnFilesChanged(IReadOnlyList<IBrowserFile> files)
+    {
+        foreach (IBrowserFile file in files)
+        {
+            try
+            {
+                await using Stream stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                using var reader = new StreamReader(stream);
+                string json = await reader.ReadToEndAsync();
+
+                CurrencyCardDto? card = DeploymentReportFile.Read(json, _jsonOptions);
+                if (card is null)
+                {
+                    AppState.Notify(
+                        $"{file.Name} is not a deployment report, so it was left out. Choose a file saved with \"Download this deployment's report\".",
+                        Severity.Warning);
+                    continue;
+                }
+
+                AddCard(card);
+            }
+            catch (Exception)
+            {
+                AppState.Notify($"Could not read {file.Name} as a version report.", Severity.Warning);
+            }
+        }
+
+        _comparison = _cards.Count > 0 ? WorkflowCardComparer.Compare(_cards) : null;
+    }
+
+    // A deployment identifies itself by PlatformSettings:InstanceName, falling back to the machine
+    // name — so two deployments on one host arrive with the same label. Replacing on the label alone
+    // dropped a whole deployment out of the comparison; only an identical report (same label AND
+    // same generation time) is a genuine re-add.
+    private void AddCard(CurrencyCardDto card)
+    {
+        int replaced = _cards.RemoveAll(existing =>
+            string.Equals(existing.InstanceName, card.InstanceName, StringComparison.Ordinal)
+            && existing.GeneratedUtc == card.GeneratedUtc);
+        if (replaced > 0)
+        {
+            _cards.Add(card);
+
+            return;
+        }
+
+        if (!_cards.Any(existing =>
+            string.Equals(existing.InstanceName, card.InstanceName, StringComparison.Ordinal)))
+        {
+            _cards.Add(card);
+
+            return;
+        }
+
+        string distinctName = DistinctInstanceName(card.InstanceName);
+        _cards.Add(card with { InstanceName = distinctName });
+        AppState.Notify(
+            $"Another report already calls itself '{card.InstanceName}', so this one is shown as "
+            + $"'{distinctName}'. Set PlatformSettings:InstanceName per deployment to give each its own name.",
+            Severity.Warning);
+    }
+
+    private string DistinctInstanceName(string instanceName)
+    {
+        int suffix = 2;
+        while (_cards.Any(existing => string.Equals(
+            existing.InstanceName, $"{instanceName} ({suffix})", StringComparison.Ordinal)))
+        {
+            suffix++;
+        }
+
+        return $"{instanceName} ({suffix})";
+    }
+
+    private static string StatusLabel(CurrencyCellStatus status)
+    {
+        return status switch
+        {
+            CurrencyCellStatus.Match => "Up to date",
+            CurrencyCellStatus.Behind => "Behind",
+            CurrencyCellStatus.Ahead => "Ahead",
+            CurrencyCellStatus.Diverged => "Diverged",
+            _ => "Not present",
+        };
+    }
+
+    private static string StatusHint(CurrencyCellStatus status)
+    {
+        return status switch
+        {
+            CurrencyCellStatus.Match => "holds the most recent save",
+            CurrencyCellStatus.Behind => "an earlier point in its history",
+            CurrencyCellStatus.Ahead => "newer edits on top of the up-to-date version",
+            CurrencyCellStatus.Diverged => "edited on a separate line — not just older",
+            _ => "never saved here",
+        };
+    }
+
+    private static string StatusIcon(CurrencyCellStatus status)
+    {
+        return status switch
+        {
+            CurrencyCellStatus.Match => Icons.Material.Filled.CheckCircle,
+            CurrencyCellStatus.Behind => Icons.Material.Filled.History,
+            CurrencyCellStatus.Ahead => Icons.Material.Filled.Upgrade,
+            CurrencyCellStatus.Diverged => Icons.Material.Filled.CallSplit,
+            _ => Icons.Material.Outlined.RemoveCircleOutline,
+        };
+    }
+
+    private static string StatusColorVar(CurrencyCellStatus status)
+    {
+        return status switch
+        {
+            CurrencyCellStatus.Match => "var(--mud-palette-success)",
+            CurrencyCellStatus.Behind => "var(--mud-palette-warning)",
+            CurrencyCellStatus.Ahead => "var(--mud-palette-info)",
+            CurrencyCellStatus.Diverged => "var(--mud-palette-error)",
+            _ => "var(--mud-palette-text-disabled)",
+        };
+    }
+
+    private static string CellTint(CurrencyCellStatus status)
+    {
+        return status switch
+        {
+            CurrencyCellStatus.Match => "background-color: color-mix(in srgb, var(--mud-palette-success) 12%, transparent);",
+            CurrencyCellStatus.Behind => "background-color: color-mix(in srgb, var(--mud-palette-warning) 14%, transparent);",
+            CurrencyCellStatus.Ahead => "background-color: color-mix(in srgb, var(--mud-palette-info) 12%, transparent);",
+            CurrencyCellStatus.Diverged => "background-color: color-mix(in srgb, var(--mud-palette-error) 14%, transparent);",
+            _ => string.Empty,
+        };
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "description": "Restated figures.",
+  "sources": [
+    "User Upload",
+    "Email"
+  ],
+  "topics": "Restatement",
+  "tableOfContents": "1. Overview\n2. Financial statements",
+  "pageCount": 3,
+  "fileMetadataId": "file-read",
+  "id": "document-read",
+  "name": "Annual report (restated)",
+  "mediaType": "ApplicationPdf",
+  "sizeBytes": 482113,
+  "extension": ".pdf",
+  "userId": "user-read",
+  "documentCategoryId": "category-restated",
+  "workflowTypeId": null,
+  "class": null,
+  "wasPasswordProtected": true,
+  "processingState": "Failed",
+  "processingRequestedAt": null,
+  "processedAt": null,
+  "processingError": "The file could not be read.",
+  "createdAt": "2026-09-07T08:00:00Z",
+  "updatedAt": "2026-09-07T08:00:00Z"
+}

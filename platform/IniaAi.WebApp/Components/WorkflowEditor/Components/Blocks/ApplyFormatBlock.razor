@@ -1,0 +1,51 @@
+﻿@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <PromptEditor Label="Text Template"
+                      BlockId="@Block.StableBlockId"
+                      WorkflowTypeId="@(Block.Section?.Workflow?.WorkflowTypeId)"
+                      SignatureFields="@_workflowSignatureFields"
+                      BlockChanged="@BlockChanged"
+                      MinLines="3"
+                      MaxLines="20"
+                      Value="@_props.TextTemplate"
+                      ValueChanged="@((string value) => _props.TextTemplate = value)" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Text After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="20"
+                          Value="@_props.ExecutionState.Text" />
+        </MudItem>
+    }
+</MudGrid>
+
+<SignatureFieldsEditor Block="@Block" BlockChanged="@BlockChanged" />
+
+@code {
+    private MergeProperties _props => Block.Properties as MergeProperties
+        ?? throw new InvalidOperationException("Block properties must be of type MergeProperties");
+
+    private Dictionary<string, SignatureFieldDefinition>? _workflowSignatureFields =>
+        Block.Section?.Workflow?.SignatureFields is { Count: > 0 } fields
+            ? fields.ToDictionary(
+                f => f.Name,
+                f => new SignatureFieldDefinition(f.DisplayName, f.Description, f.DefaultValue),
+                StringComparer.OrdinalIgnoreCase)
+            : null;
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback BlockChanged { get; set; }
+}

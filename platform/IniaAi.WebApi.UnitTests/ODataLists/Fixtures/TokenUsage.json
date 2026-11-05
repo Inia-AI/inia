@@ -1,0 +1,84 @@
+{
+  "@odata.count": 3,
+  "@odata.skip": 0,
+  "@odata.top": 50,
+  "value": [
+    {
+      "id": "usage-1",
+      "organizationId": "org-tokens",
+      "userId": "user-tokens",
+      "userDisplayName": null,
+      "workflowTypeId": "Corp",
+      "workflowTypeName": null,
+      "workflowExecutionId": "execution-usage-1",
+      "blockId": "block-usage-1",
+      "documentId": "document-usage-1",
+      "usageType": "LlmBlockExecution",
+      "executionContext": "WorkflowExecution",
+      "blockType": "AiQuery",
+      "provider": "aws-bedrock",
+      "modelId": "claude-sonnet",
+      "components": [
+        {
+          "componentType": "Input",
+          "units": 1200,
+          "cost": 0.0036
+        },
+        {
+          "componentType": "Output",
+          "units": 300,
+          "cost": 0.0045
+        }
+      ],
+      "totalCost": 0.0081,
+      "createdAt": "2026-09-03T08:00:00Z",
+      "description": "Usage 0"
+    },
+    {
+      "id": "usage-2",
+      "organizationId": "org-tokens",
+      "userId": null,
+      "userDisplayName": null,
+      "workflowTypeId": null,
+      "workflowTypeName": null,
+      "workflowExecutionId": "execution-usage-2",
+      "blockId": "block-usage-2",
+      "documentId": "document-usage-2",
+      "usageType": "EmbeddingQuery",
+      "executionContext": "DocumentUpload",
+      "blockType": null,
+      "provider": "cohere-api",
+      "modelId": "embed-v4",
+      "components": [
+        {
+          "componentType": "Input",
+          "units": 800,
+          "cost": 0.0008
+        }
+      ],
+      "totalCost": 0.0008,
+      "createdAt": "2026-09-03T08:01:00Z",
+      "description": "Usage 1"
+    },
+    {
+      "id": "usage-3",
+      "organizationId": "org-tokens",
+      "userId": null,
+      "userDisplayName": null,
+      "workflowTypeId": "Corp",
+      "workflowTypeName": null,
+      "workflowExecutionId": "execution-usage-3",
+      "blockId": "block-usage-3",
+      "documentId": "document-usage-3",
+      "usageType": "LlmBlockExecution",
+      "executionContext": "WorkflowExecution",
+      "blockType": null,
+      "provider": "aws-bedrock",
+      "modelId": "claude-sonnet",
+      "components": [],
+      "totalCost": 0,
+      "createdAt": "2026-09-03T08:02:00Z",
+      "description": "Usage 2"
+    }
+  ]
+}

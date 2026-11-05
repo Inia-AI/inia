@@ -1,0 +1,41 @@
+﻿@using IniaAi.Domain.Entities.Workflows.Responses
+
+@if (Response is not null)
+{
+    <MudTabs Elevation="0"
+             Outlined="true"
+             Rounded="true"
+             ApplyEffectsToContainer="false">
+        <MudTabPanel Text="Raw Response">
+            <RawResponseInteraction Response="@Response"/>
+        </MudTabPanel>
+
+        <MudTabPanel Text="JSON">
+            <JsonResponseInteraction Response="@Response"/>
+        </MudTabPanel>
+
+        <MudTabPanel Text="HTML">
+            <HtmlResponseInteraction Response="@Response"/>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Markdown">
+            <MarkdownResponseInteraction Response="@Response"/>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Binary">
+            <BinaryResponseInteraction Response="@Response"/>
+        </MudTabPanel>
+
+        @if (!string.IsNullOrWhiteSpace(Response.DebugInfo))
+        {
+            <MudTabPanel Text="Debug Info">
+                <DebugInfoResponseInteraction Response="@Response"/>
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public BlockResponse? Response { get; set; }
+}

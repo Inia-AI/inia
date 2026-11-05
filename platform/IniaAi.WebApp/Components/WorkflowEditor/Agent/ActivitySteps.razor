@@ -1,0 +1,154 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@using IniaAi.Application.Workflows.EditorAgent
+@using IniaAi.Common.Interfaces.Services.AgentRuntime.Activity
+
+@* The agent's work: open and updating while it works, then one quiet line that opens into the steps it took. *@
+<details class="editor-agent-trail" data-testid="editor-agent-trail" open="@IsLive">
+    <summary>
+        @if (IsLive)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" Class="editor-agent-trail-spinner" />
+            <span>@Headline</span>
+        }
+        else
+        {
+            <MudIcon Icon="@Icons.Material.Outlined.TaskAlt" Size="Size.Small" Class="editor-agent-trail-icon" aria-hidden="true" />
+            <span>@Headline</span>
+        }
+        <MudIcon Icon="@Icons.Material.Outlined.ExpandMore" Size="Size.Small" Class="editor-agent-trail-chevron" aria-hidden="true" />
+    </summary>
+
+    @if (Digest is { Beats.Count: > 0 })
+    {
+        int last = LastStepIndex();
+        <ol class="editor-agent-steps" aria-label="What the agent did">
+            @foreach (StepRun run in Runs())
+            {
+                AgentActivityBeat beat = run.Beat;
+                if (beat.Icon == EditorAgentStepIcons.REMARK)
+                {
+                    <li class="editor-agent-remark" data-testid="editor-agent-remark">@EditorAgentSteps.Label(beat)</li>
+                    continue;
+                }
+
+                bool running = IsLive && run.LastIndex == last;
+                <li class="@StepClass(beat, running)" data-testid="editor-agent-step" data-state="@(running ? RUNNING : DONE)">
+                    @if (running)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="editor-agent-step-spinner" aria-label="Working on this step" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@StepIcon(beat)" Size="Size.Small" Class="editor-agent-step-icon" aria-hidden="true" />
+                    }
+                    <span>@EditorAgentSteps.Label(beat)</span>
+                    @if (run.Count > 1)
+                    {
+                        <span class="editor-agent-step-count" data-testid="editor-agent-step-count">×@run.Count</span>
+                    }
+                    @if (EditorAgentSteps.Detail(beat) is { } detail)
+                    {
+                        <span class="editor-agent-caption">@detail</span>
+                    }
+                </li>
+            }
+        </ol>
+    }
+</details>
+
+@code {
+    private const string RUNNING = "running";
+    private const string DONE = "done";
+
+    [Parameter]
+    public AgentActivityDigest? Digest { get; set; }
+
+    /// <summary>True while the agent works: the steps show open and the latest one is running.</summary>
+    [Parameter]
+    public bool IsLive { get; set; }
+
+    /// <summary>The live line's text, such as "Reading the workflow...".</summary>
+    [Parameter]
+    public string? WorkingLabel { get; set; }
+
+    private string Headline => IsLive ? WorkingLabel ?? "Working..." : SettledHeadline();
+
+    private int StepCount => Digest?.Beats.Count(static beat => beat.Icon != EditorAgentStepIcons.REMARK) ?? 0;
+
+    private string SettledHeadline()
+    {
+        string steps = StepCount == 1 ? "1 step" : $"{StepCount} steps";
+        if (Digest?.Receipt.DurationSeconds is int seconds)
+        {
+            string duration = seconds < 60 ? $"{seconds} s" : $"{seconds / 60} min {seconds % 60} s";
+            return $"Worked for {duration} · {steps}";
+        }
+
+        return steps;
+    }
+
+    /// <param name="LastIndex">The index of the run's last beat in the digest.</param>
+    private sealed record StepRun(AgentActivityBeat Beat, int Count, int LastIndex);
+
+    /// <summary>The steps with each run of the same step in a row folded into one, counted.</summary>
+    private List<StepRun> Runs()
+    {
+        var runs = new List<StepRun>();
+        for (int index = 0; index < Digest!.Beats.Count; index++)
+        {
+            AgentActivityBeat beat = Digest.Beats[index];
+            if (runs.Count > 0 && beat.Icon != EditorAgentStepIcons.REMARK && SameStep(runs[^1].Beat, beat))
+            {
+                runs[^1] = runs[^1] with { Count = runs[^1].Count + 1, LastIndex = index };
+                continue;
+            }
+
+            runs.Add(new StepRun(beat, 1, index));
+        }
+
+        return runs;
+    }
+
+    private static bool SameStep(AgentActivityBeat first, AgentActivityBeat second)
+    {
+        return first.Icon == second.Icon
+            && first.Kind == second.Kind
+            && EditorAgentSteps.Label(first) == EditorAgentSteps.Label(second)
+            && EditorAgentSteps.Detail(first) == EditorAgentSteps.Detail(second);
+    }
+
+    private int LastStepIndex()
+    {
+        for (int index = Digest!.Beats.Count - 1; index >= 0; index--)
+        {
+            if (Digest.Beats[index].Icon != EditorAgentStepIcons.REMARK)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static string StepClass(AgentActivityBeat beat, bool running)
+    {
+        string kind = beat.Kind == AgentActivityBeatKind.Hero ? "editor-agent-step editor-agent-step--hero" : "editor-agent-step";
+        return running ? kind + " editor-agent-step--running" : kind;
+    }
+
+    private static string StepIcon(AgentActivityBeat beat)
+    {
+        return beat.Icon switch
+        {
+            EditorAgentStepIcons.SEARCH => Icons.Material.Outlined.Search,
+            EditorAgentStepIcons.OPEN => Icons.Material.Outlined.Article,
+            EditorAgentStepIcons.LINKS => Icons.Material.Outlined.AccountTree,
+            EditorAgentStepIcons.REPORT => Icons.Material.Outlined.Assessment,
+            EditorAgentStepIcons.READ => Icons.Material.Outlined.MenuBook,
+            EditorAgentStepIcons.CHECK => Icons.Material.Outlined.FactCheck,
+            EditorAgentStepIcons.EDIT => Icons.Material.Outlined.EditNote,
+            _ => beat.Kind == AgentActivityBeatKind.Check ? Icons.Material.Outlined.FactCheck : Icons.Material.Outlined.Check,
+        };
+    }
+}

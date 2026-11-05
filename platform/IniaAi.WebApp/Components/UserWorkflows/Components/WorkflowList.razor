@@ -1,0 +1,204 @@
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApp.Components.UserWorkflows.Common
+@using MudBlazor
+
+@inject IDialogService DialogService
+
+<MudCard Outlined="true" Class="w-100 mb-4">
+    <MudCardHeader>
+        <MudTextField @bind-Value="_searchString"
+                      Placeholder="Search by name, type, description, state or failure"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Style="width: 100%;" />
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid T="ExecutedWorkflowRow"
+                     Items="@FilteredRows"
+                     Dense="true"
+                     ReadOnly="true"
+                     SortMode="SortMode.Single"
+                     Class="w-100">
+            <Columns>
+                <PropertyColumn Property="x => x.CreatedAt"
+                                Title="Date Created"
+                                Format="yyyy-MM-dd HH:mm"
+                                SortBy="x => x.CreatedAt" />
+
+                <PropertyColumn Property="x => x.Name"
+                                Title="Workflow Name"
+                                SortBy="x => x.Name" />
+
+                <PropertyColumn Property="x => x.TypeName"
+                                Title="Type" />
+
+                <PropertyColumn Property="x => x.Description"
+                                Title="Description" />
+
+                <TemplateColumn Title="State" SortBy="x => x.State">
+                    <CellTemplate Context="ctx">
+                        <MudStack Spacing="0">
+                            <MudTooltip Text="@ExecutionOutcomeVisuals.Tooltip(ctx.Item.State, ctx.Item.CompletedAt, ctx.Item.Outcome is not null)">
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Text"
+                                         Class="ma-0"
+                                         Color="@ExecutionOutcomeVisuals.Color(ctx.Item.State)"
+                                         Icon="@ExecutionOutcomeVisuals.Icon(ctx.Item.State)">
+                                    @ExecutionOutcomeVisuals.Label(ctx.Item.State)
+                                </MudChip>
+                            </MudTooltip>
+
+                            @if (ctx.Item.CompletedAt is not null)
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @ExecutionOutcomeVisuals.CompletedAtLabel(ctx.Item.CompletedAt)
+                                </MudText>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Attention" SortBy="x => x.AttentionKind ?? string.Empty">
+                    <CellTemplate Context="ctx">
+                        @if (ctx.Item.HasAttention)
+                        {
+                            Color color = ctx.Item.IsWarningOnly ? Color.Warning : Color.Error;
+                            string? summary = ExecutionFailureText.Summary(ctx.Item.AttentionDetail);
+                            string detailAction = ctx.Item.IsWarningOnly ? "Show the full warning detail" : "Show the full failure detail";
+
+                            <MudStack Row="true"
+                                      Spacing="1"
+                                      AlignItems="AlignItems.Center"
+                                      Style="@FAILURE_CELL_STYLE">
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Outlined"
+                                         Color="@color"
+                                         Class="ma-0">
+                                    @ExecutionFailureText.Kind(ctx.Item.AttentionKind)
+                                </MudChip>
+
+                                @if (!string.IsNullOrEmpty(summary))
+                                {
+                                    <MudText Typo="Typo.caption" Style="@FAILURE_SUMMARY_STYLE">
+                                        @summary
+                                    </MudText>
+                                }
+
+                                <MudTooltip Text="@detailAction">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.ReadMore"
+                                                   aria-label="@detailAction"
+                                                   Size="Size.Small"
+                                                   Color="@color"
+                                                   OnClick="@(() => ShowAttentionAsync(ctx.Item))" />
+                                </MudTooltip>
+                            </MudStack>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Actions" HeaderClass="actions-col" CellClass="actions-col">
+                    <CellTemplate Context="ctx">
+                        <MudStack Row="true" Spacing="0">
+                            @if (ctx.Item.Workflow is { } workflow)
+                            {
+                                <MudTooltip Text="Download">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                                   aria-label="@($"Download workflow {workflow.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Info"
+                                                   OnClick="@(() => OnDownload.InvokeAsync(workflow))" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                                   aria-label="@($"Edit workflow {workflow.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => OnEdit.InvokeAsync(workflow))" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   aria-label="@($"Delete workflow {workflow.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => OnDelete.InvokeAsync(workflow))" />
+                                </MudTooltip>
+                            }
+                            else if (ctx.Item.Outcome is { } outcome)
+                            {
+                                <MudTooltip Text="Delete run">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   aria-label="Delete run"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => OnDeleteRun.InvokeAsync(outcome))" />
+                                </MudTooltip>
+                            }
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="ExecutedWorkflowRow"
+                                  PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private const string FAILURE_CELL_STYLE = "max-width: 24rem; overflow: hidden;";
+
+    private const string FAILURE_SUMMARY_STYLE =
+        "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+
+    [Parameter]
+    public IReadOnlyList<ExecutedWorkflowRow> Rows { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<Workflow> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<Workflow> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<Workflow> OnDownload { get; set; }
+
+    [Parameter]
+    public EventCallback<ExecutionOutcome> OnDeleteRun { get; set; }
+
+    private string _searchString { get; set; } = string.Empty;
+
+    private IEnumerable<ExecutedWorkflowRow> FilteredRows =>
+        ExecutedWorkflowRowFilter.Apply(Rows, _searchString);
+
+    private async Task ShowAttentionAsync(ExecutedWorkflowRow row)
+    {
+        var parameters = new DialogParameters<ExecutionFailureDialog>
+        {
+            { x => x.ExecutionId, row.ExecutionId },
+            { x => x.FailureKind, row.AttentionKind },
+            { x => x.FailureDetail, row.AttentionDetail },
+            { x => x.IsWarning, row.IsWarningOnly },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+        };
+
+        _ = await DialogService.ShowAsync<ExecutionFailureDialog>(
+            $"{(row.IsWarningOnly ? "Warning" : "Failure")} — {row.Name}",
+            parameters,
+            options);
+    }
+}

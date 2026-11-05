@@ -1,0 +1,74 @@
+@using IniaAi.Domain.Tools.PdfOcr
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack>
+            <MudText Typo="Typo.h5">PDF OCR Prompts</MudText>
+            <MudText Typo="Typo.subtitle1">
+                Prompts that are used for processing OCR results from PDF documents.
+            </MudText>
+            <ToolsSettingsScopeNotice />
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Spacing="5">
+            <MudText Typo="Typo.h6">Transcribe page images</MudText>
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.TranscriptionSystemPrompt"
+                          Label="Transcription System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="States the deployment context so the model transcribes every page verbatim, including published-looking material the customer lawfully holds. Removing it can make the model refuse book, dictionary, and newspaper pages. Change with care."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.TranscriptionPrompt"
+                          Label="Transcription Prompt"
+                          Class="editor-mono-field"
+                          HelperText="Asks the model to extract the full page text as Markdown, preserving every character, script, and native digit exactly as printed."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.h6">Judge transcription fidelity</MudText>
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.JudgeSystemPrompt"
+                          Label="Fidelity-Judge System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="System prompt for the judge pass: it decides whether the transcription faithfully represents the page (good) or must be routed by image instead (bad). Errs toward 'bad' by design — page text is kept only when the transcription is verifiably faithful. Change with care."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.JudgePrompt"
+                          Label="Fidelity-Judge Prompt"
+                          Class="editor-mono-field"
+                          HelperText="Pay attention to the placeholders like {TEXT_CONTENT}. These will be replaced with the transcription to audit."
+                          Sizing="InputSizing.Auto"
+                          Lines="5"
+                          MaxLines="20"/>
+
+            <MudDivider />
+
+            <PromptsToolbar Prompts="@Prompts"
+                            Title="@nameof(PdfOcrPrompts)"
+                            SaveChangesCallback="@SaveChangesCallback"
+                            PromptsUploaded="@((PdfOcrPrompts uploaded) => uploaded.CopyTo(Prompts))" />
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public PdfOcrPrompts Prompts { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback SaveChangesCallback { get; set; }
+}

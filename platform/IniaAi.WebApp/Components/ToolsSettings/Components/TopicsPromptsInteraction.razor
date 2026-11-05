@@ -1,0 +1,72 @@
+@using IniaAi.Domain.Entities.DocumentAnalysis
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack>
+            <MudText Typo="Typo.h5">Topics Prompts</MudText>
+            <MudText Typo="Typo.subtitle1">
+                Prompts of the Build Topics block: first the topics a document set covers, then the pages under each topic. Both read page overviews.
+            </MudText>
+            <ToolsSettingsScopeNotice />
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudStack Spacing="5">
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.TopicsAnalysisSystemPrompt"
+                          Label="Topic Finding System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="The role of the model that finds the topics a document set covers."
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.TopicsAnalysisUserPrompt"
+                          Label="Topic Finding Prompt"
+                          Class="editor-mono-field"
+                          HelperText="Follows the page overviews. The answer lists the topics inside answer tags."
+                          Sizing="InputSizing.Auto"
+                          Lines="12"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.TopicGroupingSystemPrompt"
+                          Label="Topic Grouping System Prompt"
+                          Class="editor-mono-field"
+                          HelperText="Optional: the role of the model that groups pages under the topics."
+                          Sizing="InputSizing.Auto"
+                          Lines="3"
+                          MaxLines="30" />
+
+            <MudDivider />
+
+            <MudTextField Variant="Variant.Outlined"
+                          @bind-Value="@Prompts.TopicGroupingUserPrompt"
+                          Label="Topic Grouping Prompt"
+                          Class="editor-mono-field"
+                          HelperText="Follows the page overviews; {0} is the list of topics. The answer maps each topic to its pages inside answer tags."
+                          Sizing="InputSizing.Auto"
+                          Lines="12"
+                          MaxLines="30" />
+
+            <PromptsToolbar Prompts="@Prompts"
+                            Title="@nameof(TopicsPrompts)"
+                            SaveChangesCallback="@SaveChangesCallback"
+                            PromptsUploaded="@((TopicsPrompts uploaded) => uploaded.CopyTo(Prompts))" />
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public TopicsPrompts Prompts { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback SaveChangesCallback { get; set; }
+}

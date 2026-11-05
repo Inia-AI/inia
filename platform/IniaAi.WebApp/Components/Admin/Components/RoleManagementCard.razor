@@ -1,0 +1,253 @@
+@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using Microsoft.AspNetCore.Identity
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IUserSessionRevoker SessionRevoker
+@inject AppState AppState
+@inject RoleGrants RoleGrants
+@inject ISnackbar Snackbar
+@inject ILogger<RoleManagementCard> Logger
+
+<MudCard Outlined="true" Elevation="0" Class="admin-card">
+    <div class="admin-card__head">
+        <div class="admin-card__title">
+            User Roles
+            <span class="admin-card__count">@Users.Count()</span>
+        </div>
+        <div class="admin-card__head-actions">
+            <MudTextField @bind-Value="_search"
+                          Placeholder="Search users"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          IconSize="Size.Small"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          Clearable="true"
+                          Class="admin-search" />
+        </div>
+    </div>
+
+    <MudTable Items="Users"
+              Filter="FilterUser"
+              Dense="true"
+              Hover="true"
+              Elevation="0">
+        <ColGroup>
+            <col style="width: 320px;" />
+            <col />
+            <col style="width: 120px;" />
+        </ColGroup>
+
+        <HeaderContent>
+            <MudTh>
+                <MudTableSortLabel InitialDirection="SortDirection.Ascending" SortBy="new Func<User, object>(x => x.Email ?? string.Empty)">User</MudTableSortLabel>
+            </MudTh>
+            <MudTh>Roles</MudTh>
+            <MudTh Style="text-align: right;">Add Role</MudTh>
+        </HeaderContent>
+
+        <RowTemplate Context="user">
+            <MudTd DataLabel="User">
+                <div class="admin-user-cell">
+                    <span class="admin-user-cell__primary">@user.Email</span>
+                    <span class="admin-user-cell__secondary">@VisibleOrganizationName(user)</span>
+                </div>
+            </MudTd>
+
+            <MudTd DataLabel="Roles">
+                @{
+                    var assignedRoles = AssignedRoles(user).ToList();
+                }
+                @if (assignedRoles.Any())
+                {
+                    <div class="admin-chip-row">
+                        @foreach (var userRole in assignedRoles)
+                        {
+                            var role = Roles.FirstOrDefault(r => r.Id == userRole.RoleId);
+                            @if (CanRemove(user.Id, role))
+                            {
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Outlined"
+                                         OnClose="async () => await DeleteUserRoleAsync(userRole)">
+                                    @RoleDisplayName(role)
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Outlined">
+                                    @RoleDisplayName(role)
+                                </MudChip>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <span class="admin-empty">No roles assigned</span>
+                }
+            </MudTd>
+
+            <MudTd Style="text-align: right;">
+                @{
+                    var addableRoles = AddableRoles(user).ToList();
+                }
+                @if (addableRoles.Any())
+                {
+                    <MudMenu AnchorOrigin="Origin.BottomRight"
+                             TransformOrigin="Origin.TopRight"
+                             Label="Role"
+                             StartIcon="@Icons.Material.Outlined.Add"
+                             Size="Size.Small"
+                             Variant="Variant.Text"
+                             Color="Color.Primary">
+                        <ChildContent>
+                            @foreach (var role in addableRoles)
+                            {
+                                <MudMenuItem OnClick="async () => await AddUserRoleAsync(user, role)">
+                                    @RoleDisplayName(role)
+                                </MudMenuItem>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudCard>
+
+@code {
+    [Parameter]
+    public IEnumerable<User> Users { get; set; } = [];
+
+    // Every role in the database, so an assigned role always shows its name.
+    [Parameter]
+    public IEnumerable<IdentityRole> Roles { get; set; } = [];
+
+    [Parameter]
+    public IEnumerable<IdentityUserRole<string>> UserRoles { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlySet<string> UnmanageableUserIds { get; set; } = new HashSet<string>();
+
+    private List<IdentityUserRole<string>> _userRoles = [];
+    private IEnumerable<IdentityUserRole<string>>? _syncedUserRoles;
+    private string _search = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(UserRoles, _syncedUserRoles))
+        {
+            _userRoles = UserRoles.ToList();
+            _syncedUserRoles = UserRoles;
+        }
+    }
+
+    private string? VisibleOrganizationName(User user)
+    {
+        return user.Organization is Organization organization && AppState.CanActIn(organization.Id)
+            ? organization.Name
+            : null;
+    }
+
+    private bool FilterUser(User user)
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            return true;
+        }
+
+        if ((user.Email?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (VisibleOrganizationName(user)?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            return true;
+        }
+
+        return AssignedRoles(user)
+            .Select(ur => RoleDisplayName(Roles.FirstOrDefault(r => r.Id == ur.RoleId)))
+            .Any(name => name is not null && name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string? RoleDisplayName(IdentityRole? role)
+    {
+        return role?.Name is null
+            ? null
+            : RoleGrants.DisplayName(role.Name);
+    }
+
+    private IEnumerable<IdentityUserRole<string>> AssignedRoles(User user)
+    {
+        return _userRoles.Where(ur => ur.UserId == user.Id);
+    }
+
+    private IEnumerable<IdentityRole> AddableRoles(User user)
+    {
+        if (UnmanageableUserIds.Contains(user.Id))
+        {
+            return [];
+        }
+
+        return Roles.Where(r => CanGrant(r) && !_userRoles.Any(ur => ur.UserId == user.Id && ur.RoleId == r.Id));
+    }
+
+    private bool CanGrant(IdentityRole role)
+    {
+        return role.Name is not null && RoleGrants.CanGrant(AppState.IsSuperAdmin, role.Name);
+    }
+
+    // A super admin may also remove a role the code no longer defines; an organization admin removes
+    // only the roles it may grant.
+    private bool CanRemove(string userId, IdentityRole? role)
+    {
+        return AppState.IsSuperAdmin
+            || (!UnmanageableUserIds.Contains(userId) && role is not null && CanGrant(role));
+    }
+
+    private async Task AddUserRoleAsync(User user, IdentityRole role)
+    {
+        try
+        {
+            var userRole = new IdentityUserRole<string>
+            {
+                UserId = user.Id,
+                RoleId = role.Id
+            };
+
+            await UserDataUnitOfWork.Repository<IdentityUserRole<string>>().AddAsync(userRole);
+            await UserDataUnitOfWork.CompleteAsync();
+
+            _userRoles.Add(userRole);
+
+            AppState.Notify($"Added {RoleDisplayName(role)} to {user.Email}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add role {RoleId} to user {UserId}", role.Id, user.Id);
+            Snackbar.Add("Failed to add role. Please try again.", Severity.Error);
+        }
+    }
+
+    private async Task DeleteUserRoleAsync(IdentityUserRole<string> userRole)
+    {
+        try
+        {
+            UserDataUnitOfWork.Repository<IdentityUserRole<string>>().Remove(userRole);
+            await UserDataUnitOfWork.CompleteAsync();
+            await SessionRevoker.RevokeAllAsync(userRole.UserId);
+
+            _userRoles.Remove(userRole);
+
+            AppState.Notify("Role removed", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to remove role from user {UserId}", userRole.UserId);
+            Snackbar.Add("Failed to remove role. Please try again.", Severity.Error);
+        }
+    }
+}

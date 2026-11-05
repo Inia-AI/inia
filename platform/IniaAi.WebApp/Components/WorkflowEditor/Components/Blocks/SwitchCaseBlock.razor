@@ -1,0 +1,240 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+
+<MudText Typo="Typo.body1" Class="mb-2">
+    Switch Case — select content based on a matched input value.
+</MudText>
+
+<MudAlert Severity="Severity.Info" Dense="true" Class="mb-3" NoIcon="false">
+    Matching is <b>case-insensitive</b> and <b>whitespace is trimmed</b> from both the input and case keys.
+    Case values support <b>{block_X}</b> placeholder references to other blocks.
+    If no case matches, the default value is used (if configured).
+</MudAlert>
+
+<MudStack>
+    <div class="editor-eyebrow mt-2 mb-2">Input</div>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Input Expression (e.g. {block_0.answer})"
+                          HelperText="Template that resolves to the value to match against case keys"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="5"
+                          @bind-Value="@_props.InputTemplate" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Input Expression After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              MaxLines="5"
+                              Value="@_props.ExecutionState.Input" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudStack Row="true"
+              AlignItems="AlignItems.Center"
+              Class="mt-4 mb-2">
+        <div class="editor-eyebrow">Cases</div>
+
+        <MudSpacer />
+
+        <MudButton Variant="Variant.Text"
+                   Class="editor-soft-button"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="AddCase">
+            Add Case
+        </MudButton>
+    </MudStack>
+
+    @foreach (CaseEntry caseEntry in _cases.ToList())
+    {
+        int index = _cases.IndexOf(caseEntry);
+        <MudPaper @key="caseEntry"
+                  Elevation="0"
+                  Outlined="true"
+                  Class="pa-3 mb-2 rounded">
+            <MudGrid Spacing="2">
+                <MudItem xs="3">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Case Key"
+                                  Placeholder="e.g. GAAP"
+                                  Class="editor-mono-field"
+                                  Value="@caseEntry.Key"
+                                  ValueChanged="@((string newKey) => UpdateCaseKey(index, newKey))" />
+                </MudItem>
+
+                <MudItem xs="@(_props.ExecutionState is not null ? 4 : 8)">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Case Value"
+                                  Placeholder="Content to output when this case matches"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  MaxLines="15"
+                                  Value="@caseEntry.Value"
+                                  ValueChanged="@((string newValue) => UpdateCaseValue(index, newValue))" />
+                </MudItem>
+
+                @if (_props.ExecutionState is not null)
+                {
+                    <MudItem xs="4">
+                        <MudTextField T="string"
+                                      Variant="Variant.Outlined"
+                                      Label="Case Value After Execution"
+                                      Class="editor-mono-field editor-resolved"
+                                      ReadOnly="true"
+                                      Sizing="InputSizing.Auto"
+                                      MaxLines="15"
+                                      Value="@(_props.ExecutionState.Cases.TryGetValue(caseEntry.Key?.Trim() ?? "", out var resolvedCase) ? resolvedCase : "")" />
+                    </MudItem>
+                }
+
+                <MudItem xs="1" Style="align-self: center;">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Class="editor-soft-button"
+                                   aria-label="Remove case"
+                                   OnClick="@(() => RemoveCase(index))" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+
+    @if (_cases.Count == 0)
+    {
+        <MudText Typo="Typo.body2"
+                 Color="Color.Warning"
+                 Class="mb-2">
+            No cases configured. Add at least one case.
+        </MudText>
+    }
+
+    <div class="editor-eyebrow mt-4 mb-2">Default</div>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Default Value (when no case matches)"
+                          HelperText="Fallback content if the input doesn't match any case key"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="15"
+                          Value="@_props.DefaultValue"
+                          ValueChanged="@(async (string val) => { _props.DefaultValue = val; await SyncPropertiesToBlock(); })" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Variant="Variant.Outlined"
+                              Label="Default Value After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              MaxLines="15"
+                              Value="@_props.ExecutionState.DefaultValue" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudStack>
+
+@code {
+    private SwitchCaseProperties _props => Block.Properties as SwitchCaseProperties
+        ?? throw new InvalidOperationException("Block properties must be of type SwitchCaseProperties");
+
+    private List<CaseEntry> _cases = [];
+    private Block? _syncedBlock;
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback BlockChanged { get; set; }
+
+    // Re-sync only when a different Block object arrives (first render, or a re-upload
+    // that preserves block ids so @key keeps this component instance alive). Re-syncing
+    // on every render would clobber just-added empty case rows, which SyncPropertiesToBlock
+    // deliberately drops from the persisted dictionary.
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (ReferenceEquals(_syncedBlock, Block))
+        {
+            return;
+        }
+
+        _syncedBlock = Block;
+        _cases = _props.Cases
+            .Select(kvp => new CaseEntry { Key = kvp.Key, Value = kvp.Value })
+            .ToList();
+    }
+
+    private async Task AddCase()
+    {
+        _cases.Add(new CaseEntry { Key = "", Value = "" });
+        await SyncPropertiesToBlock();
+    }
+
+    private async Task RemoveCase(int index)
+    {
+        if (index >= 0 && index < _cases.Count)
+        {
+            _cases.RemoveAt(index);
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private async Task UpdateCaseKey(int index, string newKey)
+    {
+        if (index >= 0 && index < _cases.Count)
+        {
+            _cases[index].Key = newKey;
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private async Task UpdateCaseValue(int index, string newValue)
+    {
+        if (index >= 0 && index < _cases.Count)
+        {
+            _cases[index].Value = newValue;
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private async Task SyncPropertiesToBlock()
+    {
+        var cases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in _cases)
+        {
+            var trimmedKey = entry.Key?.Trim() ?? "";
+            if (string.IsNullOrEmpty(trimmedKey))
+                continue;
+
+            // Last entry with the same key wins (case-insensitive)
+            cases[trimmedKey] = entry.Value ?? "";
+        }
+
+        _props.Cases = cases;
+        Block.Properties = _props;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private class CaseEntry
+    {
+        public string Key { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}

@@ -1,0 +1,87 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Core.Workflows.Strategies
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows.Blocks
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudStack>
+    <div class="editor-eyebrow mt-2 mb-2">Formula</div>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Formula To Calculate"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="20"
+                          @bind-Value="@_props.FormulaTemplate" />
+        </MudItem>
+
+        @if (_props.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Formula After Execution"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Sizing="InputSizing.Auto"
+                              MaxLines="20"
+                              Value="@_props.ExecutionState.Formula" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudExpansionPanels Elevation="0" Class="mt-4">
+        <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+            <TitleContent>
+                <span class="editor-card-title">Available functions</span>
+            </TitleContent>
+
+            <ChildContent>
+                <MudExpansionPanels Elevation="0" MultiExpansion="true">
+                    @foreach (CalculateFormulaHelp.Section helpSection in CalculateFormulaHelp.Sections)
+                    {
+                        <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+                            <TitleContent>
+                                <MudText Typo="Typo.subtitle1">@helpSection.Title</MudText>
+                            </TitleContent>
+
+                            <ChildContent>
+                                <MudText Typo="Typo.body2" Class="mb-3">@helpSection.Description</MudText>
+
+                                <MudStack Spacing="2">
+                                    @foreach (CalculateFormulaHelp.Example example in helpSection.Examples)
+                                    {
+                                        <MudStack Spacing="0">
+                                            <MudStack Row="true" AlignItems="AlignItems.Baseline" Spacing="2" Wrap="Wrap.Wrap">
+                                                <MudText Class="editor-mono-field">@example.Formula</MudText>
+                                                @if (example.ExpectedResult is not null)
+                                                {
+                                                    <MudText Typo="Typo.body2" Style="opacity: 0.6;">→</MudText>
+                                                    <MudText Class="editor-mono-field">@example.ExpectedResult</MudText>
+                                                }
+                                            </MudStack>
+                                            @if (example.Caption is not null)
+                                            {
+                                                <MudText Typo="Typo.caption" Style="opacity: 0.7;">@example.Caption</MudText>
+                                            }
+                                        </MudStack>
+                                    }
+                                </MudStack>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</MudStack>
+
+@code {
+    private CalculateFormulaProperties _props => Block.Properties as CalculateFormulaProperties
+        ?? throw new InvalidOperationException("Block properties must be of type CalculateFormulaProperties");
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+}

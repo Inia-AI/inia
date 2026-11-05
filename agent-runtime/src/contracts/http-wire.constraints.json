@@ -1,0 +1,92 @@
+{
+  "executionId": {
+    "pattern": "^(?!\\.\\.?$)[A-Za-z0-9._-]{1,128}$"
+  },
+  "httpStatuses": [200, 202, 400, 401, 404, 405, 409, 410, 413, 415, 500, 503],
+  "runStatuses": ["awaiting_input", "cancelled", "cancelling", "expired", "failed", "running", "succeeded"],
+  "terminalStatuses": ["cancelled", "expired", "failed", "succeeded"],
+  "retryAfterSeconds": {
+    "awaiting_input": "15",
+    "cancelled": null,
+    "cancelling": "2",
+    "expired": null,
+    "failed": null,
+    "running": "2",
+    "succeeded": null
+  },
+  "failureSubtypes": {
+    "runtimeOriginated": [
+      "aborted",
+      "budget_exhausted",
+      "capacity_rejected",
+      "checkpoint_failed",
+      "checkpoint_missing",
+      "checkpoint_restore_failed",
+      "checkpoint_version_mismatch",
+      "cli_version_drift",
+      "deadline_exceeded",
+      "errored_result",
+      "internal_error",
+      "malformed_pause",
+      "malformed_result",
+      "mcp_connect_failed",
+      "missing_result",
+      "pause_rejected",
+      "pause_unsupported",
+      "retained_budget_exceeded",
+      "run_child_error",
+      "runtime_shutdown",
+      "sandbox_unavailable",
+      "session_id_mismatch",
+      "skill_register_failed",
+      "stream_error",
+      "uid_pool_exhausted",
+      "upstream_error",
+      "zero_turns"
+    ],
+    "sdkSubtypesPassThrough": true
+  },
+  "retryableFailureSubtypes": ["capacity_rejected", "internal_error", "uid_pool_exhausted"],
+  "conflictCodes": [
+    "not_awaiting_input",
+    "not_completable",
+    "payload_conflict",
+    "stale_resume_token",
+    "unknown_question"
+  ],
+  "capacityReasons": [
+    "admission_shed",
+    "chat_disabled",
+    "files_listing",
+    "files_listing_bytes",
+    "retained_input_budget",
+    "retained_output_budget",
+    "upload_budget"
+  ],
+  "retentionMs": 86400000,
+  "pauseTtlMs": 86400000,
+  "caps": {
+    "maxRequestBodyBytes": 402653184,
+    "maxRunInputBodyBytes": 4194304,
+    "maxTotalDocumentBytes": 209715200,
+    "maxDocumentsPerRun": 100,
+    "maxPromptChars": 1048576,
+    "maxAnswerChars": 1048576,
+    "maxSystemPromptChars": 1048576,
+    "maxOutputFormatChars": 262144,
+    "maxRunTokenChars": 4096,
+    "maxSkillAssetsPerSkill": 16,
+    "maxSkillDescriptionChars": 1400,
+    "maxPublishedOutFiles": 10000,
+    "maxFilesListingBytes": 12762912,
+    "maxCheckpointBundleBytes": 67108864,
+    "maxRecarriedOutFiles": 1000,
+    "maxRecarriedOutPathChars": 512
+  },
+  "fuseCeilings": {
+    "deadlineMs": 1800000,
+    "maxBudgetUsd": 5,
+    "maxTurns": 300,
+    "maxRetainedOutputBytes": 276824064
+  }
+}

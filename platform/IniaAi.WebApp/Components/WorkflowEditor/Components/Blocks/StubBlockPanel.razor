@@ -1,0 +1,12 @@
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+<MudAlert Severity="Severity.Info"
+          Dense="true"
+          Class="mt-3 mb-3">
+    @UnavailableBlockTypes.EditorMessage(Type)
+</MudAlert>
+
+@code {
+    [Parameter, EditorRequired]
+    public BlockTypes Type { get; set; }
+}

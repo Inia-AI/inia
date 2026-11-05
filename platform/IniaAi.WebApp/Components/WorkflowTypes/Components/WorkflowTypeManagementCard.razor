@@ -1,0 +1,306 @@
+@using ErrorOr
+@using IniaAi.Application.Commands.WorkflowTemplates.DeleteWorkflowType
+@using IniaAi.Application.Commands.WorkflowTemplates.DuplicateWorkflowType
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using Microsoft.EntityFrameworkCore
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Counterparties
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.UserManagement
+
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IServiceScopeFactory ScopeFactory
+@inject AppState AppState
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        <MudStack Row="true" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h5">
+                Workflow Type Management
+            </MudText>
+
+            <AuthorizeView Roles="@(Roles.SUPER_ADMIN)">
+                <MudButton Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.DeleteSweep"
+                           OnClick="RemoveAllWorkflowTypesAsync">
+                    Remove All Workflow Types
+                </MudButton>
+            </AuthorizeView>
+        </MudStack>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudDataGrid T="WorkflowType"
+                     Items="@WorkflowTypes"
+                     Dense="true"
+                     Loading="IsLoading"
+                     ReadOnly="true">
+            <ToolBarContent>
+                <AuthorizeView Roles="@(Roles.EDITOR_ROLES)">
+                    <MudStack Row="true">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Outlined.Add"
+                                   Disabled="IsLoading"
+                                   OnClick="async () => await AddWorkflowTypeAsync()">
+                            Add Workflow Type
+                        </MudButton>
+                    </MudStack>
+                </AuthorizeView>
+            </ToolBarContent>
+
+            <Columns>
+                <PropertyColumn Property="x => x.Id"
+                                Title="Id" />
+
+                <PropertyColumn Property="x => x.Name"
+                                Title="Name" />
+
+                <PropertyColumn Property="x => x.Description"
+                                Title="Description" />
+
+                <TemplateColumn Title="Category">
+                    <CellTemplate Context="templateContext">
+                        @{
+                            var category = Categories.FirstOrDefault(c => c.Id == templateContext.Item.CategoryId);
+                        }
+                        @(category?.Name ?? "None")
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <PropertyColumn Property="x => x.Workflows.Count()"
+                                Title="Workflows Count" />
+
+                <TemplateColumn>
+                    <CellTemplate Context="templateContext">
+                        <MudStack Row="true" Spacing="0">
+                            <AuthorizeView Roles="@(Roles.EDITOR_ROLES)">
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                                   aria-label="@($"Edit workflow type {templateContext.Item.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="async () => await EditWorkflowTypeAsync(templateContext.Item)" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Duplicate">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                                   aria-label="@($"Duplicate workflow type {templateContext.Item.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="async () => await DuplicateWorkflowTypeAsync(templateContext.Item)" />
+                                </MudTooltip>
+                            </AuthorizeView>
+
+                            <AuthorizeView Roles="@(Roles.OPERATOR_ROLES)">
+                                <MudTooltip Text="Manage Tenants">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Business"
+                                                   aria-label="@($"Manage tenants of workflow type {templateContext.Item.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Info"
+                                                   OnClick="async () => await ManageTenantsAsync(templateContext.Item)" />
+                                </MudTooltip>
+                            </AuthorizeView>
+
+                            <AuthorizeView Roles="@(Roles.EDITOR_ROLES)">
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   aria-label="@($"Delete workflow type {templateContext.Item.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="async () => await RemoveWorkflowTypeAsync(templateContext.Item)" />
+                                </MudTooltip>
+                            </AuthorizeView>
+
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+
+            <PagerContent>
+                <MudDataGridPager T="WorkflowType"
+                                  PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public ICoreUnitOfWork CoreUnitOfWork { get; set; } = default!;
+
+    [Parameter]
+    public IEnumerable<WorkflowType> WorkflowTypes { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IEnumerable<WorkflowType>> WorkflowTypesChanged { get; set; }
+
+    [Parameter]
+    public IEnumerable<WorkflowTypeCategory> Categories { get; set; } = [];
+
+    [Parameter]
+    public IEnumerable<CounterpartyType> CounterpartyTypes { get; set; } = [];
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    private async Task EditWorkflowTypeAsync(WorkflowType workflowType)
+    {
+        var parameters = new DialogParameters<WorkflowTypeInfoDialog> { };
+        parameters.Add(x => x.WorkflowType, workflowType);
+        parameters.Add(x => x.IsNew, false);
+        parameters.Add(x => x.Categories, Categories);
+        parameters.Add(x => x.CounterpartyTypes, CounterpartyTypes);
+
+        var dialog = await DialogService.ShowAsync<WorkflowTypeInfoDialog>("Edit Workflow Type", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            // Always save changes to the workflow type
+            await CoreUnitOfWork.CompleteAsync();
+            await WorkflowTypesChanged.InvokeAsync(WorkflowTypes);
+        }
+        else
+        {
+            await CoreUnitOfWork.RevertAsync(workflowType);
+        }
+    }
+
+    private async Task AddWorkflowTypeAsync()
+    {
+        var parameters = new DialogParameters<WorkflowTypeInfoDialog> { };
+        parameters.Add(x => x.WorkflowType, new WorkflowType());
+        parameters.Add(x => x.IsNew, true);
+        parameters.Add(x => x.Categories, Categories);
+        parameters.Add(x => x.CounterpartyTypes, CounterpartyTypes);
+
+        var dialog = await DialogService.ShowAsync<WorkflowTypeInfoDialog>("Add Workflow Type", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        Snackbar.Add(
+            $"Created \"{result.Data}\" for this organization. Open it in the editor and save a workflow; then its analysts can run it.",
+            Severity.Success);
+
+        await WorkflowTypesChanged.InvokeAsync(WorkflowTypes);
+    }
+
+    private async Task DuplicateWorkflowTypeAsync(WorkflowType workflowType)
+    {
+        var parameters = new DialogParameters<DuplicateWorkflowTypeDialog> { };
+        parameters.Add(x => x.Source, workflowType);
+        parameters.Add(x => x.Categories, Categories);
+        parameters.Add(x => x.TakenIds, [.. WorkflowTypes.Select(type => type.Id)]);
+
+        var dialog = await DialogService.ShowAsync<DuplicateWorkflowTypeDialog>("Duplicate Workflow Type", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var duplicated = (DuplicateWorkflowTypeResult)result.Data!;
+        Snackbar.Add(
+            $"Duplicated to \"{duplicated.NewWorkflowTypeId}\". Grant an organization access to make it usable.",
+            Severity.Success);
+
+        await WorkflowTypesChanged.InvokeAsync(WorkflowTypes);
+    }
+
+    private async Task RemoveWorkflowTypeAsync(WorkflowType workflowType)
+    {
+        List<string> organizationIds = await CoreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
+            .GetAll()
+            .AsNoTracking()
+            .Where(access => access.WorkflowTypeId == workflowType.Id)
+            .Select(access => access.OrganizationId)
+            .ToListAsync();
+        bool retires = organizationIds.Count == 1;
+        if (retires && organizationIds[0] != AppState.CurrentOrganizationId)
+        {
+            Snackbar.Add(
+                $"The workflow type \"{workflowType.Name}\" belongs to the organization {organizationIds[0]}. Switch to that organization, then remove the type.",
+                Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<ConfirmationDialog> { };
+        parameters.Add(p => p.Message, retires
+            ? $"Are you sure you want to remove \"{workflowType.Name}\"? Its runs and documents go with it, and the cleanup removes it for good after the organization's retention window."
+            : $"Are you sure you want to remove \"{workflowType.Name}\"?");
+        parameters.Add(p => p.ConfirmButtonText, "Remove");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Remove Workflow Type", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        if (retires)
+        {
+            ErrorOr<Deleted> retired = await ScopeFactory.SendScopedAsync(
+                new DeleteWorkflowTypeCommand(organizationIds[0], AppState.User?.Id ?? string.Empty, workflowType.Id));
+            if (retired.IsError)
+            {
+                Snackbar.Add(retired.FirstError.Description, Severity.Error);
+                return;
+            }
+        }
+        else
+        {
+            CoreUnitOfWork.WorkflowTypes.Remove(workflowType);
+            await CoreUnitOfWork.CompleteAsync();
+        }
+
+        await WorkflowTypesChanged.InvokeAsync(WorkflowTypes);
+    }
+
+    private async Task ManageTenantsAsync(WorkflowType workflowType)
+    {
+        var parameters = new DialogParameters<WorkflowTypeTenantAssignmentDialog> { };
+        parameters.Add(x => x.WorkflowType, workflowType);
+        parameters.Add(x => x.CoreUnitOfWork, CoreUnitOfWork);
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<WorkflowTypeTenantAssignmentDialog>("Manage Tenants", parameters, options);
+        await dialog.Result;
+    }
+
+    private async Task RemoveAllWorkflowTypesAsync()
+    {
+        var parameters = new DialogParameters<ConfirmationDialog>();
+        parameters.Add(p => p.Message, "Are you sure you want to remove ALL workflow types? This action cannot be undone and will also remove associated workflows.");
+        parameters.Add(p => p.ConfirmButtonText, "Remove All");
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Remove All Workflow Types", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var workflowTypesToRemove = WorkflowTypes.ToList();
+        foreach (var workflowType in workflowTypesToRemove)
+        {
+            CoreUnitOfWork.WorkflowTypes.Remove(workflowType);
+        }
+
+        await CoreUnitOfWork.CompleteAsync();
+        await WorkflowTypesChanged.InvokeAsync(Enumerable.Empty<WorkflowType>());
+    }
+}

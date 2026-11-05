@@ -1,0 +1,19 @@
+{
+  "id": "counterparty-created",
+  "parentId": "counterparty-parent",
+  "counterpartyTypeIds": [
+    "type-corporation",
+    "type-hedge-fund"
+  ],
+  "name": "Created Holdings",
+  "nameVariants": "Created Holdings; CREATED",
+  "email": "created@example.com",
+  "phoneNumber": "\u002B44 20 7946 0002",
+  "website": "https://created.example.com",
+  "address": "3 Example Street, London",
+  "lastFinancialAnalysisResult": "Stable",
+  "properties": {
+    "lei": "5493001KJTIIGC8Y1R12",
+    "region": "EMEA"
+  }
+}

@@ -1,0 +1,297 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Core.Workflows.Strategies
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+<MudStack Spacing="3">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Input"
+                          HelperText="@($"Supports {{block_X}} placeholders and the tokens {StringManipulationStrategy.TOKEN_NEWLINE} {StringManipulationStrategy.TOKEN_TAB} {StringManipulationStrategy.TOKEN_SPACE} {StringManipulationStrategy.TOKEN_RETURN}.")"
+                          Class="editor-mono-field"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="10"
+                          @bind-Value="@_props.InputTemplate" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudSelect T="StringManipulationOperation"
+                       Label="Operation"
+                       Variant="Variant.Outlined"
+                       AnchorOrigin="Origin.BottomLeft"
+                       HelperText="@(StringManipulationHelp.Sections.FirstOrDefault(s => s.Operation == _props.Operation)?.Description)"
+                       @bind-Value="_props.Operation">
+                @foreach (StringManipulationHelp.Section opSection in StringManipulationHelp.Sections)
+                {
+                    <MudSelectItem Value="@opSection.Operation">@opSection.Title</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    @switch (_props.Operation)
+    {
+        case StringManipulationOperation.Replace:
+        case StringManipulationOperation.ReplaceUsingPattern:
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="@(_props.Operation == StringManipulationOperation.ReplaceUsingPattern ? "Find (regex pattern)" : "Find")"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  MaxLines="5"
+                                  @bind-Value="@_props.Find" />
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Class="mt-1">
+                        @RenderTokenChips(nameof(_props.Find))
+                        <MudSpacer />
+                        <MudCheckBox Label="Case Sensitive" @bind-Value="_props.CaseSensitive" Color="Color.Primary" />
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Replace With"
+                                  HelperText="@(_props.Operation == StringManipulationOperation.ReplaceUsingPattern ? "Use $1, $2, … for regex capture groups." : null)"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  MaxLines="5"
+                                  @bind-Value="@_props.ReplaceWith" />
+                    @RenderTokenChips(nameof(_props.ReplaceWith))
+                </MudItem>
+            </MudGrid>
+            break;
+
+        case StringManipulationOperation.Substring:
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="int?"
+                                     Label="Start Index"
+                                     Variant="Variant.Outlined"
+                                     HelperText="0-based"
+                                     @bind-Value="_props.StartIndex" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="int?"
+                                     Label="Length"
+                                     Variant="Variant.Outlined"
+                                     HelperText="Leave blank to read to the end"
+                                     @bind-Value="_props.Length" />
+                </MudItem>
+            </MudGrid>
+            break;
+
+        case StringManipulationOperation.Trim:
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="4">
+                    <MudSelect T="StringManipulationTrimSide"
+                               Label="Side"
+                               Variant="Variant.Outlined"
+                               @bind-Value="_props.TrimSide">
+                        <MudSelectItem Value="StringManipulationTrimSide.Both">Both</MudSelectItem>
+                        <MudSelectItem Value="StringManipulationTrimSide.Start">Start</MudSelectItem>
+                        <MudSelectItem Value="StringManipulationTrimSide.End">End</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Trim Characters"
+                                  HelperText="Leave blank for whitespace"
+                                  Class="editor-mono-field"
+                                  @bind-Value="@_props.TrimCharacters" />
+                    @RenderTokenChips(nameof(_props.TrimCharacters))
+                </MudItem>
+            </MudGrid>
+            break;
+
+        case StringManipulationOperation.Split:
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="8">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Separator"
+                                  Class="editor-mono-field"
+                                  @bind-Value="@_props.Separator" />
+                    @RenderTokenChips(nameof(_props.Separator))
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField T="int?"
+                                     Label="Split Index"
+                                     Variant="Variant.Outlined"
+                                     HelperText="Blank = JSON list"
+                                     @bind-Value="_props.SplitIndex" />
+                </MudItem>
+            </MudGrid>
+            break;
+
+        case StringManipulationOperation.Join:
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Separator"
+                          Class="editor-mono-field"
+                          @bind-Value="@_props.Separator" />
+            @RenderTokenChips(nameof(_props.Separator))
+            break;
+
+        case StringManipulationOperation.ChangeCase:
+            <MudSelect T="StringManipulationCaseType"
+                       Label="Case Type"
+                       Variant="Variant.Outlined"
+                       @bind-Value="_props.CaseType">
+                <MudSelectItem Value="StringManipulationCaseType.Upper">UPPER CASE</MudSelectItem>
+                <MudSelectItem Value="StringManipulationCaseType.Lower">lower case</MudSelectItem>
+                <MudSelectItem Value="StringManipulationCaseType.Title">Title Case</MudSelectItem>
+                <MudSelectItem Value="StringManipulationCaseType.Sentence">Sentence case</MudSelectItem>
+            </MudSelect>
+            break;
+
+        case StringManipulationOperation.Length:
+            @* no parameters — the operation name says it all *@
+            break;
+
+        case StringManipulationOperation.Distinct:
+            <MudCheckBox Label="Case Sensitive" @bind-Value="_props.CaseSensitive" Color="Color.Primary" />
+            break;
+
+        case StringManipulationOperation.EscapeSpecialCharacters:
+        case StringManipulationOperation.UnescapeSpecialCharacters:
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudCheckBox Label="Line breaks \n" @bind-Value="_props.EscapeNewlines" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudCheckBox Label="Tabs \t" @bind-Value="_props.EscapeTabs" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCheckBox Label="Carriage returns \r" @bind-Value="_props.EscapeCarriageReturns" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudCheckBox Label="Backslashes \\" @bind-Value="_props.EscapeBackslashes" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCheckBox Label="Double quotes \&quot;" @bind-Value="_props.EscapeDoubleQuotes" Color="Color.Primary" />
+                </MudItem>
+            </MudGrid>
+            break;
+    }
+
+    @{
+        bool hasResolvedInput = _props.ExecutionState?.Input is not null && _props.ExecutionState.Input != _props.InputTemplate;
+        bool hasOutput = _props.ExecutionState?.Output is not null;
+    }
+    @if (hasResolvedInput || hasOutput)
+    {
+        <MudGrid Spacing="2">
+            @if (hasResolvedInput)
+            {
+                <MudItem xs="12" md="@(hasOutput ? 6 : 12)">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Input After Execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Sizing="InputSizing.Auto"
+                                  MaxLines="20"
+                                  Value="@_props.ExecutionState!.Input" />
+                </MudItem>
+            }
+            @if (hasOutput)
+            {
+                <MudItem xs="12" md="@(hasResolvedInput ? 6 : 12)">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Output After Execution"
+                                  Class="editor-mono-field editor-resolved"
+                                  ReadOnly="true"
+                                  Sizing="InputSizing.Auto"
+                                  MaxLines="20"
+                                  Value="@_props.ExecutionState!.Output" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    <MudExpansionPanels Elevation="0" Class="mt-2">
+        <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+            <TitleContent>
+                <span class="editor-card-title">Available operations</span>
+            </TitleContent>
+
+            <ChildContent>
+                <MudExpansionPanels Elevation="0" MultiExpansion="true">
+                    @foreach (StringManipulationHelp.Section opSection in StringManipulationHelp.Sections)
+                    {
+                        <MudExpansionPanel KeepContentAlive="false" Class="editor-subpanel">
+                            <TitleContent>
+                                <MudText Typo="Typo.subtitle1">@opSection.Title</MudText>
+                            </TitleContent>
+                            <ChildContent>
+                                <MudText Typo="Typo.body2" Class="mb-3">@opSection.Description</MudText>
+
+                                @if (opSection.Parameters.Count > 0)
+                                {
+                                    <MudText Typo="Typo.body2" Class="mb-2" Style="opacity: 0.7;">
+                                        <strong>Parameters:</strong> @string.Join(", ", opSection.Parameters)
+                                    </MudText>
+                                }
+
+                                <MudStack Spacing="2">
+                                    @foreach (StringManipulationHelp.Example example in opSection.Examples)
+                                    {
+                                        <MudStack Spacing="0">
+                                            <MudStack Row="true" AlignItems="AlignItems.Baseline" Spacing="2" Wrap="Wrap.Wrap">
+                                                <MudText Class="editor-mono-field" Style="white-space: pre;">@example.Before</MudText>
+                                                <MudText Typo="Typo.body2" Style="opacity: 0.6;">→</MudText>
+                                                <MudText Class="editor-mono-field" Style="white-space: pre;">@example.After</MudText>
+                                            </MudStack>
+                                            @if (!string.IsNullOrEmpty(example.Caption))
+                                            {
+                                                <MudText Typo="Typo.caption" Style="opacity: 0.7;">@example.Caption</MudText>
+                                            }
+                                        </MudStack>
+                                    }
+                                </MudStack>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</MudStack>
+
+@code {
+    private StringManipulationProperties _props => Block.Properties as StringManipulationProperties
+        ?? throw new InvalidOperationException("Block properties must be of type StringManipulationProperties");
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    private RenderFragment RenderTokenChips(string field) =>
+        @<MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap" Class="mt-1" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2" Style="opacity: 0.65;">Insert:</MudText>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     OnClick="@(() => AppendToken(field, StringManipulationStrategy.TOKEN_NEWLINE))">@StringManipulationStrategy.TOKEN_NEWLINE</MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     OnClick="@(() => AppendToken(field, StringManipulationStrategy.TOKEN_TAB))">@StringManipulationStrategy.TOKEN_TAB</MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     OnClick="@(() => AppendToken(field, StringManipulationStrategy.TOKEN_SPACE))">@StringManipulationStrategy.TOKEN_SPACE</MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     OnClick="@(() => AppendToken(field, StringManipulationStrategy.TOKEN_RETURN))">@StringManipulationStrategy.TOKEN_RETURN</MudChip>
+        </MudStack>;
+
+    private void AppendToken(string field, string token)
+    {
+        if (field == nameof(_props.Find))
+        {
+            _props.Find = (_props.Find ?? string.Empty) + token;
+        }
+        else if (field == nameof(_props.ReplaceWith))
+        {
+            _props.ReplaceWith = (_props.ReplaceWith ?? string.Empty) + token;
+        }
+        else if (field == nameof(_props.Separator))
+        {
+            _props.Separator = (_props.Separator ?? string.Empty) + token;
+        }
+        else if (field == nameof(_props.TrimCharacters))
+        {
+            _props.TrimCharacters = (_props.TrimCharacters ?? string.Empty) + token;
+        }
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "title": "Profile",
+  "tabs": {
+    "details": "Details",
+    "password": "Password",
+    "security": "Security"
+  },
+  "resetPassword": {
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "submitLabel": "Submit",
+    "passwordRules": "At least {minLength} characters, including an uppercase letter (A to Z), a lowercase letter (a to z) and a digit (0 to 9).",
+    "rules": {
+      "minLength": "Password must be at least {minLength} characters",
+      "uppercase": "Password must contain an uppercase letter (A to Z)",
+      "lowercase": "Password must contain a lowercase letter (a to z)",
+      "digit": "Password must contain a digit (0 to 9)",
+      "mismatch": "Passwords do not match",
+      "currentPasswordIncorrect": "The current password is incorrect"
+    }
+  },
+  "errors": {
+    "passwordUpdateFailed": "Unable to update password. Please try again."
+  },
+  "passwordUpdated": "Password updated. Sign in again with your new password."
+}

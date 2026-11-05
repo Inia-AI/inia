@@ -1,0 +1,27 @@
+{
+  "errors": {
+    "loginFailed": "It seems like the email or password you entered is incorrect. Please check your credentials and try again.",
+    "googleFailed": "Google sign-in failed. Please try again.",
+    "tooManyAttempts": "Too many sign-in attempts from your network. Wait a minute, then try again.",
+    "tooManyAttemptsMinutes": "Too many sign-in attempts from your network. Wait {n} minute, then try again. | Too many sign-in attempts from your network. Wait {n} minutes, then try again.",
+    "sessionEnded": "Your session has ended. Sign in again.",
+    "providersFailed": "Sign-in is not available right now. Reload the page in a minute."
+  },
+  "form": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to your account to continue",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Enter your email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "submitLabel": "Login",
+    "forgotPassword": "Forgot Password?",
+    "orContinueWith": "or continue with",
+    "signingIn": "Signing in...",
+    "signInWith": "Sign in with {provider}",
+    "ssoMisconfigured": "SSO is not configured properly. Please contact your administrator.",
+    "ssoFailed": "SSO sign-in failed. Please try again.",
+    "ssoDefaultProvider": "SSO",
+    "or": "or"
+  }
+}

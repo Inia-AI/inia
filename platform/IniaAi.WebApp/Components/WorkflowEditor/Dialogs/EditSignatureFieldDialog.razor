@@ -1,0 +1,147 @@
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudTextField Label="Field Name"
+                      Variant="Variant.Outlined"
+                      Class="editor-mono-field"
+                      HelperText="Token referenced as {Name} in block templates. Renaming rewrites the token in every referencing block; client overrides follow the new name on save."
+                      @bind-Value="@_name"
+                      For="@(() => _name)"
+                      Required="true" />
+
+        <MudTextField Label="Display Name"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      HelperText="Human-readable label shown to clients on the Signatures page"
+                      @bind-Value="@_displayName" />
+
+        <MudTextField Label="Description"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      Lines="2"
+                      HelperText="Help text explaining what this field controls"
+                      @bind-Value="@_description" />
+
+        <MudTextField Label="Default Value"
+                      Variant="Variant.Outlined"
+                      Class="mt-3 editor-mono-field"
+                      Lines="8"
+                      HelperText="Injected wherever the token appears when no client override exists"
+                      @bind-Value="@_defaultValue" />
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">
+                @_errorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm">
+            @_saveButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _saveButtonText => SignatureField is null
+        ? "Create"
+        : "Save";
+
+    private string _name = string.Empty;
+    private string _originalName = string.Empty;
+    private string _displayName = string.Empty;
+    private string _description = string.Empty;
+    private string _defaultValue = string.Empty;
+    private string _errorMessage = string.Empty;
+
+    [Parameter]
+    public WorkflowSignatureField? SignatureField { get; set; }
+
+    [Parameter]
+    public Workflow Workflow { get; set; } = default!;
+
+    /// <summary>Pre-fills the name for the quick-create path (an unmatched template token).</summary>
+    [Parameter]
+    public string? InitialName { get; set; }
+
+    /// <summary>
+    /// Invoked when an existing field is renamed, AFTER the in-memory tokens have been
+    /// rewritten — the parent records the (old, new) pair so client override rows follow
+    /// on save.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string OldName, string NewName)> FieldRenamed { get; set; }
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (SignatureField is not null)
+        {
+            _name = SignatureField.Name;
+            _originalName = SignatureField.Name;
+            _displayName = SignatureField.DisplayName;
+            _description = SignatureField.Description;
+            _defaultValue = SignatureField.DefaultValue;
+        }
+        else if (!string.IsNullOrWhiteSpace(InitialName))
+        {
+            _name = InitialName;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private async Task Confirm()
+    {
+        _errorMessage = string.Empty;
+
+        string? nameError = SignatureFieldNameRules.Validate(Workflow, _name, SignatureField);
+        if (nameError is not null)
+        {
+            _errorMessage = nameError;
+            return;
+        }
+
+        if (SignatureField is not null)
+        {
+            if (!_name.Equals(_originalName, StringComparison.Ordinal))
+            {
+                _ = SignatureFieldReferences.RenameToken(Workflow, _originalName, _name);
+                SignatureField.Name = _name;
+                await FieldRenamed.InvokeAsync((_originalName, _name));
+            }
+
+            SignatureField.DisplayName = _displayName ?? string.Empty;
+            SignatureField.Description = _description ?? string.Empty;
+            SignatureField.DefaultValue = _defaultValue ?? string.Empty;
+
+            MudDialog?.Close(DialogResult.Ok(SignatureField));
+            return;
+        }
+
+        var newField = new WorkflowSignatureField(Workflow, _name)
+        {
+            DisplayName = _displayName ?? string.Empty,
+            Description = _description ?? string.Empty,
+            DefaultValue = _defaultValue ?? string.Empty,
+        };
+
+        MudDialog?.Close(DialogResult.Ok(newField));
+    }
+}

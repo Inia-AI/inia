@@ -1,0 +1,2028 @@
+{
+  "auth.unauthorized": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "connection": "close",
+        "content-length": "24",
+        "content-type": "application/json",
+        "www-authenticate": "Bearer",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "unauthorized"
+      }
+    }
+  },
+  "environment.ok": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/environment"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "3851",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "runtimeVersion": "0.0.0-fixture",
+        "text": "<environment>\nAdded automatically by the system.\n\n- You work in a sandboxed Linux workspace with no network access. Commands cannot reach the internet or any other host, and nothing can be installed.\n- The working directory is this run's workspace. Run pwd to see its absolute path.\n- docs/ holds the staged input documents. docs/manifest.json lists each file with its declared document class (documentClass), media type (mediaType), sha256 and size in bytes (sizeBytes).\n- Read takes an absolute path and serves the staged documents in docs/ only. Use Bash for every other file.\n- docs/ is writable from Bash, but treat the input documents as read-only. Read serves each document only as it was staged and never shows a change made to it with Bash.\n- out/ is retained output. Every file in it is kept after the run and counts against the retained-output cap, so write only deliverables there.\n- Put scratch files in work/ (create it with mkdir -p work). Files there are not retained output. They are saved with the session so a paused run can resume, and that saved copy has a size limit, so delete large intermediate files when you no longer need them.\n- /tmp is empty at the start of every Bash call and is not kept between calls.\n- When the run has skills, invoke one with the Skill tool and its full name, skills:<name>.\n- A skill's files are at $SKILL_ASSETS_DIR/<skill>/<asset>. They are read-only. Run them through an interpreter, for example python3 \"$SKILL_ASSETS_DIR/<skill>/<asset>\", not as ./<asset>.\n- Reading an image, or a PDF page as an image, costs far more context than reading its text. Extract text first (pdftotext -layout, pdfplumber, markitdown). When the layout matters, Read the staged PDF in docs/ with the pages parameter to see those pages. Read cannot open an image you render into work/.\n\nTools:\nImport the Python packages from python3. bun and node resolve the Node packages with require().\n\n- python3 (CLI): Python 3.13 from the toolbelt venv, with every Python package below importable.\n- bun (CLI): runs JavaScript and TypeScript files; types are stripped, never checked.\n- node (CLI): Bun's node shim, for scripts that call node.\n- pdftotext (CLI): extracts the text layer of a PDF; -layout keeps columns and table alignment.\n- pdftoppm (CLI): renders PDF pages to PNG or JPEG images.\n- pdfinfo (CLI): prints a PDF's page count, page size and metadata.\n- pdfimages (CLI): lists or extracts the images embedded in a PDF.\n- qpdf (CLI): splits, merges, decrypts and repairs PDF files.\n- pandoc (CLI): converts between DOCX, Markdown, HTML and other text formats.\n- soffice (CLI): LibreOffice is installed but cannot convert documents inside this sandbox; read .xls with xlrd or pandas and .docx with python-docx or pandoc.\n- jq (CLI): queries and reshapes JSON, including docs/manifest.json.\n- git (CLI): version control for files in the workspace; no remote is reachable.\n- markitdown (Python): converts PDF, DOCX, XLSX and XLS files to Markdown text; also a markitdown command.\n- openpyxl (Python): reads and writes .xlsx workbooks, including formulas and cell formats.\n- pandas (Python): data frames for tabular data; read_excel reads .xlsx and .xls.\n- pdf2image (Python): renders PDF pages to PIL images through poppler.\n- pdfplumber (Python): extracts PDF text, words with positions, and tables.\n- pypdf (Python): reads, splits and merges PDF files and reads their text and metadata.\n- python-docx (Python): reads and writes .docx files; import it as docx.\n- reportlab (Python): generates PDF files.\n- xlrd (Python): reads legacy .xls workbooks.\n- docx (Node): writes .docx files from JavaScript; require(\"docx\") from bun or node.\n</environment>"
+      }
+    }
+  },
+  "healthz.method_not_allowed": {
+    "request": {
+      "method": "POST",
+      "path": "/healthz"
+    },
+    "response": {
+      "status": 405,
+      "headers": {
+        "allow": "GET",
+        "connection": "close",
+        "content-length": "30",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "method not allowed"
+      }
+    }
+  },
+  "healthz.ok": {
+    "request": {
+      "method": "GET",
+      "path": "/healthz"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "62",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "status": "ok",
+        "version": "0.0.0-fixture",
+        "revision": "fixture"
+      }
+    }
+  },
+  "limits.ok": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/limits"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "266",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "deadlineMs": {
+          "default": 900000,
+          "ceiling": 1800000,
+          "unit": "milliseconds"
+        },
+        "maxBudgetUsd": {
+          "default": 2.5,
+          "ceiling": 5,
+          "unit": "usd"
+        },
+        "maxTurns": {
+          "default": 300,
+          "ceiling": 300,
+          "unit": "turns"
+        },
+        "maxRetainedOutputBytes": {
+          "default": 25165824,
+          "ceiling": 276824064,
+          "unit": "bytes"
+        }
+      }
+    }
+  },
+  "runs.cancel.cancelling": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/cancel"
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "429",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "cancelling",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.cancel.not_found": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/no-such-run/cancel"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.cancel.settled": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/cancel"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "428",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "cancelled",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.checkpoint.absent": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/checkpoint"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.checkpoint.bundle": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/checkpoint"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-disposition": "attachment",
+        "content-length": "27",
+        "content-type": "application/octet-stream",
+        "x-checkpoint-sha256": "f5641c4891c1892715e97e44dca529ad565a6eab66ead86f52d37b15d8adab9f",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "the finished session bundle"
+    }
+  },
+  "runs.checkpoint.completed_gone": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/checkpoint"
+    },
+    "response": {
+      "status": 410,
+      "headers": {
+        "connection": "close",
+        "content-length": "20",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "completed"
+      }
+    }
+  },
+  "runs.complete.completed": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/complete"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "510",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "succeeded",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0.1234,
+        "error": null,
+        "result": {
+          "output": "the finished report",
+          "sessionId": "session-abc",
+          "structuredOutput": null
+        },
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": true,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.complete.not_completable": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/complete"
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "connection": "close",
+        "content-length": "45",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "not_completable",
+        "status": "running"
+      }
+    }
+  },
+  "runs.complete.not_found": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/no-such-run/complete"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.files.artifact": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/files/out/report.md"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-disposition": "attachment",
+        "content-length": "9",
+        "content-type": "text/markdown",
+        "x-content-type-options": "nosniff"
+      },
+      "body": "# report\n"
+    }
+  },
+  "runs.files.capacity_files_listing": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/files"
+    },
+    "configOverrides": {
+      "inflightUploadBudgetBytes": 65536
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "45",
+        "content-type": "application/json",
+        "retry-after": "5",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "capacity",
+        "reason": "files_listing"
+      }
+    }
+  },
+  "runs.files.completed_gone": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/files"
+    },
+    "response": {
+      "status": 410,
+      "headers": {
+        "connection": "close",
+        "content-length": "20",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "completed"
+      }
+    }
+  },
+  "runs.files.listing": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/files"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "280",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "files": [
+          {
+            "path": "out/report.md",
+            "sizeBytes": 9,
+            "sha256": "d2f56516fd6c35644826ae6f1876a47870b7fa19acedac3e52fb6f2a94aa2624",
+            "kind": "artifact"
+          },
+          {
+            "path": "trace/trace.ndjson",
+            "sizeBytes": 20,
+            "sha256": "4db3c36eaabd1c008d9c1058e06961c351b6c150dcd6edff05c88871560dc4ad",
+            "kind": "trace"
+          }
+        ]
+      }
+    }
+  },
+  "runs.files.path_not_found": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run/files/out/absent.md"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.files.run_not_found": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/no-such-run/files"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.input.accepted": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/input",
+      "contentType": "application/json",
+      "body": {
+        "resumeToken": "<UUID>",
+        "questionId": "q-1",
+        "answer": "The Baltic Growth Fund.",
+        "allowFurtherPause": false
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "470",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 1,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0.05,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": "2026-01-01T00:00:00.000Z",
+        "resumedAt": "2026-01-01T00:00:00.000Z",
+        "lastPauseMs": 0,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.input.invalid_body": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/input",
+      "contentType": "application/json",
+      "body": {
+        "questionId": "q-1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "35",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "answer must be a string"
+      }
+    }
+  },
+  "runs.input.not_awaiting_input": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/input",
+      "contentType": "application/json",
+      "body": {
+        "resumeToken": "0f2f0b1e-0000-4000-8000-000000000000",
+        "questionId": "q-1",
+        "answer": "a"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "connection": "close",
+        "content-length": "48",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "not_awaiting_input",
+        "status": "running"
+      }
+    }
+  },
+  "runs.input.not_found": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/no-such-run/input",
+      "contentType": "application/json",
+      "body": {
+        "resumeToken": "0f2f0b1e-0000-4000-8000-000000000000",
+        "questionId": "q-1",
+        "answer": "a"
+      }
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.input.stale_resume_token": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/input",
+      "contentType": "application/json",
+      "body": {
+        "resumeToken": "0f2f0b1e-0000-4000-8000-000000000000",
+        "questionId": "q-1",
+        "answer": "a"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "connection": "close",
+        "content-length": "55",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "stale_resume_token",
+        "status": "awaiting_input"
+      }
+    }
+  },
+  "runs.input.unknown_question": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs/wire-contract-run/input",
+      "contentType": "application/json",
+      "body": {
+        "resumeToken": "<UUID>",
+        "questionId": "q-unknown",
+        "answer": "a"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "connection": "close",
+        "content-length": "53",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "unknown_question",
+        "status": "awaiting_input"
+      }
+    }
+  },
+  "runs.monitor.awaiting_input": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "731",
+        "content-type": "application/json",
+        "retry-after": "15",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "awaiting_input",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0.05,
+        "error": null,
+        "result": null,
+        "requiredInput": {
+          "resumeToken": "<UUID>",
+          "expiresAt": "2026-01-02T00:00:00.000Z",
+          "question": {
+            "id": "q-1",
+            "toolName": "mcp__platform__request_analyst_input",
+            "prompt": "Which fund does the mandate refer to?",
+            "input": {
+              "question": "Which fund does the mandate refer to?"
+            }
+          }
+        },
+        "pausedAt": "2026-01-01T00:00:00.000Z",
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.cancelled": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "428",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "cancelled",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.cancelling": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "429",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "cancelling",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.completed": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "510",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "succeeded",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0.1234,
+        "error": null,
+        "result": {
+          "output": "the finished report",
+          "sessionId": "session-abc",
+          "structuredOutput": null
+        },
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": true,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.expired": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "451",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "expired",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-02T00:00:01.000Z",
+        "estimatedCostUsd": 0.05,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": "2026-01-01T00:00:00.000Z",
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.failed": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "453",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "failed",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 2.5,
+        "error": {
+          "subtype": "budget_exhausted"
+        },
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.method_not_allowed": {
+    "request": {
+      "method": "PUT",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 405,
+      "headers": {
+        "allow": "GET",
+        "connection": "close",
+        "content-length": "30",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "method not allowed"
+      }
+    }
+  },
+  "runs.monitor.not_found": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/no-such-run"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  },
+  "runs.monitor.running": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.succeeded": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "511",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "succeeded",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0.1234,
+        "error": null,
+        "result": {
+          "output": "the finished report",
+          "sessionId": "session-abc",
+          "structuredOutput": null
+        },
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.monitor.succeeded_at_budget": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/runs/wire-contract-run"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "599",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "succeeded",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 2.58,
+        "error": null,
+        "result": {
+          "output": "{\"status\":\"ok\",\"periods\":[\"FY0\",\"FY-1\"]}",
+          "sessionId": "session-abc",
+          "structuredOutput": {
+            "status": "ok",
+            "periods": ["FY0", "FY-1"]
+          },
+          "budgetExhausted": true
+        },
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.accepted": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.accepted_for_cancel": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.accepted_for_failure": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.accepted_for_pause": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.accepted_for_success": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.body_too_large": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "bodyBytes": 2095
+    },
+    "configOverrides": {
+      "bodyLimitBytes": 1024
+    },
+    "response": {
+      "status": 413,
+      "headers": {
+        "connection": "close",
+        "content-length": "34",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "request body too large"
+      }
+    }
+  },
+  "runs.start.capacity_admission_shed": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "46",
+        "content-type": "application/json",
+        "retry-after": "10",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "capacity",
+        "reason": "admission_shed"
+      }
+    }
+  },
+  "runs.start.capacity_chat_disabled": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings.",
+        "admissionClass": "chat"
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "45",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "capacity",
+        "reason": "chat_disabled"
+      }
+    }
+  },
+  "runs.start.capacity_retained_input_budget": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings.",
+        "documents": [
+          {
+            "name": "mandate.txt",
+            "contentBase64": "aGVsbG8="
+          }
+        ]
+      }
+    },
+    "configOverrides": {
+      "retainedInputBudgetBytes": 1
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "53",
+        "content-type": "application/json",
+        "retry-after": "5",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "capacity",
+        "reason": "retained_input_budget"
+      }
+    }
+  },
+  "runs.start.capacity_retained_output_budget": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "configOverrides": {
+      "retainedOutputBudgetBytes": 1
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "54",
+        "content-type": "application/json",
+        "retry-after": "5",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "capacity",
+        "reason": "retained_output_budget"
+      }
+    }
+  },
+  "runs.start.capacity_upload_budget": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "configOverrides": {
+      "inflightUploadBudgetBytes": 8
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "45",
+        "content-type": "application/json",
+        "retry-after": "5",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "capacity",
+        "reason": "upload_budget"
+      }
+    }
+  },
+  "runs.start.continuation_accepted": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-continuation",
+        "prompt": "revise with these findings",
+        "continuation": {
+          "sessionBundle": {
+            "sha256": "07ce3ad6b4e19109d4d82fd02dbf7d0dd7a0c0b5cdf682fc8b5a0a7f8a108bb0",
+            "bytesBase64": "cGxhdGZvcm0taGVsZCBzZXNzaW9uIGJ1bmRsZQ=="
+          },
+          "outFiles": [
+            {
+              "path": "checks/model.py",
+              "contentBase64": "cHJpbnQoJ2NoZWNrJyk=",
+              "sha256": "5707c88f6d38d2039b4e8b2a789e07310b52b5f457fa67fc52218f23cf2ce4ed"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 202,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-continuation",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.continuation_digest_mismatch": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-continuation-bad",
+        "prompt": "revise",
+        "continuation": {
+          "sessionBundle": {
+            "sha256": "07ce3ad6b4e19109d4d82fd02dbf7d0dd7a0c0b5cdf682fc8b5a0a7f8a108bb0",
+            "bytesBase64": "cGxhdGZvcm0taGVsZCBzZXNzaW9uIGJ1bmRsZQ=="
+          },
+          "outFiles": [
+            {
+              "path": "checks/model.py",
+              "contentBase64": "cHJpbnQoJ2NoZWNrJyk=",
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "91",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "re-carried out/ file \"checks/model.py\" bytes do not match the declared sha256"
+      }
+    }
+  },
+  "runs.start.continuation_missing_bundle": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-continuation-bad",
+        "prompt": "revise",
+        "continuation": {
+          "outFiles": []
+        }
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "60",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "continuation.sessionBundle must be a JSON object"
+      }
+    }
+  },
+  "runs.start.continuation_missing_digest": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-continuation-bad",
+        "prompt": "revise",
+        "continuation": {
+          "sessionBundle": {
+            "sha256": "07ce3ad6b4e19109d4d82fd02dbf7d0dd7a0c0b5cdf682fc8b5a0a7f8a108bb0",
+            "bytesBase64": "cGxhdGZvcm0taGVsZCBzZXNzaW9uIGJ1bmRsZQ=="
+          },
+          "outFiles": [
+            {
+              "path": "checks/model.py",
+              "contentBase64": "cHJpbnQoJ2NoZWNrJyk="
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "59",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "continuation.outFiles[0].sha256 must be present"
+      }
+    }
+  },
+  "runs.start.continuation_walking_path": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-continuation-bad",
+        "prompt": "revise",
+        "continuation": {
+          "sessionBundle": {
+            "sha256": "07ce3ad6b4e19109d4d82fd02dbf7d0dd7a0c0b5cdf682fc8b5a0a7f8a108bb0",
+            "bytesBase64": "cGxhdGZvcm0taGVsZCBzZXNzaW9uIGJ1bmRsZQ=="
+          },
+          "outFiles": [
+            {
+              "path": "../escape.py",
+              "contentBase64": "cHJpbnQoJ2NoZWNrJyk=",
+              "sha256": "5707c88f6d38d2039b4e8b2a789e07310b52b5f457fa67fc52218f23cf2ce4ed"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "106",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "continuation.outFiles[0].path must be a relative path of safe segments, at most 512 characters"
+      }
+    }
+  },
+  "runs.start.document_budget_exceeded": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings.",
+        "documents": [
+          {
+            "name": "mandate.txt",
+            "contentBase64": "aGVsbG8="
+          }
+        ]
+      }
+    },
+    "configOverrides": {
+      "documentBudgetBytes": 4
+    },
+    "response": {
+      "status": 413,
+      "headers": {
+        "connection": "close",
+        "content-length": "117",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "documents, skill files and re-carried out/ files together exceed the 4-byte decoded budget across the run"
+      }
+    }
+  },
+  "runs.start.duplicate": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "connection": "close",
+        "content-length": "426",
+        "content-type": "application/json",
+        "retry-after": "2",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "executionId": "wire-contract-run",
+        "attempt": 1,
+        "segment": 0,
+        "status": "running",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "estimatedCostUsd": 0,
+        "error": null,
+        "result": null,
+        "requiredInput": null,
+        "pausedAt": null,
+        "resumedAt": null,
+        "lastPauseMs": null,
+        "completed": false,
+        "model": null,
+        "mcpServerUrl": null,
+        "fuses": {
+          "deadlineMs": 900000,
+          "maxBudgetUsd": 2.5,
+          "maxTurns": 300,
+          "maxRetainedOutputBytes": 25165824
+        }
+      }
+    }
+  },
+  "runs.start.fuse_above_ceiling": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-rejected",
+        "prompt": "p",
+        "maxTurns": 100000
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "115",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "maxTurns 100000 is above this runtime's ceiling of 300 — a request may tighten a fuse, never widen it"
+      }
+    }
+  },
+  "runs.start.internal_error": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings.",
+        "documents": [
+          {
+            "name": "mandate.txt",
+            "contentBase64": "aGVsbG8="
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 500,
+      "headers": {
+        "connection": "close",
+        "content-length": "26",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "internal error"
+      }
+    }
+  },
+  "runs.start.invalid_execution_id": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "../escape",
+        "prompt": "p"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "70",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "executionId must match ^(?!\\.\\.?$)[A-Za-z0-9._-]{1,128}$"
+      }
+    }
+  },
+  "runs.start.invalid_json": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": "{\"executionId\":"
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "29",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "invalid JSON body"
+      }
+    }
+  },
+  "runs.start.invalid_skill_asset_name": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-rejected",
+        "prompt": "p",
+        "skillFiles": [
+          {
+            "name": "verify.md",
+            "contentBase64": "IyBza2lsbA==",
+            "assets": [
+              {
+                "name": "../escape.py",
+                "contentBase64": "eA=="
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "104",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "skillFiles[0].assets[0].name must be an ordinary file name matching ^[A-Za-z0-9._ -]{1,200}$"
+      }
+    }
+  },
+  "runs.start.missing_prompt": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-rejected"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "45",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "prompt must be a non-empty string"
+      }
+    }
+  },
+  "runs.start.model_not_allowed": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-rejected",
+        "prompt": "p",
+        "model": "us.anthropic.claude-opus-4-1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "160",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "model \"us.anthropic.claude-opus-4-1\" is not allowed on this runtime; allowed models: us.anthropic.claude-sonnet-4-6, us.anthropic.claude-haiku-4-5"
+      }
+    }
+  },
+  "runs.start.payload_conflict": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "a different prompt"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "connection": "close",
+        "content-length": "27",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "code": "payload_conflict"
+      }
+    }
+  },
+  "runs.start.preset_system_prompt_refused": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-rejected",
+        "prompt": "p",
+        "systemPrompt": {
+          "type": "preset",
+          "preset": "claude_code"
+        }
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "142",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "systemPrompt must be a non-empty string, or a non-empty array of non-empty string blocks — the SDK's preset form is not accepted"
+      }
+    }
+  },
+  "runs.start.shutting_down": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-contract-run",
+        "prompt": "Extract the fund's holdings."
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "connection": "close",
+        "content-length": "25",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "shutting down"
+      }
+    }
+  },
+  "runs.start.unknown_field": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "application/json",
+      "body": {
+        "executionId": "wire-rejected",
+        "prompt": "p",
+        "retries": 3
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "connection": "close",
+        "content-length": "37",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "unknown field \"retries\""
+      }
+    }
+  },
+  "runs.start.unsupported_media_type": {
+    "request": {
+      "method": "POST",
+      "path": "/v1/runs",
+      "contentType": "text/plain",
+      "body": "{\"executionId\":\"wire-rejected\",\"prompt\":\"p\"}"
+    },
+    "response": {
+      "status": 415,
+      "headers": {
+        "connection": "close",
+        "content-length": "49",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "content-type must be application/json"
+      }
+    }
+  },
+  "unknown_path.not_found": {
+    "request": {
+      "method": "GET",
+      "path": "/v1/nothing-here"
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "connection": "close",
+        "content-length": "21",
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff"
+      },
+      "body": {
+        "error": "not found"
+      }
+    }
+  }
+}

@@ -1,0 +1,252 @@
+@using ErrorOr
+@using IniaAi.Application.Commands.SharedComponents.DeleteSharedComponentCategory
+@using IniaAi.Application.Commands.SharedComponents.SaveSharedComponentCategory
+@using IniaAi.Application.Queries.SharedComponents.ListSharedComponentCategories
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using IniaAi.Application.Common.Dispatching
+
+@inject AppState AppState
+@inject IServiceScopeFactory ServiceScopeFactory
+
+<MudDialog>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Elevation="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Id</th>
+                        <th style="text-align: right;">Order</th>
+                        <th style="text-align: right;">Components</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (SharedComponentCategoryDto category in _categories)
+                    {
+                        <tr>
+                            <td>@category.Name</td>
+                            <td style="font-family: monospace;">@category.Id</td>
+                            <td style="text-align: right;">@category.DisplayOrder</td>
+                            <td style="text-align: right;">@category.ComponentCount</td>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                               aria-label="@($"Edit category {category.Name}")"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => StartEdit(category))" />
+                                <MudTooltip Text="@(category.ComponentCount > 0 ? "Re-categorize its components first" : "Delete")">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                                   aria-label="@($"Delete category {category.Name}")"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   Disabled="@(category.ComponentCount > 0)"
+                                                   OnClick="@(() => DeleteAsync(category))" />
+                                </MudTooltip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            @if (_formVisible)
+            {
+                <MudPaper Outlined="true" Class="pa-3 mt-3">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        @(_isNew ? "New category" : $"Edit '{_formName}'")
+                    </MudText>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                        <MudTextField @bind-Value="_formName"
+                                      Label="Name"
+                                      Immediate="true"
+                                      Style="min-width: 200px;" />
+                        <MudTextField @bind-Value="_formId"
+                                      Label="Id"
+                                      Immediate="true"
+                                      Placeholder="@(_isNew ? BuildCategoryId(_formName) : null)"
+                                      Disabled="@(!_isNew)"
+                                      Style="min-width: 180px; font-family: monospace;" />
+                        <MudNumericField T="int?"
+                                         @bind-Value="_formOrder"
+                                         Label="Order"
+                                         Style="max-width: 100px;" />
+                        <MudTextField @bind-Value="_formDescription"
+                                      Label="Description (optional)"
+                                      Style="min-width: 240px;" />
+                    </MudStack>
+                    <MudStack Row="true" Spacing="2" Class="mt-2">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Disabled="@(string.IsNullOrWhiteSpace(_formName) || string.IsNullOrEmpty(EffectiveId))"
+                                   OnClick="SaveAsync">
+                            @(_isNew ? "Create" : "Save")
+                        </MudButton>
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="@(() => _formVisible = false)">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Class="mt-3"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="StartAdd">
+                    Add category
+                </MudButton>
+            }
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _changed;
+    private List<SharedComponentCategoryDto> _categories = [];
+
+    private bool _formVisible;
+    private bool _isNew;
+    private string? _formName;
+    private string? _formId;
+    private string? _formDescription;
+    private int? _formOrder;
+
+    private string EffectiveId => string.IsNullOrWhiteSpace(_formId) ? BuildCategoryId(_formName) : _formId.Trim();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _isLoading = false;
+    }
+
+    private async Task LoadAsync()
+    {
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<SharedComponentCategoriesDto> result = await sender.Send(
+            new ListSharedComponentCategoriesQuery(OrganizationId, UserId));
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Could not load the categories: {result.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        _categories = result.Value.Categories;
+    }
+
+    private void StartAdd()
+    {
+        _isNew = true;
+        _formName = null;
+        _formId = null;
+        _formDescription = null;
+        _formOrder = _categories.Count == 0 ? 1 : _categories.Max(c => c.DisplayOrder ?? 0) + 1;
+        _formVisible = true;
+    }
+
+    private void StartEdit(SharedComponentCategoryDto category)
+    {
+        _isNew = false;
+        _formName = category.Name;
+        _formId = category.Id;
+        _formDescription = category.Description;
+        _formOrder = category.DisplayOrder;
+        _formVisible = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        string categoryId = EffectiveId;
+        if (string.IsNullOrWhiteSpace(_formName) || string.IsNullOrEmpty(categoryId))
+        {
+            return;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<SharedComponentCategoryDto> result = await sender.Send(
+            new SaveSharedComponentCategoryCommand(
+                OrganizationId,
+                UserId,
+                categoryId,
+                _formName.Trim(),
+                string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription.Trim(),
+                _formOrder));
+
+        if (result.IsError)
+        {
+            AppState.Notify($"Could not save the category: {result.FirstError.Description}", Severity.Error);
+            return;
+        }
+
+        _changed = true;
+        _formVisible = false;
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(SharedComponentCategoryDto category)
+    {
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<Deleted> result = await sender.Send(
+            new DeleteSharedComponentCategoryCommand(OrganizationId, UserId, category.Id));
+
+        if (result.IsError)
+        {
+            AppState.Notify($"Could not delete the category: {result.FirstError.Description}", Severity.Error);
+            return;
+        }
+
+        _changed = true;
+        await LoadAsync();
+    }
+
+    private void Close()
+    {
+        MudDialog.Close(DialogResult.Ok(_changed));
+    }
+
+    private static string BuildCategoryId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var id = new string([.. value
+            .ToLowerInvariant()
+            .Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-')]);
+        while (id.Contains("--", StringComparison.Ordinal))
+        {
+            id = id.Replace("--", "-", StringComparison.Ordinal);
+        }
+
+        return id.Trim('-');
+    }
+}

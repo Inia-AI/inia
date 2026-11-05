@@ -1,0 +1,342 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@using IniaAi.Common.Constants
+@using ErrorOr
+@using IniaAi.Application.Workflows.EditorAgent
+
+@inject IWorkflowEditorAgentService AgentService
+
+<MudDialog Class="editor-agent-reports-dialog" ContentClass="editor-agent-reports-content">
+    <TitleContent>
+        <div class="editor-agent-reports-title">Choose reports</div>
+        <div class="editor-agent-caption">
+            The agent reads them as examples with your next message only. Choose up to @EditorAgentReports.MAX_PICKED.
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <div class="editor-agent-reports-filters">
+            <MudTextField T="string"
+                          Value="_search"
+                          ValueChanged="OnSearchChanged"
+                          Immediate="true"
+                          DebounceInterval="@SEARCH_DEBOUNCE_MS"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="@($"Search {CounterpartyTerms.SINGULAR_LOWER}, report or document")"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Clearable="true"
+                          aria-label="Search reports"
+                          Class="editor-agent-reports-search"
+                          data-testid="editor-agent-reports-search" />
+            <div class="editor-agent-reports-filter-row">
+                <MudSelect T="string"
+                           Value="_workflowTypeId"
+                           ValueChanged="OnWorkflowTypeChanged"
+                           Label="Workflow"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Dense="true"
+                           AnchorOrigin="Origin.BottomLeft"
+                           Class="editor-agent-reports-type"
+                           data-testid="editor-agent-reports-type">
+                    @foreach (EditorAgentWorkflowTypeOption type in _types)
+                    {
+                        <MudSelectItem T="string" Value="@type.Id">@type.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string"
+                           Value="_status"
+                           ValueChanged="OnStatusChanged"
+                           Label="Status"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Dense="true"
+                           AnchorOrigin="Origin.BottomLeft"
+                           Class="editor-agent-reports-status"
+                           data-testid="editor-agent-reports-status">
+                    <MudSelectItem T="string" Value="@ANY_STATUS">Any status</MudSelectItem>
+                    @foreach (string status in _statuses)
+                    {
+                        <MudSelectItem T="string" Value="@status">@EditorAgentText.ReportStatus(status)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudDatePicker Date="_from"
+                               DateChanged="OnFromChanged"
+                               Label="From"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Clearable="true"
+                               Editable="true"
+                               MaxDate="_to"
+                               Class="editor-agent-reports-date" />
+                <MudDatePicker Date="_to"
+                               DateChanged="OnToChanged"
+                               Label="To"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Clearable="true"
+                               Editable="true"
+                               MinDate="_from"
+                               Class="editor-agent-reports-date" />
+            </div>
+        </div>
+
+        <div class="editor-agent-reports-list" role="list" aria-label="Reports" data-testid="editor-agent-reports-list">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">@_error</MudAlert>
+            }
+            else if (_reports is null)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (_reports.Count == 0)
+            {
+                <div class="editor-agent-reports-empty editor-agent-caption" data-testid="editor-agent-no-reports">
+                    @(IsFiltered ? "No reports match these filters." : "This workflow has no past reports yet.")
+                </div>
+            }
+            else
+            {
+                @foreach (EditorAgentReportSummary report in _reports)
+                {
+                    bool chosen = IsChosen(report);
+                    bool blocked = !chosen && _chosen.Count >= EditorAgentReports.MAX_PICKED;
+                    <div @key="report.Id"
+                         class="@RowClass(chosen, blocked)"
+                         role="listitem"
+                         data-testid="editor-agent-report-row"
+                         data-report-id="@report.Id">
+                        <MudCheckBox T="bool"
+                                     Value="chosen"
+                                     ValueChanged="@(_ => Toggle(report))"
+                                     Disabled="blocked"
+                                     Size="Size.Small"
+                                     Color="Color.Primary"
+                                     aria-label="@($"Use {EditorAgentText.ReportLabel(report)}")" />
+                        <div class="editor-agent-report-row-text" @onclick="@(() => Toggle(report))">
+                            <span class="editor-agent-report-row-label">@EditorAgentText.ReportLabel(report)</span>
+                            <span class="editor-agent-caption editor-agent-report-row-documents" title="@DocumentLine(report)">
+                                @DocumentLine(report)
+                            </span>
+                        </div>
+                    </div>
+                }
+                @if (_hasMore)
+                {
+                    <div class="editor-agent-reports-more">
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   Disabled="_isLoading"
+                                   OnClick="LoadMoreAsync"
+                                   data-testid="editor-agent-reports-more">
+                            Show more
+                        </MudButton>
+                    </div>
+                }
+            }
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <span class="editor-agent-caption editor-agent-reports-count" data-testid="editor-agent-reports-count">
+            @_chosen.Count of @EditorAgentReports.MAX_PICKED chosen
+        </span>
+        <MudSpacer />
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   DropShadow="false"
+                   OnClick="Use"
+                   data-testid="editor-agent-reports-use">
+            Use these reports
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const int PAGE_SIZE = 25;
+
+    private const int SEARCH_DEBOUNCE_MS = 300;
+    private const string ANY_STATUS = "";
+    private const string NO_DOCUMENTS = "No documents";
+    private const string ROW_CLASS = "editor-agent-report-row";
+    private const string CHOSEN_CLASS = " editor-agent-report-row-chosen";
+    private const string BLOCKED_CLASS = " editor-agent-report-row-blocked";
+
+    private static readonly string[] _statuses =
+    [
+        EditorAgentReports.COMPLETED,
+        EditorAgentReports.CONFIRMED,
+        EditorAgentReports.FAILED,
+        EditorAgentReports.CANCELLED,
+    ];
+
+    private readonly List<EditorAgentReportSummary> _chosen = [];
+    private IReadOnlyList<EditorAgentWorkflowTypeOption> _types = [];
+    private List<EditorAgentReportSummary>? _reports;
+    private string? _search;
+    private string _status = ANY_STATUS;
+    private string _workflowTypeId = string.Empty;
+    private DateTime? _from;
+    private DateTime? _to;
+    private bool _hasMore;
+    private bool _isLoading;
+    private string? _error;
+    private long _ticket;
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    /// <summary>The open workflow's type, the type the list starts on.</summary>
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    /// <summary>The reports already chosen for the next message.</summary>
+    [Parameter]
+    public IReadOnlyList<EditorAgentReportSummary> Chosen { get; set; } = [];
+
+    private bool IsFiltered => !string.IsNullOrWhiteSpace(_search)
+        || _status != ANY_STATUS
+        || _from is not null
+        || _to is not null
+        || _workflowTypeId != WorkflowTypeId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _chosen.AddRange(Chosen);
+        _workflowTypeId = WorkflowTypeId;
+
+        ErrorOr<IReadOnlyList<EditorAgentWorkflowTypeOption>> types = await AgentService.ListReportWorkflowTypesAsync(
+            OrganizationId, UserId, WorkflowTypeId);
+        if (types.IsError)
+        {
+            _error = types.FirstError.Description;
+            return;
+        }
+
+        _types = types.Value;
+        await ReloadAsync();
+    }
+
+    private Task OnSearchChanged(string? search)
+    {
+        _search = search;
+        return ReloadAsync();
+    }
+
+    private Task OnWorkflowTypeChanged(string workflowTypeId)
+    {
+        _workflowTypeId = workflowTypeId;
+        return ReloadAsync();
+    }
+
+    private Task OnStatusChanged(string status)
+    {
+        _status = status;
+        return ReloadAsync();
+    }
+
+    private Task OnFromChanged(DateTime? from)
+    {
+        _from = from;
+        return ReloadAsync();
+    }
+
+    private Task OnToChanged(DateTime? to)
+    {
+        _to = to;
+        return ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _reports = null;
+        _hasMore = false;
+        await LoadAsync(skip: 0);
+    }
+
+    private Task LoadMoreAsync()
+    {
+        return LoadAsync(_reports?.Count ?? 0);
+    }
+
+    /// <summary>A later filter change wins over a slower earlier read.</summary>
+    private async Task LoadAsync(int skip)
+    {
+        long ticket = ++_ticket;
+        _isLoading = true;
+        _error = null;
+        var query = new EditorAgentReportQuery(
+            Search: string.IsNullOrWhiteSpace(_search) ? null : _search.Trim(),
+            Status: _status == ANY_STATUS ? null : _status,
+            From: _from,
+            To: _to,
+            WorkflowTypeId: _workflowTypeId,
+            Skip: skip,
+            Take: PAGE_SIZE);
+
+        ErrorOr<EditorAgentReportPage> page = await AgentService.ListReportsAsync(OrganizationId, UserId, WorkflowTypeId, query);
+        if (ticket != _ticket)
+        {
+            return;
+        }
+
+        _isLoading = false;
+        if (page.IsError)
+        {
+            _error = page.FirstError.Description;
+            return;
+        }
+
+        _reports = skip == 0 ? [.. page.Value.Reports] : [.. _reports ?? [], .. page.Value.Reports];
+        _hasMore = page.Value.HasMore;
+    }
+
+    private bool IsChosen(EditorAgentReportSummary report)
+    {
+        return _chosen.Any(chosen => chosen.Id == report.Id);
+    }
+
+    private void Toggle(EditorAgentReportSummary report)
+    {
+        if (IsChosen(report))
+        {
+            _ = _chosen.RemoveAll(chosen => chosen.Id == report.Id);
+            return;
+        }
+
+        if (_chosen.Count < EditorAgentReports.MAX_PICKED)
+        {
+            _chosen.Add(report);
+        }
+    }
+
+    private static string RowClass(bool chosen, bool blocked)
+    {
+        return ROW_CLASS + (chosen ? CHOSEN_CLASS : string.Empty) + (blocked ? BLOCKED_CLASS : string.Empty);
+    }
+
+    private static string DocumentLine(EditorAgentReportSummary report)
+    {
+        return report.DocumentNames.Count == 0 ? NO_DOCUMENTS : string.Join(", ", report.DocumentNames);
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Use()
+    {
+        MudDialog?.Close(DialogResult.Ok<IReadOnlyList<EditorAgentReportSummary>>([.. _chosen]));
+    }
+}

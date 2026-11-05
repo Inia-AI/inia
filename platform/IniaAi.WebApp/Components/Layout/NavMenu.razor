@@ -1,0 +1,63 @@
+﻿@using IniaAi.WebApp.Components.Admin.Pages
+@using IniaAi.WebApp.Components.UserWorkflows.Pages
+@using IniaAi.WebApp.Components.WorkflowEditor.Pages
+@using IniaAi.WebApp.Components.WorkflowTypes.Pages
+@inject AppState AppState
+
+<MudNavMenu Class="pb-3 pt-0 d-flex flex-column" Style="height: 100%;">
+    <div>
+        <MudDivider Class="my-2" />
+        <MudNavLink Icon="@Icons.Material.Outlined.Dashboard"
+                    Href="@AppRoutes.DASHBOARD">
+            @AppState.GetName(AppRoutes.DASHBOARD)
+        </MudNavLink>
+
+        <MudNavLink Icon="@Icons.Material.Outlined.Plagiarism"
+                    Href="@AppRoutes.EDITORS">
+            @AppState.GetName(AppRoutes.EDITORS)
+        </MudNavLink>
+
+        <AuthorizeView Roles="@(ComponentLibrary.ROLES)">
+            <MudNavLink Icon="@Icons.Material.Outlined.Widgets"
+                        Href="@AppRoutes.LIBRARY">
+                @AppState.GetName(AppRoutes.LIBRARY)
+            </MudNavLink>
+        </AuthorizeView>
+
+        <MudDivider Class="my-2" />
+
+        <AuthorizeView Roles="@(WorkflowTypeManagement.ROLES)">
+            <MudNavLink Icon="@Icons.Material.Outlined.Category"
+                        Href="@AppRoutes.WORKFLOW_TYPE_MANAGEMENT">
+                @AppState.GetName(AppRoutes.WORKFLOW_TYPE_MANAGEMENT)
+            </MudNavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@(Workflows.ROLES)">
+            <MudNavLink Icon="@Icons.Material.Outlined.AccountTree"
+                        Href="@AppRoutes.USER_WORKFLOWS">
+                @AppState.GetName(AppRoutes.USER_WORKFLOWS)
+            </MudNavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@(IniaAi.WebApp.Components.ToolsSettings.Pages.ToolsSettings.ROLES)">
+            <MudNavLink Icon="@Icons.Material.Outlined.Settings"
+                        Href="@AppRoutes.TOOLS_SETTINGS">
+                @AppState.GetName(AppRoutes.TOOLS_SETTINGS)
+            </MudNavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="@(Administration.ROLES)">
+            <MudNavLink Icon="@Icons.Material.Outlined.AdminPanelSettings"
+                        Href="@AppRoutes.ADMINISTRATION">
+                @AppState.GetName(AppRoutes.ADMINISTRATION)
+            </MudNavLink>
+        </AuthorizeView>
+    </div>
+
+    <div class="mt-auto d-flex justify-center">
+        <MudText Typo="Typo.caption">
+            @ApplicationVersion.Version
+        </MudText>
+    </div>
+</MudNavMenu>

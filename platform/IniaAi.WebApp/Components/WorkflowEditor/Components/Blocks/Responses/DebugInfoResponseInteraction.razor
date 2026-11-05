@@ -1,0 +1,23 @@
+@using IniaAi.Domain.Entities.Workflows.Responses
+
+@if (!string.IsNullOrWhiteSpace(Response.DebugInfo))
+{
+    <MudTextField T="string"
+                  Variant="Variant.Outlined"
+                  Sizing="InputSizing.Auto"
+                  MaxLines="30"
+                  Class="editor-mono-field editor-resolved"
+                  ReadOnly="true"
+                  Value="@Response.DebugInfo" />
+}
+else
+{
+    <MudAlert Severity="Severity.Info">
+        No Debug Info Available
+    </MudAlert>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public BlockResponse Response { get; set; } = default!;
+}

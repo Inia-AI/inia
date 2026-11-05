@@ -1,0 +1,273 @@
+@using ErrorOr
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.Workflows.Templates
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Specifications.DocumentCategories
+@using IniaAi.WebApp.Components.WorkflowEditor.Components
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDocumentClassEditor DocumentClassEditor
+@inject ILogger<EditDocumentClassDialog> Logger
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Key"
+                                  Variant="Variant.Outlined"
+                                  Class="editor-mono-field"
+                                  HelperText="Unique identifier for this document class (e.g. 'documentClass_1')"
+                                  @bind-Value="@_key"
+                                  For="@(() => _key)"
+                                  Required="true" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Display Name"
+                                  Variant="Variant.Outlined"
+                                  HelperText="User-friendly name for this document class"
+                                  @bind-Value="@_displayName"
+                                  For="@(() => _displayName)"
+                                  Required="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Description"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Shown to people: pickers, uploads, reports"
+                                  @bind-Value="@_description"
+                                  Lines="6" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField Label="Description for the model"
+                                  Variant="Variant.Outlined"
+                                  Class="editor-mono-field"
+                                  HelperText="Read by the model, never shown to a customer: what qualifies a document as this class, the near-miss classes to avoid, what it is not"
+                                  @bind-Value="@_llmDescription"
+                                  Lines="6" />
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string"
+                               Label="Document Category"
+                               Variant="Variant.Outlined"
+                               @bind-Value="@_documentCategoryId"
+                               Clearable="true"
+                               HelperText="Optional category, stamped on the documents of this class">
+                        @if (_documentCategories is not null)
+                        {
+                            @foreach (var category in _documentCategories.OrderBy(c => c.Name))
+                            {
+                                <MudSelectItem Value="@category.Id">@category.Name</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudSelect T="DocumentClassRequirement"
+                               Label="Requirement Level"
+                               Disabled="@(_isOutputDocument)"
+                               Variant="Variant.Outlined"
+                               @bind-Value="@_requirement"
+                               For="@(() => _requirement)"
+                               HelperText="@RequirementHelperText"
+                               Required="true">
+                        <MudSelectItem Value="DocumentClassRequirement.Required">Required</MudSelectItem>
+                        <MudSelectItem Value="DocumentClassRequirement.Suggested">Suggested</MudSelectItem>
+                        <MudSelectItem Value="DocumentClassRequirement.Optional">Optional</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudCheckBox T="bool"
+                                 Disabled="@(_isOutputDocument)"
+                                 @bind-Value="@_shouldBeSingular"
+                                 Color="Color.Primary">
+                        <div class="d-flex flex-column">
+                            <MudText Typo="Typo.body1">@LIMIT_TO_ONE_DOCUMENT</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                Only one document of this class can be uploaded per workflow execution
+                            </MudText>
+                        </div>
+                    </MudCheckBox>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudCheckBox T="bool"
+                                 @bind-Value="@_isOutputDocument"
+                                 Color="Color.Primary"
+                                 @bind-Value:after="HandleIsOutputDocumentChanged">
+                        <div class="d-flex flex-column">
+                            <MudText Typo="Typo.body1">@IS_FOR_OUTPUT_DOCUMENTS</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                This class is for documents the workflow generates, not documents a user uploads
+                            </MudText>
+                        </div>
+                    </MudCheckBox>
+                </MudItem>
+            </MudGrid>
+
+            @if (!_isOutputDocument)
+            {
+                <MudDivider />
+
+                <MudText Typo="Typo.subtitle1">Page overview prompt</MudText>
+
+                <PageOverviewPromptsEditor Prompts="@_pageOverviews"
+                                           EmptyMeaning="Empty: this class uses the workflow's default overview prompt." />
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm">
+            @_saveButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public const string LIMIT_TO_ONE_DOCUMENT = "Limit to one document";
+    public const string IS_FOR_OUTPUT_DOCUMENTS = "Is for output documents";
+
+    private string _saveButtonText => DocumentClass is null
+        ? "Create"
+        : "Save";
+    private string _key = string.Empty;
+    private string _displayName = string.Empty;
+    private string _description = string.Empty;
+    private string? _llmDescription;
+    private string? _documentCategoryId;
+    private DocumentClassRequirement _requirement = DocumentClassRequirement.Optional;
+    private bool _shouldBeSingular = false;
+    private bool _isOutputDocument;
+    private string _errorMessage = string.Empty;
+    private string _originalKey = string.Empty;
+    private IList<DocumentCategory>? _documentCategories;
+    private PageOverviewPrompts _pageOverviews = new();
+
+    private string RequirementHelperText => _isOutputDocument
+        ? "An output class is never required from the user"
+        : _requirement == DocumentClassRequirement.Suggested
+            ? "Suggested: a run starts without it. The web app lists the class as suggested but shows no warning when it is missing; only the server log notes it"
+            : "Whether a run needs a document of this class";
+
+    [Parameter]
+    public DocumentClass? DocumentClass { get; set; }
+
+    [Parameter]
+    public Workflow Workflow { get; set; } = default!;
+
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocumentCategoriesAsync();
+
+        if (DocumentClass is not null)
+        {
+            _key = DocumentClass.Key;
+            _originalKey = DocumentClass.Key;
+            _displayName = DocumentClass.DisplayName;
+            _description = DocumentClass.Description;
+            _llmDescription = DocumentClass.LlmDescription;
+            _documentCategoryId = DocumentClass.DocumentCategoryId;
+            _requirement = DocumentClass.Requirement;
+            _shouldBeSingular = DocumentClass.ShouldBeSingular;
+            _isOutputDocument = DocumentClass.IsOutputDocument;
+            _pageOverviews = DocumentClass.PageOverviews?.Clone() ?? new PageOverviewPrompts();
+
+            return;
+        }
+
+        int documentClassCount = Workflow.DocumentClasses.Count + 1;
+        _key = $"documentClass_{documentClassCount}";
+        _originalKey = _key;
+        _displayName = _key;
+    }
+
+    private async Task LoadDocumentCategoriesAsync()
+    {
+        try
+        {
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            var spec = new DocumentCategoriesSpec();
+            _documentCategories = await coreUnitOfWork
+                .Repository<DocumentCategory>()
+                .GetAllAsync(spec);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load document categories");
+            _documentCategories = [];
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Confirm()
+    {
+        _errorMessage = string.Empty;
+
+        var edit = new DocumentClassEdit(
+            OriginalKey: DocumentClass is null ? null : _originalKey,
+            Key: _key,
+            DisplayName: _displayName,
+            Description: _description,
+            DocumentCategoryId: _documentCategoryId,
+            Requirement: _requirement,
+            ShouldBeSingular: _shouldBeSingular,
+            IsOutputDocument: _isOutputDocument,
+            LlmDescription: _llmDescription,
+            PageOverviews: _isOutputDocument ? null : _pageOverviews);
+
+        ErrorOr<DocumentClass> result = DocumentClassEditor.Upsert(Workflow, edit);
+        if (result.IsError)
+        {
+            _errorMessage = result.FirstError.Description;
+            return;
+        }
+
+        MudDialog?.Close(DialogResult.Ok(result.Value));
+    }
+
+    private void HandleIsOutputDocumentChanged()
+    {
+        if (_isOutputDocument)
+        {
+            _requirement = DocumentClassRequirement.Optional;
+            _shouldBeSingular = false;
+        }
+    }
+}

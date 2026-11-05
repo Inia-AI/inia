@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <!-- Reads Word documents and workbooks as raw Office Open XML, with no document library, so a test judges what any library wrote alike. -->
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+</Project>

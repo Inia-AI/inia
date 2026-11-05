@@ -1,0 +1,28 @@
+{
+  "value": [
+    {
+      "id": "d51ef7a3-792e-480d-8936-feb8e8881b7b",
+      "order": 0,
+      "title": "Agent",
+      "layout": null,
+      "excludeFromWordExport": false,
+      "paragraphs": [
+        {
+          "id": "f27ef0d6-85eb-4fe6-9a03-437535bf4849",
+          "kind": "Paragraph",
+          "order": 0,
+          "title": "Revenue growth",
+          "subtitle": "Revenue growth, calculated by an Agent block with Python in its sandbox",
+          "confidence": 0,
+          "content": "Revenue growth: 10.2%",
+          "replacementTag": "agentGrowth",
+          "chartPayload": null,
+          "tablePayload": null,
+          "sources": [],
+          "citations": [],
+          "citedSourcesByBlock": []
+        }
+      ]
+    }
+  ]
+}

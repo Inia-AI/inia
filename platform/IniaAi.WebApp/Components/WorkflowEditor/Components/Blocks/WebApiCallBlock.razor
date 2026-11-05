@@ -1,0 +1,417 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using ErrorOr
+@using IniaAi.Application.Queries.StoredKeys.GetStoredKeys
+@using IniaAi.Common
+@using IniaAi.Core.Workflows.Strategies
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.StoredKeys
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject AppState AppState
+@implements IDisposable
+
+<div class="editor-eyebrow mt-2 mb-2">Request</div>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="URL Template"
+                      Class="editor-mono-field"
+                      HelperText="The URL to make the HTTP request to.
+                        This can include {{placeholder}} variables."
+                      Sizing="InputSizing.Auto"
+                      @bind-Value="@_props.UrlTemplate" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="URL After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Value="@_props.ExecutionState.Url" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Request Payload Template (JSON)"
+                      Class="editor-mono-field"
+                      HelperText="For POST requests: JSON payload to send.
+                        Can include {{placeholder}} variables. Leave empty for GET requests."
+                      Sizing="InputSizing.Auto"
+                      Lines="2"
+                      MaxLines="10"
+                      @bind-Value="@_props.RequestPayloadTemplate" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Request Payload After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Lines="2"
+                          MaxLines="10"
+                          Value="@_props.ExecutionState.RequestPayload" />
+        </MudItem>
+    }
+</MudGrid>
+
+<div class="editor-eyebrow mt-4 mb-2">HTTP configuration</div>
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" sm="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="HTTP Method (GET, POST)"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      MaxLines="10"
+                      @bind-Value="@_props.HttpMethod" />
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Content-Type Header (default: application/json)"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      MaxLines="10"
+                      @bind-Value="@_props.ContentType" />
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Accept Header (default: application/json)"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      MaxLines="10"
+                      @bind-Value="@_props.AcceptHeader" />
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Delay After Request (seconds, for async APIs)"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      MaxLines="10"
+                      @bind-Value="@_props.DelayAfterRequestSeconds" />
+    </MudItem>
+</MudGrid>
+
+<div class="editor-eyebrow mt-4 mb-2">Polling</div>
+
+<MudText Typo="Typo.body2" Class="mb-2">
+    Set a status path and success values to poll this URL until an async job finishes.
+    Leave the path blank for the classic single request. Polling supersedes the fixed delay above.
+</MudText>
+
+<MudTextField Variant="Variant.Outlined"
+              Label="Poll Until: Status JSON Path"
+              Class="editor-mono-field"
+              HelperText="Dot-path to the status field in the JSON response, e.g. status or run.status.
+                A non-empty value enables polling mode."
+              Sizing="InputSizing.Auto"
+              @bind-Value="@_props.PollUntilJsonPath" />
+
+<MudTextField Variant="Variant.Outlined"
+              Label="Success Values (comma-separated)"
+              Class="editor-mono-field"
+              HelperText="Status values meaning done, e.g. completed,succeeded. Case-insensitive. Required for polling."
+              Sizing="InputSizing.Auto"
+              @bind-Value="@_props.PollUntilSuccessValues" />
+
+<MudTextField Variant="Variant.Outlined"
+              Label="Failure Values (comma-separated, optional)"
+              Class="editor-mono-field"
+              HelperText="Status values meaning failed, e.g. failed,error,cancelled. Hitting one fails fast."
+              Sizing="InputSizing.Auto"
+              @bind-Value="@_props.PollUntilFailureValues" />
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" sm="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Poll Interval (seconds, default 15, minimum 5)"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      @bind-Value="@_props.PollIntervalSeconds" />
+    </MudItem>
+
+    <MudItem xs="12" sm="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="Poll Timeout (seconds, default 600, maximum 3600)"
+                      Class="editor-mono-field"
+                      Sizing="InputSizing.Auto"
+                      @bind-Value="@_props.PollTimeoutSeconds" />
+    </MudItem>
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined"
+                      Label="On Completion: Fetch URL Template (optional)"
+                      Class="editor-mono-field"
+                      HelperText="Fetched once (GET, same headers) after polling succeeds; its response becomes
+                        the block output. Collapses the poll + result pair into one block.
+                        Can include {{placeholder}} variables."
+                      Sizing="InputSizing.Auto"
+                      @bind-Value="@_props.PollCompletionUrlTemplate" />
+    </MudItem>
+
+    @if (_props.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined"
+                          Label="Completion URL After Execution"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Value="@_props.ExecutionState.PollCompletionUrl" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudStack>
+    <MudStack Row="true"
+              AlignItems="AlignItems.Center"
+              Class="mb-2">
+        <div class="editor-eyebrow">Headers</div>
+
+        <MudSpacer />
+
+        <MudButton Variant="Variant.Text"
+                   Class="editor-soft-button"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="AddHeader">
+            Add Header
+        </MudButton>
+    </MudStack>
+
+    @foreach (Header headersEntry in _headers.ToList())
+    {
+        int index = _headers.IndexOf(headersEntry);
+        <MudPaper @key="headersEntry" Elevation="0" Outlined="true" Class="pa-3 mb-2 rounded">
+            <MudGrid Spacing="2">
+                <MudItem xs="3">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Header Key"
+                                  Placeholder="e.g. Authorization"
+                                  Class="editor-mono-field"
+                                  Value="@headersEntry.Key"
+                                  ValueChanged="@((string newKey) => UpdateHeaderKey(index, newKey))" />
+                </MudItem>
+
+                <MudItem xs="4">
+                    <MudTextField Variant="Variant.Outlined"
+                                  Label="Header Value"
+                                  Placeholder="e.g. Bearer {apiToken}"
+                                  Class="editor-mono-field"
+                                  Sizing="InputSizing.Auto"
+                                  MaxLines="15"
+                                  Value="@headersEntry.Value"
+                                  ValueChanged="@((string newValue) => UpdateHeaderValue(index, newValue))" />
+
+                    <MudMenu Label="Insert stored key"
+                             StartIcon="@Icons.Material.Outlined.Key"
+                             Variant="Variant.Text"
+                             Size="Size.Small"
+                             Dense="true"
+                             Class="editor-soft-button mt-1"
+                             AriaLabel="@($"Insert a stored key into {headersEntry.Key}")">
+                        @if (_storedKeyNames.Count == 0)
+                        {
+                            <MudMenuItem Disabled="true">@NO_STORED_KEYS</MudMenuItem>
+                        }
+                        @foreach (string name in _storedKeyNames)
+                        {
+                            <MudMenuItem OnClick="@(() => InsertStoredKey(index, name))">@name</MudMenuItem>
+                        }
+                    </MudMenu>
+
+                    @if (IsTypedCredential(headersEntry))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                            This header carries a credential. Add it under Administration, Stored keys, and
+                            insert it here, so it stays out of the workflow and its run records.
+                        </MudAlert>
+                    }
+                </MudItem>
+
+                @if (_props.ExecutionState is not null)
+                {
+                    <MudItem xs="4">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Header Value After Execution"
+                                      Class="editor-mono-field editor-resolved"
+                                      Sizing="InputSizing.Auto"
+                                      MaxLines="15"
+                                      ReadOnly="true"
+                                      Value="@(_props.ExecutionState.AdditionalHeaders.TryGetValue(headersEntry.Key, out var value) ? value : "")" />
+                    </MudItem>
+                }
+
+                <MudItem xs="1" Style="align-self: center;">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Class="editor-soft-button"
+                                   aria-label="Remove header"
+                                   OnClick="@(() => RemoveHeader(index))" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    private const string NO_STORED_KEYS = "This organization has no stored keys.";
+
+    private List<Header> _headers = [];
+    private Block? _syncedBlock;
+    private IReadOnlyList<string> _storedKeyNames = [];
+
+    private WebApiCallProperties _props => Block.Properties as WebApiCallProperties
+        ?? throw new InvalidOperationException("Block properties must be of type WebApiCallProperties");
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OrganizationChanged += OnOrganizationChanged;
+        await LoadStoredKeyNamesAsync();
+    }
+
+    public void Dispose()
+    {
+        AppState.OrganizationChanged -= OnOrganizationChanged;
+    }
+
+    private void OnOrganizationChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadStoredKeyNamesAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadStoredKeyNamesAsync()
+    {
+        if (AppState.CurrentOrganizationId is not { } organizationId)
+        {
+            _storedKeyNames = [];
+            return;
+        }
+
+        ErrorOr<IReadOnlyList<StoredKeySummary>> result = await ServiceScopeFactory.SendScopedAsync(
+            new GetStoredKeysQuery(organizationId, AppState.User?.Id ?? string.Empty));
+
+        _storedKeyNames = result.IsError ? [] : [.. result.Value.Select(key => key.Name)];
+    }
+
+    // Re-sync only when a different Block object arrives (first render, or a re-upload
+    // that preserves block ids so @key keeps this component instance alive). Re-syncing
+    // on every render would clobber just-added empty header rows, which SyncPropertiesToBlock
+    // deliberately drops from the persisted dictionary.
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (ReferenceEquals(_syncedBlock, Block))
+        {
+            return;
+        }
+
+        _syncedBlock = Block;
+        _headers = _props.AdditionalHeaders?
+            .Select(kvp => new Header { Key = kvp.Key, Value = kvp.Value })
+            .ToList() ?? new List<Header>();
+    }
+
+    private async Task AddHeader()
+    {
+        _headers.Add(new Header { Key = "", Value = "" });
+        await SyncPropertiesToBlock();
+    }
+
+    private async Task RemoveHeader(int index)
+    {
+        if (index >= 0 && index < _headers.Count)
+        {
+            _headers.RemoveAt(index);
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private async Task UpdateHeaderKey(int index, string newKey)
+    {
+        if (index >= 0 && index < _headers.Count)
+        {
+            _headers[index].Key = newKey;
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private async Task UpdateHeaderValue(int index, string newValue)
+    {
+        if (index >= 0 && index < _headers.Count)
+        {
+            _headers[index].Value = newValue;
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private async Task InsertStoredKey(int index, string name)
+    {
+        if (index >= 0 && index < _headers.Count)
+        {
+            _headers[index].Value += StoredKeyPlaceholders.Token(name);
+            await SyncPropertiesToBlock();
+        }
+    }
+
+    private static bool IsTypedCredential(Header header)
+    {
+        return !string.IsNullOrWhiteSpace(header.Value)
+            && WebApiCallHostGate.CredentialHeaderNames.Contains(header.Key.Trim(), StringComparer.OrdinalIgnoreCase)
+            && !header.Value.GetPlaceholders().Any(placeholder => StoredKeyPlaceholders.KeyName(placeholder) is not null);
+    }
+
+    private async Task SyncPropertiesToBlock()
+    {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in _headers)
+        {
+            var trimmedKey = entry.Key?.Trim() ?? "";
+            if (string.IsNullOrEmpty(trimmedKey))
+            {
+                continue;
+            }
+
+            // Last entry with the same key wins (case-insensitive)
+            headers[trimmedKey] = entry.Value ?? "";
+        }
+
+        _props.AdditionalHeaders = headers;
+        Block.Properties = _props;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private class Header
+    {
+        public string Key { get; set; } = default!;
+        public string Value { get; set; } = default!;
+    }
+}

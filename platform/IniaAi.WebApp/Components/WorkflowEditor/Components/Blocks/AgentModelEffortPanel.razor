@@ -1,0 +1,139 @@
+@using IniaAi.Common.Enums
+@using IniaAi.Common.Extensions
+@using IniaAi.Configuration.Platform
+@using IniaAi.Core.Services.AgentRuntime
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.WebApp.Services
+
+@inject IOptions<AgentRuntimeSettings> AgentRuntimeSettingsOptions
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+@inject AppState AppState
+
+<div class="editor-eyebrow mb-2">Model &amp; effort</div>
+
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+        @{
+            AgentModelTiers tiers = CurrentTiers();
+            bool usesTier = AgentModelTiers.UsesTier(Props);
+            string tierModel = tiers.TierModelFor(Props.ShouldUseAdvancedModel);
+        }
+        <MudCheckBox Color="Color.Primary"
+                     Label="@($"{ADVANCED_MODEL_LABEL} ({DisplayModelName(tiers.AdvancedModel)})")"
+                     @bind-Value="@Props.ShouldUseAdvancedModel"
+                     Disabled="@(!usesTier)"
+                     data-testid="agent-advanced-model" />
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block" data-testid="agent-effective-model">
+            @EffectiveModelCaption(tiers)
+        </MudText>
+        @if (usesTier && AgentRuntimeModels.RuntimeIdFor(tiers.Runtime, tierModel) is null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error" Class="d-block" data-testid="agent-tier-model-not-allowed">
+                @($"{DisplayModelName(tierModel)} is not in this deployment's allowed models, so a save refuses this block. Select a specific model.")
+            </MudText>
+        }
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudSelect T="string"
+                   Label="Specific model"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   ShrinkLabel="true"
+                   Placeholder="@TIER_DECIDES_PLACEHOLDER"
+                   HelperText="@SpecificModelHelperText"
+                   ToStringFunc="@DisplayModelName"
+                   @bind-Value="@Props.Model">
+            @foreach (string model in _orderedAllowedModels)
+            {
+                <MudSelectItem Value="@model" @key="model">@DisplayModelName(model)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudSelect T="string"
+                   Label="Effort"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   ShrinkLabel="true"
+                   Placeholder="@AgentRunLimitHints.RUNTIME_DEFAULT"
+                   ToStringFunc="@DisplayEffortName"
+                   @bind-Value="@Props.Effort">
+            @foreach ((string value, string label) in _effortOptions)
+            {
+                <MudSelectItem Value="@value" @key="value">@label</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter, EditorRequired]
+    public IAgentRunProperties Props { get; set; } = default!;
+
+    [Parameter]
+    public string? ModelHelperText { get; set; }
+
+    private const string ADVANCED_MODEL_LABEL = "Advanced model";
+    private const string STANDARD_MODEL_LABEL = "Standard model";
+    private const string TIER_DECIDES_PLACEHOLDER = "None, the tier decides";
+    private const string OVERRIDES_TIER_HINT = "Overrides the tier when set.";
+
+    private string SpecificModelHelperText => string.IsNullOrWhiteSpace(ModelHelperText)
+        ? OVERRIDES_TIER_HINT
+        : $"{OVERRIDES_TIER_HINT} {ModelHelperText}";
+
+    private string EffectiveModelCaption(AgentModelTiers tiers)
+    {
+        if (!AgentModelTiers.UsesTier(Props))
+        {
+            return $"Runs {DisplayModelName(Props.Model)}, the specific model below, which overrides the tier.";
+        }
+
+        string standard = $"the {STANDARD_MODEL_LABEL.ToLowerInvariant()}, {DisplayModelName(tiers.BasicModel)}";
+        return Props.ShouldUseAdvancedModel
+            ? $"Runs the {ADVANCED_MODEL_LABEL.ToLowerInvariant()}, {DisplayModelName(tiers.AdvancedModel)}. Off runs {standard}."
+            : $"Runs {standard}.";
+    }
+
+    // Read per render: a SuperAdmin can switch organization without reloading the editor.
+    private AgentModelTiers CurrentTiers()
+    {
+        return AgentModelTiers.For(
+            AgentRuntimeSettingsOptions.Value,
+            PlatformSettingsOptions.Value.ModelRouting,
+            AppState.CurrentOrganizationId);
+    }
+
+    private static readonly List<(string Value, string Label)> _effortOptions = [..
+        Enum.GetValues<ModelEffort>()
+            .Select(static effort => (effort.GetEnumMember(), effort.GetDescription()))];
+
+    private List<string> _orderedAllowedModels = [];
+    private Dictionary<string, string> _modelDisplayNames = [];
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        _orderedAllowedModels = [.. AgentRuntimeModels.NeutralAllowedModels(AgentRuntimeSettingsOptions.Value)
+            .OrderBy(static id => AgentModelLabels.VisualOrder(id))];
+        _modelDisplayNames = _orderedAllowedModels.ToDictionary(
+            static id => id, static id => AgentModelLabels.Describe(id), StringComparer.Ordinal);
+    }
+
+    private string DisplayModelName(string? modelId)
+    {
+        return modelId is not null && _modelDisplayNames.TryGetValue(modelId, out string? name)
+            ? name
+            : AgentModelLabels.Describe(modelId);
+    }
+
+    private static string DisplayEffortName(string? effort)
+    {
+        return _effortOptions.FirstOrDefault(option => string.Equals(option.Value, effort, StringComparison.Ordinal)).Label
+            ?? effort
+            ?? string.Empty;
+    }
+}

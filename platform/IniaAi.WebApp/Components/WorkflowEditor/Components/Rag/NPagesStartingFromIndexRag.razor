@@ -1,0 +1,89 @@
+﻿@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="Page Number Adjustment Template"
+                        Variant="Variant.Outlined"
+                        Class="editor-mono-field"
+                        @bind-Value="RagSettings.PageAdjustmentInput" />
+    </MudItem>
+
+    @if(RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Page Number Adjustment After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.PageAdjustmentInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="Start Index Template"
+                      Variant="Variant.Outlined"
+                      Class="editor-mono-field"
+                      @bind-Value="RagSettings.StartIndexInput" />
+    </MudItem>
+
+    @if (RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Start Index After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.StartIndexInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="End Index Template"
+                      Variant="Variant.Outlined"
+                      Class="editor-mono-field"
+                      @bind-Value="RagSettings.EndIndexInput" />
+    </MudItem>
+
+    @if (RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="End Index After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.EndIndexInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+<MudGrid Spacing="2" Class="editor-twin-grid">
+    <MudItem xs="12" md="6">
+        <MudTextField Label="Number Of Pages To Use Template"
+                      Variant="Variant.Outlined"
+                      Class="editor-mono-field"
+                      @bind-Value="RagSettings.NumberOfPagesInput" />
+    </MudItem>
+
+    @if (RagSettings.ExecutionState is not null)
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Number Of Pages To Use After Execution"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field editor-resolved"
+                          ReadOnly="true"
+                          Value="@RagSettings.ExecutionState.NumberOfPagesInput" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+}

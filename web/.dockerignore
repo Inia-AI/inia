@@ -1,0 +1,13 @@
+.env
+.env.*
+**/node_modules/
+.git
+.claude
+dist
+coverage
+docs
+*.md
+.github
+.husky
+.vscode
+Dockerfile

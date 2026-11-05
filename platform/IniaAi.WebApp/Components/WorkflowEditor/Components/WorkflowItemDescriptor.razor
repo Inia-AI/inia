@@ -1,0 +1,650 @@
+﻿@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@inject ILogger<WorkflowItemDescriptor> Logger
+@inject AppState AppState
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime
+
+<MudCard Outlined="true"
+         Elevation="0"
+         id="@(Section.Id)"
+         Class="@($"pa-5{(Section.HasOutputBlocks ? " editor-output-source" : "")}{LibraryAccent.ClassSuffix(LinkIndex, Section)}{SurfaceState?.AgentMarkClass(Section)}")">
+    @if (SurfaceState?.AgentMarkLabel(Section) is { } agentMark)
+    {
+        <span class="editor-agent-changed-label">@agentMark</span>
+    }
+    <SectionActionsMenu Section="@Section"
+                        OnOpenLibrarySync="@(() => OpenLibrarySyncCallback.InvokeAsync())"
+                        OnTitleChanged="@InternalStateHasChangedCallback"
+                        OnShowBlocks="@(() => ShowBlocksCallback.InvokeAsync(Section.Id))"
+                        OnRun="ExecuteSection"
+                        OnDuplicate="DuplicateSection"
+                        OnMove="MoveSection"
+                        OnCopyToWorkflow="CopySectionToCoreWorkflow"
+                        OnCopyAsText="CopySection"
+                        OnToggleCitations="@(() => ToggleCitationsCallback.InvokeAsync(Section))"
+                        OnParameterizedConfig="OpenParameterizedConfigDialog"
+                        HasParameterizedConfig="_hasParameterizedConfig"
+                        ParameterizedVariantCount="_parameterizedVariantCount"
+                        OnRemove="RemoveSection"
+                        OnOpenLayout="@(() => { _layoutDialogOpen = true; })"
+                        OnShareToLibrary="ShareSectionToLibrary" />
+
+    <MudDialog @bind-Visible="_layoutDialogOpen"
+               Options="@(new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true })">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Layout in report</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string"
+                              Label="Layout Mode"
+                              @bind-Value="_layoutMode"
+                              @bind-Value:after="SaveGridConfiguration"
+                              Variant="Variant.Outlined"
+                              HelperText="How blocks in this section are arranged in the report">
+                        <MudSelectItem Value="@("sequential")">Sequential (Default)</MudSelectItem>
+                        <MudSelectItem Value="@("grid")">Grid Layout</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                @if (_layoutMode == "grid")
+                {
+                    <MudItem xs="12" md="4">
+                        <MudNumericField T="int"
+                                         Label="Grid Columns"
+                                         @bind-Value="_gridColumns"
+                                         @bind-Value:after="SaveGridConfiguration"
+                                         Min="2"
+                                         Max="12"
+                                         Variant="Variant.Outlined"
+                                         HelperText="Number of columns (2-12)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudButton Color="Color.Primary"
+                                  Class="editor-soft-button"
+                                  Variant="Variant.Text"
+                                  StartIcon="@Icons.Material.Outlined.Dashboard"
+                                  OnClick="OpenGridEditor"
+                                  Disabled="@(!Section.HasOutputBlocks)">
+                            Configure Block Positions
+                        </MudButton>
+                    </MudItem>
+
+                    @if (_gridConfig is not null && _gridConfig.Any())
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption">Grid Configuration Preview:</MudText>
+                            <MudSimpleTable Dense="true" Hover="true" Bordered="true" Class="mt-2">
+                                <thead>
+                                    <tr>
+                                        <th>Block</th>
+                                        <th>Row</th>
+                                        <th>Column</th>
+                                        <th>Row Span</th>
+                                        <th>Column Span</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var config in _gridConfig)
+                                    {
+                                        var block = Section.Blocks.FirstOrDefault(b => b.Order == config.BlockOrder);
+                                        <tr>
+                                            <td>@(block?.Name ?? "Unknown")</td>
+                                            <td>@config.Row</td>
+                                            <td>@config.Column</td>
+                                            <td>@config.RowSpan</td>
+                                            <td>@config.ColumnSpan</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </MudSimpleTable>
+                        </MudItem>
+                    }
+                }
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton Class="editor-soft-button"
+                       Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       OnClick="@(() => _layoutDialogOpen = false)">
+                Close
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    @* Section Progress Tracking *@
+    @if (Section.Blocks.Any() == true)
+    {
+        var progressInfo = GetSectionProgressInfo();
+        bool hasExecutionActivity = progressInfo.CompletedBlocks + progressInfo.RunningBlocks
+            + progressInfo.FailedBlocks + progressInfo.SkippedBlocks > 0;
+
+        @if (hasExecutionActivity)
+        {
+        <MudStack Spacing="1" Class="mt-2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                    @progressInfo.CompletedBlocks/@progressInfo.TotalBlocks blocks@(progressInfo.RunningBlocks > 0 ? $" · {progressInfo.RunningBlocks} running" : "")@(progressInfo.FailedBlocks > 0 ? $" · {progressInfo.FailedBlocks} failed" : "")@(progressInfo.RetriedBlocks > 0 ? $" · {progressInfo.RetriedBlocks} retried" : "")@(progressInfo.SkippedBlocks > 0 ? $" · {progressInfo.SkippedBlocks} skipped" : "")
+                </MudText>
+
+                @if (progressInfo.TotalExecutionTime.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                        @DurationFormatter.Format(progressInfo.TotalExecutionTime.Value)
+                    </MudText>
+                }
+            </MudStack>
+
+            <MudProgressLinear Color="@GetProgressColor(progressInfo)"
+                               Value="@progressInfo.ProgressPercentage"
+                               Striped="@(progressInfo.RunningBlocks > 0)" />
+        </MudStack>
+        }
+    }
+</MudCard>
+
+@code {
+    [CascadingParameter(Name = "LibraryLinkIndex")]
+    public LibraryLinkIndex? LinkIndex { get; set; }
+
+    [CascadingParameter]
+    public EditorSurfaceState? SurfaceState { get; set; }
+
+    private User _user = default!;
+    private string _layoutMode = "sequential";
+    private int _gridColumns = 2;
+    private List<GridBlockConfig>? _gridConfig;
+    private bool _hasParameterizedConfig;
+    private int _parameterizedVariantCount;
+    private bool _layoutDialogOpen;
+
+    public class GridBlockConfig
+    {
+        public int BlockOrder { get; set; } = 1; // Use block order instead of ID
+        public int Row { get; set; } = 1;
+        public int Column { get; set; } = 1;
+        public int RowSpan { get; set; } = 1;
+        public int ColumnSpan { get; set; } = 1;
+    }
+
+    [Parameter, EditorRequired]
+    public Section Section { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> ExecuteSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> RemoveSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> DuplicateSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<string> ShowBlocksCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> MoveSectionCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> CopySectionToCoreWorkflowCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<Section> ToggleCitationsCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OpenLibrarySyncCallback { get; set; }
+
+    [Parameter]
+    public EventCallback InternalStateHasChangedCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<int> CopySectionAsTextCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ShareSectionToLibraryCallback { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User, nameof(AppState.User));
+
+        _user = AppState.User;
+        UpdateParameterizedConfigState();
+    }
+
+    private void UpdateParameterizedConfigState()
+    {
+        _hasParameterizedConfig = !string.IsNullOrWhiteSpace(Section.ParameterizedConfig);
+        if (_hasParameterizedConfig)
+        {
+            try
+            {
+                var config = Newtonsoft.Json.JsonConvert.DeserializeObject<ParameterizedSectionConfig>(
+                    Section.ParameterizedConfig!);
+                _parameterizedVariantCount = config?.Variants.Count ?? 0;
+            }
+            catch
+            {
+                _parameterizedVariantCount = 0;
+            }
+        }
+        else
+        {
+            _parameterizedVariantCount = 0;
+        }
+    }
+
+    private async Task OpenParameterizedConfigDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Section"] = Section,
+            ["AvailableDocumentClasses"] = (List<string>)["Any", "None", .. Section.Workflow.GetDocumentClasses()]
+        };
+
+        var dialog = await DialogService.ShowAsync<ParameterizedSectionConfigDialog>(
+            "Parameterized Section Config",
+            parameters,
+            new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true
+            });
+
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            Section.ParameterizedConfig = result.Data as string;
+            UpdateParameterizedConfigState();
+            await InternalStateHasChangedCallback.InvokeAsync();
+        }
+    }
+
+    private async Task ExecuteSection()
+    {
+        int index = Section.Order;
+
+        await ExecuteSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task MoveSection()
+    {
+        int index = Section.Order;
+
+        await MoveSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task RemoveSection()
+    {
+        int index = Section.Order;
+
+        await RemoveSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task DuplicateSection()
+    {
+        int index = Section.Order;
+
+        await DuplicateSectionCallback.InvokeAsync(index);
+    }
+
+    private async Task CopySectionToCoreWorkflow()
+    {
+        int index = Section.Order;
+
+        await CopySectionToCoreWorkflowCallback.InvokeAsync(index);
+    }
+
+    private async Task CopySection()
+    {
+        int index = Section.Order;
+
+        await CopySectionAsTextCallback.InvokeAsync(index);
+    }
+
+    private async Task ShareSectionToLibrary()
+    {
+        int index = Section.Order;
+
+        await ShareSectionToLibraryCallback.InvokeAsync(index);
+    }
+
+    #region Section Progress Tracking
+
+    public class SectionProgressInfo
+    {
+        public int TotalBlocks { get; set; }
+        public int CompletedBlocks { get; set; }
+        public int RunningBlocks { get; set; }
+        public int FailedBlocks { get; set; }
+        public int SkippedBlocks { get; set; }
+        public int NotExecutedBlocks { get; set; }
+        public int RetriedBlocks { get; set; }
+        public double ProgressPercentage => TotalBlocks > 0 ? (double)(CompletedBlocks + SkippedBlocks) / TotalBlocks * 100 : 0;
+        public TimeSpan? TotalExecutionTime { get; set; }
+    }
+
+    private SectionProgressInfo GetSectionProgressInfo()
+    {
+        if (Section?.Blocks is null || !Section.Blocks.Any())
+        {
+            return new SectionProgressInfo();
+        }
+
+        var info = new SectionProgressInfo
+        {
+            TotalBlocks = Section.Blocks.Count
+        };
+
+        var totalExecutionTime = TimeSpan.Zero;
+        bool hasExecutionTime = false;
+
+        foreach (var block in Section.Blocks)
+        {
+            var status = block.ExecutionState?.Status ?? ExecutionStatus.NotExecuted;
+
+            switch (status)
+            {
+                case ExecutionStatus.Completed:
+                    info.CompletedBlocks++;
+                    break;
+                case ExecutionStatus.Running:
+                    info.RunningBlocks++;
+                    break;
+                case ExecutionStatus.Failed:
+                    info.FailedBlocks++;
+                    break;
+                case ExecutionStatus.Skipped:
+                    info.SkippedBlocks++;
+                    break;
+                case ExecutionStatus.NotExecuted:
+                    info.NotExecutedBlocks++;
+                    break;
+            }
+
+            // Block recovered after one validator-rejected attempt, surface alongside
+            // failed blocks so the user notices near-misses. Gate on Completed so stale
+            // OutputFormatAttemptCount on a not-yet-run block doesn't trigger the chip.
+            if (status == ExecutionStatus.Completed
+                && block.Properties is AiQueryProperties aiProps
+                && aiProps.OutputFormatAttemptCount > 1
+                && aiProps.OutputFormatLastError is not null)
+            {
+                info.RetriedBlocks++;
+            }
+
+            // Accumulate execution time for completed and failed blocks
+            if (block.ExecutionState?.ExecutionDuration.HasValue == true)
+            {
+                totalExecutionTime += block.ExecutionState.ExecutionDuration.Value;
+                hasExecutionTime = true;
+            }
+        }
+
+        info.TotalExecutionTime = hasExecutionTime ? totalExecutionTime : null;
+        return info;
+    }
+
+    private Color GetProgressColor(SectionProgressInfo progressInfo)
+    {
+        ExecutionStatus aggregate = ExecutionStatusVisuals.Aggregate(
+            progressInfo.TotalBlocks,
+            progressInfo.RunningBlocks,
+            progressInfo.CompletedBlocks,
+            progressInfo.FailedBlocks,
+            progressInfo.SkippedBlocks);
+
+        return ExecutionStatusVisuals.Color(aggregate);
+    }
+
+    #endregion
+
+    #region Grid Layout Methods
+
+    private async Task OpenGridEditor()
+    {
+        var outputBlocks = Section?.Blocks?.Where(b => b.IsOutputSource).ToList();
+        if (outputBlocks is null || !outputBlocks.Any())
+        {
+            return;
+        }
+
+        // Ensure _gridConfig is properly initialized (should already be done in OnParametersSetAsync)
+        _gridConfig ??= new List<GridBlockConfig>();
+
+        // Open grid editor dialog
+        var parameters = new DialogParameters
+        {
+            ["GridConfig"] = _gridConfig,
+            ["GridColumns"] = _gridColumns,
+            ["Blocks"] = outputBlocks
+        };
+
+        var dialog = await DialogService.ShowAsync<GridLayoutEditorDialog>(
+            "Configure Grid Layout",
+            parameters,
+            new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true
+            });
+
+        var result = await dialog.Result;
+        if (result is not null
+            && !result.Canceled
+            && result.Data is List<GridBlockConfig> newConfig)
+        {
+            _gridConfig = newConfig;
+            await SaveGridConfiguration();
+        }
+    }
+
+    private async Task SaveGridConfiguration()
+    {
+        // Initialize Configuration if null
+        Section.Configuration ??= new IniaAi.Domain.Entities.Workflows.SectionConfiguration();
+
+        // Initialize GridLayout if null
+        Section.Configuration.GridLayout ??= new IniaAi.Domain.Entities.Workflows.GridLayoutSettings();
+
+        // Update the grid layout settings
+        Section.Configuration.GridLayout.Mode = _layoutMode;
+        Section.Configuration.GridLayout.Columns = _gridColumns;
+
+        // Update elements list with proper type conversion
+        if (_gridConfig is not null && _gridConfig.Count > 0)
+        {
+            Section.Configuration.GridLayout.Elements = _gridConfig
+                .Select(gc => new IniaAi.Domain.Entities.WorkflowExecutions.GridElementPosition
+                {
+                    BlockOrder = gc.BlockOrder,
+                    Row = gc.Row,
+                    Column = gc.Column,
+                    RowSpan = gc.RowSpan,
+                    ColumnSpan = gc.ColumnSpan
+                })
+                .ToList();
+        }
+        else
+        {
+            Section.Configuration.GridLayout.Elements = new List<IniaAi.Domain.Entities.WorkflowExecutions.GridElementPosition>();
+        }
+
+        await InternalStateHasChangedCallback.InvokeAsync();
+    }
+
+    private Section? _syncedSection;
+    private int _syncedGridFingerprint;
+
+    /// <summary>
+    /// Covers every input the grid sync below reads: layout mode/columns, each element
+    /// position, and the output-block set. One descriptor renders per section in the
+    /// list view on every editor render — without this guard each render re-ran the
+    /// full LINQ/auto-placement rebuild.
+    /// </summary>
+    private int ComputeGridSyncFingerprint()
+    {
+        var hash = new HashCode();
+        var gridLayout = Section?.Configuration?.GridLayout;
+
+        hash.Add(gridLayout?.Mode);
+        hash.Add(gridLayout?.Columns ?? 0);
+
+        if (gridLayout?.Elements is not null)
+        {
+            foreach (var element in gridLayout.Elements)
+            {
+                hash.Add(element.BlockOrder);
+                hash.Add(element.Row);
+                hash.Add(element.Column);
+                hash.Add(element.RowSpan);
+                hash.Add(element.ColumnSpan);
+            }
+        }
+
+        if (Section?.Blocks is not null)
+        {
+            foreach (var block in Section.Blocks)
+            {
+                if (block.IsOutputSource)
+                {
+                    hash.Add(block.Order);
+                }
+            }
+        }
+
+        return hash.ToHashCode();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        int fingerprint = ComputeGridSyncFingerprint();
+        if (ReferenceEquals(_syncedSection, Section) && fingerprint == _syncedGridFingerprint)
+        {
+            return;
+        }
+
+        _syncedSection = Section;
+        _syncedGridFingerprint = fingerprint;
+
+        // Load grid configuration from Section.Configuration.GridLayout
+        if (Section?.Configuration?.GridLayout is not null)
+        {
+            _layoutMode = Section.Configuration.GridLayout.Mode ?? "sequential";
+            _gridColumns = Section.Configuration.GridLayout.Columns;
+
+            // Convert GridElementPosition to local GridBlockConfig
+            if (Section.Configuration.GridLayout.Elements is not null && Section.Configuration.GridLayout.Elements.Count > 0)
+            {
+                _gridConfig = Section.Configuration.GridLayout.Elements
+                    .Select(e => new GridBlockConfig
+                    {
+                        BlockOrder = e.BlockOrder,
+                        Row = e.Row,
+                        Column = e.Column,
+                        RowSpan = e.RowSpan,
+                        ColumnSpan = e.ColumnSpan
+                    })
+                    .ToList();
+            }
+            else
+            {
+                _gridConfig = new List<GridBlockConfig>();
+            }
+
+            // Always synchronize grid config with current output blocks
+            var outputBlocks = Section?.Blocks?.Where(b => b.IsOutputSource).ToList();
+            if (outputBlocks is not null && outputBlocks.Any())
+            {
+                var outputBlockOrders = new HashSet<int>(outputBlocks.Select(b => b.Order));
+
+                // Remove grid configs for blocks that are no longer output sources
+                _gridConfig = _gridConfig.Where(gc => outputBlockOrders.Contains(gc.BlockOrder)).ToList();
+
+                // Add grid configs for new output blocks
+                var existingBlockOrders = new HashSet<int>(_gridConfig.Select(gc => gc.BlockOrder));
+                var newBlocks = outputBlocks.Where(b => !existingBlockOrders.Contains(b.Order)).ToList();
+
+                if (newBlocks.Any())
+                {
+                    // Find the next available position
+                    int maxRow = _gridConfig.Count > 0 ? _gridConfig.Max(gc => gc.Row + gc.RowSpan - 1) : 0;
+                    int row = maxRow + 1;
+                    int col = 1;
+
+                    foreach (var block in newBlocks.OrderBy(b => b.Order))
+                    {
+                        _gridConfig.Add(new GridBlockConfig
+                        {
+                            BlockOrder = block.Order,
+                            Row = row,
+                            Column = col,
+                            RowSpan = 1,
+                            ColumnSpan = 1
+                        });
+
+                        col++;
+                        if (col > _gridColumns)
+                        {
+                            col = 1;
+                            row++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // No output blocks, clear grid config
+                _gridConfig = new List<GridBlockConfig>();
+            }
+        }
+        else
+        {
+            // Default values if no configuration exists
+            _layoutMode = "sequential";
+            _gridColumns = 2;
+            _gridConfig = new List<GridBlockConfig>();
+
+            // Auto-initialize grid config for output blocks if they exist
+            var outputBlocks = Section?.Blocks?.Where(b => b.IsOutputSource).ToList();
+            if (outputBlocks is not null && outputBlocks.Any())
+            {
+                int row = 1;
+                int col = 1;
+                foreach (var block in outputBlocks.OrderBy(b => b.Order))
+                {
+                    _gridConfig.Add(new GridBlockConfig
+                    {
+                        BlockOrder = block.Order,
+                        Row = row,
+                        Column = col,
+                        RowSpan = 1,
+                        ColumnSpan = 1
+                    });
+
+                    col++;
+                    if (col > _gridColumns)
+                    {
+                        col = 1;
+                        row++;
+                    }
+                }
+            }
+        }
+    }
+
+    #endregion
+}

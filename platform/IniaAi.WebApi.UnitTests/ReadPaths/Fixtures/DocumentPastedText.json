@@ -1,0 +1,18 @@
+{
+  "id": "document-read",
+  "name": "Q3 notes",
+  "mediaType": "TextMarkdown",
+  "sizeBytes": 19,
+  "extension": ".md",
+  "userId": "user-read",
+  "documentCategoryId": null,
+  "workflowTypeId": null,
+  "class": null,
+  "wasPasswordProtected": false,
+  "processingState": "Queued",
+  "processingRequestedAt": "2026-09-07T08:00:00Z",
+  "processedAt": null,
+  "processingError": null,
+  "createdAt": "2026-09-07T08:00:00Z",
+  "updatedAt": "2026-09-07T08:00:00Z"
+}

@@ -1,0 +1,9 @@
+﻿@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+@code {
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+}

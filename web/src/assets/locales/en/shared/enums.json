@@ -1,0 +1,198 @@
+{
+  "indicatorType": {
+    "BalanceOfPayments": "Balance Of Payments",
+    "NetLendingBorrowing": "Net Lending/Borrowing",
+    "Revenue": "Revenue",
+    "Expenditure": "Expenditure",
+    "Debt": "Debt",
+    "StructuralBalance": "Structural Balance",
+    "MonetaryAndFinancialIndicators": "Monetary and Financial Indicators",
+    "EconomicOutput": "GDP Levels",
+    "EconomicOutputPerCapita": "GDP per Capita",
+    "EconomicGrowthRates": "GDP Growth Rates",
+    "EconomicInvestment": "Investment",
+    "TradeImports": "Imports",
+    "TradeExports": "Exports",
+    "LaborMarket": "Labor and Demographics",
+    "PricesAndInflation": "Prices and Inflation",
+    "ConsumerPrices": "Consumer Prices",
+    "InflationRates": "Inflation Rates"
+  },
+  "countryAlpha2Code": {
+    "200": "Emerging Markets",
+    "603": "Sub-Saharan Africa",
+    "DZ": "Algeria",
+    "AO": "Angola",
+    "BJ": "Benin",
+    "BW": "Botswana",
+    "BF": "Burkina Faso",
+    "BI": "Burundi",
+    "CV": "Cabo Verde",
+    "CM": "Cameroon",
+    "CF": "Central African Republic",
+    "TD": "Chad",
+    "KM": "Comoros",
+    "CD": "Congo, the Democratic Republic of the",
+    "CG": "Congo",
+    "CI": "Cote d'Ivoire",
+    "DJ": "Djibouti",
+    "EG": "Egypt",
+    "GQ": "Equatorial Guinea",
+    "ER": "Eritrea",
+    "SZ": "Eswatini",
+    "ET": "Ethiopia",
+    "GA": "Gabon",
+    "GM": "Gambia",
+    "GH": "Ghana",
+    "GN": "Guinea",
+    "GW": "Guinea-Bissau",
+    "KE": "Kenya",
+    "LS": "Lesotho",
+    "LR": "Liberia",
+    "LY": "Libya",
+    "MG": "Madagascar",
+    "MW": "Malawi",
+    "ML": "Mali",
+    "MR": "Mauritania",
+    "MU": "Mauritius",
+    "MA": "Morocco",
+    "MZ": "Mozambique",
+    "NA": "Namibia",
+    "NE": "Niger",
+    "NG": "Nigeria",
+    "RW": "Rwanda",
+    "ST": "Sao Tome and Principe",
+    "SN": "Senegal",
+    "SC": "Seychelles",
+    "SL": "Sierra Leone",
+    "SO": "Somalia",
+    "ZA": "South Africa",
+    "SS": "South Sudan",
+    "SD": "Sudan",
+    "TZ": "Tanzania, United Republic of",
+    "TG": "Togo",
+    "TN": "Tunisia",
+    "UG": "Uganda",
+    "ZM": "Zambia",
+    "ZW": "Zimbabwe"
+  },
+  "source": "Source: World Economic Outlook (April 2025)",
+  "indicator": {
+    "BalanceOfPayments": {
+      "BCA_NGDPD": "Current Account Balance, % of GDP",
+      "BCA": "Current Account Balance, USD Billions"
+    },
+    "NetLendingBorrowing": {
+      "GGXONLB": "General government primary net lending/borrowing",
+      "GGXONLB_NGDP": "General government primary net lending/borrowing, % of GDP",
+      "GGXCNL": "General government net lending/borrowing",
+      "GGXCNL_NGDP": "General government net lending/borrowing, % of GDP"
+    },
+    "Revenue": {
+      "GGR": "General government revenue",
+      "GGR_NGDP": "General government revenue, % of GDP"
+    },
+    "Expenditure": {
+      "GGX": "General government total expenditure",
+      "GGX_NGDP": "General government total expenditure, % of GDP"
+    },
+    "Debt": {
+      "GGXWDG": "General government gross debt",
+      "GGXWDG_NGDP": "General government gross debt, % of GDP",
+      "GGXWDN": "General government net debt",
+      "GGXWDN_NGDP": "General government net debt, % of GDP"
+    },
+    "StructuralBalance": {
+      "GGSB": "General government structural balance",
+      "GGSB_NPGDP": "General government structural balance, % of GDP"
+    },
+    "MonetaryAndFinancialIndicators": {
+      "NGSD_NGDP": "Gross national savings",
+      "PPPEX": "Implied PPP (Purchasing Power Parity) conversion rate",
+      "NGDPDPC": "GDP per capita at current prices (USD)"
+    },
+    "EconomicOutput": {
+      "PPPSH": "GDP based on PPP share of world total",
+      "PPPPC": "GDP per capita at current prices (PPP)",
+      "NGDP_RPCH": "GDP at constant prices, % change",
+      "NGDPRPC": "GDP per capita at constant prices",
+      "NGDP_FY": "GDP corresponding to fiscal year, current prices"
+    },
+    "EconomicOutputPerCapita": {
+      "NGDPPC": "GDP per capita at current prices",
+      "NGDP": "GDP at current prices",
+      "PPPGDP": "GDP at current prices (PPP)",
+      "NGDP_D": "GDP deflator",
+      "NGDP_R": "GDP at constant prices"
+    },
+    "EconomicGrowthRates": {
+      "NGDPD": "GDP at current prices (USD)",
+      "NGAP_NPGDP": "Output gap in percent of potential GDP"
+    },
+    "EconomicInvestment": {
+      "NID_NGDP": "Total investment, % of GDP"
+    },
+    "TradeImports": {
+      "TM_RPCH": "Volume of imports of goods and services",
+      "TMG_RPCH": "Volume of imports of goods"
+    },
+    "TradeExports": {
+      "TX_RPCH": "Volume of exports of goods and services",
+      "TXG_RPCH": "Volume of exports of goods"
+    },
+    "LaborMarket": {
+      "LUR": "Unemployment rate",
+      "LE": "Employment",
+      "LP": "Population, millions"
+    },
+    "PricesAndInflation": {
+      "NGDPRPPPPC": "GDP per capita, constant prices (PPP)"
+    },
+    "ConsumerPrices": {
+      "PCPIPCH": "Inflation, average consumer prices, % change",
+      "PCPI": "Inflation, average consumer prices"
+    },
+    "InflationRates": {
+      "PCPIEPCH": "Inflation, end of period consumer prices, % change",
+      "PCPIE": "Inflation, end of period consumer prices"
+    }
+  },
+  "frequency": {
+    "A": "Annual",
+    "M": "Monthly",
+    "Q": "Quarterly"
+  },
+  "chartType": {
+    "line": "Line Chart",
+    "bar": "Horizontal Bar Chart",
+    "column": "Vertical Bar Chart"
+  },
+  "workflowState": {
+    "Undefined": "Undefined",
+    "Running": "Processing",
+    "Draft": "Ready to review",
+    "ProcessingDocuments": "Processing documents",
+    "Confirmed": "Processed",
+    "Failed": "Failed",
+    "Queued": "Queued",
+    "Cancelled": "Cancelled"
+  },
+  "workflowStateTooltip": {
+    "Queued": "Waiting for a worker to pick this up.",
+    "ProcessingDocuments": "Reading and parsing the source documents.",
+    "Running": "Generating the report.",
+    "Draft": "Output is ready for your review.",
+    "Confirmed": "Marked as final by a reviewer.",
+    "Failed": "The run errored out — open the report for details.",
+    "Cancelled": "Stopped manually before it could finish."
+  },
+  "dayOfWeek": {
+    "Monday": "Monday",
+    "Tuesday": "Tuesday",
+    "Wednesday": "Wednesday",
+    "Thursday": "Thursday",
+    "Friday": "Friday",
+    "Saturday": "Saturday",
+    "Sunday": "Sunday"
+  }
+}

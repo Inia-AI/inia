@@ -1,0 +1,166 @@
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Core.Workflows.Diff
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+
+@inject IDialogService DialogService
+
+@if (Diff.IsEmpty)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+        No differences from the previous version.
+    </MudText>
+}
+else
+{
+    @if (Diff.Sections.Count > 0)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">Sections</MudText>
+        @foreach (SectionDiff section in Diff.Sections)
+        {
+            <div class="py-1">
+                <div class="d-flex align-center flex-wrap" style="gap: 8px;">
+                    @ChangeKindChip(section.ChangeKind)
+                    <MudText Typo="Typo.body2">@SectionName(section)</MudText>
+                </div>
+                @if (section.FieldDiffs.Count > 0)
+                {
+                    <div class="d-flex flex-wrap ps-4 py-1" style="gap: 6px;">
+                        @foreach (FieldDiff field in section.FieldDiffs)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Info"
+                                       StartIcon="@Icons.Material.Outlined.Difference"
+                                       OnClick="() => ShowFieldDiffAsync(SectionName(section), field)">
+                                @FieldLabel(field.FieldName)
+                            </MudButton>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+
+    @if (Diff.Blocks.Count > 0)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">Blocks</MudText>
+        @foreach (BlockDiff block in Diff.Blocks)
+        {
+            <div class="py-1">
+                <div class="d-flex align-center flex-wrap" style="gap: 8px;">
+                    @ChangeKindChip(block.ChangeKind)
+                    <MudText Typo="Typo.body2">@block.DisplayName</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-disabled">@block.BlockType</MudText>
+                </div>
+                @if (block.FieldDiffs.Count > 0)
+                {
+                    <div class="d-flex flex-wrap ps-4 py-1" style="gap: 6px;">
+                        @foreach (FieldDiff field in block.FieldDiffs)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Info"
+                                       StartIcon="@Icons.Material.Outlined.Difference"
+                                       OnClick="() => ShowFieldDiffAsync(block.DisplayName, field)">
+                                @FieldLabel(field.FieldName)
+                            </MudButton>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+
+    @if (Diff.Variables.Count > 0)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">Input variables</MudText>
+        @foreach (VariableDiff variable in Diff.Variables)
+        {
+            <div class="d-flex align-center flex-wrap py-1" style="gap: 8px;">
+                @ChangeKindChip(variable.ChangeKind)
+                <MudText Typo="Typo.body2">@variable.DisplayName</MudText>
+            </div>
+        }
+    }
+
+    @if (Diff.DocumentClasses.Count > 0)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">Document types</MudText>
+        @foreach (DocumentClassDiff documentClass in Diff.DocumentClasses)
+        {
+            <div class="d-flex align-center flex-wrap py-1" style="gap: 8px;">
+                @ChangeKindChip(documentClass.ChangeKind)
+                <MudText Typo="Typo.body2">@documentClass.DisplayName</MudText>
+            </div>
+        }
+    }
+
+    @if (Diff.WorkflowFields.Count > 0)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">Workflow settings</MudText>
+        <div class="d-flex flex-wrap py-1" style="gap: 6px;">
+            @foreach (FieldDiff field in Diff.WorkflowFields)
+            {
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Outlined"
+                           Color="Color.Info"
+                           StartIcon="@Icons.Material.Outlined.Difference"
+                           OnClick="() => ShowFieldDiffAsync(WORKFLOW_SETTINGS_OWNER, field)">
+                    @FieldLabel(field.FieldName)
+                </MudButton>
+            }
+        </div>
+    }
+}
+
+@code {
+    private const string WORKFLOW_SETTINGS_OWNER = "Workflow settings";
+    private const string UNTITLED_SECTION = "(untitled section)";
+
+    [Parameter, EditorRequired]
+    public WorkflowDiff Diff { get; set; } = default!;
+
+    private static RenderFragment ChangeKindChip(DiffChangeKind kind)
+    {
+        (Color color, string label) = kind switch
+        {
+            DiffChangeKind.Added => (Color.Success, "Added"),
+            DiffChangeKind.Removed => (Color.Error, "Removed"),
+            DiffChangeKind.TypeChanged => (Color.Warning, "Type changed"),
+            _ => (Color.Info, "Changed"),
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Color="@color" Variant="Variant.Text" Class="ma-0">@label</MudChip>;
+    }
+
+    private static string SectionName(SectionDiff section)
+    {
+        return string.IsNullOrWhiteSpace(section.Name) ? UNTITLED_SECTION : section.Name;
+    }
+
+    private static string FieldLabel(string fieldName)
+    {
+        return WorkflowFieldLabels.Label(fieldName);
+    }
+
+    private async Task ShowFieldDiffAsync(string owner, FieldDiff field)
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(FieldBeforeAfterDialog.FieldLabel)] = $"{owner}: {FieldLabel(field.FieldName)}",
+            [nameof(FieldBeforeAfterDialog.Before)] = field.Before,
+            [nameof(FieldBeforeAfterDialog.After)] = field.After,
+            [nameof(FieldBeforeAfterDialog.ByLine)] = field.FieldName == SharedComponentDefinitionDiffer.BLOCK_ORDER_FIELD,
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true,
+        };
+
+        _ = await DialogService.ShowAsync<FieldBeforeAfterDialog>("What changed", parameters, options);
+    }
+}

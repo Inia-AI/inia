@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="bunit" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Moq" />
+        <PackageReference Include="xunit.v3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Samples.WordCount\IniaAi.Samples.WordCount.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.DependencyInjection\IniaAi.Testing.DependencyInjection.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.Documents\IniaAi.Testing.Documents.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing\IniaAi.Testing.csproj" />
+        <ProjectReference Include="..\IniaAi.WebApp\IniaAi.WebApp.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="TestResources\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="..\IniaAi.Services.Tests\TestResources\Message with CSVs.eml" Link="TestResources\Message with CSVs.eml">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>

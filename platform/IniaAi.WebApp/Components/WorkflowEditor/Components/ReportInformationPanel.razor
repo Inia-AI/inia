@@ -1,0 +1,88 @@
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApp.Models
+
+<MudCard Outlined="true">
+    <MudCardHeader>
+        @if (!string.IsNullOrWhiteSpace(AlertText))
+        {
+            <MudAlert Severity="Severity.Error">
+                @AlertText
+            </MudAlert>
+        }
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudGrid Spacing="2">
+            @if (EditorContext.Workflow.Variables.Count == 0)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info">
+                        This workflow has no variables. Add them on the Variables tab of the editor below.
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Class="ml-2"
+                                   EndIcon="@Icons.Material.Outlined.ArrowDownward"
+                                   OnClick="EditorContext.RequestVariablesTab">
+                            Open the Variables tab
+                        </MudButton>
+                    </MudAlert>
+                </MudItem>
+            }
+            else
+            {
+                @foreach (var variable in EditorContext.Workflow.Variables.Where(v => !v.IsHidden).OrderBy(v => v.DisplayName))
+                {
+                    <MudItem @key="variable"
+                             xs="12"
+                             sm="@(IsWide(variable) ? 12 : 6)"
+                             md="@(IsWide(variable) ? 6 : 3)">
+                        <WorkflowVariableField Variable="variable"
+                                               Value="@GetValue(variable.ReplacementTag)"
+                                               ValueChanged="@(value => SetValue(variable.ReplacementTag, value))" />
+                    </MudItem>
+                }
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    [Parameter]
+    public string? AlertText { get; set; }
+
+    public void VariablesChanged()
+    {
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        foreach (var variable in EditorContext.Workflow.Variables)
+        {
+            if (!EditorContext.VariableValues.ContainsKey(variable.ReplacementTag) &&
+                !string.IsNullOrEmpty(variable.DefaultValue))
+            {
+                EditorContext.VariableValues[variable.ReplacementTag] = variable.DefaultValue;
+            }
+        }
+
+        base.OnInitialized();
+    }
+
+    private static bool IsWide(WorkflowVariable variable) =>
+        variable.Type is WorkflowVariableTypes.List or WorkflowVariableTypes.MultiSelect;
+
+    private string GetValue(string tag) =>
+        EditorContext.VariableValues.TryGetValue(tag, out var value) ? value : string.Empty;
+
+    private void SetValue(string tag, string value)
+    {
+        EditorContext.VariableValues[tag] = value;
+        StateHasChanged();
+    }
+}

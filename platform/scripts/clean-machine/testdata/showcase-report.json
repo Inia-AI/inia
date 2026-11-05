@@ -1,0 +1,353 @@
+{
+  "value": [
+    {
+      "id": "bee49181-3c9a-4f21-8fc8-b82e5224207f",
+      "order": 0,
+      "title": "Read the figures",
+      "layout": null,
+      "excludeFromWordExport": false,
+      "paragraphs": [
+        {
+          "id": "4591f90f-0ef1-4a86-81e3-b99560ef600b",
+          "kind": "Paragraph",
+          "order": 2,
+          "title": "Page 2 of the report",
+          "subtitle": "Page 2, read by Retrieve Data From Documents and cleaned by String Manipulation",
+          "confidence": 0,
+          "content": "\nChair's review\n\n<fact id=\"c0\">2025</fact> was a year of steady growth for Larkspur Freight. We opened two\nnew depots in the north and renewed our largest rail contract.\n\nRevenue for the year rose to <fact id=\"c1\">EUR 48.6 million</fact>, up from <fact id=\"c2\">EUR 44.1 million</fact>\nin <fact id=\"c3\">2024</fact>, as volumes on our coastal routes recovered.\n\nWe expect demand to stay firm in <fact id=\"c4\">2026</fact>, and we plan to add six\nelectric trucks to the fleet before the summer.\n\n",
+          "replacementTag": "pageTwoText",
+          "chartPayload": null,
+          "tablePayload": null,
+          "sources": [],
+          "citations": [
+            {
+              "id": "c0",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "663b363d-0725-420e-ac8b-e4591cd37432",
+                  "pageNumber": 2,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 2,
+                  "unverified": false,
+                  "citedText": "Chair's review\n\n2025 was a year of steady growth for Larkspur Freight. We opened two\nnew depots in the north and renewed our largest rail contract.\n\nRevenue for the year rose to EUR 48.6 million, up from EUR 44.1 million\nin 2024, as volumes on our coastal routes recovered.\n\nWe expect demand to stay firm in 2026, and we plan to add six\nelectric trucks to the fleet before the summer.\n\n              …"
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c1",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "663b363d-0725-420e-ac8b-e4591cd37432",
+                  "pageNumber": 2,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 2,
+                  "unverified": false,
+                  "citedText": "Chair's review\n\n2025 was a year of steady growth for Larkspur Freight. We opened two\nnew depots in the north and renewed our largest rail contract.\n\nRevenue for the year rose to EUR 48.6 million, up from EUR 44.1 million\nin 2024, as volumes on our coastal routes recovered.\n\nWe expect demand to stay firm in 2026, and we plan to add six\nelectric trucks to the fleet before the summer.\n\n              …"
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c2",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "663b363d-0725-420e-ac8b-e4591cd37432",
+                  "pageNumber": 2,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 2,
+                  "unverified": false,
+                  "citedText": "…ew\n\n2025 was a year of steady growth for Larkspur Freight. We opened two\nnew depots in the north and renewed our largest rail contract.\n\nRevenue for the year rose to EUR 48.6 million, up from EUR 44.1 million\nin 2024, as volumes on our coastal routes recovered.\n\nWe expect demand to stay firm in 2026, and we plan to add six\nelectric trucks to the fleet before the summer.\n\n                          …"
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c3",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "663b363d-0725-420e-ac8b-e4591cd37432",
+                  "pageNumber": 2,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 2,
+                  "unverified": false,
+                  "citedText": "… a year of steady growth for Larkspur Freight. We opened two\nnew depots in the north and renewed our largest rail contract.\n\nRevenue for the year rose to EUR 48.6 million, up from EUR 44.1 million\nin 2024, as volumes on our coastal routes recovered.\n\nWe expect demand to stay firm in 2026, and we plan to add six\nelectric trucks to the fleet before the summer.\n\n                                Page 2"
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c4",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "663b363d-0725-420e-ac8b-e4591cd37432",
+                  "pageNumber": 2,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 2,
+                  "unverified": false,
+                  "citedText": "… a year of steady growth for Larkspur Freight. We opened two\nnew depots in the north and renewed our largest rail contract.\n\nRevenue for the year rose to EUR 48.6 million, up from EUR 44.1 million\nin 2024, as volumes on our coastal routes recovered.\n\nWe expect demand to stay firm in 2026, and we plan to add six\nelectric trucks to the fleet before the summer.\n\n                                Page 2"
+                }
+              ],
+              "isNumerical": true
+            }
+          ],
+          "citedSourcesByBlock": []
+        }
+      ]
+    },
+    {
+      "id": "7dfa1998-d790-4286-b549-1715d2f0ced0",
+      "order": 1,
+      "title": "Calculate",
+      "layout": null,
+      "excludeFromWordExport": false,
+      "paragraphs": [
+        {
+          "id": "0266873a-a2a0-48f2-9a97-3443a84007a4",
+          "kind": "Paragraph",
+          "order": 0,
+          "title": "Revenue growth, in percent",
+          "subtitle": "Revenue growth in percent, from Calculate Formula",
+          "confidence": 0,
+          "content": "10.2",
+          "replacementTag": "revenueGrowth",
+          "chartPayload": null,
+          "tablePayload": null,
+          "sources": [],
+          "citations": [],
+          "citedSourcesByBlock": []
+        },
+        {
+          "id": "87304a68-b31b-4726-8a42-b6c2c6cdaf5f",
+          "kind": "Paragraph",
+          "order": 1,
+          "title": "Net margin, in percent",
+          "subtitle": "Net margin in percent, from Calculate Formula",
+          "confidence": 0,
+          "content": "12.1",
+          "replacementTag": "netMargin",
+          "chartPayload": null,
+          "tablePayload": null,
+          "sources": [],
+          "citations": [],
+          "citedSourcesByBlock": []
+        }
+      ]
+    },
+    {
+      "id": "bd2e855b-d271-4073-a713-d0326f5fd2e5",
+      "order": 2,
+      "title": "Combine as data",
+      "layout": null,
+      "excludeFromWordExport": false,
+      "paragraphs": [
+        {
+          "id": "7fa1a663-2dee-4f77-994e-7eb6ff0425bc",
+          "kind": "DynamicChart",
+          "order": 1,
+          "title": "Revenue and net profit",
+          "subtitle": "Revenue and net profit, drawn by Dynamic Chart from the data that Merge JSON combined",
+          "confidence": 0,
+          "content": "Chart: Revenue and net profit",
+          "replacementTag": "figuresChart",
+          "chartPayload": {
+            "outputType": "Chart",
+            "chartData": [
+              {
+                "x": "2024",
+                "y": 44.1,
+                "series": "Revenue",
+                "rawData": {
+                  "year": "2024",
+                  "value": 44.1,
+                  "measure": "Revenue"
+                }
+              },
+              {
+                "x": "2025",
+                "y": 48.6,
+                "series": "Revenue",
+                "rawData": {
+                  "year": "2025",
+                  "value": 48.6,
+                  "measure": "Revenue"
+                }
+              },
+              {
+                "x": "2024",
+                "y": 4.7,
+                "series": "Net profit",
+                "rawData": {
+                  "year": "2024",
+                  "value": 4.7,
+                  "measure": "Net profit"
+                }
+              },
+              {
+                "x": "2025",
+                "y": 5.9,
+                "series": "Net profit",
+                "rawData": {
+                  "year": "2025",
+                  "value": 5.9,
+                  "measure": "Net profit"
+                }
+              }
+            ],
+            "chartConfig": {
+              "type": "column",
+              "title": "Revenue and net profit",
+              "data": [
+                {
+                  "x": "2024",
+                  "y": 44.1,
+                  "series": "Revenue",
+                  "rawData": {
+                    "year": "2024",
+                    "value": 44.1,
+                    "measure": "Revenue"
+                  }
+                },
+                {
+                  "x": "2025",
+                  "y": 48.6,
+                  "series": "Revenue",
+                  "rawData": {
+                    "year": "2025",
+                    "value": 48.6,
+                    "measure": "Revenue"
+                  }
+                },
+                {
+                  "x": "2024",
+                  "y": 4.7,
+                  "series": "Net profit",
+                  "rawData": {
+                    "year": "2024",
+                    "value": 4.7,
+                    "measure": "Net profit"
+                  }
+                },
+                {
+                  "x": "2025",
+                  "y": 5.9,
+                  "series": "Net profit",
+                  "rawData": {
+                    "year": "2025",
+                    "value": 5.9,
+                    "measure": "Net profit"
+                  }
+                }
+              ],
+              "xAxis": {
+                "type": "linear",
+                "field": "year",
+                "label": "Year"
+              },
+              "yAxis": {
+                "type": "linear",
+                "field": "value",
+                "label": "Millions"
+              },
+              "series": [
+                {
+                  "name": "Revenue",
+                  "data": [
+                    {
+                      "x": "2024",
+                      "y": 44.1
+                    },
+                    {
+                      "x": "2025",
+                      "y": 48.6
+                    }
+                  ],
+                  "color": "#3b82f6"
+                },
+                {
+                  "name": "Net profit",
+                  "data": [
+                    {
+                      "x": "2024",
+                      "y": 4.7
+                    },
+                    {
+                      "x": "2025",
+                      "y": 5.9
+                    }
+                  ],
+                  "color": "#ef4444"
+                }
+              ],
+              "options": {
+                "responsive": true,
+                "showLegend": true,
+                "colorScheme": "default",
+                "showGridLines": true,
+                "enableAnimations": true,
+                "maintainAspectRatio": false,
+                "enableExport": null,
+                "seriesGroupField": "measure",
+                "stacking": "None"
+              },
+              "layout": {
+                "width": "100%",
+                "height": "400"
+              },
+              "metadata": {
+                "fields": {
+                  "x": "year",
+                  "y": "value",
+                  "series": "measure"
+                },
+                "dataPoints": 4,
+                "generatedAt": "2026-11-04T11:56:01.4647668Z",
+                "currency": null,
+                "unit": null
+              }
+            },
+            "name": "Revenue and net profit"
+          },
+          "tablePayload": null,
+          "sources": [],
+          "citations": [],
+          "citedSourcesByBlock": []
+        }
+      ]
+    },
+    {
+      "id": "00ea3a00-8c4a-45bf-9f53-c361510c18c3",
+      "order": 3,
+      "title": "Summary",
+      "layout": null,
+      "excludeFromWordExport": false,
+      "paragraphs": [
+        {
+          "id": "aedd0e2f-362c-49a7-91b0-e6ab29312be6",
+          "kind": "Paragraph",
+          "order": 6,
+          "title": "Summary",
+          "subtitle": "Summary, written by Apply Template To Data, with one line per measure from a loop",
+          "confidence": 0,
+          "content": "LARKSPUR FREIGHT LTD grew its revenue by 10.2% in 2025, and its net margin was 12.1%. The report states its figures in euros.\n\nRevenue: 44.1 million in 2024, 48.6 million in 2025\nNet profit: 4.7 million in 2024, 5.9 million in 2025",
+          "replacementTag": "summary",
+          "chartPayload": null,
+          "tablePayload": null,
+          "sources": [],
+          "citations": [],
+          "citedSourcesByBlock": []
+        }
+      ]
+    }
+  ]
+}

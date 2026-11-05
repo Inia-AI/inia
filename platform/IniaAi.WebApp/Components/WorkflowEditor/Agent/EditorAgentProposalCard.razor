@@ -1,0 +1,758 @@
+@namespace IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@using IniaAi.Application.Workflows.EditorAgent
+@using IniaAi.Configuration.Platform
+@using IniaAi.Core.Services.AgentRuntime
+@using IniaAi.Domain.Proposals
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+
+@inject IOptions<AgentRuntimeSettings> AgentRuntimeSettingsOptions
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+@inject AppState AppState
+
+<section class="@($"editor-agent-edits{(Wide ? " editor-agent-edits--wide" : string.Empty)}")" aria-label="Proposed changes" data-testid="editor-agent-proposal">
+    <header class="editor-agent-edits-head">
+        <MudIcon Icon="@Icons.Material.Outlined.EditNote" Size="Size.Small" aria-hidden="true" />
+        <span class="editor-agent-edits-title">@CountText</span>
+        <MudSpacer />
+        @if (OnOpenFull.HasDelegate)
+        {
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       StartIcon="@(Wide ? Icons.Material.Outlined.CloseFullscreen : Icons.Material.Outlined.OpenInFull)"
+                       data-testid="editor-agent-review-full"
+                       OnClick="OnOpenFull">
+                @(Wide ? "Narrow view" : "Review in full")
+            </MudButton>
+        }
+        @if (Review.AcceptAllCovers.Any())
+        {
+            <MudButton Variant="Variant.Filled"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       DropShadow="false"
+                       Disabled="@Review.IsBusy"
+                       aria-label="Accept all the changes that can be accepted together"
+                       data-testid="editor-agent-accept-all"
+                       OnClick="@(() => Act(EditorAgentReviewVerb.Accept, null))">
+                Accept all
+            </MudButton>
+        }
+    </header>
+
+    <p class="editor-agent-overview" data-testid="editor-agent-overview">@OverviewText</p>
+
+    @if (Outline.SectionReorder.Count > 0)
+    {
+        @Reorder("Order of the sections", Outline.SectionReorder, Outline.SectionOrderBefore, Outline.SectionOrderAfter)
+    }
+
+    @foreach (EditorAgentReviewSection section in Outline.Sections)
+    {
+        @SectionGroup(section)
+    }
+
+    @if (Outline.Others.Count > 0)
+    {
+        <details class="editor-agent-section" open data-testid="editor-agent-section" data-section="other">
+            <summary class="editor-agent-section-head">
+                <span class="editor-agent-section-title">Other changes</span>
+            </summary>
+            <div class="editor-agent-edit-cards">
+                @foreach (EditorAgentReviewItem item in Outline.Others)
+                {
+                    @ItemCard(item)
+                }
+            </div>
+        </details>
+    }
+
+    @if (Review.Proposal.CheckErrors.Count > 0)
+    {
+        <details class="editor-agent-edits-checks" data-testid="editor-agent-check-errors">
+            <summary>@ChecksText</summary>
+            <ul>
+                @foreach (ProposalCheckError error in Review.Proposal.CheckErrors)
+                {
+                    <li>@EditorAgentChangeText.CheckLabel(error.Check): @error.Message</li>
+                }
+            </ul>
+        </details>
+    }
+
+    @if (Review.Proposal.Warnings.Count > 0)
+    {
+        <details class="editor-agent-edits-checks" data-testid="editor-agent-save-warnings">
+            <summary>Saving will ask you to confirm @(Review.Proposal.Warnings.Count == 1 ? "1 thing" : $"{Review.Proposal.Warnings.Count} things")</summary>
+            <ul>
+                @foreach (ProposalCheckError warning in Review.Proposal.Warnings)
+                {
+                    <li>@warning.Message</li>
+                }
+            </ul>
+        </details>
+    }
+
+    @if (Review.AcceptAllSkipText() is { } skipped && Review.AcceptAllCovers.Any())
+    {
+        <div class="editor-agent-edits-note" data-testid="editor-agent-accept-all-skips">@skipped</div>
+    }
+
+    @foreach (string note in Review.Notes)
+    {
+        <div class="editor-agent-edits-note" data-testid="editor-agent-proposal-notes">@note</div>
+    }
+
+    @if (Review.Proposal.IsSaved)
+    {
+        <footer class="editor-agent-edits-foot" data-testid="editor-agent-saved">
+            <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Size="Size.Small" aria-hidden="true" />
+            <span>Saved.</span>
+        </footer>
+    }
+    else if (Review.Proposal.CanUndo)
+    {
+        <footer class="editor-agent-edits-foot" data-testid="editor-agent-applied">
+            <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Size="Size.Small" aria-hidden="true" />
+            <span>@AppliedText</span>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Undo"
+                       Disabled="@Review.IsBusy"
+                       aria-label="Undo these changes"
+                       OnClick="@(() => Act(EditorAgentReviewVerb.Undo, null))">
+                Undo
+            </MudButton>
+        </footer>
+    }
+</section>
+
+@code {
+    private const string ELLIPSIS = "… ";
+    private const string ACCEPTED = "Accepted";
+    private const string REJECTED = "Rejected";
+    private const string PARTLY = "Partly accepted";
+    private const int OPEN_SECTIONS_WHEN_LONG = 2;
+    private const int LONG_PROPOSAL_BLOCKS = 8;
+
+    private readonly HashSet<string> _wholeText = new(StringComparer.Ordinal);
+
+    [Parameter, EditorRequired]
+    public EditorAgentProposalReview Review { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<Workflow> CurrentWorkflow { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<EditorAgentReviewAction> OnAction { get; set; }
+
+    /// <summary>A card's Open block was clicked: the drawer shows the whole block.</summary>
+    [Parameter]
+    public EventCallback<Block> OnOpenBlock { get; set; }
+
+    /// <summary>Review in full, or Narrow view, was clicked: the review spans the screen or goes back to the column.</summary>
+    [Parameter]
+    public EventCallback OnOpenFull { get; set; }
+
+    /// <summary>True when the review fills the screen, so every section starts open.</summary>
+    [Parameter]
+    public bool Wide { get; set; }
+
+    /// <summary>Counts the edits the agent made to the workflow, whose names the card headings read.</summary>
+    [Parameter]
+    public int WorkflowEdits { get; set; }
+
+    private EditorAgentProposalView? _outlinedProposal;
+    private int _outlinedEdits;
+    private EditorAgentReviewOutline _outline = new([], [], [], [], []);
+
+    /// <summary>The proposal laid out by section, computed once per proposal and workflow edit, not on every render.</summary>
+    private EditorAgentReviewOutline Outline
+    {
+        get
+        {
+            if (!ReferenceEquals(_outlinedProposal, Review.Proposal) || _outlinedEdits != WorkflowEdits)
+            {
+                _outlinedProposal = Review.Proposal;
+                _outlinedEdits = WorkflowEdits;
+                _outline = EditorAgentReviewOutline.Build(Review.Proposal, CurrentWorkflow());
+            }
+
+            return _outline;
+        }
+    }
+
+    private string CountText
+    {
+        get
+        {
+            int blocks = Outline.BlockCount;
+            int sections = Outline.Sections.Count;
+            int others = Outline.Others.Count;
+            var parts = new List<string>();
+            if (blocks > 0)
+            {
+                parts.Add(blocks == 1 ? "1 block" : $"{blocks} blocks");
+            }
+
+            if (others > 0)
+            {
+                parts.Add(others == 1 ? "1 other item" : $"{others} other items");
+            }
+
+            string where = sections > 1 ? $" in {sections} sections" : string.Empty;
+            return parts.Count == 0 ? "Proposed changes" : $"Changes to {string.Join(" and ", parts)}{where}";
+        }
+    }
+
+    /// <summary>What the agent says the proposal does; a count of what it touches when it wrote nothing.</summary>
+    private string OverviewText => Review.Proposal.Overview
+        ?? $"The agent proposes {CountText.ToLowerInvariant()}. Each change waits for you below.";
+
+    private string AppliedText => Review.Proposal.Changes.Count(static view =>
+            view.Decision == EditorAgentChangeDecisionStatus.Accepted && !view.Saved && !view.Change.Incidental) == 1
+        ? "Applied to the editor. Save to keep it."
+        : "Applied to the editor. Save to keep them.";
+
+    private string ChecksText => Review.Proposal.CheckErrors.Count == 1
+        ? "The changed workflow still fails 1 check"
+        : $"The changed workflow still fails {Review.Proposal.CheckErrors.Count} checks";
+
+    private RenderFragment SectionGroup(EditorAgentReviewSection section) => __builder =>
+    {
+        List<string> acceptable = [.. Acceptable(section.Changes.Where(static view => view.Change.Kind != ProposedChangeKind.FieldEdited), together: false),
+            .. Acceptable(section.AllChanges.Where(static view => view.Change.Kind == ProposedChangeKind.FieldEdited || view.Change.Scope != ProposedChangeScope.Section), together: true)];
+        List<string> undecided = Undecided(section.AllChanges);
+        List<string> undoable = !Review.Proposal.CanUndo
+            ? []
+            : [.. section.AllChanges.Where(static view => view.Decision == EditorAgentChangeDecisionStatus.Accepted && !view.Saved).Select(static view => view.Change.Id)];
+        int index = Outline.Sections.ToList().IndexOf(section);
+        bool open = Wide || Outline.BlockCount <= LONG_PROPOSAL_BLOCKS || index < OPEN_SECTIONS_WHEN_LONG;
+        <details class="editor-agent-section" open="@open" @key="section.Key" data-testid="editor-agent-section" data-section="@section.Key">
+            <summary class="editor-agent-section-head">
+                <span class="editor-agent-section-title">@section.Title</span>
+                @if (section.Kind != EditorAgentItemKind.Edited)
+                {
+                    <span class="@($"editor-agent-kind editor-agent-kind--{section.Kind.ToString().ToLowerInvariant()}")">@SectionKindLabel(section.Kind)</span>
+                }
+                <span class="editor-agent-caption">@SectionCount(section)</span>
+                <MudSpacer />
+                @if (undoable.Count > 0)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Undo"
+                               Disabled="@Review.IsBusy"
+                               aria-label="@($"Undo the changes in {section.Title}")"
+                               data-testid="editor-agent-section-undo"
+                               OnClick="@(() => Act(EditorAgentReviewVerb.Undo, undoable))">
+                        Undo section
+                    </MudButton>
+                }
+                @if (undecided.Count > 0)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Disabled="@Review.IsBusy"
+                               aria-label="@($"Reject the changes in {section.Title}")"
+                               data-testid="editor-agent-section-reject"
+                               OnClick="@(() => Act(EditorAgentReviewVerb.Reject, undecided))">
+                        Reject section
+                    </MudButton>
+                }
+                @if (acceptable.Count > 0)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Disabled="@Review.IsBusy"
+                               aria-label="@($"Accept the changes in {section.Title}")"
+                               data-testid="editor-agent-section-accept"
+                               OnClick="@(() => Act(EditorAgentReviewVerb.Accept, acceptable))">
+                        Accept section
+                    </MudButton>
+                }
+            </summary>
+
+            @foreach (string note in section.Notes)
+            {
+                <p class="editor-agent-edit-reason">@note</p>
+            }
+
+            @if (section.Kind == EditorAgentItemKind.Removed)
+            {
+                <p class="editor-agent-edit-reason">Removes this section and the blocks in it.</p>
+            }
+            else if (section.Changes.Any(static view => view.Change.Kind == ProposedChangeKind.FieldEdited))
+            {
+                @ItemCard(new EditorAgentReviewItem(
+                    $"{ProposedChangeScope.Section}:{section.Key}", section.Title, null, section.Kind,
+                    [.. section.Changes.Where(static view => view.Change.Kind == ProposedChangeKind.FieldEdited)], [], []))
+            }
+
+            @if (section.Reorder.Count > 0)
+            {
+                @Reorder("Order of the blocks", section.Reorder, section.OrderBefore, section.OrderAfter)
+            }
+
+            @if (section.NewBlocks.Count > 0)
+            {
+                <div class="editor-agent-edit-cards">
+                    @foreach (EditorAgentNewBlock block in section.NewBlocks)
+                    {
+                        <article class="editor-agent-edit-card editor-agent-edit-card--open" data-testid="editor-agent-new-section-block">
+                            <header class="editor-agent-edit-card-head">
+                                <div class="editor-agent-edit-card-title">
+                                    <span class="editor-agent-edit-name">@block.Name</span>
+                                    <span class="editor-agent-kind editor-agent-kind--added">New</span>
+                                </div>
+                                @if (block.Type is { } type)
+                                {
+                                    <div class="editor-agent-caption">@type</div>
+                                }
+                            </header>
+                            @if (block.Instructions is { } instructions)
+                            {
+                                <div class="editor-agent-value editor-agent-value--new">@instructions</div>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+
+            <div class="editor-agent-edit-cards">
+                @foreach (EditorAgentReviewItem block in section.Blocks)
+                {
+                    @ItemCard(block)
+                }
+            </div>
+        </details>
+    };
+
+    private RenderFragment ItemCard(EditorAgentReviewItem item) => __builder =>
+    {
+        List<EditorAgentChangeView> undecidedViews = [.. item.Changes.Where(EditorAgentProposalReview.IsUndecided)];
+        List<string> acceptable = Acceptable(item.Changes, together: false);
+        List<string> outbound = [.. item.Changes.Where(view => EditorAgentProposalReview.IsUndecided(view) && view.Change.CanAccept && view.Change.SendsDataOutside)
+            .Select(static view => view.Change.Id)];
+        bool anyConflict = item.Changes.Any(view => Review.Conflicts.ContainsKey(view.Change.Id));
+        string state = undecidedViews.Count == 0 ? "decided" : undecidedViews.Any(static view => view.Change.CanAccept) ? "open" : "refused";
+        List<EditorAgentChangeView> fields = [.. undecidedViews.Where(static view => view.Change.Kind == ProposedChangeKind.FieldEdited)];
+        List<EditorAgentChangeView> modelFields = [.. fields.Where(static view => WorkflowFieldLabels.IsModelSetting(view.Change.Field))];
+        <article class="@($"editor-agent-edit-card editor-agent-edit-card--{state}")"
+                 @key="item.Key"
+                 data-testid="editor-agent-change"
+                 data-group="@item.Key">
+            <header class="editor-agent-edit-card-head">
+                <div class="editor-agent-edit-card-title">
+                    <span class="editor-agent-edit-name">@item.Title</span>
+                    <span class="@($"editor-agent-kind editor-agent-kind--{item.Kind.ToString().ToLowerInvariant()}")">@ItemKindLabel(item)</span>
+                </div>
+                @if (item.Subtitle is { } subtitle)
+                {
+                    <div class="editor-agent-caption">@subtitle</div>
+                }
+            </header>
+
+            @foreach (string note in item.Notes)
+            {
+                <p class="editor-agent-edit-reason">@note</p>
+            }
+
+            <div class="editor-agent-edit-tags">
+                @if (item.Changes.Any(static view => view.Change.SendsDataOutside))
+                {
+                    <span class="editor-agent-tag editor-agent-tag--warn" title="@EditorAgentChangeText.OUTBOUND_HINT" data-testid="editor-agent-outbound">Outside address</span>
+                }
+                @if (item.Changes.Any(static view => view.Change.LibraryLinked))
+                {
+                    <span class="editor-agent-tag" title="@EditorAgentChangeText.LIBRARY" data-testid="editor-agent-library">Library</span>
+                }
+                @if (item.Changes.Any(static view => view.Change.MissingFromSummary))
+                {
+                    <span class="editor-agent-tag" title="@EditorAgentChangeText.NOT_LISTED" data-testid="editor-agent-not-listed">Not listed</span>
+                }
+                @if (DecisionLabel(item) is { } decision)
+                {
+                    <span class="@($"editor-agent-tag{(decision == ACCEPTED ? " editor-agent-tag--done" : string.Empty)}")" data-testid="editor-agent-decision">@decision</span>
+                }
+                else if (undecidedViews.Count > 0 && acceptable.Count == 0)
+                {
+                    <span class="editor-agent-tag" data-testid="editor-agent-refused">Cannot be accepted</span>
+                }
+            </div>
+
+            @if (undecidedViews.Count > 0)
+            {
+                @if (outbound.Count > 0)
+                {
+                    <p class="editor-agent-edit-flag editor-agent-edit-flag--warn" data-testid="editor-agent-outbound-detail">
+                        @EditorAgentChangeText.OUTBOUND. @EditorAgentChangeText.OUTBOUND_HINT
+                    </p>
+                }
+
+                @foreach (EditorAgentChangeView view in undecidedViews.Where(static view => view.Change.Kind != ProposedChangeKind.FieldEdited))
+                {
+                    @NodeChange(view.Change)
+                }
+
+                @if (item.ReadBy.Count > 0)
+                {
+                    <p class="editor-agent-edit-flag editor-agent-edit-flag--warn" data-testid="editor-agent-read-by">
+                        @ReadByText(item.ReadBy)
+                    </p>
+                }
+
+                @if (modelFields.Count > 0)
+                {
+                    @ModelSettings(item, modelFields)
+                }
+
+                @foreach (EditorAgentChangeView view in fields.Where(static view => !WorkflowFieldLabels.IsModelSetting(view.Change.Field)))
+                {
+                    @FieldChange(view.Change, item.Title)
+                }
+
+                @foreach (EditorAgentChangeView view in undecidedViews.Where(view => !view.Change.CanAccept && !Review.Conflicts.ContainsKey(view.Change.Id)).Take(1))
+                {
+                    <p class="editor-agent-edit-flag" data-testid="editor-agent-refused-detail">This change cannot be accepted. @view.Change.RefusedReason</p>
+                }
+            }
+
+            <footer class="editor-agent-edit-card-foot">
+                @if (LiveBlock(item) is { } block)
+                {
+                    <button type="button"
+                            class="editor-agent-link"
+                            aria-label="@($"Open the block {item.Title}")"
+                            @onclick="@(() => OnOpenBlock.InvokeAsync(block))">
+                        Open block
+                    </button>
+                }
+                <MudSpacer />
+                @if (!anyConflict && undecidedViews.Count > 0)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Disabled="@Review.IsBusy"
+                               aria-label="@($"Reject: {item.Title}")"
+                               OnClick="@(() => Act(EditorAgentReviewVerb.Reject, [.. undecidedViews.Select(static view => view.Change.Id)]))">
+                        Reject
+                    </MudButton>
+                }
+                @if (!anyConflict && acceptable.Count > 0)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               DropShadow="false"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Disabled="@Review.IsBusy"
+                               aria-label="@($"Accept: {item.Title}")"
+                               OnClick="@(() => OnAction.InvokeAsync(new EditorAgentReviewAction(Review.TurnId, EditorAgentReviewVerb.Accept, acceptable, ConfirmOutbound: outbound)))">
+                        Accept
+                    </MudButton>
+                }
+            </footer>
+        </article>
+    };
+
+    private RenderFragment NodeChange(ProposedChange change) => __builder =>
+    {
+        switch (change.Kind)
+        {
+            case ProposedChangeKind.Added:
+                <p class="editor-agent-edit-text">@EditorAgentChangeText.AddedText(change, Review.Proposal, CurrentWorkflow())</p>
+                @if (EditorAgentChangeText.AddedInstructions(change) is { } instructions)
+                {
+                    <div class="editor-agent-value editor-agent-value--new" data-testid="editor-agent-added-instructions">@instructions</div>
+                }
+
+                break;
+            case ProposedChangeKind.Removed:
+                <p class="editor-agent-edit-text">@EditorAgentChangeText.RemovedText(change)</p>
+                break;
+            case ProposedChangeKind.Moved:
+                <p class="editor-agent-edit-text">@EditorAgentChangeText.MovedText(change, Review.Proposal, CurrentWorkflow())</p>
+                break;
+        }
+    };
+
+    private RenderFragment FieldChange(ProposedChange change, string owner) => __builder =>
+    {
+        ProposalConflict? conflict = Review.Conflicts.GetValueOrDefault(change.Id);
+        string subject = EditorAgentChangeText.Subject(change, owner);
+        <div class="editor-agent-field" data-testid="editor-agent-field" data-change-id="@change.Id">
+            <div class="editor-agent-field-label">@EditorAgentChangeText.FieldLabel(change)</div>
+            @if (conflict is not null)
+            {
+                <div class="editor-agent-conflict" data-testid="editor-agent-conflict">
+                    <p>You changed this while the agent was working. Choose which to keep.</p>
+                    <div class="editor-agent-sides">
+                        <div>
+                            <div class="editor-agent-caption">Yours</div>
+                            <div class="editor-agent-value" data-testid="editor-agent-conflict-mine">@(EditorAgentChangeText.ValueText(conflict.LiveJson) ?? EditorAgentChangeText.NOT_SET)</div>
+                        </div>
+                        <div>
+                            <div class="editor-agent-caption">The agent's</div>
+                            <div class="editor-agent-value" data-testid="editor-agent-conflict-agent">@(EditorAgentChangeText.ValueText(conflict.NewJson) ?? EditorAgentChangeText.NOT_SET)</div>
+                        </div>
+                    </div>
+                    <div class="editor-agent-conflict-actions">
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   Disabled="@Review.IsBusy"
+                                   aria-label="@($"Keep mine: {subject}")"
+                                   OnClick="@(() => ActOn(EditorAgentReviewVerb.Reject, change.Id, takeProposed: false))">
+                            Keep mine
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   Disabled="@Review.IsBusy"
+                                   aria-label="@($"Use the agent's: {subject}")"
+                                   OnClick="@(() => ActOn(EditorAgentReviewVerb.Accept, change.Id, takeProposed: true))">
+                            Use the agent's
+                        </MudButton>
+                    </div>
+                </div>
+            }
+            else if (EditorAgentChangeText.IsShortValue(change))
+            {
+                <div class="editor-agent-inline-change" data-testid="editor-agent-inline-change">
+                    @if (EditorAgentChangeText.ValueText(change.BaseJson) is { } before)
+                    {
+                        <span class="editor-agent-old">@before</span>
+                        <span class="editor-agent-arrow" aria-hidden="true">→</span>
+                    }
+                    <span class="editor-agent-new">@(EditorAgentChangeText.ValueText(change.NewJson) ?? EditorAgentChangeText.NOT_SET)</span>
+                </div>
+            }
+            else if (EditorAgentChangeText.IsText(change))
+            {
+                string? before = EditorAgentChangeText.ValueText(change.BaseJson);
+                string? after = EditorAgentChangeText.ValueText(change.NewJson);
+                bool whole = _wholeText.Contains(change.Id);
+                TextExcerpt excerpt = EditorAgentChangeText.Excerpt(before, after);
+                <div class="field-diff-pane editor-agent-value" data-testid="editor-agent-change-diff">
+                    @if (whole)
+                    {
+                        @TextDiffHighlighter.HighlightMerged(before, after)
+                    }
+                    else
+                    {
+                        @(excerpt.CutStart ? ELLIPSIS : string.Empty)@TextDiffHighlighter.HighlightMerged(excerpt.Before, excerpt.After)@(excerpt.CutEnd ? ELLIPSIS : string.Empty)
+                    }
+                </div>
+                @if (excerpt.CutStart || excerpt.CutEnd)
+                {
+                    <button type="button"
+                            class="editor-agent-link"
+                            data-testid="editor-agent-whole-text"
+                            @onclick="@(() => ToggleWholeText(change.Id))">
+                        @(whole ? "Show only what changed" : "Show the whole text")
+                    </button>
+                }
+            }
+            else
+            {
+                @BeforeAfter(EditorAgentChangeText.ValueText(change.BaseJson), EditorAgentChangeText.ValueText(change.NewJson))
+            }
+        </div>
+    };
+
+    /// <summary>Model, effort and thinking, always together, as they are now and as they would be.</summary>
+    private RenderFragment ModelSettings(EditorAgentReviewItem item, List<EditorAgentChangeView> changed) => __builder =>
+    {
+        Block? live = LiveBlock(item);
+        if (live is null)
+        {
+            foreach (EditorAgentChangeView view in changed)
+            {
+                @FieldChange(view.Change, item.Title)
+            }
+
+            return;
+        }
+
+        AgentModelTiers agentTiers = AgentModelTiers.For(
+            AgentRuntimeSettingsOptions.Value, PlatformSettingsOptions.Value.ModelRouting, AppState.CurrentOrganizationId);
+        Dictionary<string, string?> proposed = changed.ToDictionary(
+            static view => view.Change.Field![(view.Change.Field!.LastIndexOf('.') + 1)..],
+            static view => view.Change.NewJson,
+            StringComparer.Ordinal);
+        IReadOnlyList<EditorAgentBlockFact> before = EditorAgentBlockFacts.ModelSettings(live, agentTiers);
+        IReadOnlyList<EditorAgentBlockFact> after = EditorAgentBlockFacts.ModelSettingsWith(live, proposed, agentTiers);
+        <div class="editor-agent-field" data-testid="editor-agent-model-settings">
+            <div class="editor-agent-field-label">Model settings</div>
+            <dl class="editor-agent-facts">
+                @foreach ((EditorAgentBlockFact was, EditorAgentBlockFact now) in before.Zip(after))
+                {
+                    <dt>@was.Label</dt>
+                    <dd>
+                        @if (was.Value == now.Value)
+                        {
+                            @now.Value
+                        }
+                        else
+                        {
+                            <del>@was.Value</del><ins>@now.Value</ins>
+                        }
+                    </dd>
+                }
+            </dl>
+        </div>
+    };
+
+    private RenderFragment Reorder(string label, IReadOnlyList<EditorAgentChangeView> changes, IReadOnlyList<string> before, IReadOnlyList<string> after) => __builder =>
+    {
+        List<string> undecided = Undecided(changes);
+        List<string> acceptable = Acceptable(changes, together: false);
+        <article class="@($"editor-agent-edit-card editor-agent-edit-card--{(undecided.Count == 0 ? "decided" : "open")}")" data-testid="editor-agent-reorder">
+            <header class="editor-agent-edit-card-head">
+                <div class="editor-agent-edit-card-title">
+                    <span class="editor-agent-edit-name">@label</span>
+                    <span class="editor-agent-kind editor-agent-kind--moved">Reordered</span>
+                </div>
+            </header>
+            @if (undecided.Count > 0 && before.Count > 0)
+            {
+                @BeforeAfter(string.Join("\n", before.Select(static (name, i) => $"{i + 1}. {name}")), string.Join("\n", after.Select(static (name, i) => $"{i + 1}. {name}")))
+            }
+            <footer class="editor-agent-edit-card-foot">
+                <MudSpacer />
+                @if (undecided.Count > 0)
+                {
+                    <MudButton Variant="Variant.Text" Size="Size.Small" Disabled="@Review.IsBusy" aria-label="@($"Reject: {label}")"
+                               OnClick="@(() => Act(EditorAgentReviewVerb.Reject, undecided))">
+                        Reject
+                    </MudButton>
+                }
+                @if (acceptable.Count > 0)
+                {
+                    <MudButton Variant="Variant.Filled" DropShadow="false" Size="Size.Small" Color="Color.Primary" Disabled="@Review.IsBusy" aria-label="@($"Accept: {label}")"
+                               OnClick="@(() => Act(EditorAgentReviewVerb.Accept, acceptable))">
+                        Accept
+                    </MudButton>
+                }
+            </footer>
+        </article>
+    };
+
+    private static RenderFragment BeforeAfter(string? before, string? after) => __builder =>
+    {
+        <div class="editor-agent-sides">
+            <div>
+                <div class="editor-agent-caption">Before</div>
+                <div class="editor-agent-value">@(before ?? EditorAgentChangeText.NOT_SET)</div>
+            </div>
+            <div>
+                <div class="editor-agent-caption">After</div>
+                <div class="editor-agent-value">@(after ?? EditorAgentChangeText.NOT_SET)</div>
+            </div>
+        </div>
+    };
+
+    /// <summary>The item's decision once nothing is left to decide; null while something is.</summary>
+    private static string? DecisionLabel(EditorAgentReviewItem item)
+    {
+        if (item.Changes.Any(EditorAgentProposalReview.IsUndecided))
+        {
+            return null;
+        }
+
+        bool accepted = item.Changes.Any(static view => view.Decision == EditorAgentChangeDecisionStatus.Accepted);
+        bool rejected = item.Changes.Any(static view => view.Decision == EditorAgentChangeDecisionStatus.Rejected);
+        return accepted && rejected ? PARTLY : accepted ? ACCEPTED : REJECTED;
+    }
+
+    private static string ItemKindLabel(EditorAgentReviewItem item)
+    {
+        return item.Kind switch
+        {
+            EditorAgentItemKind.Added => "New",
+            EditorAgentItemKind.Removed => "Removed",
+            EditorAgentItemKind.Moved => "Moved here",
+            _ => "Changed",
+        };
+    }
+
+    private static string SectionKindLabel(EditorAgentItemKind kind)
+    {
+        return kind switch
+        {
+            EditorAgentItemKind.Added => "New section",
+            EditorAgentItemKind.Removed => "Removed section",
+            _ => "Changed",
+        };
+    }
+
+    private static string SectionCount(EditorAgentReviewSection section)
+    {
+        int blocks = section.Blocks.Count;
+        return blocks switch
+        {
+            0 => string.Empty,
+            1 => "1 block",
+            _ => $"{blocks} blocks",
+        };
+    }
+
+    private static string ReadByText(IReadOnlyList<string> readers)
+    {
+        string names = string.Join(", ", readers.Select(static name => $"\"{name}\""));
+        return readers.Count == 1
+            ? $"{names} reads this block's answer and will lose it."
+            : $"{names} read this block's answer and will lose it.";
+    }
+
+    /// <summary>
+    /// The undecided changes one action can accept. Accepting several items together, as a
+    /// section does, leaves out the changes that need their own review.
+    /// </summary>
+    private static List<string> Acceptable(IEnumerable<EditorAgentChangeView> changes, bool together)
+    {
+        return [.. changes
+            .Where(view => EditorAgentProposalReview.IsUndecided(view)
+                && view.Change.CanAccept
+                && (!together || !EditorAgentProposalReview.NeedsOwnAccept(view.Change)))
+            .Select(static view => view.Change.Id)];
+    }
+
+    private static List<string> Undecided(IEnumerable<EditorAgentChangeView> changes)
+    {
+        return [.. changes.Where(EditorAgentProposalReview.IsUndecided).Select(static view => view.Change.Id)];
+    }
+
+    private Block? LiveBlock(EditorAgentReviewItem item)
+    {
+        if (!item.Changes.Any(static view => view.Change.Scope == ProposedChangeScope.Block))
+        {
+            return null;
+        }
+
+        string? key = item.Changes.Select(static view => view.MintedStableId).FirstOrDefault(static id => id is not null)
+            ?? item.Changes[0].Change.TargetKey;
+        return key is null ? null : CurrentWorkflow().GetAllBlocks().FirstOrDefault(block => block.StableBlockId == key);
+    }
+
+    private void ToggleWholeText(string changeId)
+    {
+        if (!_wholeText.Remove(changeId))
+        {
+            _ = _wholeText.Add(changeId);
+        }
+    }
+
+    private Task ActOn(EditorAgentReviewVerb verb, string changeId, bool takeProposed)
+    {
+        return OnAction.InvokeAsync(new EditorAgentReviewAction(
+            Review.TurnId, verb, [changeId], takeProposed ? [changeId] : null));
+    }
+
+    private Task Act(EditorAgentReviewVerb verb, IReadOnlyList<string>? changeIds)
+    {
+        return OnAction.InvokeAsync(new EditorAgentReviewAction(Review.TurnId, verb, changeIds));
+    }
+}

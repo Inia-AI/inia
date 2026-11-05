@@ -1,0 +1,63 @@
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+<MudStack Spacing="1" Class="mb-2">
+    <MudTextField T="string"
+                  Variant="Variant.Outlined"
+                  Label="Data Output Name"
+                  Class="editor-mono-field"
+                  MaxLength="@Block.MAX_REPLACEMENT_TAG_LENGTH"
+                  HelperText="Other systems read this block's JSON under this name, beside the report."
+                  Value="@Block.DataOutputName"
+                  ValueChanged="OnNameChanged" />
+
+    @if (NeedsJsonFormat)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            This block sends its result to other systems, so set Output format validation to JSON or JSON in Tag. Otherwise a run fails this block.
+        </MudAlert>
+    }
+
+    @if (CitesInsidePlainJson)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            This block gets citations from the model, so set Output format validation to JSON in Tag. In plain JSON the model can mark its citations inside the values and write numbers as text; in a tag it cites outside the JSON.
+        </MudAlert>
+    }
+
+    @if (OtherBlockWithTheName is { } other)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+            The block "@other.Name" sends data under this name too. Give each data output its own name.
+        </MudAlert>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private bool NeedsJsonFormat =>
+        Block.Properties is AiQueryProperties aiQuery && !aiQuery.ProducesValidatedJson();
+
+    private bool CitesInsidePlainJson =>
+        Block.Properties is AiQueryProperties { OutputFormatType: OutputFormatType.Json, ShouldGetCitationsFromModel: true };
+
+    private Block? OtherBlockWithTheName =>
+        Block.Section?.Workflow.GetAllBlocks().FirstOrDefault(other => !ReferenceEquals(other, Block)
+            && string.Equals(other.DataOutputName, Block.DataOutputName, StringComparison.Ordinal));
+
+    // A blank name would turn the output off while the author is still typing; the button does that.
+    private async Task OnNameChanged(string? name)
+    {
+        Block.DataOutputName = string.IsNullOrWhiteSpace(name)
+            ? Block.ReplacementTag
+            : name.Trim();
+
+        await OnChanged.InvokeAsync();
+    }
+}

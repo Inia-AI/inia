@@ -1,0 +1,73 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudStack Spacing="3">
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Query Template"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          Lines="3"
+                          @bind-Value="RagSettings.QueryTemplate" />
+        </MudItem>
+
+        @if (RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Label="Query Template After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Lines="3"
+                              Value="@RagSettings.ExecutionState.QueryTemplate" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Iteration Limit"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          @bind-Value="RagSettings.IterationLimit" />
+        </MudItem>
+
+        @if (RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Label="Iteration Limit After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.IterationLimit" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudGrid Spacing="2" Class="editor-twin-grid">
+        <MudItem xs="12" md="6">
+            <MudTextField Label="Context Limit"
+                          Variant="Variant.Outlined"
+                          Class="editor-mono-field"
+                          @bind-Value="RagSettings.ContextLimit" />
+        </MudItem>
+
+        @if (RagSettings.ExecutionState is not null)
+        {
+            <MudItem xs="12" md="6">
+                <MudTextField Label="Context Limit After Execution"
+                              Variant="Variant.Outlined"
+                              Class="editor-mono-field editor-resolved"
+                              ReadOnly="true"
+                              Value="@RagSettings.ExecutionState.ContextLimit" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+}

@@ -1,0 +1,90 @@
+﻿@using IniaAi.Common.Interfaces.Persistence
+@using IniaAi.Domain.Entities.Documents
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+@inject IJSRuntime JSRuntime
+@inject IFileStorageManager FileStorageManager
+@inject ILogger<DocumentPreviewDialog> Logger
+
+<script type="text/javascript">
+    function embedPDF(bytes, elementID, uuid)
+    {
+        // create a File object from the byte array
+        const file = new File([bytes], uuid, { type: 'application/pdf' });
+
+        // using the File object, create an ObjectURL
+        const objectURL = URL.createObjectURL(file);
+
+        // embed the PDF in a integrated browser-based PDF viewer, using the ObjectURL
+        PDFObject.embed(objectURL, elementID, { page: 1, view: 'FitW' });
+
+        // finally, revoke the ObjectURL to clean up memory
+        URL.revokeObjectURL(objectURL);
+    }
+</script>
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudElement HtmlTag="div" id="document-preview" Style="height: 1280px; border: 1px solid var(--mud-palette-lines-inputs);" />
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public Document Document { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Document.FileMetadata is not null)
+        {
+            var uuid = Guid.NewGuid().ToString();
+
+            // Ensure file bytes are loaded
+			await EnsureFileBytesLoadedAsync(Document.FileMetadata);
+
+			byte[] data = Document.FileMetadata.Bytes;
+            await JSRuntime.InvokeVoidAsync("embedPDF", (object)data, "#document-preview", uuid);
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+	private async Task EnsureFileBytesLoadedAsync(FileMetadata file)
+    {
+        if (!file.AreBytesLoaded)
+        {
+            try
+            {
+                var fileBytes = await FileStorageManager.RetrieveFileBytesAsync(
+                    file.StorageProvider.ToString(),
+                    file.OrganizationId,
+                    "documents",
+                    file.ExternalStoragePath ?? file.Id);
+                file.LoadBytes(fileBytes);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading file bytes.");
+                // File bytes remain empty if loading fails
+            }
+        }
+    }
+
+    #region Private
+
+    private class PDFObjectOptions
+    {
+        [JsonPropertyName("view")]
+        public string View { get; set; } = "FitH";
+
+        [JsonPropertyName("page")]
+        public int Page { get; set; } = 1;
+    }
+
+    #endregion
+}

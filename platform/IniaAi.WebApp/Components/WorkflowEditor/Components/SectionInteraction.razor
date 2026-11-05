@@ -1,0 +1,187 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Abstractions.Entities
+@using IniaAi.Domain.Entities.SharedComponents.Enums
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.WebApp.Components.WorkflowEditor.Agent
+
+@inject ILogger<SectionInteraction> Logger
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="block-pin-scope" @ref="_pinScope">
+    @if (!SurfaceState.Capabilities.IsSingleBlockHost)
+    {
+        <InsertControls @key="@("gap_head")"
+                        Class="pl-2 my-1"
+                        Label="Add Block"
+                        OnGoBack="OnGoBack"
+                        OnInsert="() => AddBlockAt(0)"
+                        OnInsertFromLibrary="@(InsertBlockFromLibraryCallback.HasDelegate ? EventCallback.Factory.Create(this, () => InsertBlockFromLibraryAt(0)) : default)" />
+    }
+
+    @{
+        var loopBodyIds = Section.GetLoopBodyBlockIds();
+    }
+
+    @for (var i = 0; i < Section.Blocks.Count; i++)
+    {
+        var index = i;
+        var newIndex = index + 1;
+        var block = Section[index];
+
+        @if (SurfaceState.Capabilities.IsComponentDefinitionHost && block.IsActivelyLinked())
+        {
+            RefEntryDisplay? refDisplay = ResolveRefEntryDisplay?.Invoke(block);
+            <div class="pl-5 my-1" @key="@block.Id">
+                <RefEntryCard SlotTag="@block.ReplacementTag"
+                              ComponentName="@refDisplay?.Name"
+                              HeadContentHash="@refDisplay?.HeadContentHash"
+                              OnSwap="() => SwapLinkedEntryAt(block)"
+                              OnRemove="() => RemoveBlock(block)" />
+            </div>
+        }
+        else
+        {
+            <MudCard Outlined="true" Elevation="0" Class="@($"editor-block-card{(loopBodyIds.Contains(block.Id) ? " editor-in-loop" : "")}{(block.IsOutputSource ? " editor-output-source" : "")}{LibraryAccent.ClassSuffix(LinkIndex, block)}{SurfaceState.AgentMarkClass(block)}")" id="@block.Id" @key="@block.Id">
+                @if (SurfaceState.AgentMarkLabel(block) is { } agentMark)
+                {
+                    <span class="editor-agent-changed-label" data-testid="editor-agent-changed-label">@agentMark</span>
+                }
+                <MudCardActions Class="d-flex pl-5 pb-1 block-sticky-slot">
+                    <BlockActionsMenu Block="block"
+                                      OnRun="() => ExecuteBlockCallback.InvokeAsync(block)"
+                                      OnDuplicate="() => DuplicateBlock(block)"
+                                      OnMove="() => MoveBlockCallback.InvokeAsync(block)"
+                                      OnCopyToWorkflow="() => CopyBlockToCoreWorkflowCallback.InvokeAsync(block)"
+                                      OnCopyAsText="() => CopyBlockAsTextCallback.InvokeAsync(block)"
+                                      OnRemove="() => RemoveBlock(block)"
+                                      OnIsolate="() => IsolateBlockCallback.InvokeAsync(block)"
+                                      OnShareToLibrary="() => ShareBlockToLibraryCallback.InvokeAsync(block)"
+                                      OnOutputToggled="NotifySectionChanged"
+                                      OnBlockPropertiesChanged="NotifySectionChanged" />
+                </MudCardActions>
+
+                <MudCardContent Class="pl-5 pt-1">
+                    <BlockInteraction Block="@block"
+                                      BlockChanged="NotifyDocumentClassesChanged"
+                                      OnBlockPropertiesChanged="NotifySectionChanged" />
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @if (!SurfaceState.Capabilities.IsSingleBlockHost)
+        {
+            <InsertControls @key="@($"gap_{block.Id}")"
+                            Class="pl-5 my-1"
+                            Label="Add Block"
+                            OnGoBack="OnGoBack"
+                            OnInsert="() => AddBlockAt(newIndex)"
+                            OnInsertFromLibrary="@(InsertBlockFromLibraryCallback.HasDelegate ? EventCallback.Factory.Create(this, () => InsertBlockFromLibraryAt(newIndex)) : default)" />
+        }
+    }
+</div>
+
+@code {
+    private ElementReference _pinScope;
+    private bool _pinsObserved;
+
+    [Parameter, EditorRequired]
+    public Section Section { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<Block> ExecuteBlockCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> MoveBlockCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> CopyBlockToCoreWorkflowCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> CopyBlockAsTextCallback { get; set; }
+
+    [Parameter]
+    public EventCallback OnGoBack { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> IsolateBlockCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> ShareBlockToLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> RemoveLinkedEntryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<int> InsertBlockFromLibraryCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<Block> SwapLinkedEntryCallback { get; set; }
+
+    [Parameter]
+    public Func<Block, RefEntryDisplay?>? ResolveRefEntryDisplay { get; set; }
+
+    [CascadingParameter]
+    public EditorSurfaceState SurfaceState { get; set; } = default!;
+
+    [CascadingParameter(Name = "LibraryLinkIndex")]
+    public LibraryLinkIndex? LinkIndex { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("iniaStickyHeaders.observeBlocks", _pinScope);
+            _pinsObserved = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_pinsObserved)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("iniaStickyHeaders.unobserve", _pinScope);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+
+    private void AddBlockAt(int index) => SurfaceState.AddBlock(Section, index);
+
+    private async Task InsertBlockFromLibraryAt(int index) =>
+        await InsertBlockFromLibraryCallback.InvokeAsync(index);
+
+    private async Task SwapLinkedEntryAt(Block block) =>
+        await SwapLinkedEntryCallback.InvokeAsync(block);
+
+    private void DuplicateBlock(Block block) => SurfaceState.DuplicateBlock(block);
+
+    private async Task RemoveBlock(Block block)
+    {
+        if (RemoveLinkedEntryCallback.HasDelegate
+            && block.Section?.IsActivelyLinked() == true)
+        {
+            await RemoveLinkedEntryCallback.InvokeAsync(block);
+
+            return;
+        }
+
+        SurfaceState.RemoveBlock(block);
+    }
+
+    private void NotifySectionChanged() => SurfaceState.NotifySectionChanged(Section);
+
+    private void NotifyDocumentClassesChanged() => SurfaceState.NotifyDocumentClassesChanged();
+}

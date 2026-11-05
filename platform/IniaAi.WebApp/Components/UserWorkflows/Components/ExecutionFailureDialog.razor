@@ -1,0 +1,64 @@
+@using IniaAi.WebApp.Components.UserWorkflows.Common
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@(IsWarning ? Color.Warning : Color.Error)"
+                         Icon="@(IsWarning ? Icons.Material.Filled.Warning : Icons.Material.Filled.Error)">
+                    @ExecutionFailureText.Kind(FailureKind)
+                </MudChip>
+
+                @if (!string.IsNullOrWhiteSpace(ExecutionId))
+                {
+                    <MudText Typo="Typo.caption">
+                        Execution @ExecutionId
+                    </MudText>
+                }
+            </MudStack>
+
+            @if (string.IsNullOrWhiteSpace(FailureDetail))
+            {
+                <MudText Typo="Typo.body2">
+                    No further detail was recorded.
+                </MudText>
+            }
+            else
+            {
+                <MudPaper Outlined="true" Class="pa-3">
+                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; word-break: break-word;">
+                        @FailureDetail
+                    </MudText>
+                </MudPaper>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string? ExecutionId { get; set; }
+
+    [Parameter]
+    public string? FailureKind { get; set; }
+
+    [Parameter]
+    public string? FailureDetail { get; set; }
+
+    [Parameter]
+    public bool IsWarning { get; set; }
+
+    private void Close() => MudDialog.Close();
+}

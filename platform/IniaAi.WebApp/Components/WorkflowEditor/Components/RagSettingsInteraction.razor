@@ -1,0 +1,87 @@
+﻿@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApp.Components.WorkflowEditor.Components.Rag
+
+<MudSelect T="RagTypes"
+            Label="Select The Filter Type To Use For Documents' Pages"
+            Variant="Variant.Outlined"
+            AnchorOrigin="Origin.BottomLeft"
+            Value="@RagSettings.Type"
+            ValueChanged="@OnRagTypeChanged">
+    <MudSelectItem Value="RagTypes.WholeDocument">Whole Document/All Pages</MudSelectItem>
+    <MudSelectItem Value="RagTypes.TopNPages">Top N Pages</MudSelectItem>
+    <MudSelectItem Value="RagTypes.TopNPagesPerFilterWithTwoNeighbors">Top N Pages With 2 (two) Neighbors Per Filter Expression</MudSelectItem>
+    <MudSelectItem Value="RagTypes.TopPage">Top Page</MudSelectItem>
+    <MudSelectItem Value="RagTypes.TopPageWithNFollowingPages">Top Page With N Following Pages</MudSelectItem>
+    <MudSelectItem Value="RagTypes.NPagesStartingFromIndex">Take N Pages Starting From An Index</MudSelectItem>
+    <MudSelectItem Value="RagTypes.KeywordBased">Keyword Based Selection</MudSelectItem>
+    <MudSelectItem Value="RagTypes.ExactPages">Exact numbers of pages</MudSelectItem>
+    <MudSelectItem Value="RagTypes.RagAgent">RAG Agent</MudSelectItem>
+    <MudSelectItem Value="RagTypes.UseTableOfContents">Use Table Of Contents</MudSelectItem>
+    <MudSelectItem Value="RagTypes.UseAutoDetectedTableOfContents">Use Auto-Detected Table Of Contents</MudSelectItem>
+</MudSelect>
+
+@if (RagSettings.Type is RagTypes.WholeDocument)
+{
+    <WholeDocumentRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.TopNPages)
+{
+    <EmbeddingsRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.TopNPagesPerFilterWithTwoNeighbors)
+{
+    <EmbeddingsRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.TopPage)
+{
+    <EmbeddingsRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.TopPageWithNFollowingPages)
+{
+    <EmbeddingsRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.NPagesStartingFromIndex)
+{
+    <NPagesStartingFromIndexRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.KeywordBased)
+{
+    <KeywordBasedRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.ExactPages)
+{
+    <ExactPagesRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.RagAgent)
+{
+    <RagAgentRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.UseTableOfContents)
+{
+    <UseTableOfContentsRag RagSettings="RagSettings" />
+}
+
+@if (RagSettings.Type is RagTypes.UseAutoDetectedTableOfContents)
+{
+    <UseAutoDetectedTableOfContentsRag RagSettings="RagSettings" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public RagSettings RagSettings { get; set; } = default!;
+
+    private void OnRagTypeChanged(RagTypes newType)
+    {
+        RagSettings.Type = newType;
+    }
+}

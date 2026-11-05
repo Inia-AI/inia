@@ -1,0 +1,18 @@
+{
+  "id": "document-read",
+  "name": "Annual report",
+  "mediaType": "ApplicationPdf",
+  "sizeBytes": 482113,
+  "extension": ".pdf",
+  "userId": "user-read",
+  "documentCategoryId": "category-annual",
+  "workflowTypeId": "AssetManagerCreditAnalysis",
+  "class": "Annual Report",
+  "wasPasswordProtected": true,
+  "processingState": "Queued",
+  "processingRequestedAt": "2026-09-07T08:10:00Z",
+  "processedAt": "2026-09-07T08:05:00Z",
+  "processingError": null,
+  "createdAt": "2026-09-07T08:00:00Z",
+  "updatedAt": "2026-09-07T08:01:00Z"
+}

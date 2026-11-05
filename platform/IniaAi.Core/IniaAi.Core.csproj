@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="google-search-results-dotnet" />
+        <PackageReference Include="Google.Apis.CustomSearchAPI.v1" />
+        <PackageReference Include="Google.Apis" />
+        <PackageReference Include="ISO3166" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+        <PackageReference Include="NCalcSync" />
+        <PackageReference Include="NReco.Text.AhoCorasickDoubleArrayTrie" />
+        <PackageReference Include="Polly" />
+        <PackageReference Include="System.IO.Packaging" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Workflows\Annotations\Quantities\Resources\units_dictionary.json" />
+        <EmbeddedResource Include="Workflows\Annotations\Quantities\Resources\unit_conversions.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.AiConnection\IniaAi.AiConnection.csproj" />
+        <ProjectReference Include="..\IniaAi.Common.Interfaces\IniaAi.Common.Interfaces.csproj" />
+        <ProjectReference Include="..\IniaAi.Common\IniaAi.Common.csproj" />
+        <ProjectReference Include="..\IniaAi.Domain\IniaAi.Domain.csproj" />
+        <ProjectReference Include="..\IniaAi.FileFormats\IniaAi.FileFormats.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>$(AssemblyName).Tests</_Parameter1>
+        </AssemblyAttribute>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>IniaAi.Services.Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+</Project>

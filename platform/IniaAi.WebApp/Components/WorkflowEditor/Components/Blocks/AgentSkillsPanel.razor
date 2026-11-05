@@ -1,0 +1,285 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Common.Interfaces.Services.AgentRuntime
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.WebApp.Services
+
+<MudStack Row="true"
+          AlignItems="AlignItems.Center"
+          Class="mt-4 mb-2">
+    <div class="editor-eyebrow">@Title</div>
+
+    <MudSpacer />
+
+    <MudButton Variant="Variant.Text"
+               Class="editor-soft-button"
+               Color="Color.Primary"
+               Size="Size.Small"
+               StartIcon="@Icons.Material.Outlined.Add"
+               OnClick="AddSkill">
+        Add Skill
+    </MudButton>
+</MudStack>
+
+@for (int skillIndex = 0; skillIndex < _skills.Count; skillIndex++)
+{
+    int index = skillIndex;
+    AgentSkillsEditor.Entry skillEntry = _skills[index];
+    <MudPaper @key="skillEntry" Elevation="0" Outlined="true" Class="pa-3 mb-2 rounded">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="11">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="Skill name"
+                              Placeholder="@NamePlaceholder"
+                              Class="editor-mono-field"
+                              Value="@skillEntry.Name"
+                              ValueChanged="@((string newName) => UpdateSkill(index, entry => entry.Name = newName))" />
+            </MudItem>
+
+            <MudItem xs="12" md="1" Style="align-self: center;">
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               Class="editor-soft-button"
+                               aria-label="Remove skill"
+                               OnClick="@(() => RemoveSkill(index))" />
+            </MudItem>
+
+            <MudItem xs="12" md="11">
+                <MudTextField Variant="Variant.Outlined"
+                              Label="When to use this skill"
+                              Placeholder="@DescriptionPlaceholder"
+                              Sizing="InputSizing.Auto"
+                              Lines="2"
+                              MaxLines="6"
+                              Value="@skillEntry.Description"
+                              ValueChanged="@((string newDescription) => UpdateSkill(index, entry => entry.Description = newDescription))" />
+            </MudItem>
+
+            <MudItem xs="12" md="11">
+                <MudGrid Spacing="2" Class="editor-twin-grid">
+                    <MudItem xs="12" md="6">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="Skill instructions"
+                                      Class="editor-mono-field"
+                                      Sizing="InputSizing.Auto"
+                                      Lines="3"
+                                      MaxLines="20"
+                                      Value="@skillEntry.Content"
+                                      ValueChanged="@((string newContent) => UpdateSkill(index, entry => entry.Content = newContent))" />
+                    </MudItem>
+
+                    @if (HasResolvedContent(skillEntry))
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudTextField Variant="Variant.Outlined"
+                                          Label="Skill instructions after execution"
+                                          Class="editor-mono-field editor-resolved"
+                                          Sizing="InputSizing.Auto"
+                                          Lines="3"
+                                          MaxLines="20"
+                                          ReadOnly="true"
+                                          Value="@ResolvedSkillContent(skillEntry)" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3">
+            <div class="editor-eyebrow">Skill files</div>
+
+            <MudSpacer />
+
+            <MudButton Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.AttachFile"
+                       OnClick="@(() => AddSkillAsset(index))">
+                Add File (@skillEntry.Assets.Count/@AgentSkillAssets.MAX_ASSETS_PER_SKILL)
+            </MudButton>
+        </MudStack>
+
+        <MudText Typo="Typo.caption" Class="editor-mono-field mud-text-secondary">
+            $SKILL_ASSETS_DIR/@(SkillDirName(skillEntry))/&lt;file name&gt;
+        </MudText>
+
+        @for (int assetIndex = 0; assetIndex < skillEntry.Assets.Count; assetIndex++)
+        {
+            int currentAssetIndex = assetIndex;
+            AgentSkillsEditor.AssetEntry assetEntry = skillEntry.Assets[currentAssetIndex];
+            <MudPaper @key="assetEntry" Elevation="0" Outlined="true" Class="pa-2 mt-1 rounded">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="11">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="File name"
+                                      Placeholder="e.g. verify_bd_bs.py"
+                                      Class="editor-mono-field"
+                                      Value="@assetEntry.Name"
+                                      ValueChanged="@((string newName) => UpdateSkillAsset(index, currentAssetIndex, asset => asset.Name = newName))" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="1" Style="align-self: center;">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       Class="editor-soft-button"
+                                       aria-label="Remove skill file"
+                                       OnClick="@(() => RemoveSkillAsset(index, currentAssetIndex))" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="11">
+                        <MudCheckBox Color="Color.Primary"
+                                     Label="@FILL_TAGS_LABEL"
+                                     Value="@assetEntry.FillTags"
+                                     ValueChanged="@((bool fillTags) => UpdateSkillAsset(index, currentAssetIndex, asset => asset.FillTags = fillTags))"
+                                     data-testid="agent-skill-file-fill-tags" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="11">
+                        <MudTextField Variant="Variant.Outlined"
+                                      Label="@AssetContentLabel(assetEntry)"
+                                      Class="editor-mono-field"
+                                      Sizing="InputSizing.Auto"
+                                      Lines="3"
+                                      MaxLines="20"
+                                      Value="@assetEntry.Content"
+                                      ValueChanged="@((string newContent) => UpdateSkillAsset(index, currentAssetIndex, asset => asset.Content = newContent))" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+    </MudPaper>
+}
+
+@code {
+    private const string FILL_TAGS_LABEL = "Fill {{tags}} in this file";
+    private const string VERBATIM_CONTENT_LABEL = "File content (no {{tags}})";
+    private const string TAG_FILLED_CONTENT_LABEL = "File content ({{tags}} filled at run time)";
+
+    private List<AgentSkillsEditor.Entry> _skills = [];
+    private Block? _syncedBlock;
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IAgentRunProperties Props { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback Changed { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string NamePlaceholder { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string DescriptionPlaceholder { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Resolved content per skill name from the block's execution state; null while the block
+    /// has never executed.
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, string>? ResolvedSkillContents { get; set; }
+
+    // Re-sync only when a different Block object arrives (first render, or a re-upload that
+    // preserves block ids so @key keeps this component instance alive). Re-syncing on every
+    // render would clobber just-added empty skill rows, which SyncSkillsToProps deliberately
+    // drops from the persisted dictionary.
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (ReferenceEquals(_syncedBlock, Block))
+        {
+            return;
+        }
+
+        _syncedBlock = Block;
+        _skills = AgentSkillsEditor.ToEntries(Props.WorkerSkills);
+    }
+
+    private async Task AddSkill()
+    {
+        _skills.Add(new AgentSkillsEditor.Entry());
+        await SyncSkillsToProps();
+    }
+
+    private async Task RemoveSkill(int index)
+    {
+        if (index >= 0 && index < _skills.Count)
+        {
+            _skills.RemoveAt(index);
+            await SyncSkillsToProps();
+        }
+    }
+
+    private async Task UpdateSkill(int index, Action<AgentSkillsEditor.Entry> mutate)
+    {
+        if (index >= 0 && index < _skills.Count)
+        {
+            mutate(_skills[index]);
+            await SyncSkillsToProps();
+        }
+    }
+
+    private Task AddSkillAsset(int skillIndex)
+    {
+        return UpdateSkill(skillIndex, static entry => entry.Assets.Add(new AgentSkillsEditor.AssetEntry()));
+    }
+
+    private Task RemoveSkillAsset(int skillIndex, int assetIndex)
+    {
+        return UpdateSkill(skillIndex, entry =>
+        {
+            if (assetIndex >= 0 && assetIndex < entry.Assets.Count)
+            {
+                entry.Assets.RemoveAt(assetIndex);
+            }
+        });
+    }
+
+    private Task UpdateSkillAsset(int skillIndex, int assetIndex, Action<AgentSkillsEditor.AssetEntry> mutate)
+    {
+        return UpdateSkill(skillIndex, entry =>
+        {
+            if (assetIndex >= 0 && assetIndex < entry.Assets.Count)
+            {
+                mutate(entry.Assets[assetIndex]);
+            }
+        });
+    }
+
+    private static string AssetContentLabel(AgentSkillsEditor.AssetEntry asset)
+    {
+        return asset.FillTags ? TAG_FILLED_CONTENT_LABEL : VERBATIM_CONTENT_LABEL;
+    }
+
+    private static string SkillDirName(AgentSkillsEditor.Entry entry)
+    {
+        return string.IsNullOrWhiteSpace(entry.Name) ? "<skill-name>" : entry.Name.Trim();
+    }
+
+    /// <summary>
+    /// Per row, not per block: a skill added after the run has no resolved value, and a
+    /// half-width empty read-only pane beside it reads as a defect rather than as history.
+    /// </summary>
+    private bool HasResolvedContent(AgentSkillsEditor.Entry entry)
+    {
+        return ResolvedSkillContents?.ContainsKey(entry.Name.Trim()) is true;
+    }
+
+    private string ResolvedSkillContent(AgentSkillsEditor.Entry entry)
+    {
+        return ResolvedSkillContents?.GetValueOrDefault(entry.Name.Trim(), string.Empty) ?? string.Empty;
+    }
+
+    private async Task SyncSkillsToProps()
+    {
+        Props.WorkerSkills = AgentSkillsEditor.BuildWorkerSkills(_skills);
+        await Changed.InvokeAsync();
+    }
+}

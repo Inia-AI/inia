@@ -1,0 +1,115 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+
+        <ServerGarbageCollection>false</ServerGarbageCollection>
+
+        <Version>1.0.0</Version> <!-- Default version -->
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+        <FileVersion>$(Version)</FileVersion>
+        <InformationalVersion>$(Version)</InformationalVersion>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
+
+        <InformationalVersion Condition="'$(SourceRevisionId)' != ''">1.0.0+$(SourceRevisionId)</InformationalVersion>
+        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+        <UserSecretsId>a79296ad-6029-4d83-beef-5b9b3be939b7</UserSecretsId>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Amazon.AspNetCore.DataProtection.SSM" />
+        <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
+        <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
+        <PackageReference Include="AspNetCore.HealthChecks.Uris" />
+        <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
+        <PackageReference Include="AWSSDK.SSO" />
+        <PackageReference Include="AWSSDK.SSOOIDC" />
+        <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Keys" />
+        <PackageReference Include="Finbuckle.MultiTenant.AspNetCore" />
+        <PackageReference Include="Google.Apis.Auth" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.AspNetCore.OData" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite">
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="OpenIddict.Client" />
+        <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+        <PackageReference Include="OpenIddict.Server.AspNetCore" />
+        <PackageReference Include="OpenIddict.Validation.AspNetCore" />
+        <PackageReference Include="OpenIddict.Validation.ServerIntegration" />
+        <PackageReference Include="Serilog.Settings.Configuration" />
+        <PackageReference Include="Swashbuckle.AspNetCore" />
+        <PackageReference Include="System.Runtime.Caching">
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.AiConnection\IniaAi.AiConnection.csproj" />
+        <ProjectReference Include="..\IniaAi.Application\IniaAi.Application.csproj" />
+        <ProjectReference Include="..\IniaAi.Configuration\IniaAi.Configuration.csproj" />
+        <ProjectReference Include="..\IniaAi.Core\IniaAi.Core.csproj" />
+        <ProjectReference Include="..\IniaAi.Domain\IniaAi.Domain.csproj">
+            <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.FileFormats\IniaAi.FileFormats.csproj" />
+        <ProjectReference Include="..\IniaAi.Infrastructure\IniaAi.Infrastructure.csproj" />
+        <ProjectReference Include="..\IniaAi.Migrations.Mssql\IniaAi.Migrations.Mssql.csproj">
+            <TreatAsUsed>true</TreatAsUsed>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.Migrations.PostgreSql\IniaAi.Migrations.PostgreSql.csproj">
+            <TreatAsUsed>true</TreatAsUsed>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.Services\IniaAi.Services.csproj" />
+        <ProjectReference Include="..\IniaAi.WebApi.Contracts\IniaAi.WebApi.Contracts.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>$(AssemblyName).UnitTests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyMetadata Include="BuildDateUtc" Value="$([System.DateTime]::UtcNow.ToString('u'))" />
+        <AssemblyMetadata Include="Branch" Value="$(BranchName)" />
+    </ItemGroup>
+
+    <!-- Source control fills SourceRevisionId during the build, after items are evaluated. -->
+    <Target Name="AddCommitShaMetadata" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="InitializeSourceControlInformation">
+        <ItemGroup>
+            <AssemblyMetadata Include="CommitSha" Value="$(SourceRevisionId)" />
+        </ItemGroup>
+    </Target>
+
+    <!-- remove logging directories -->
+    <ItemGroup>
+        <None Remove="%HOME%\**" />
+        <None Remove="logs\**" />
+    </ItemGroup>
+
+    <!-- a template to copy by hand, never read by the app -->
+    <ItemGroup>
+        <Content Update="appsettings.Tests.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\WorkflowTemplatesAgentGuide.md" />
+    </ItemGroup>
+</Project>

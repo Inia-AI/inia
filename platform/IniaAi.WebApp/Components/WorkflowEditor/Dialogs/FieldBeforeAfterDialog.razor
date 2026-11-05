@@ -1,0 +1,53 @@
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2 flex-wrap">
+            <MudText Typo="Typo.subtitle2">@FieldLabel</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <span class="field-diff-pane"><mark class="diff-removed">removed</mark></span>
+                <span class="field-diff-pane"><mark class="diff-added">added</mark></span>
+            </MudStack>
+        </MudStack>
+
+        <MudPaper Outlined="true" Class="pa-3" Style="max-height: 70vh; overflow-y: auto;">
+            @if (string.IsNullOrEmpty(Before) && string.IsNullOrEmpty(After))
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-disabled" Style="font-style: italic;">(not set)</MudText>
+            }
+            else
+            {
+                <div class="field-diff-pane mud-typography-body2">@_mergedHtml</div>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Close()" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string FieldLabel { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Before { get; set; }
+
+    [Parameter]
+    public string? After { get; set; }
+
+    [Parameter]
+    public bool ByLine { get; set; }
+
+    private MarkupString _mergedHtml;
+
+    protected override void OnParametersSet()
+    {
+        _mergedHtml = ByLine
+            ? TextDiffHighlighter.HighlightMergedLines(Before, After)
+            : TextDiffHighlighter.HighlightMerged(Before, After);
+    }
+}

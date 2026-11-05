@@ -1,0 +1,278 @@
+{
+    // =================================================================
+    // The profiles, their ports and databases: docs/local-development.md
+    //
+    // Every config is a thin pointer to a launchSettings.json profile —
+    // the single source of truth for env vars, connection strings, ports,
+    // and AWS mode. Edit profiles in:
+    //   IniaAi.WebApp/Properties/launchSettings.json
+    //   IniaAi.WebApi/Properties/launchSettings.json
+    // (git-ignored; regenerate from the launchSettings.example.json files)
+    // =================================================================
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "===========POSTGRES===========",
+            "type": "coreclr",
+            "request": "launch",
+            "program": ""
+        },
+
+        {
+            "name": "AWS API Postgres",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApi",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/IniaAi.WebApi.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s/swagger"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApi/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS API Postgres"
+        },
+        {
+            "name": "AWS RAZOR Postgres",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS RAZOR Postgres"
+        },
+        {
+            "name": "AWS API Postgres (Main DB)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApi",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/IniaAi.WebApi.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s/swagger"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApi/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS API Postgres (Main DB)"
+        },
+        {
+            "name": "AWS RAZOR Postgres (Main DB)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS RAZOR Postgres (Main DB)"
+        },
+        {
+            "name": "AWS RAZOR Postgres (Test DB)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS RAZOR Postgres (Test DB)"
+        },
+        {
+            "name": "API Postgres",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApi",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/IniaAi.WebApi.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s/swagger"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApi/Properties/launchSettings.json",
+            "launchSettingsProfile": "API Postgres"
+        },
+        {
+            "name": "RAZOR Postgres",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "RAZOR Postgres"
+        },
+
+        {
+            "name": "===========MSSQL===========",
+            "type": "coreclr",
+            "request": "launch",
+            "program": ""
+        },
+
+        {
+            "name": "AWS API Mssql",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApi",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/IniaAi.WebApi.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s/swagger"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApi/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS API Mssql"
+        },
+        {
+            "name": "AWS RAZOR Mssql",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS RAZOR Mssql"
+        },
+        {
+            "name": "AWS API Mssql (Test DB)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApi",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/IniaAi.WebApi.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s/swagger"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApi/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS API Mssql (Test DB)"
+        },
+        {
+            "name": "AWS RAZOR Mssql (Test DB)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "AWS RAZOR Mssql (Test DB)"
+        },
+        {
+            "name": "API Mssql",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApi",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/IniaAi.WebApi.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApi/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s/swagger"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApi/Properties/launchSettings.json",
+            "launchSettingsProfile": "API Mssql"
+        },
+        {
+            "name": "RAZOR Mssql",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "buildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "RAZOR Mssql"
+        },
+
+        {
+            "name": "===========DANGER ZONE===========",
+            "type": "coreclr",
+            "request": "launch",
+            "program": ""
+        },
+
+        {
+            "name": "RE-SEED RAZOR Postgres",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "confirmAndBuildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "RE-SEED RAZOR Postgres"
+        },
+        {
+            "name": "RE-SEED RAZOR Mssql",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "confirmAndBuildWebApp",
+            "program": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/IniaAi.WebApp.dll",
+            "cwd": "${workspaceFolder}/artifacts/bin/IniaAi.WebApp/debug/",
+            "console": "integratedTerminal",
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+http://\\S+:([0-9]+)",
+                "uriFormat": "http://localhost:%s"
+            },
+            "launchSettingsFilePath": "${workspaceFolder}/IniaAi.WebApp/Properties/launchSettings.json",
+            "launchSettingsProfile": "RE-SEED RAZOR Mssql"
+        }
+    ]
+}

@@ -1,0 +1,2836 @@
+﻿@attribute [Authorize(Roles = Roles.EDITOR_ROLES)]
+@implements IAsyncDisposable
+
+@using System.Buffers
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.AiConnection.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.Domain.Abstractions.Entities
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Citations.Traces
+@using DocumentPage = IniaAi.Domain.Entities.Documents.Page
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using Microsoft.AspNetCore.Authorization
+@using IniaAi.AiConnection.Abstractions
+@using IniaAi.WebApp.Services
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+@using IniaAi.WebApp.Components.WorkflowEditor.Dependencies
+@using IniaAi.WebApp.Components.WorkflowEditor.Agent
+@using IniaAi.WebApp.Components.Layout
+@using IniaAi.WebApp.Components.Components
+@using Microsoft.AspNetCore.Components.Sections
+@using IniaAi.Application.Common.Signatures
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Commands.SharedComponents.ApplySharedComponentReconcile
+@using IniaAi.Application.Commands.SharedComponents.MaterializeSharedComponent
+@using IniaAi.Application.Commands.SharedComponents.PromoteSharedComponent
+@using IniaAi.Application.Commands.Workflows.SaveWorkflow
+@using IniaAi.Application.Queries.SharedComponents.GetWorkflowSharedComponentReconcile
+@using IniaAi.Application.Queries.SharedComponents.ListSharedComponentCategories
+@using IniaAi.Application.Queries.SharedComponents.ListSharedComponents
+@using IniaAi.Domain.Entities.SharedComponents.Enums
+@using IniaAi.Application.Commands.WorkflowTransfer.ImportWorkflowTemplateApply
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.Application.Queries.WorkflowTransfer.ExportWorkflowTemplate
+@using IniaAi.Core.Workflows.Diff
+@using IniaAi.Domain.Serialization
+@using IniaAi.WebApi.Contracts.Dto.WorkflowTransfer
+@using SharedComponentKind = IniaAi.WebApi.Contracts.Enums.SharedComponentKind
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using IniaAi.WebApi.Contracts.Responses.WorkflowVersions
+@using ErrorOr
+@using IniaAi.Application.Common.Dispatching
+@using IniaAi.WebApp.Components.WorkflowEditor.Components.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.Common.Interfaces.GitHub
+@using IniaAi.Configuration
+@using IniaAi.Configuration.Platform
+@using IniaAi.Common.Interfaces.Persistence
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Options
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject ILogger<WorkflowEditor> Logger
+@inject AppState AppState
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+@inject TenantModelFamilyResolver TenantModelFamilyResolver
+@inject IGitHubWorkflowVersioningService GitHubWorkflowVersioningService
+@inject IOptionsMonitor<GitHubSettings> GitHubOptions
+@inject WorkflowTextExportService TextExportService
+@inject IWorkflowTemplateStructuralValidator StructuralValidator
+@inject IniaAi.Application.Workflows.EditorAgent.IWorkflowEditorAgentService AgentService
+
+<style>
+    .floating-button-json-save,
+    .floating-button-bundle-export,
+    .floating-button-db-save {
+        position: fixed;
+        bottom: 20px;
+        z-index: 1000;
+        box-shadow: var(--mud-elevation-4);
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+
+    .floating-button-json-save:hover,
+    .floating-button-bundle-export:hover,
+    .floating-button-db-save:hover {
+        transform: scale(1.1);
+        box-shadow: var(--mud-elevation-8);
+    }
+
+    .floating-button-json-save {
+        right: 20px;
+    }
+
+    .floating-button-bundle-export {
+        right: 100px;
+    }
+
+    .floating-button-db-save {
+        right: 180px;
+    }
+</style>
+
+@if (!string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+{
+    <SectionContent SectionName="@LayoutSections.APP_BAR_ACTIONS">
+        <EditorAgentEntry IsOn="_isAgentMode" IsOnChanged="SetAgentModeAsync" UserId="@_user.Id" />
+    </SectionContent>
+}
+
+@* Agent mode covers the editor with the conversation; the editor stays loaded underneath so
+   accepted changes land on it and "Open in editor" can return to a block. *@
+<div class="editor-agent-underlay" inert="@_isAgentMode">
+<MudCard Outlined="true" Class="mb-2">
+    <MudCardContent>
+        <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="1">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.UploadFile"
+                       OnClick="@(async () => await _workflowFileUpload.OpenFilePickerAsync())">
+                Upload from file
+            </MudButton>
+
+            <AuthorizeView Roles="@Roles.EDITOR_ROLES">
+                <MudButton Variant="Variant.Text"
+                           Class="editor-soft-button"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Outlined.Unarchive"
+                           OnClick="@(async () => await _bundleFileUpload.OpenFilePickerAsync())">
+                    Import bundle
+                </MudButton>
+            </AuthorizeView>
+
+            <MudButton Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="@(async() => await DownloadAsJson())">
+                Download to file
+            </MudButton>
+
+            <AuthorizeView Roles="@Roles.EDITOR_ROLES">
+                <MudTooltip Text="@(_headVersion is null ? "Save the workflow first — a bundle exports the last saved version" : "Export the template and its shared components for another deployment")">
+                    <MudButton Variant="Variant.Text"
+                               Class="editor-soft-button"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Outlined.Inventory2"
+                               Disabled="@(_headVersion is null || _isExportingBundle)"
+                               OnClick="@(async() => await ExportBundleAsync())">
+                        Export bundle
+                    </MudButton>
+                </MudTooltip>
+            </AuthorizeView>
+
+            <MudButton Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.Save"
+                       Disabled="@_isSavingCore"
+                       OnClick="async() => await SaveCoreWorkflow(withPreviewGeneration: true)">
+                Save
+            </MudButton>
+
+            <MudButton Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.ContentCopy"
+                       OnClick="async() => await CopyWorkflowAsText()">
+                Copy as text
+            </MudButton>
+
+            <MudButton Variant="Variant.Text"
+                       Class="editor-soft-button"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Outlined.History"
+                       OnClick="ToggleHistoryDrawer">
+                Version history
+            </MudButton>
+
+            <MudBadge Content="@ReconcileAttentionCount"
+                      Color="Color.Warning"
+                      Overlap="true"
+                      Visible="@(ReconcileAttentionCount > 0)">
+                <MudButton Variant="Variant.Text"
+                           Class="editor-soft-button"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Outlined.LibraryBooks"
+                           Disabled="@(_restoredVersion is not null)"
+                           OnClick="ToggleReconcileDrawer">
+                    Library sync
+                </MudButton>
+            </MudBadge>
+
+            <MudMenu Icon="@Icons.Material.Outlined.MoreVert"
+                     AriaLabel="More actions"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Dense="true">
+                <MudMenuItem Icon="@Icons.Material.Outlined.SaveAs"
+                             OnClick="async() => await SaveCoreWorkflow(withPreviewGeneration: false)">
+                    Save without regenerating previews
+                </MudMenuItem>
+
+                <MudDivider Class="my-1" />
+
+                <MudMenuItem Icon="@Icons.Material.Outlined.FormatListBulleted"
+                             OnClick="ToggleCitationsForAll">
+                    @CitationsToggleLabel
+                </MudMenuItem>
+
+                <MudMenuItem Icon="@Icons.Material.Outlined.RestartAlt"
+                             OnClick="ClearAllExecutionStates">
+                    Clear execution states now
+                </MudMenuItem>
+
+                <MudMenuItem Icon="@(_clearExecutionStatesBeforeRun ? Icons.Material.Outlined.CheckBox : Icons.Material.Outlined.CheckBoxOutlineBlank)"
+                             AutoClose="false"
+                             OnClick="@(() => _clearExecutionStatesBeforeRun = !_clearExecutionStatesBeforeRun)">
+                    Clear execution states before each run
+                </MudMenuItem>
+
+                <MudDivider Class="my-1" />
+
+                @if (IsGitHubSaveEnabled())
+                {
+                    <MudMenuItem Icon="@Icons.Material.Outlined.CloudUpload"
+                                 Disabled="@_gitSaving"
+                                 OnClick="CommitWorkflowToGitHub">
+                        Commit to GitHub
+                    </MudMenuItem>
+                }
+                <MudMenuItem Icon="@Icons.Material.Outlined.SmartDisplay"
+                             OnClick="async() => await ConvertToDemoWorkflow()">
+                    Convert to demo
+                </MudMenuItem>
+
+                <MudMenuItem Icon="@Icons.Material.Outlined.Output"
+                             OnClick="async() => await ExposeAllBlocksAsOutputs()">
+                    Show all block results in report
+                </MudMenuItem>
+
+                <MudMenuItem Icon="@Icons.Material.Outlined.StopCircle"
+                             OnClick="async() => await SetEveryBlockToStopTheRunAsync()">
+                    @SET_EVERY_BLOCK_TO_STOP_THE_RUN
+                </MudMenuItem>
+            </MudMenu>
+        </MudStack>
+
+        <UnsavedChangesGuard IsDirty="_hasUnsavedChanges" IsDirtyNow="HasUnsavedChanges" />
+
+        @if (_headVersion is not null || _hasUnsavedChanges)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2">
+                @if (_headVersion is not null)
+                {
+                    <VersionStamp Verb="Last saved"
+                                  When="_headVersion.CreatedAtUtc"
+                                  Author="@_headVersion.CreatedByName"
+                                  VersionCode="@_headVersion.ShortCode" />
+                }
+
+                @if (_hasUnsavedChanges)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined" Class="ma-0">Unsaved changes</MudChip>
+                }
+            </MudStack>
+        }
+
+        <div class="mt-4">
+            <MudTextField T="string"
+                          @bind-Value="EditorContext.Workflow.Title"
+                          Variant="Variant.Text"
+                          Margin="Margin.Dense"
+                          Underline="false"
+                          Placeholder="Report title"
+                          aria-label="Report title"
+                          Class="editor-report-title" />
+
+            <MudTextField T="string"
+                          @bind-Text="EditorContext.Workflow.Name"
+                          Variant="Variant.Text"
+                          Margin="Margin.Dense"
+                          Underline="false"
+                          Placeholder="Workflow name"
+                          aria-label="Workflow name"
+                          Class="editor-report-name" />
+
+            <MudTextField T="string"
+                          @bind-Text="EditorContext.Workflow.Description"
+                          Variant="Variant.Text"
+                          Margin="Margin.Dense"
+                          Underline="false"
+                          Placeholder="Description (shown for each run on the Executed Workflows page)"
+                          aria-label="Workflow description"
+                          Class="editor-report-description" />
+
+            <MudTextField T="string"
+                          @bind-Text="EditorContext.Workflow.Notes"
+                          Variant="Variant.Text"
+                          Margin="Margin.Dense"
+                          Underline="false"
+                          Sizing="InputSizing.Auto"
+                          MaxLines="12"
+                          Placeholder="Workflow notes: what this workflow is for and how it should work (the workflow agent reads and updates them)"
+                          aria-label="Workflow notes"
+                          data-testid="editor-workflow-notes"
+                          Class="editor-report-description" />
+        </div>
+
+        <div class="d-none">
+            <MudFileUpload @ref="_workflowFileUpload"
+                           T="IReadOnlyList<IBrowserFile>"
+                           FilesChanged="async(files) => await UploadWorkflowFileAsync(files)"
+                           Accept=".sequence, .workflow"
+                           MaximumFileCount="1" />
+            <AuthorizeView Roles="@Roles.EDITOR_ROLES">
+                <MudFileUpload @ref="_bundleFileUpload"
+                               T="IReadOnlyList<IBrowserFile>"
+                               FilesChanged="async(files) => await UploadWorkflowFileAsync(files, fromBundleMouth: true)"
+                               Accept="@TransferBundleFile.UPLOAD_ACCEPT"
+                               MaximumFileCount="1" />
+            </AuthorizeView>
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@if (_showHistory && !string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+{
+    @* Keyed on the head version so a save while the drawer is open recreates it with a
+       fresh list; otherwise it keeps showing the pre-save history and the wrong Current marker. *@
+    <WorkflowHistoryDrawer @key="@(_headVersion?.Id ?? string.Empty)"
+                           OrganizationId="@_user.OrganizationId"
+                           WorkflowTypeId="@EditorContext.WorkflowTypeId"
+                           OnLoadVersion="HandleRestoreVersion"
+                           OnClose="@(() => _showHistory = false)" />
+}
+
+@if (_showReconcile && !string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+{
+    @* Keyed on the head version for the same reason as the history drawer: a save while it is
+       open would otherwise leave it holding stale decision tokens. *@
+    <LibraryReconcileDrawer @key="@(_headVersion?.Id ?? string.Empty)"
+                            OrganizationId="@_user.OrganizationId"
+                            UserId="@_user.Id"
+                            WorkflowTypeId="@EditorContext.WorkflowTypeId"
+                            Workflow="@EditorContext.Workflow"
+                            HasUnsavedEditorChanges="IsEditorDirtyAgainstHead"
+                            OnApplied="HandleReconcileAppliedAsync"
+                            OnClose="@(() => _showReconcile = false)" />
+}
+
+@if (!_brokenLinkNoticeDismissed && BrokenLibraryLinkCount > 0)
+{
+    <MudAlert Severity="Severity.Warning"
+              Variant="Variant.Outlined"
+              Dense="false"
+              Class="my-4"
+              ShowCloseIcon="true"
+              CloseIconClicked="@(() => _brokenLinkNoticeDismissed = true)"
+              aria-label="Library links that this deployment cannot resolve">
+        <MudText Typo="Typo.body1">
+            @(BrokenLibraryLinkCount == 1
+                ? "One block or section here links to a Library component this deployment does not have."
+                : $"{BrokenLibraryLinkCount} blocks or sections here link to Library components this deployment does not have.")
+            A plain workflow file carries the links but not the components themselves — moving the
+            workflow again with <strong>Export bundle</strong> brings them along and reconnects the copies.
+            To keep this workflow as it is instead, break the copies out from Library sync and they
+            become ordinary local content.
+        </MudText>
+    </MudAlert>
+}
+
+@if (_restoredVersion is not null)
+{
+    <MudAlert Severity="Severity.Warning"
+              Variant="Variant.Filled"
+              Dense="false"
+              Class="my-4"
+              aria-label="Viewing an older saved version">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="flex-wrap">
+            <MudText Typo="Typo.body1">
+                Viewing saved version @_restoredVersion.ShortCode from @_restoredVersion.CreatedAtUtc.ToString("d MMMM yyyy HH:mm") UTC.
+                This is not the current version. Save to make it current, or reload the page to discard it.
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Default"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Save"
+                       OnClick="async() => await SaveCoreWorkflow(withPreviewGeneration: false)">
+                Save now
+            </MudButton>
+        </MudStack>
+    </MudAlert>
+}
+
+@if (_showFailedBlocksBanner && (_failedBlocks.Any() || _retriedBlocks.Any()))
+{
+    <MudAlert Severity="@(_failedBlocks.Any() ? Severity.Error : Severity.Warning)"
+              Variant="Variant.Filled"
+              Dense="false"
+              ShowCloseIcon="true"
+              CloseIconClicked="@(() => ClearFailedBlocksBanner())"
+              Class="my-4"
+              aria-label="Warning: some blocks needed attention during execution">
+        <MudText Typo="Typo.h6" Class="mb-2">
+            <span role="img" aria-label="Warning" class="me-1">⚠️</span>
+            @BannerSummary()
+        </MudText>
+        <MudExpansionPanels Dense="true">
+            @if (_failedBlocks.Any())
+            {
+                <MudExpansionPanel Text="@($"View Failed Blocks ({_failedBlocks.Count})")" Dense="true">
+                    <MudList T="string" Dense="true" ReadOnly="true">
+                        @foreach (var (block, location, errorMessage) in _failedBlocks)
+                        {
+                            <MudListItem T="string">
+                                <MudStack Spacing="1">
+                                    <MudLink OnClick="@(async () => await ScrollToFailedBlock(block))"
+                                             Underline="Underline.Hover"
+                                             Color="Color.Error"
+                                             Style="cursor: pointer; font-weight: 600;">
+                                        @location
+                                    </MudLink>
+                                    <MudText Typo="Typo.body2" Color="Color.Default" Style="font-size: 0.875rem; opacity: 0.8;">
+                                        Error: @errorMessage
+                                    </MudText>
+                                </MudStack>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                    </MudList>
+                </MudExpansionPanel>
+            }
+
+            @if (_retriedBlocks.Any())
+            {
+                <MudExpansionPanel Text="@($"View Retried Blocks ({_retriedBlocks.Count})")" Dense="true">
+                    <MudList T="string" Dense="true" ReadOnly="true">
+                        @foreach (var (block, location, firstAttemptError) in _retriedBlocks)
+                        {
+                            <MudListItem T="string">
+                                <MudStack Spacing="1">
+                                    <MudLink OnClick="@(async () => await ScrollToFailedBlock(block))"
+                                             Underline="Underline.Hover"
+                                             Color="Color.Warning"
+                                             Style="cursor: pointer; font-weight: 600;">
+                                        @location
+                                    </MudLink>
+                                    <MudText Typo="Typo.body2" Color="Color.Default" Style="font-size: 0.875rem; opacity: 0.8;">
+                                        Recovered after one retry. First attempt: @firstAttemptError
+                                    </MudText>
+                                </MudStack>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                    </MudList>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    </MudAlert>
+}
+
+@* IsFixed on the last-touched dictionary: no per-render change notifications to every
+   BlockInteraction. It changes after a save, but every save path ends in a full subtree
+   re-render, so consumers pull the fresh value through normal parameter flow.
+   The link index must NOT be fixed: RefreshVersionInfoAsync awaits before assigning it,
+   so the first render publishes null, and WorkflowMap is one long-lived instance created
+   during that render — fixing the cascade would strand it on null for the session. *@
+<CascadingValue Value="_blocksLastTouched" IsFixed="true">
+    <CascadingValue Name="LibraryLinkIndex" Value="_linkIndex">
+        <CascadingValue Value="_editorSurfaceState" IsFixed="true">
+            <WorkflowInteraction @ref="@_workflowInteraction"
+                                 ShouldClearExecutionStates="@_clearExecutionStatesBeforeRun"
+                                 VariablesChangedCallback="@VariablesChangedCallback"
+                                 DocumentProcessingCallback="@DocumentProcessingCallback"
+                                 UpdateDocumentClassesListCallback="@(this.AsNonRenderingEventHandler(UpdateDocumentClassesList))"
+                                 ShareBlockToLibraryCallback="@ShareBlockToLibraryAsync"
+                                 ShareSectionToLibraryCallback="@ShareSectionToLibraryAsync"
+                                 RemoveLinkedEntryCallback="@RemoveLinkedSectionEntryAsync"
+                                 OpenLibrarySyncCallback="@ToggleReconcileDrawer"
+                                 InsertBlockFromLibraryCallback="@InsertBlockFromLibraryAsync"
+                                 InsertSectionFromLibraryCallback="@InsertSectionFromLibraryAsync"/>
+
+            <DependencySlideOver @ref="_dependencySlideOver"
+                                 RevealBlock="RevealBlockInEditorAsync" />
+        </CascadingValue>
+    </CascadingValue>
+</CascadingValue>
+</div>
+
+@if (_isAgentMode)
+{
+    <EditorAgentPanel @ref="_agentPanel"
+                      OrganizationId="@_user.OrganizationId"
+                      UserId="@_user.Id"
+                      WorkflowTypeId="@EditorContext.WorkflowTypeId"
+                      WorkflowName="@(string.IsNullOrWhiteSpace(EditorContext.Workflow.Title) ? EditorContext.Workflow.Name : EditorContext.Workflow.Title)"
+                      CurrentWorkflow="@(() => EditorContext.Workflow)"
+                      OpenBlock="OpenBlockFromAgentAsync"
+                      OnWorkflowEdited="HandleAgentWorkflowEditedAsync"
+                      OnProposedChanged="@(ids => _editorSurfaceState.SetProposedByAgent(ids))"
+                      OnPreviewChanged="@(preview => _editorSurfaceState.SetAgentPreview(preview))"
+                      OnClose="@(() => SetAgentModeAsync(false))" />
+}
+
+<MudFab Class="floating-button-json-save"
+        Color="Color.Primary"
+        StartIcon="@Icons.Material.Filled.Download"
+        Size="Size.Large"
+        aria-label="Download workflow to file"
+        title="Download workflow to file"
+        OnClick="async() => await DownloadAsJson()" />
+
+<AuthorizeView Roles="@Roles.EDITOR_ROLES">
+    <MudFab Class="floating-button-bundle-export"
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Inventory2"
+            Size="Size.Large"
+            aria-label="Export workflow bundle"
+            title="Export workflow bundle"
+            Disabled="@(_headVersion is null || _isExportingBundle)"
+            OnClick="async() => await ExportBundleAsync()" />
+</AuthorizeView>
+
+<MudFab Class="floating-button-db-save"
+        Color="Color.Primary"
+        StartIcon="@Icons.Material.Filled.Backup"
+        Size="Size.Large"
+        aria-label="Save workflow"
+        title="Save workflow"
+        Disabled="@_isSavingCore"
+        OnClick="async() => await SaveCoreWorkflow(withPreviewGeneration: false)" />
+
+@code {
+    private const long MAX_FILE_SIZE_BYTES = 1024 * 1024 * 100; // 100 MiB
+    private const string SAVE_CANCELLED_MESSAGE = "Save cancelled. Your changes stay in the editor, unsaved.";
+    private const string EDIT_ACTIVITY_MODULE_PATH = "js/edit-activity.js";
+    private const string SET_EVERY_BLOCK_TO_STOP_THE_RUN = "Set every block to stop the run";
+    private const string SAVE_TO_KEEP_THE_CHANGE = "Save the workflow to keep the change.";
+
+    private static readonly DialogOptions _smallDialogOptions = new()
+    {
+        CloseButton = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+    };
+
+    private WorkflowInteraction _workflowInteraction = default!;
+    private bool _hasUnsavedChanges;
+    private string? _storedContentHash;
+    private string? _checkedFingerprint;
+    private DotNetObjectReference<WorkflowEditor>? _selfReference;
+    private IJSObjectReference? _editActivityWatch;
+    private bool _disposed;
+    private DependencySlideOver? _dependencySlideOver;
+    private readonly EditorSurfaceState _editorSurfaceState = new(EditorSurfaceCapabilities.FullEditor);
+    private MudFileUpload<IReadOnlyList<IBrowserFile>> _workflowFileUpload = default!;
+    private MudFileUpload<IReadOnlyList<IBrowserFile>> _bundleFileUpload = default!;
+    private List<string> _documentClasses = [];
+    private User _user = default!;
+    private WorkflowVersionSummaryDto? _headVersion;
+    private string? _headRebuiltContentHash;
+    private WorkflowVersionContentDto? _restoredVersion;
+    private string? _baseVersionId;
+    private IReadOnlyDictionary<string, BlockLastTouchedDto>? _blocksLastTouched;
+    private LibraryLinkIndex? _linkIndex;
+    private bool _showHistory;
+    private bool _showReconcile;
+    private bool _brokenLinkNoticeDismissed;
+    private bool _gitSaving;
+    private bool _isSavingCore;
+    private bool _isExportingBundle;
+    private readonly CancellationTokenSource _cts = new();
+    private string _lastCommitMessage = string.Empty;
+    private List<(Block block, string location, string errorMessage)> _failedBlocks = [];
+    private List<(Block block, string location, string firstAttemptError)> _retriedBlocks = [];
+    private bool _showFailedBlocksBanner = false;
+    private bool _isUploadedFromFile = false;
+    private bool _clearExecutionStatesBeforeRun = true;
+    private bool _isAgentMode;
+    private Block? _revealAfterAgentMode;
+    private EditorAgentVersionNote _agentVersionNote = default!;
+    private EditorAgentPanel? _agentPanel;
+
+
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback DocumentProcessingCallback { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback<List<string>> DocumentClassesChangedCallBack { get; set; }
+
+    [Parameter]
+    public EventCallback VariablesChangedCallback { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User, nameof(AppState.User));
+
+        _user = AppState.User;
+        _agentVersionNote = new EditorAgentVersionNote(AgentService, _user.OrganizationId, _user.Id);
+
+        await RefreshVersionInfoAsync();
+        _baseVersionId = _headVersion?.Id;
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateDocumentClassesList();
+    }
+
+    private async Task RefreshVersionInfoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+        {
+            _headVersion = null;
+            _blocksLastTouched = null;
+            _linkIndex = null;
+            return;
+        }
+
+        await Task.WhenAll(RefreshLinkIndexAsync(), RefreshSaveStateAsync());
+    }
+
+    private async Task RefreshLinkIndexAsync()
+    {
+        ErrorOr<List<SharedComponentSummaryDto>> components = await ServiceScopeFactory.SendScopedAsync(
+            new ListSharedComponentsQuery(_user.OrganizationId, _user.Id));
+        _linkIndex = components.IsError ? null : new LibraryLinkIndex(components.Value);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshSaveStateAsync()
+    {
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+
+        ErrorOr<WorkflowHistoryPageDto> history = await sender.Send(
+            new GetWorkflowHistoryQuery(_user.OrganizationId, EditorContext.WorkflowTypeId, Take: 1));
+        if (history.IsError)
+        {
+            AppState.Notify(
+                $"Could not read this template's version state: {history.FirstError.Description} " +
+                "Saving may report a false conflict until it loads.",
+                Severity.Warning);
+        }
+
+        _headVersion = history.IsError ? null : history.Value.Versions.FirstOrDefault();
+        _headRebuiltContentHash = await RebuiltHeadContentHashAsync(sender);
+
+        ErrorOr<IReadOnlyDictionary<string, BlockLastTouchedDto>> blocks = await sender.Send(
+            new GetAllBlocksLastTouchedQuery(_user.OrganizationId, EditorContext.WorkflowTypeId));
+        _blocksLastTouched = blocks.IsError ? null : blocks.Value;
+
+        _storedContentHash = LiveContentHash();
+        _checkedFingerprint = null;
+        RecheckUnsavedChanges();
+    }
+
+    private async Task HandleRestoreVersion(WorkflowVersionContentDto version)
+    {
+        Workflow? restored = Workflow.FromJson(version.WorkflowJson);
+        if (restored is null)
+        {
+            AppState.Notify("Could not load that saved version.", Severity.Error);
+            return;
+        }
+
+        _isUploadedFromFile = true;
+        _showHistory = false;
+        _showReconcile = false;
+        _restoredVersion = version;
+        await ApplyLoadedWorkflowAsync(restored);
+    }
+
+    private async Task ApplyLoadedWorkflowAsync(Workflow restored)
+    {
+        WorkflowEditorContext.NormalizeParameterizedSections(restored);
+        EditorContext.Workflow = restored;
+
+        // Renames recorded against the discarded tree must not re-key live override rows on
+        // the next save — the replacement tree does not carry the token rewrites they paired with.
+        EditorContext.PendingSignatureFieldRenames.Clear();
+        _editorSurfaceState.ClearChangedByAgent();
+
+        UpdateDocumentClassesList();
+        await _workflowInteraction.UpdateWorkflowStateAsync();
+        await VariablesChangedCallback.InvokeAsync();
+        _dependencySlideOver?.ScheduleRefresh();
+    }
+
+    private Task RevealBlockInEditorAsync(Block block)
+    {
+        return _workflowInteraction.OpenBlockInEditorAsync(block);
+    }
+
+    /// <summary>
+    /// The agent changed the live workflow in memory: the changed blocks re-render, marked as
+    /// changed by the agent until the next save, and an undo takes the marks back.
+    /// </summary>
+    private async Task HandleAgentWorkflowEditedAsync(EditorAgentWorkflowEdit edit)
+    {
+        if (edit.Undone && edit.ChangedStableIds.Count > 0)
+        {
+            _editorSurfaceState.UnmarkChangedByAgent(edit.ProposalId, edit.ChangedStableIds);
+        }
+        else if (edit.Undone)
+        {
+            _editorSurfaceState.UnmarkChangedByAgent(edit.ProposalId);
+        }
+        else
+        {
+            _editorSurfaceState.MarkChangedByAgent(edit.ProposalId, edit.ChangedStableIds);
+            _agentVersionNote.NoteAccepted();
+        }
+
+        UpdateDocumentClassesList();
+        await _workflowInteraction.UpdateWorkflowStateAsync();
+        await VariablesChangedCallback.InvokeAsync();
+        _dependencySlideOver?.ScheduleRefresh();
+    }
+
+    private async Task OpenBlockFromAgentAsync(Block block)
+    {
+        _revealAfterAgentMode = block;
+        await SetAgentModeAsync(false);
+    }
+
+    private async Task<bool> SaveCoreWorkflow(bool withPreviewGeneration = true)
+    {
+        if (_isSavingCore)
+        {
+            return false;
+        }
+
+        Logger.LogInformation("Saving core workflow {WorkflowId} to database",
+            EditorContext.Workflow.Id);
+
+        // Precondition checks run before any tree mutation or user prompt, so a blocked
+        // save leaves the in-editor workflow untouched and never asks the user to confirm
+        // a save that cannot proceed. Expansion discards the parameterized config, so
+        // saving an expanded tree as core would permanently destroy the parameterization
+        // for this workflow type.
+        IReadOnlyList<string> expandedSections = EditorContext.Workflow.GetExpandedParameterizedSectionTitles();
+        if (expandedSections.Count > 0)
+        {
+            Logger.LogWarning(
+                "Blocked save-as-core for workflow {WorkflowId}: contains {Count} expanded parameterized section(s)",
+                EditorContext.Workflow.Id,
+                expandedSections.Count);
+            await ShowExpandedParameterizedBlockDialog(expandedSections);
+            return false;
+        }
+
+        if (_isUploadedFromFile && HasExecutionData())
+        {
+            bool confirmed = await ShowSaveExecutedWorkflowConfirmationAsync();
+            if (!confirmed)
+            {
+                Logger.LogInformation("User cancelled saving executed workflow");
+                return false;
+            }
+        }
+
+        _isSavingCore = true;
+        try
+        {
+            return await SaveCoreWorkflowCoreAsync(withPreviewGeneration);
+        }
+        finally
+        {
+            _isSavingCore = false;
+        }
+    }
+
+    private async Task<bool> SaveCoreWorkflowCoreAsync(bool withPreviewGeneration)
+    {
+        var allBlocks = EditorContext.Workflow.GetAllBlocks();
+        foreach (var block in allBlocks)
+        {
+            block.Reset();
+        }
+
+        List<(Block block, List<string> invalidTags)> blocksWithInvalidTags = FindBlocksWithInvalidReplacementTags();
+
+        // The editor sends SaveWorkflowCommand directly (bypassing the API's structural validation),
+        // so the regression- and signature-field rules are gated here. Only errors with those codes
+        // block the save; other structural rules stay API-only for the editor path.
+        List<Error> fieldErrors = StructuralValidator
+            .Validate(EditorContext.Workflow)
+            .Errors
+            .Where(e => WorkflowTemplateStructuralValidator.IsRegressionError(e)
+                || WorkflowTemplateStructuralValidator.IsSignatureError(e))
+            .ToList();
+
+        if (fieldErrors.Count > 0)
+        {
+            string details = string.Join("\n", fieldErrors.Select(e => $"• {e.Description}"));
+            var messageBoxOptions = new MessageBoxOptions
+            {
+                Title = "Regression or signature fields are misconfigured",
+                Message = details,
+                YesText = "OK",
+            };
+            _ = await DialogService.ShowMessageBoxAsync(messageBoxOptions, _smallDialogOptions);
+            return false;
+        }
+
+        if (withPreviewGeneration)
+        {
+            await PromptForPreviewGenerationForBlocks();
+        }
+
+        bool saved = await SendVersionedSaveAsync(_baseVersionId, allowConflictRecovery: true);
+
+        // The warning says the workflow was saved, so it waits for the save to succeed.
+        if (saved && blocksWithInvalidTags.Count > 0)
+        {
+            await ShowConsolidatedValidationWarningDialog(blocksWithInvalidTags);
+        }
+
+        return saved;
+    }
+
+    private async Task<bool> SendVersionedSaveAsync(
+        string? baseVersionId,
+        bool allowConflictRecovery,
+        bool confirmSignatureFieldDeletions = false)
+    {
+        // A fresh DI scope keeps the save handler's DbContext clear of the editor circuit's tracking state.
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+
+        string? agentNote = await _agentVersionNote.BeforeSaveAsync(EditorContext.WorkflowTypeId);
+
+        ErrorOr<SaveWorkflowResult> saveResult = await sender.Send(new SaveWorkflowCommand(
+            _user.OrganizationId,
+            _user.Id,
+            EditorContext.WorkflowTypeId,
+            EditorContext.Workflow,
+            baseVersionId,
+            EnforceOptimisticConcurrency: true,
+            SignatureFieldRenames: [.. EditorContext.PendingSignatureFieldRenames],
+            ConfirmSignatureFieldDeletions: confirmSignatureFieldDeletions,
+            VersionNote: agentNote));
+
+        if (saveResult.IsError)
+        {
+            if (allowConflictRecovery && SaveWorkflowCommandHandler.IsVersionConflict(saveResult.FirstError))
+            {
+                return await RecoverFromSaveConflictAsync(saveResult.FirstError);
+            }
+
+            // The server refuses a save that deletes client signature overrides until the author
+            // confirms: show its dialog, and on confirm retry the save with the confirmation set.
+            async Task<bool> ConfirmRefusalAsync(string title, string yesText)
+            {
+                var confirmOptions = new MessageBoxOptions
+                {
+                    Title = title,
+                    Message = saveResult.FirstError.Description,
+                    YesText = yesText,
+                    CancelText = "Keep editing",
+                };
+                bool? proceed = await DialogService.ShowMessageBoxAsync(confirmOptions, _smallDialogOptions);
+                if (proceed is not true)
+                {
+                    AppState.Notify(SAVE_CANCELLED_MESSAGE, Severity.Info);
+                }
+
+                return proceed is true;
+            }
+
+            // Uploads and version restores reach the delete path without the Signatures tab's
+            // confirmation dialog, so the server refuses and the editor confirms here instead.
+            if (!confirmSignatureFieldDeletions
+                && saveResult.FirstError.Code == SignatureFieldSaveSynchronizer.DELETION_REQUIRES_CONFIRMATION_CODE)
+            {
+                if (await ConfirmRefusalAsync("This save deletes client signature overrides", "Delete and save"))
+                {
+                    return await SendVersionedSaveAsync(
+                        baseVersionId,
+                        allowConflictRecovery,
+                        confirmSignatureFieldDeletions: true);
+                }
+
+                return false;
+            }
+
+            Logger.LogError(
+                "Core workflow {WorkflowTypeId} save failed: {Error}",
+                EditorContext.WorkflowTypeId,
+                saveResult.FirstError.Description);
+
+            AppState.Notify(
+                $"Could not save the workflow: {saveResult.FirstError.Description}",
+                Severity.Error);
+
+            return false;
+        }
+
+        Logger.LogInformation(
+            "Core workflow {WorkflowId} saved successfully",
+            EditorContext.Workflow.Id);
+
+        AppState.Notify(
+            "Workflow saved.",
+            Severity.Success);
+
+        foreach (string saveWarning in saveResult.Value.Warnings ?? [])
+        {
+            AppState.Notify(saveWarning, Severity.Warning);
+        }
+
+        _baseVersionId = saveResult.Value.VersionId;
+        bool agentChangesSaved = await _agentVersionNote.AfterSaveAsync(
+            EditorContext.WorkflowTypeId, wroteNewVersion: !saveResult.Value.WasDeduped, saveResult.Value.VersionId);
+        _editorSurfaceState.ClearChangedByAgent();
+        if (agentChangesSaved && _agentPanel is not null)
+        {
+            await _agentPanel.RefreshAsync();
+        }
+
+        EditorContext.PendingSignatureFieldRenames.Clear();
+        EditorContext.MarkSaved();
+
+        NotifySignatureSyncIfChanged(saveResult.Value.SignatureSync);
+
+        await RefreshVersionInfoAsync();
+
+        // Tell every signature-aware component to drop its override cache and
+        // refetch. While staff was editing, a client may have promoted a pending
+        // or authored a direct override via Vue — without this kick the editor's
+        // "Client Override" preview keeps showing whatever was loaded at mount.
+        AppState.NotifySignatureOverridesInvalidated();
+
+        _ = AutoCommitToGitHubAsync();
+
+        _isUploadedFromFile = false;
+        _restoredVersion = null;
+
+        await _workflowInteraction.UpdateWorkflowStateAsync();
+
+        return true;
+    }
+
+    private async Task<bool> RecoverFromSaveConflictAsync(Error conflict)
+    {
+        string? currentHeadId = SaveWorkflowCommandHandler.GetCurrentHeadVersionId(conflict);
+        List<string>? revertLines = await BuildConflictRevertLinesAsync(currentHeadId);
+
+        var parameters = new DialogParameters<SaveConflictDialog>
+        {
+            { dialog => dialog.RevertLines, revertLines ?? [] },
+            { dialog => dialog.DiffUnavailable, revertLines is null },
+        };
+        IDialogReference dialogReference = await DialogService.ShowAsync<SaveConflictDialog>(
+            "Template changed while you were editing",
+            parameters,
+            _smallDialogOptions);
+        DialogResult? result = await dialogReference.Result;
+        SaveConflictChoice choice = result is { Canceled: false, Data: SaveConflictChoice picked }
+            ? picked
+            : SaveConflictChoice.KeepEditing;
+
+        if (choice == SaveConflictChoice.SaveMine)
+        {
+            string? retryBaseVersionId = currentHeadId;
+            if (retryBaseVersionId is null)
+            {
+                await RefreshVersionInfoAsync();
+                retryBaseVersionId = _headVersion?.Id;
+            }
+
+            return await SendVersionedSaveAsync(retryBaseVersionId, allowConflictRecovery: false);
+        }
+
+        if (choice == SaveConflictChoice.LoadLatest)
+        {
+            await LoadLatestSavedVersionAsync(currentHeadId);
+            return false;
+        }
+
+        AppState.Notify(SAVE_CANCELLED_MESSAGE, Severity.Info);
+
+        return false;
+    }
+
+    private async Task<List<string>?> BuildConflictRevertLinesAsync(string? currentHeadId)
+    {
+        try
+        {
+            if (currentHeadId is null
+                || _baseVersionId is null
+                || string.Equals(currentHeadId, _baseVersionId, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            ErrorOr<WorkflowDiff> diff = await ServiceScopeFactory.SendScopedAsync(
+                new CompareWorkflowVersionsQuery(_user.OrganizationId, _baseVersionId, currentHeadId));
+
+            return diff.IsError ? null : SaveConflictDisclosure.BuildRevertLines(diff.Value);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not build the save-conflict revert disclosure");
+
+            return null;
+        }
+    }
+
+    private async Task LoadLatestSavedVersionAsync(string? headVersionId, bool quiet = false)
+    {
+        if (headVersionId is null)
+        {
+            await RefreshVersionInfoAsync();
+            headVersionId = _headVersion?.Id;
+        }
+
+        if (headVersionId is null)
+        {
+            AppState.Notify("Could not determine the latest saved version to load.", Severity.Error);
+            return;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+
+        ErrorOr<WorkflowVersionContentDto> content = await sender.Send(
+            new GetWorkflowVersionQuery(_user.OrganizationId, headVersionId));
+
+        if (content.IsError)
+        {
+            AppState.Notify(
+                $"Could not load the latest saved version: {content.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        Workflow? restored = Workflow.FromJson(content.Value.WorkflowJson);
+        if (restored is null)
+        {
+            AppState.Notify("Could not load the latest saved version.", Severity.Error);
+            return;
+        }
+
+        _isUploadedFromFile = false;
+        _restoredVersion = null;
+        _baseVersionId = content.Value.Id;
+        await RefreshVersionInfoAsync();
+        await ApplyLoadedWorkflowAsync(restored);
+
+        if (!quiet)
+        {
+            AppState.Notify(
+                $"Loaded the latest saved version {content.Value.ShortCode}. Your unsaved changes were discarded.",
+                Severity.Info);
+        }
+    }
+
+    private int ReconcileAttentionCount =>
+        _linkIndex is null ? 0 : _linkIndex.AttentionCount(EditorContext.Workflow);
+
+    private int BrokenLibraryLinkCount =>
+        _linkIndex is null ? 0 : _linkIndex.MissingCount(EditorContext.Workflow);
+
+    private void ToggleHistoryDrawer()
+    {
+        _showHistory = !_showHistory;
+        if (_showHistory)
+        {
+            _showReconcile = false;
+        }
+    }
+
+    private void ToggleReconcileDrawer()
+    {
+        _showReconcile = !_showReconcile;
+        if (_showReconcile)
+        {
+            _showHistory = false;
+        }
+    }
+
+    private async Task HandleReconcileAppliedAsync(string? versionId)
+    {
+        _showReconcile = false;
+        AppState.Notify("Library sync applied.", Severity.Success);
+        await LoadLatestSavedVersionAsync(versionId, quiet: true);
+    }
+
+    private async Task ShareBlockToLibraryAsync(Block block)
+    {
+        Section? container = block.Section?.IsActivelyLinked() == true ? block.Section : null;
+
+        await ShareToLibraryAsync("block", block.Name, () => block.StableBlockId, container, block);
+    }
+
+    private async Task ShareSectionToLibraryAsync(Section section)
+    {
+        await ShareToLibraryAsync("section", section.Title, () => section.StableSectionId);
+    }
+
+    private async Task ShareToLibraryAsync(
+        string subjectKind,
+        string? subjectName,
+        Func<string?> stableId,
+        Section? linkedContainer = null,
+        Block? linkedBlock = null)
+    {
+        if (!await SaveCoreWorkflow(withPreviewGeneration: false))
+        {
+            return;
+        }
+
+        // Only a block the section's definition provides converts into a reference there; a block
+        // added locally is nobody else's business and shares as an ordinary component, so promising
+        // the whole Library will follow would be a lie.
+        string? containerName = linkedContainer is null
+            || (linkedBlock is not null && !await IsDefinitionProvidedAsync(linkedContainer, linkedBlock))
+            ? null
+            : _linkIndex?.For(linkedContainer).ComponentName ?? linkedContainer.Title;
+        ShareToLibraryDialog.ShareToLibraryResult? share = await PromptShareDetailsAsync(
+            subjectKind, subjectName, containerName);
+        if (share is null)
+        {
+            return;
+        }
+
+        string? containerToken = linkedContainer?.SharedComponentId is { } containerComponentId
+            ? _linkIndex?.HeadVersionIdFor(containerComponentId)
+            : null;
+        await DispatchPromoteAsync(stableId(), share, subjectKind, containerToken);
+    }
+
+    private async Task RemoveLinkedSectionEntryAsync(Block block)
+    {
+        Section? section = block.Section;
+        if (section is null || !section.IsActivelyLinked())
+        {
+            _editorSurfaceState.RemoveBlock(block);
+
+            return;
+        }
+
+        ErrorOr<WorkflowSharedComponentReconcileResult> reconcile = await ServiceScopeFactory.SendScopedAsync(
+            new GetWorkflowSharedComponentReconcileQuery(
+                _user.OrganizationId, _user.Id, EditorContext.WorkflowTypeId));
+        if (reconcile.IsError)
+        {
+            AppState.Notify(
+                $"Could not check the Library state of '{block.Name}' — nothing was removed. Try again.",
+                Severity.Error);
+
+            return;
+        }
+
+        SharedComponentEntryReconcileRow? entry = block.StableBlockId is null
+            ? null
+            : reconcile.Value.Instances
+                .FirstOrDefault(row => string.Equals(
+                    row.TargetStableId, section.StableSectionId, StringComparison.Ordinal))
+                ?.Entries
+                ?.FirstOrDefault(e => string.Equals(
+                    e.EntryStableId, block.StableBlockId, StringComparison.Ordinal));
+
+        if (!LibraryReconcilePlanner.RequiresHideConfirmation(entry))
+        {
+            _editorSurfaceState.RemoveBlock(block);
+
+            return;
+        }
+
+        string sectionComponentName = _linkIndex?.For(section).ComponentName ?? section.Title ?? "the Library";
+        if (!await ConfirmHideEntryAsync(block.Name ?? entry!.DisplayName, sectionComponentName))
+        {
+            return;
+        }
+
+        await HideEntryAsync(section, block);
+    }
+
+    private async Task<bool> ConfirmHideEntryAsync(string blockName, string sectionComponentName)
+    {
+        var parameters = new DialogParameters<HideEntryConfirmDialog>
+        {
+            { dialog => dialog.BlockName, blockName },
+            { dialog => dialog.SectionComponentName, sectionComponentName },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<HideEntryConfirmDialog>(
+            "Hide Library entry?",
+            parameters,
+            _smallDialogOptions);
+        DialogResult? result = await dialog.Result;
+
+        return result is not null && !result.Canceled;
+    }
+
+    private async Task HideEntryAsync(Section section, Block block)
+    {
+        if (!await SaveCoreWorkflow(withPreviewGeneration: false) || _baseVersionId is null)
+        {
+            return;
+        }
+
+        ErrorOr<SharedComponentReconcileApplyResult> result = await ServiceScopeFactory.SendScopedAsync(
+            new ApplySharedComponentReconcileCommand(
+                _user.OrganizationId,
+                _user.Id,
+                EditorContext.WorkflowTypeId,
+                _baseVersionId,
+                [
+                    new SharedComponentReconcileDecision(
+                        section.SharedComponentId!,
+                        TargetStableId: section.StableSectionId,
+                        TargetPath: null,
+                        Action: SharedComponentReconcileAction.Hide,
+                        EntryStableId: block.StableBlockId),
+                ]));
+
+        if (result.IsError)
+        {
+            AppState.Notify(
+                $"Could not hide '{block.Name}': {result.FirstError.Description}"
+                + " Open Library sync to review and retry.",
+                Severity.Error);
+
+            return;
+        }
+
+        AppState.Notify($"'{block.Name}' is now hidden in this workflow.", Severity.Success);
+        string? anchorVersionId = result.Value.WorkflowSaves
+            .FirstOrDefault(save => string.Equals(
+                save.WorkflowTypeId, EditorContext.WorkflowTypeId, StringComparison.Ordinal))
+            ?.VersionId;
+        await LoadLatestSavedVersionAsync(anchorVersionId, quiet: true);
+    }
+
+    private async Task<bool> IsDefinitionProvidedAsync(Section section, Block block)
+    {
+        if (block.StableBlockId is null)
+        {
+            return false;
+        }
+
+        ErrorOr<WorkflowSharedComponentReconcileResult> reconcile = await ServiceScopeFactory.SendScopedAsync(
+            new GetWorkflowSharedComponentReconcileQuery(
+                _user.OrganizationId, _user.Id, EditorContext.WorkflowTypeId));
+        if (reconcile.IsError)
+        {
+            return false;
+        }
+
+        SharedComponentEntryReconcileRow? entry = reconcile.Value.Instances
+            .FirstOrDefault(row => string.Equals(
+                row.TargetStableId, section.StableSectionId, StringComparison.Ordinal))
+            ?.Entries
+            ?.FirstOrDefault(e => string.Equals(
+                e.EntryStableId, block.StableBlockId, StringComparison.Ordinal));
+
+        return entry is not null && entry.Origin != SharedComponentEntryOrigin.LocalInsert;
+    }
+
+    private async Task<ShareToLibraryDialog.ShareToLibraryResult?> PromptShareDetailsAsync(
+        string subjectKind,
+        string? defaultName,
+        string? linkedContainerName = null)
+    {
+        List<SharedComponentCategoryDto> categories;
+        using (IServiceScope scope = ServiceScopeFactory.CreateScope())
+        {
+            ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+            ErrorOr<SharedComponentCategoriesDto> vocabulary = await sender.Send(
+                new ListSharedComponentCategoriesQuery(_user.OrganizationId, _user.Id));
+            if (vocabulary.IsError || vocabulary.Value.Categories.Count == 0)
+            {
+                AppState.Notify(
+                    "No Library categories exist yet — create one on the Library page first.",
+                    Severity.Error);
+                return null;
+            }
+
+            categories = vocabulary.Value.Categories;
+        }
+
+        var parameters = new DialogParameters<ShareToLibraryDialog>
+        {
+            { dialog => dialog.SubjectKind, subjectKind },
+            { dialog => dialog.DefaultName, defaultName },
+            { dialog => dialog.Categories, categories },
+            { dialog => dialog.LinkedContainerName, linkedContainerName },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<ShareToLibraryDialog>(
+            $"Share {subjectKind} to Library",
+            parameters,
+            _smallDialogOptions);
+        DialogResult? result = await dialog.Result;
+
+        return result is null || result.Canceled
+            ? null
+            : result.Data as ShareToLibraryDialog.ShareToLibraryResult;
+    }
+
+    private async Task DispatchPromoteAsync(
+        string? targetStableId,
+        ShareToLibraryDialog.ShareToLibraryResult share,
+        string subjectKind,
+        string? expectedContainerHeadVersionId = null)
+    {
+        if (string.IsNullOrEmpty(targetStableId))
+        {
+            AppState.Notify(
+                $"Could not share the {subjectKind}: it has not been saved yet. Save the workflow and try again.",
+                Severity.Error);
+            return;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<PromoteSharedComponentResult> promoted = await sender.Send(new PromoteSharedComponentCommand(
+            _user.OrganizationId,
+            _user.Id,
+            EditorContext.WorkflowTypeId,
+            TargetStableId: targetStableId,
+            Name: share.Name,
+            Description: share.Description,
+            BaseVersionId: _baseVersionId,
+            CategoryId: share.CategoryId,
+            ExpectedContainerHeadVersionId: expectedContainerHeadVersionId));
+
+        if (promoted.IsError)
+        {
+            AppState.Notify(
+                $"Could not share the {subjectKind}: {promoted.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        AppState.Notify(
+            $"'{promoted.Value.Name}' shared to the Library.",
+            Severity.Success);
+
+        await LoadLatestSavedVersionAsync(promoted.Value.VersionId, quiet: true);
+    }
+
+    private async Task InsertBlockFromLibraryAsync((Section Section, int Index) target)
+    {
+        if (!await SaveCoreWorkflow(withPreviewGeneration: false))
+        {
+            return;
+        }
+
+        SharedComponentSummaryDto? component = await DialogService.PickLibraryComponentAsync(
+            SharedComponentKind.Block,
+            "Insert block from Library");
+        if (component is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(target.Section.StableSectionId))
+        {
+            AppState.Notify(
+                "Could not insert the block: that section has not been saved yet. Save the workflow and try again.",
+                Severity.Error);
+            return;
+        }
+
+        await DispatchMaterializeAsync(component, target.Section.StableSectionId, target.Index);
+    }
+
+    private async Task InsertSectionFromLibraryAsync(int index)
+    {
+        if (!await SaveCoreWorkflow(withPreviewGeneration: false))
+        {
+            return;
+        }
+
+        SharedComponentSummaryDto? component = await DialogService.PickLibraryComponentAsync(
+            SharedComponentKind.Section,
+            "Insert section from Library");
+        if (component is null)
+        {
+            return;
+        }
+
+        await DispatchMaterializeAsync(component, targetSectionStableId: null, index);
+    }
+
+    private async Task DispatchMaterializeAsync(
+        SharedComponentSummaryDto component,
+        string? targetSectionStableId,
+        int index)
+    {
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<MaterializeSharedComponentResult> materialized = await sender.Send(new MaterializeSharedComponentCommand(
+            _user.OrganizationId,
+            _user.Id,
+            EditorContext.WorkflowTypeId,
+            component.Id,
+            TargetSectionStableId: targetSectionStableId,
+            Index: index,
+            BaseVersionId: _baseVersionId));
+
+        if (materialized.IsError)
+        {
+            AppState.Notify(
+                $"Could not insert '{component.Name}' from the Library: {materialized.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        if (HasMaterializeDetails(materialized.Value))
+        {
+            await ShowMaterializeResultAsync(component.Name, materialized.Value);
+        }
+        else
+        {
+            AppState.Notify(
+                $"'{component.Name}' inserted from the Library.",
+                Severity.Success);
+        }
+
+        await LoadLatestSavedVersionAsync(materialized.Value.VersionId, quiet: true);
+    }
+
+    private static bool HasMaterializeDetails(MaterializeSharedComponentResult result)
+    {
+        return result.Warnings.Count > 0 || SharedComponentImpactText.SlotRenames(result.Bindings).Count > 0;
+    }
+
+    private async Task ShowMaterializeResultAsync(string componentName, MaterializeSharedComponentResult result)
+    {
+        var parameters = new DialogParameters<MaterializeResultDialog>
+        {
+            { dialog => dialog.ComponentName, componentName },
+            { dialog => dialog.Result, result },
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<MaterializeResultDialog>(
+            $"'{componentName}' inserted",
+            parameters,
+            _smallDialogOptions);
+        _ = await dialog.Result;
+    }
+
+    /// <summary>
+    /// Surfaces a post-save toast describing what the signature-override sync did during
+    /// the save (renames carried, deletions cascaded). Stays silent on the common case
+    /// (no field renames or deletions in the session).
+    /// </summary>
+    private void NotifySignatureSyncIfChanged(SignatureSyncResult result)
+    {
+        int deleted = result.OverridesDeleted + result.PendingsDeleted;
+        if (result.OverridesRenamed == 0 && deleted == 0)
+        {
+            return;
+        }
+
+        AppState.Notify(
+            $"Signatures: {result.OverridesRenamed} override(s) renamed, {deleted} cleaned up",
+            Severity.Info);
+    }
+
+    private async Task PromptForPreviewGenerationForBlocks()
+    {
+        var blocksNeedingPreviews = PromptPreviewService
+            .GetBlocksNeedingPreviews(EditorContext.Workflow);
+
+        bool shouldGeneratePreviews = false;
+
+        if (blocksNeedingPreviews.Any())
+        {
+            var parameters = new DialogParameters
+            {
+                ["BlockCount"] = blocksNeedingPreviews.Count,
+                ["OnPreviewGeneration"] = EventCallback.Factory.Create<RegeneratePreviewsDialog>(this, async (dialogInstance) =>
+                {
+                    var success = await GeneratePreviewsWithProgress(blocksNeedingPreviews, dialogInstance);
+                    dialogInstance.CompleteGeneration(success);
+                })
+            };
+
+            var options = new DialogOptions()
+            {
+                CloseButton = false, // Prevent closing during generation
+                MaxWidth = MaxWidth.Medium
+            };
+
+            var dialog = await DialogService.ShowAsync<RegeneratePreviewsDialog>(
+                "Generate Prompt Previews?",
+                parameters,
+                options);
+
+            var result = await dialog.Result;
+
+            if (result is null)
+            {
+                Logger.LogError("Preview generation dialog was closed unexpectedly");
+                AppState.Notify(
+                    "Preview generation dialog was closed unexpectedly, saving workflow as is",
+                    Severity.Error);
+                return;
+            }
+
+            if (result.Canceled)
+            {
+                Logger.LogWarning("Preview generation was cancelled");
+                AppState.Notify(
+                    "Preview generation was cancelled, saving workflow as is",
+                    Severity.Warning);
+                return;
+            }
+
+            shouldGeneratePreviews = false;
+        }
+
+        if (shouldGeneratePreviews)
+        {
+            await GeneratePreviewsForBlocks(blocksNeedingPreviews);
+        }
+    }
+
+    private async Task GeneratePreviewsForBlocks(List<Block> blocks)
+    {
+        int successCount = 0;
+        int errorCount = 0;
+
+        int maxDegreeOfParallelism = PlatformSettingsOptions.Value.IniaAi.LlmMaxDegreeOfParallelism
+            ?? Environment.ProcessorCount;
+
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = maxDegreeOfParallelism
+        };
+
+        await Parallel.ForEachAsync(blocks, parallelOptions, async (block, cancellationToken) =>
+        {
+            if (block.Properties is not AiQueryProperties props)
+            {
+                Logger.LogWarning("Skipping preview generation for block {BlockId} of type {BlockType} due to incompatible properties",
+                    block.Id, block.Type);
+                Interlocked.Increment(ref errorCount);
+                return;
+            }
+
+            var success = await TryGeneratePreviewWithRetry(props, block.ReplacementTag, maxRetries: 2);
+
+            if (success)
+            {
+                Interlocked.Increment(ref successCount);
+            }
+            else
+            {
+                // Apply graceful degradation
+                props.UserPromptTemplatePreview = CreateFallbackPreview(props);
+                Interlocked.Increment(ref errorCount);
+            }
+        });
+
+        if (successCount > 0)
+        {
+            Logger.LogInformation(
+                "Generated {SuccessCount} prompt previews successfully",
+                successCount);
+            AppState.Notify(
+                $"Generated {successCount} prompt previews successfully",
+                Severity.Success);
+        }
+
+        if (errorCount > 0)
+        {
+            Logger.LogWarning(
+                "Failed to generate {ErrorCount} prompt previews (used fallback)",
+                errorCount);
+            AppState.Notify(
+                $"Failed to generate {errorCount} prompt previews (used fallback)",
+                Severity.Warning);
+        }
+    }
+
+
+    private async Task<bool> TryGeneratePreviewWithRetry(AiQueryProperties props, string blockTag, int maxRetries = 2)
+    {
+        var modelFamily = TenantModelFamilyResolver.GetModelFamilyForFunction(AppState.CurrentOrganizationId, IniaAi.AiConnection.Common.FunctionType.WorkflowReasoning);
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            try
+            {
+
+
+                using var scope = ServiceScopeFactory.CreateScope();
+                var chatConnector = scope.ServiceProvider.GetRequiredService<IChatConnector>();
+
+                var userPrompt = $"Create a privacy-safe preview for this user prompt template:\n\n{props.UserPromptTemplate}";
+                string? response = (await chatConnector
+                    .GetResponseAsync(
+                        userPrompt,
+                        PlatformSettingsOptions.Value.PromptTemplates.UserPromptPreviewSystemPrompt,
+                        family: modelFamily))
+                    .GetPlainText();
+
+                if (!string.IsNullOrWhiteSpace(response))
+                {
+                    props.UserPromptTemplatePreview = response.Trim();
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Attempt {Attempt} failed for block {BlockTag}: {Error}",
+                    attempt + 1, blockTag, ex.Message);
+
+                // Exponential backoff for retry
+                if (attempt < maxRetries - 1)
+                {
+                    await Task.Delay(1000 * (attempt + 1));
+                }
+            }
+        }
+
+        Logger.LogError("All {MaxRetries} attempts failed for block {BlockTag}", maxRetries, blockTag);
+        return false;
+    }
+
+    private string CreateFallbackPreview(AiQueryProperties props)
+    {
+        // Create a basic fallback preview when AI generation fails
+        var previewLength = Math.Min(150, props.UserPromptTemplate?.Length ?? 150);
+        var truncatedPrompt = props.UserPromptTemplate is not null
+            && props.UserPromptTemplate.Length > previewLength
+                ? props.UserPromptTemplate.Substring(0, previewLength) + "..."
+                : props.UserPromptTemplate;
+
+        return $"[Preview unavailable - {nameof(BlockTypes.AiQuery)} block]: {truncatedPrompt}";
+    }
+
+    private async Task<bool> GeneratePreviewsWithProgress(List<Block> blocks, RegeneratePreviewsDialog dialogInstance)
+    {
+        int successCount = 0;
+        int errorCount = 0;
+        int completedCount = 0;
+
+        try
+        {
+            dialogInstance?.SetGeneratingState(true);
+
+            // Use parallel processing for better performance while maintaining progress tracking
+            await using var progressTimer = new Timer(state =>
+            {
+                var dialog = state as RegeneratePreviewsDialog;
+                if (dialog is not null)
+                {
+                    // Update progress based on completed count
+                    var currentCompleted = Volatile.Read(ref completedCount);
+                    var currentSuccess = Volatile.Read(ref successCount);
+                    var currentErrors = Volatile.Read(ref errorCount);
+
+                    dialog.UpdateProgress(currentCompleted, blocks.Count,
+                        currentCompleted < blocks.Count ? "Processing..." : "Complete",
+                        currentSuccess, currentErrors);
+                }
+            }, dialogInstance, TimeSpan.Zero, TimeSpan.FromMilliseconds(500)); // Update every 500ms
+
+            int maxDegreeOfParallelism = PlatformSettingsOptions.Value.IniaAi.LlmMaxDegreeOfParallelism ?? Environment.ProcessorCount;
+
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Min(maxDegreeOfParallelism, 3) // Limit concurrent requests
+            };
+
+            await Parallel.ForEachAsync(blocks, parallelOptions, async (block, cancellationToken) =>
+            {
+                if (block.Properties is not AiQueryProperties props)
+                {
+                    Logger.LogWarning("Skipping preview generation for block {BlockId} of type {BlockType} due to incompatible properties",
+                        block.Id, block.Type);
+                    Interlocked.Increment(ref errorCount);
+                    return;
+                }
+
+                var success = await TryGeneratePreviewWithRetry(props, block.ReplacementTag, maxRetries: 2);
+                if (success)
+                {
+                    Interlocked.Increment(ref successCount);
+                }
+                else
+                {
+                    // Apply graceful degradation
+                    props.UserPromptTemplatePreview = CreateFallbackPreview(props);
+                    Interlocked.Increment(ref errorCount);
+                }
+
+                Interlocked.Increment(ref completedCount);
+            });
+
+            // Final progress update
+            dialogInstance?.UpdateProgress(blocks.Count, blocks.Count, "Complete", successCount, errorCount);
+
+            // Show results for a moment before closing
+            await Task.Delay(1000);
+
+            // Show results notification
+            if (successCount > 0)
+            {
+                AppState.Notify($"Generated {successCount} prompt previews successfully", Severity.Success);
+            }
+
+            if (errorCount > 0)
+            {
+                AppState.Notify($"Failed to generate {errorCount} prompt previews (used fallback)", Severity.Warning);
+            }
+
+            // Return true if at least some previews were generated (including fallbacks)
+            return successCount + errorCount == blocks.Count;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Critical error during preview generation");
+            AppState.Notify("Critical error during preview generation", Severity.Error);
+
+            dialogInstance?.SetGeneratingState(false);
+            return false;
+        }
+        finally
+        {
+            dialogInstance?.SetGeneratingState(false);
+        }
+    }
+
+    private async Task DownloadAsJson()
+    {
+        CarryEditorRunPages(EditorContext.Workflow);
+        string json = EditorContext.Workflow.ToExportJson(includeRunTraces: true);
+
+        var data = Encoding.UTF8.GetBytes(json);
+
+        var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{EditorContext.Workflow.Name}.workflow";
+
+        await JsRuntime.InvokeAsync<object>("downloadFile", filename, data);
+
+        AppState.Notify(
+            "Workflow downloaded successfully",
+            Severity.Success);
+    }
+
+    /// <summary>
+    /// A block run here cites pages the run loaded, not pages an uploaded run carried, so their
+    /// text joins the download the way the executed-run download adds it from the database.
+    /// </summary>
+    private void CarryEditorRunPages(Workflow workflow)
+    {
+        HashSet<string> carried = [.. workflow.CitationTracePages.Select(page => page.Id)];
+        HashSet<string> cited = [.. workflow.CitationTracePageIds().Where(id => !carried.Contains(id))];
+        foreach (DocumentPage page in EditorContext.WorkflowHandler.AllPages.Where(page => cited.Contains(page.Id)))
+        {
+            if (page.Text is string text)
+            {
+                workflow.CitationTracePages.Add(new CitationTracePage(page.Id, text));
+            }
+        }
+    }
+
+    private async Task ExportBundleAsync()
+    {
+        if (_headVersion is null || _isExportingBundle)
+        {
+            return;
+        }
+
+        _isExportingBundle = true;
+        try
+        {
+            await ExportBundleCoreAsync();
+        }
+        finally
+        {
+            _isExportingBundle = false;
+        }
+    }
+
+    private async Task ExportBundleCoreAsync()
+    {
+        if (IsEditorDirtyAgainstHead())
+        {
+            var dirtyOptions = new MessageBoxOptions
+            {
+                Title = "Unsaved changes",
+                Message = "A bundle always exports the last saved version, and the editor has unsaved changes.",
+                YesText = "Save, then export",
+                NoText = "Export last saved",
+                CancelText = "Cancel",
+            };
+            bool? choice = await DialogService.ShowMessageBoxAsync(dirtyOptions, _smallDialogOptions);
+            if (choice is null)
+            {
+                return;
+            }
+
+            if (choice is true && !await SaveCoreWorkflow(withPreviewGeneration: false))
+            {
+                return;
+            }
+        }
+
+        ErrorOr<ExportWorkflowTemplateResult> export = await ServiceScopeFactory.SendScopedAsync(
+            new ExportWorkflowTemplateQuery(_user.OrganizationId, _user.Id, EditorContext.WorkflowTypeId));
+        if (export.IsError)
+        {
+            AppState.Notify(
+                $"Could not export the bundle: {export.FirstError.Description}",
+                Severity.Error);
+            return;
+        }
+
+        string json = TransferBundleFile.Serialize(export.Value.Bundle);
+        byte[] data = Encoding.UTF8.GetBytes(json);
+        string filename =
+            $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{EditorContext.Workflow.Name}{TransferBundleFile.FILE_EXTENSION}";
+        await JsRuntime.InvokeAsync<object>("downloadFile", filename, data);
+
+        int componentCount = export.Value.Bundle.Components.Count;
+        AppState.Notify(
+            $"Bundle exported with {componentCount} shared component{(componentCount == 1 ? "" : "s")}. "
+            + $"Excluded from every bundle — {string.Join("; ", export.Value.SkippedCarriers)} — "
+            + "none of these travel with the file.",
+            Severity.Success);
+    }
+
+    private bool IsEditorDirtyAgainstHead()
+    {
+        if (_headVersion is null)
+        {
+            return false;
+        }
+
+        string liveHash = LiveContentHash();
+
+        return !string.Equals(liveHash, _headVersion.ContentHash, StringComparison.Ordinal)
+            && !string.Equals(liveHash, _headRebuiltContentHash, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Leaving loses work only when the editor holds content that is neither the stored template,
+    /// as last loaded or saved, nor the newest saved version. The stored template can differ from
+    /// that version when something other than the editor wrote it.
+    /// </summary>
+    private bool HasUnsavedChanges()
+    {
+        if (_storedContentHash is null)
+        {
+            return false;
+        }
+
+        string liveHash = LiveContentHash();
+        bool matchesNewestVersion = _headVersion is not null
+            && (string.Equals(liveHash, _headVersion.ContentHash, StringComparison.Ordinal)
+                || string.Equals(liveHash, _headRebuiltContentHash, StringComparison.Ordinal));
+
+        return !matchesNewestVersion && !string.Equals(liveHash, _storedContentHash, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Runs after each pause in the author's activity, so it skips the full content hash when the
+    /// workflow has not changed since the last check; a save or a load clears the fingerprint.
+    /// </summary>
+    [JSInvokable]
+    public void RecheckUnsavedChanges()
+    {
+        string fingerprint = new WorkflowCanonicalizer().ComputeChangeFingerprint(EditorContext.Workflow);
+        if (fingerprint == _checkedFingerprint)
+        {
+            return;
+        }
+
+        _checkedFingerprint = fingerprint;
+        bool hasUnsavedChanges = HasUnsavedChanges();
+        if (hasUnsavedChanges != _hasUnsavedChanges)
+        {
+            _hasUnsavedChanges = hasUnsavedChanges;
+            StateHasChanged();
+        }
+    }
+
+    private async Task WatchEditActivityAsync()
+    {
+        try
+        {
+            _selfReference = DotNetObjectReference.Create(this);
+            await using IJSObjectReference module = await JsRuntime.InvokeAsync<IJSObjectReference>(
+                "import", $"./{Assets[EDIT_ACTIVITY_MODULE_PATH]}");
+            _editActivityWatch = await module.InvokeAsync<IJSObjectReference>(
+                "watchEditActivity", _selfReference, nameof(RecheckUnsavedChanges));
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Could not watch for edits; the unsaved-changes marker updates only on load and save");
+        }
+
+        if (_disposed)
+        {
+            await StopWatchingEditActivityAsync();
+        }
+    }
+
+    private async Task StopWatchingEditActivityAsync()
+    {
+        try
+        {
+            if (_editActivityWatch is not null)
+            {
+                await _editActivityWatch.InvokeVoidAsync("dispose");
+                await _editActivityWatch.DisposeAsync();
+                _editActivityWatch = null;
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (OperationCanceledException)
+        {
+            // Blazor cancels pending interop calls once the browser has gone, and the page with it.
+        }
+    }
+
+    private string LiveContentHash()
+    {
+        return new WorkflowCanonicalizer().ComputeContentHash(EditorContext.Workflow);
+    }
+
+    private async Task<string?> RebuiltHeadContentHashAsync(ISender sender)
+    {
+        if (_headVersion is null || string.Equals(LiveContentHash(), _headVersion.ContentHash, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        ErrorOr<WorkflowVersionContentDto> head = await sender.Send(
+            new GetWorkflowVersionQuery(_user.OrganizationId, _headVersion.Id, EditorContext.WorkflowTypeId));
+
+        return head.IsError ? null : new WorkflowCanonicalizer().ComputeStoredContentHash(head.Value.WorkflowJson);
+    }
+
+    private async Task OpenImportDialogAsync(WorkflowTransferBundle bundle)
+    {
+        if (string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+        {
+            AppState.Notify("Open a saved workflow type before importing a bundle into it.", Severity.Warning);
+            return;
+        }
+
+        ImportWorkflowTemplateApplyResult? applied = await BundleImportFlow.RunAsync(
+            ServiceScopeFactory,
+            DialogService,
+            AppState,
+            _user.OrganizationId,
+            _user.Id,
+            EditorContext.WorkflowTypeId,
+            bundle);
+        if (applied is not null)
+        {
+            await ReloadAfterBundleApplyAsync(applied);
+        }
+    }
+
+    private async Task ReloadAfterBundleApplyAsync(ImportWorkflowTemplateApplyResult applied)
+    {
+        bool editorStale = false;
+        if (applied.Template.VersionId is { } newHeadVersionId)
+        {
+            ErrorOr<WorkflowVersionContentDto> content = await ServiceScopeFactory.SendScopedAsync(
+                new GetWorkflowVersionQuery(_user.OrganizationId, newHeadVersionId));
+            if (!content.IsError && Workflow.FromJson(content.Value.WorkflowJson) is { } freshHead)
+            {
+                _isUploadedFromFile = false;
+                _restoredVersion = null;
+                await ApplyLoadedWorkflowAsync(freshHead);
+                _baseVersionId = newHeadVersionId;
+            }
+            else
+            {
+                editorStale = true;
+            }
+        }
+
+        await RefreshVersionInfoAsync();
+        if (editorStale)
+        {
+            AppState.Notify(
+                "Bundle imported on the server, but the editor could not reload the new version — reopen the workflow to see it.",
+                Severity.Warning);
+            return;
+        }
+
+        int created = applied.ComponentOutcomes.Count(o => o.Action == SharedComponentTransferComponentAction.Created);
+        int appended = applied.ComponentOutcomes.Count(o => o.Action == SharedComponentTransferComponentAction.Appended);
+        int deduped = applied.ComponentOutcomes.Count(o => o.Action == SharedComponentTransferComponentAction.Deduped);
+        int kept = applied.ComponentOutcomes.Count(o => o.Action == SharedComponentTransferComponentAction.Kept);
+        string templateLine = applied.Template.WasDeduped ? "template already in sync" : "template updated";
+        AppState.Notify(
+            $"Bundle imported — components: {created} created, {appended} updated, {deduped} already in sync, "
+            + $"{kept} kept; {templateLine}.",
+            Severity.Success);
+    }
+
+    private async Task CopyWorkflowAsText()
+    {
+        string text = TextExportService.ExportWorkflowToText(EditorContext.Workflow);
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        AppState.Notify("Workflow copied to clipboard", Severity.Success);
+    }
+
+    private string CitationsToggleLabel => EditorContext.Workflow.GetAllBlocks()
+        .Any(b => b.Properties is AiQueryProperties props && props.ShouldGetCitationsFromModel)
+            ? "Disable Citations For All"
+            : "Enable Citations For All";
+
+    private async Task ToggleCitationsForAll()
+    {
+        await _workflowInteraction.ToggleCitationsForAllSections();
+        StateHasChanged();
+    }
+
+    private async Task ClearAllExecutionStates()
+    {
+        EditorContext.Workflow.ClearExecutionState();
+        await _workflowInteraction.UpdateWorkflowStateAsync();
+    }
+
+    private async Task ConvertToDemoWorkflow()
+    {
+        try
+        {
+            EditorContext.Workflow.ConvertToDemoWorkflow();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogError(ex, "Failed to convert workflow to demo workflow");
+
+            AppState.Notify(
+                $"Failed to convert to demo workflow: {ex.Message}",
+                Severity.Error);
+
+            return;
+        }
+
+        AppState.Notify(
+            "Workflow converted to demo workflow",
+            Severity.Success);
+    }
+
+    private async Task ExposeAllBlocksAsOutputs()
+    {
+        try
+        {
+            EditorContext.Workflow.ExposeAllBlocksAsOutputs();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to expose all blocks as outputs");
+
+            AppState.Notify(
+                $"Failed to expose all blocks as outputs: {ex.Message}",
+                Severity.Error);
+
+            return;
+        }
+
+        AppState.Notify(
+            "All blocks are now exposed as outputs",
+            Severity.Success);
+    }
+
+    private async Task SetEveryBlockToStopTheRunAsync()
+    {
+        int count = EditorContext.Workflow.GetBlocksNotSetToStopTheRun().Count;
+        if (count == 0)
+        {
+            AppState.Notify("Every block is already set to stop the run if it fails.", Severity.Info);
+            return;
+        }
+
+        string blocks = count == 1 ? "1 block" : $"{count} blocks";
+        var confirmOptions = new MessageBoxOptions
+        {
+            Title = SET_EVERY_BLOCK_TO_STOP_THE_RUN,
+            Message = $"This sets {blocks} to stop the run on failure. {SAVE_TO_KEEP_THE_CHANGE}",
+            YesText = $"Change {blocks}",
+            CancelText = "Cancel",
+        };
+        bool? proceed = await DialogService.ShowMessageBoxAsync(confirmOptions, _smallDialogOptions);
+        if (proceed is not true)
+        {
+            return;
+        }
+
+        EditorContext.Workflow.SetEveryBlockToStopTheRun();
+        await _workflowInteraction.UpdateWorkflowStateAsync();
+        RecheckUnsavedChanges();
+
+        AppState.Notify($"Set {blocks} to stop the run on failure. {SAVE_TO_KEEP_THE_CHANGE}", Severity.Success);
+    }
+
+    private bool IsGitHubSaveEnabled()
+    {
+        GitHubSettings settings = GitHubOptions.CurrentValue;
+
+        if (!settings.Enabled)
+        {
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(settings.Pat);
+    }
+
+    private async Task AutoCommitToGitHubAsync()
+    {
+        if (!IsGitHubSaveEnabled())
+        {
+            return;
+        }
+
+        if (_gitSaving)
+        {
+            return;
+        }
+
+        _gitSaving = true;
+
+        try
+        {
+            var ct = _cts.Token;
+            ct.ThrowIfCancellationRequested();
+
+            if (EditorContext is null
+                || string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+            {
+                Logger.LogWarning("Auto-commit skipped: missing workflow type");
+                return;
+            }
+
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork core = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            WorkflowType? wfType = await core.WorkflowTypes.GetByIdAsync(
+                EditorContext.WorkflowTypeId);
+
+            string category = wfType?.Category?.ToString() ?? "uncategorized";
+            string content = EditorContext.Workflow.ToExportJson();
+            string message = $"Save workflow {EditorContext.WorkflowTypeId}";
+
+            GitHubCommitResult result = await GitHubWorkflowVersioningService.CommitWorkflowAsync(
+                workflowTypeId: EditorContext.WorkflowTypeId,
+                area: category,
+                function: "",
+                content: content,
+                commitMessage: message,
+                authorName: _user.UserName ?? "Unknown",
+                authorEmail: _user.Email ?? "unknown@example.com",
+                cancellationToken: ct);
+
+            string shortSha = result.Sha.Length >= 7
+                ? result.Sha[..7]
+                : result.Sha;
+
+            Logger.LogInformation(
+                "Auto-committed workflow {WorkflowTypeId} to GitHub ({Sha})",
+                EditorContext.WorkflowTypeId, shortSha);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.LogInformation("Auto-commit to GitHub cancelled (component disposed)");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Auto-commit to GitHub failed for workflow {WorkflowTypeId}",
+                EditorContext?.WorkflowTypeId);
+
+            AppState.Notify(
+                $"GitHub auto-save failed: {ex.Message}",
+                Severity.Warning);
+        }
+        finally
+        {
+            _gitSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CommitWorkflowToGitHub()
+    {
+        using IServiceScope? scope = ServiceScopeFactory.CreateScope();
+        ICoreUnitOfWork? core = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+        if (EditorContext is null
+            || string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+        {
+            AppState.Notify(
+                "Cannot save to GitHub: missing workflow type.",
+                Severity.Error);
+            return;
+        }
+
+        WorkflowType? wfType = await core.WorkflowTypes.GetByIdAsync(
+            EditorContext.WorkflowTypeId);
+
+        string category = wfType?.Category?.ToString() ?? "uncategorized";
+
+        if (_gitSaving)
+        {
+            return;
+        }
+
+        _gitSaving = true;
+
+        try
+        {
+            string? content = EditorContext.Workflow.ToExportJson();
+
+            string? message = await ShowCommitMessageDialogAsync(_lastCommitMessage);
+
+            if (message is null)
+            {
+                Logger.LogInformation("GitHub commit cancelled by user.");
+                return;
+            }
+
+            _lastCommitMessage = message;
+
+            GitHubCommitResult? result = await GitHubWorkflowVersioningService.CommitWorkflowAsync(
+                workflowTypeId: EditorContext.WorkflowTypeId,
+                area: category,
+                function: "",
+                content: content,
+                commitMessage: message,
+                authorName: _user.UserName
+                    ?? "Unknown",
+                authorEmail: _user.Email
+                    ?? "unknown@example.com");
+
+            string? shortSha = result.Sha.Length >= 7
+                ? result.Sha[..7]
+                : result.Sha;
+            AppState.Notify($"Saved ✓ • {shortSha}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            AppState.Notify(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _gitSaving = false;
+        }
+    }
+
+    private async Task<string?> ShowCommitMessageDialogAsync(string initial)
+    {
+        DialogParameters? parameters = new DialogParameters
+        {
+            [nameof(CommitMessageDialog.InitialMessage)] = initial
+        };
+
+        IDialogReference? dialog = await DialogService.ShowAsync<CommitMessageDialog>(
+            "Save to GitHub",
+            parameters,
+            _smallDialogOptions);
+        DialogResult? result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return null;
+        }
+
+        return result.Data as string
+            ?? string.Empty;
+    }
+
+    private async Task UploadWorkflowFileAsync(
+        IReadOnlyList<IBrowserFile> files,
+        bool fromBundleMouth = false)
+    {
+        // The upload control reports a cleared selection as a null list.
+        if (files is null)
+        {
+            return;
+        }
+
+        const int BufferSize = 4096;
+
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+
+        try
+        {
+            await UploadFileAsync(files.First(), buffer, fromBundleMouth);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e, "Failed to process file");
+
+            AppState.Notify(
+                "Failed to process workflow file",
+                Severity.Error);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private async Task UploadFileAsync(IBrowserFile file, byte[] buffer, bool fromBundleMouth = false)
+    {
+        using MemoryStream memoryStream = new();
+        using var fileStream = file.OpenReadStream(maxAllowedSize: TransferBundleFile.MAX_FILE_SIZE_BYTES);
+
+        while (await fileStream.ReadAsync(buffer) is int read && read > 0)
+        {
+            memoryStream.Write(buffer, 0, read);
+        }
+
+        string json = Encoding.UTF8.GetString(memoryStream.ToArray());
+
+        if (TransferBundleFile.Classify(json) == TransferPayloadKind.TransferBundle)
+        {
+            WorkflowTransferBundle? bundle = TransferBundleFile.TryDeserialize(json);
+            if (bundle is null)
+            {
+                AppState.Notify(
+                    "That file looks like a workflow bundle but could not be read — it may be damaged.",
+                    Severity.Error);
+
+                return;
+            }
+
+            ClearFailedBlocksBanner();
+            await OpenImportDialogAsync(bundle);
+
+            return;
+        }
+
+        await ProcessWorkflowJsonUploadAsync(json, file.Name, fromBundleMouth);
+    }
+
+    private async Task ProcessWorkflowJsonUploadAsync(string json, string fileName, bool fromBundleMouth)
+    {
+        if (Workflow.DeclaresUnsupportedFormatVersion(json, out int declaredFormatVersion))
+        {
+            Logger.LogWarning(
+                "Rejected workflow upload declaring format version {DeclaredFormatVersion}; this build supports up to {CurrentFormatVersion}",
+                declaredFormatVersion,
+                Workflow.CURRENT_FORMAT_VERSION);
+
+            AppState.Notify(
+                Workflow.UnsupportedFormatVersionMessage(declaredFormatVersion),
+                Severity.Error);
+
+            return;
+        }
+
+        Workflow? originalWorkflow = Workflow.FromExportJson(json);
+
+        if (originalWorkflow is null)
+        {
+            Logger.LogError("Failed to parse workflow from JSON");
+
+            AppState.Notify(
+                "Could not read that workflow file — it may be damaged or saved in an older format.",
+                Severity.Error);
+
+            return;
+        }
+
+        if (Workflow.DeclaresUnsupportedFormatVersion(originalWorkflow.FormatVersion))
+        {
+            Logger.LogWarning(
+                "Rejected workflow upload declaring format version {DeclaredFormatVersion}; this build supports up to {CurrentFormatVersion}",
+                originalWorkflow.FormatVersion,
+                Workflow.CURRENT_FORMAT_VERSION);
+
+            AppState.Notify(
+                Workflow.UnsupportedFormatVersionMessage(originalWorkflow.FormatVersion!.Value),
+                Severity.Error);
+
+            return;
+        }
+
+        // Both upload controls accept both kinds so nothing is ever silently dropped, and a workflow
+        // file replaces everything on screen, so either control asks first.
+        var replaceOptions = new MessageBoxOptions
+        {
+            Title = WorkflowFileImportPreview.TitleFor(fromBundleMouth),
+            Message = WorkflowFileImportPreview.Describe(EditorContext.Workflow, originalWorkflow, fileName),
+            YesText = "Replace the editor content",
+            CancelText = "Cancel",
+        };
+        bool? replace = await DialogService.ShowMessageBoxAsync(replaceOptions, _smallDialogOptions);
+        if (replace is not true)
+        {
+            AppState.Notify("Upload cancelled — this workflow is unchanged.", Severity.Info);
+
+            return;
+        }
+
+        ClearFailedBlocksBanner();
+
+        // Only preserve IDs when this is a true re-upload of the CURRENT tenant's
+        // workflow under this workflow type — i.e. the uploaded root Id matches
+        // the DB row `GetByTypeIdAsync` would return. In that case, block Ids line
+        // up with SignatureFieldOverride rows so overrides keep applying after
+        // Save-As-Core. Any other upload (fresh tenant, different workflow type
+        // in the same DB, workflow whose Ids happen to collide with another row)
+        // regenerates Ids via plain CloneTo so we never PK-collide on save.
+        bool preserveIds = await IsReuploadOfCurrentWorkflowAsync(originalWorkflow);
+        Workflow cloneWorkflow = new();
+        if (preserveIds)
+        {
+            originalWorkflow.CloneToPreservingIds(cloneWorkflow);
+        }
+        else
+        {
+            originalWorkflow.CloneTo(cloneWorkflow);
+        }
+
+        originalWorkflow.CarryRunTracesTo(cloneWorkflow);
+        cloneWorkflow.FormatVersion = null;
+
+        _isUploadedFromFile = true;
+        _restoredVersion = null;
+        await ApplyLoadedWorkflowAsync(cloneWorkflow);
+        AnalyzeFailedBlocks();
+
+        await NotifyActiveOverrideCoverageAsync(cloneWorkflow);
+
+        AppState.Notify(
+            "Workflow uploaded successfully",
+            Severity.Success);
+    }
+
+    /// <summary>
+    /// Decides whether the uploaded JSON is a re-upload of the CURRENT tenant's existing
+    /// workflow for this workflow-type (in which case preserving Ids is safe), or a
+    /// foreign upload whose Ids might collide with other rows in Core.Workflows (in which
+    /// case we must regenerate). SignatureFieldOverride rows are unaffected either way —
+    /// they key on stable block ids, which survive both clone paths.
+    /// Matches by root workflow Id; a match is the only signal strong enough to trust.
+    /// </summary>
+    private async Task<bool> IsReuploadOfCurrentWorkflowAsync(Workflow uploaded)
+    {
+        string? workflowTypeId = EditorContext.WorkflowTypeId;
+        if (string.IsNullOrWhiteSpace(workflowTypeId) || string.IsNullOrWhiteSpace(uploaded.Id))
+        {
+            return false;
+        }
+
+        try
+        {
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+
+            Workflow? currentCore = await coreUnitOfWork.Workflows.GetByTypeIdAsync(workflowTypeId);
+            return currentCore is not null && currentCore.Id == uploaded.Id;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Id-preservation preflight failed; falling back to fresh-Id upload for safety.");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Surfaces a post-upload toast telling staff whether the current tenant has any
+    /// active SignatureFieldOverride rows matching the uploaded workflow's signature
+    /// field definitions. Overrides are never carried in the <c>.workflow</c> JSON —
+    /// they live in a dedicated table keyed by <c>(org, workflow type, field name)</c>.
+    /// So the count here reflects what the CURRENT tenant already has in its DB, not
+    /// what the source tenant had. Zero-count on a cross-tenant upload is the expected
+    /// "no leak" signal; zero-count on a same-tenant re-upload means the client hasn't
+    /// authored any overrides yet (or the uploaded definitions' names no longer match
+    /// the rows — e.g. fields were renamed since).
+    /// </summary>
+    private async Task NotifyActiveOverrideCoverageAsync(Workflow uploaded)
+    {
+        // Scope to the currently-selected tenant, not the user's default org —
+        // a SuperAdmin browsing another tenant's editor must see that tenant's
+        // override rows, not their own primary org's.
+        string? organizationId = AppState.CurrentOrganizationId;
+        if (string.IsNullOrEmpty(organizationId))
+        {
+            return;
+        }
+
+        HashSet<string> fieldNames = [.. uploaded.SignatureFields.Select(f => f.Name)];
+
+        if (fieldNames.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreDbContext coreDbContext = scope.ServiceProvider.GetRequiredService<ICoreDbContext>();
+
+            int overrideCount = await coreDbContext.SignatureFieldOverrides
+                .AsNoTracking()
+                .Where(o => o.OrganizationId == organizationId
+                    && o.WorkflowTypeId == uploaded.WorkflowTypeId
+                    && fieldNames.Contains(o.PlaceholderName))
+                .CountAsync();
+
+            if (overrideCount == 0)
+            {
+                AppState.Notify(
+                    "Upload complete — no active signature overrides exist for this workflow in this tenant. Fields will resolve to staff defaults.",
+                    Severity.Info);
+            }
+            else
+            {
+                AppState.Notify(
+                    $"Upload complete — {overrideCount} active signature override(s) will apply in this tenant.",
+                    Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to compute active-override coverage after upload");
+        }
+    }
+
+    private void UpdateDocumentClassesList()
+    {
+        var documentClasses = EditorContext.Workflow.GetDocumentClasses()
+            .Except(["Any", "None"]);
+
+        bool hasChanges = !_documentClasses.SequenceEqual(documentClasses);
+
+        if (hasChanges)
+        {
+            _documentClasses.Clear();
+            _documentClasses.Add(string.Empty);
+            _documentClasses.AddRange(documentClasses);
+            DocumentClassesChangedCallBack.InvokeAsync(_documentClasses);
+
+            // This callback is wired through a non-rendering receiver (hot path:
+            // every block edit lands here), so render explicitly on real changes.
+            StateHasChanged();
+        }
+    }
+
+    private List<(Block block, List<string> invalidTags)> FindBlocksWithInvalidReplacementTags()
+    {
+        var invalidBlocks = new List<(Block block, List<string> invalidTags)>();
+
+        var allBlocks = EditorContext.Workflow.GetAllBlocks();
+
+        foreach (var block in allBlocks)
+        {
+            var invalid = IniaAi.WebApp.Services.ReplacementTagUiValidationService.ValidateAllTextFieldsForBlock(block, EditorContext.Workflow);
+            if (invalid.Any())
+            {
+                invalidBlocks.Add((block, invalid.Distinct().ToList()));
+            }
+        }
+
+        return invalidBlocks;
+    }
+
+    private async Task ShowConsolidatedValidationWarningDialog(List<(Block block, List<string> invalidTags)> invalidBlocks)
+    {
+        var blockIssues = invalidBlocks.Select(item => new
+        {
+            BlockLocation = GetBlockLocationString(item.block),
+            InvalidTags = item.invalidTags
+        }).ToList();
+
+        var parameters = new DialogParameters
+        {
+            ["BlockIssues"] = blockIssues,
+            ["Workflow"] = EditorContext.Workflow
+        };
+
+        var options = new DialogOptions()
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large
+        };
+
+        await DialogService.ShowAsync<ReplacementTagValidationDialog>(
+            "Saved — with a replacement-tag warning",
+            parameters,
+            options);
+    }
+
+    private async Task ShowExpandedParameterizedBlockDialog(IReadOnlyList<string> expandedSectionTitles)
+    {
+        string sectionItems = string.Join("", expandedSectionTitles
+            .Select(t => $"<li><strong>{System.Net.WebUtility.HtmlEncode(t)}</strong></li>"));
+
+        var markupMessage = new MarkupString(
+            "<p class=\"mb-2\">The following section(s) have already been expanded into their variants:</p>"
+            + $"<ul class=\"mt-0 mb-3\">{sectionItems}</ul>"
+            + "<p class=\"mb-2\"><strong>Saving as core would permanently discard the parameterized configuration.</strong></p>"
+            + "<p class=\"mb-0 mud-text-secondary\">Load the un-expanded version before saving to core: re-upload the "
+            + "original workflow file, or reload the core template. Expansion happens during execution and is not "
+            + "meant to be saved back.</p>");
+
+        var messageBoxOptions = new MessageBoxOptions
+        {
+            Title = "Cannot save expanded parameterized sections",
+            MarkupMessage = markupMessage,
+            YesText = "Got it"
+        };
+
+        await DialogService.ShowMessageBoxAsync(messageBoxOptions, _smallDialogOptions);
+    }
+
+    private string GetBlockLocationString(Block block)
+    {
+        if (block.Section is null)
+        {
+            return "Unknown Block";
+        }
+
+        var sectionNumber = block.Section.Order;
+        var blockNumber = block.Order;
+
+        var sectionName = !string.IsNullOrWhiteSpace(block.Section.Title)
+            ? $"Section {sectionNumber}: {block.Section.Title}"
+            : $"Section {sectionNumber}";
+
+        var blockName = !string.IsNullOrWhiteSpace(block.Name)
+            ? $"Block {blockNumber}: {block.Name}"
+            : $"Block {blockNumber}";
+
+        return $"{sectionName} → {blockName}";
+    }
+
+    private bool HasExecutionData()
+    {
+        return EditorContext.Workflow.Sections
+            .Any(section => section.ExecutionState is not null);
+    }
+
+    private async Task<bool> ShowSaveExecutedWorkflowConfirmationAsync()
+    {
+        IDialogReference dialog = await DialogService.ShowAsync<SaveExecutedWorkflowConfirmationDialog>(
+            "Confirm Save",
+            _smallDialogOptions);
+        DialogResult? result = await dialog.Result;
+
+        return result is not null && !result.Canceled;
+    }
+
+    private void AnalyzeFailedBlocks()
+    {
+        _failedBlocks.Clear();
+        _retriedBlocks.Clear();
+
+        var allBlocks = EditorContext.Workflow.GetAllBlocks();
+
+        foreach (var block in allBlocks)
+        {
+            if (block.ExecutionState?.HasFailed == true)
+            {
+                var location = GetBlockLocationString(block);
+                var errorMessage = block.ExecutionState?.Error ?? "Unknown error";
+                _failedBlocks.Add((block, location, errorMessage));
+                continue;
+            }
+
+            // Retried-and-passed: AI Query block whose validator rejected the first
+            // response and accepted the retry. Gate on Completed so stale
+            // OutputFormatAttemptCount on a never-run block doesn't surface here.
+            if (block.ExecutionState?.Status == ExecutionStatus.Completed
+                && block.Properties is AiQueryProperties aiProps
+                && aiProps.OutputFormatAttemptCount > 1
+                && aiProps.OutputFormatLastError is not null)
+            {
+                var location = GetBlockLocationString(block);
+                _retriedBlocks.Add((block, location, aiProps.OutputFormatLastError));
+            }
+        }
+
+        if (_failedBlocks.Any() || _retriedBlocks.Any())
+        {
+            _showFailedBlocksBanner = true;
+            Logger.LogInformation(
+                "Found {FailedCount} failed and {RetriedCount} retried blocks after workflow upload",
+                _failedBlocks.Count,
+                _retriedBlocks.Count);
+        }
+    }
+
+    private void ClearFailedBlocksBanner()
+    {
+        _failedBlocks.Clear();
+        _retriedBlocks.Clear();
+        _showFailedBlocksBanner = false;
+    }
+
+    private string BannerSummary()
+    {
+        if (_failedBlocks.Any() && _retriedBlocks.Any())
+        {
+            return $"{_failedBlocks.Count} block(s) failed and {_retriedBlocks.Count} retried during execution";
+        }
+
+        if (_failedBlocks.Any())
+        {
+            return $"{_failedBlocks.Count} block(s) failed during execution";
+        }
+
+        return $"{_retriedBlocks.Count} block(s) needed a retry during execution";
+    }
+
+    private async Task ScrollToFailedBlock(Block block)
+    {
+        if (block.SectionId is null)
+        {
+            Logger.LogWarning("Cannot scroll to block: SectionId is null");
+            return;
+        }
+
+        try
+        {
+            await _workflowInteraction.OpenBlockInEditorAsync(block);
+
+            Logger.LogInformation(
+                "Navigated to failed block at {Location}",
+                GetBlockLocationString(block));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to scroll to block {BlockId}", block.Id);
+            AppState.Notify(
+                "Failed to navigate to block",
+                Severity.Error);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await WatchEditActivityAsync();
+        }
+
+        if (firstRender && await CanUseAgentAsync() && !string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId))
+        {
+            if (await TryReadAgentModeAsync())
+            {
+                await SetAgentModeAsync(true, remember: false);
+            }
+        }
+
+        if (_revealAfterAgentMode is { } block && !_isAgentMode)
+        {
+            _revealAfterAgentMode = null;
+            await RevealBlockInEditorAsync(block);
+        }
+    }
+
+    private Task SetAgentModeAsync(bool isOn)
+    {
+        return SetAgentModeAsync(isOn, remember: true);
+    }
+
+    /// <summary>Agent mode shows the conversation full screen over the editor.</summary>
+    private async Task SetAgentModeAsync(bool isOn, bool remember)
+    {
+        if (isOn && (string.IsNullOrWhiteSpace(EditorContext.WorkflowTypeId) || !await CanUseAgentAsync()))
+        {
+            return;
+        }
+
+        if (isOn == _isAgentMode)
+        {
+            return;
+        }
+
+        _isAgentMode = isOn;
+
+        if (remember)
+        {
+            try
+            {
+                await EditorAgentModePreference.WriteAsync(JsRuntime, _user.Id, isOn);
+            }
+            catch (JSException exception)
+            {
+                Logger.LogWarning(exception, "Could not remember the Agent mode choice");
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task<bool> CanUseAgentAsync()
+    {
+        AuthenticationState? authentication = AuthenticationStateTask is null ? null : await AuthenticationStateTask;
+        return EditorAgentAccess.CanUse(authentication?.User, AgentService);
+    }
+
+    private async Task<bool> TryReadAgentModeAsync()
+    {
+        try
+        {
+            return await EditorAgentModePreference.ReadAsync(JsRuntime, _user.Id);
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Could not read the Agent mode choice");
+            return false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+
+        await StopWatchingEditActivityAsync();
+
+        _selfReference?.Dispose();
+    }
+}

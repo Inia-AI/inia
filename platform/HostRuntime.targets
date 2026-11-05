@@ -1,0 +1,11 @@
+<Project>
+    <!-- Imported through BeforeMicrosoftNETSdkTargets: after the project file, so OutputType is known, and before the SDK reads RuntimeIdentifier.
+         A portable executable holds the native files of every platform its packages ship, 29 platforms for a test project here. One built for the machine's own runtime holds that runtime's only.
+         A runtime given on the command line, as the Docker images give linux-x64, wins.
+         A program that writes no runtime configuration runs under its host's, as the PDFium worker does, so it stays portable:
+         given the machine's runtime, it would not match a host published for another one. -->
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == '' And '$(OutputType)' == 'Exe' And '$(GenerateRuntimeConfigurationFiles)' != 'false'">
+        <RuntimeIdentifier>$(NETCoreSdkPortableRuntimeIdentifier)</RuntimeIdentifier>
+        <ArtifactsPivots>$(Configuration.ToLowerInvariant())</ArtifactsPivots> <!-- Without it the output moves to artifacts/bin/<project>/debug_<runtime>, and the launch settings, log paths and docs name artifacts/bin/<project>/debug -->
+    </PropertyGroup>
+</Project>

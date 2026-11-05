@@ -1,0 +1,156 @@
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.SharedComponents.PreviewSharedComponentReconcile
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+@if (IsLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (LoadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">@LoadError</MudAlert>
+}
+else if (Preview is not null)
+{
+    <MudText Typo="Typo.body2">@Headline</MudText>
+
+    @if (IsIdenticalToHead)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+            @IdenticalToHeadMessage
+        </MudAlert>
+    }
+    else
+    {
+        @if (Preview.Consumers.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">
+                No live template copies are linked, so only the Library entry changes.
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">@LinkedCopiesSummary update immediately:</MudText>
+            <MudSimpleTable Dense="true" Elevation="0" Class="mt-1">
+                <tbody>
+                    @foreach (SharedComponentConsumer consumer in Preview.Consumers)
+                    {
+                        <tr>
+                            <td>@(string.IsNullOrWhiteSpace(consumer.WorkflowTypeName) ? consumer.WorkflowTypeId : consumer.WorkflowTypeName)</td>
+                            <td style="text-align: right;">@consumer.LinkedInstanceCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+
+        @if (SlotDeltaSummary is not null)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-2">
+                Slot changes vs the current head: @SlotDeltaSummary
+            </MudText>
+        }
+
+        @if (FreshBaselineCount > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                @(FreshBaselineCount == 1
+                    ? "1 regression baseline is currently fresh and becomes stale."
+                    : $"{FreshBaselineCount} regression baselines are currently fresh and become stale.")
+            </MudAlert>
+        }
+
+        @if (Orphans.Count > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                Client signature overrides are affected:
+            </MudAlert>
+            <ul class="mud-typography-body2 my-1 ps-5">
+                @foreach (SharedComponentOverrideImpact orphan in Orphans)
+                {
+                    <li>@SharedComponentImpactText.Describe(orphan)</li>
+                }
+            </ul>
+            <MudCheckBox T="bool"
+                         Value="AcknowledgeOrphans"
+                         ValueChanged="@(async (bool value) => await AcknowledgeOrphansChanged.InvokeAsync(value))"
+                         Color="Color.Primary"
+                         Dense="true"
+                         Label="I understand the listed client overrides will be affected." />
+        }
+    }
+
+    @if (SubmitError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+            @SubmitError
+        </MudAlert>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string? LoadError { get; set; }
+
+    [Parameter]
+    public SharedComponentReconcilePreviewResult? Preview { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment Headline { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string IdenticalToHeadMessage { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool AcknowledgeOrphans { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> AcknowledgeOrphansChanged { get; set; }
+
+    [Parameter]
+    public string? SubmitError { get; set; }
+
+    private bool IsIdenticalToHead =>
+        Preview is not null
+        && string.Equals(Preview.CandidateContentHash, Preview.HeadContentHash, StringComparison.Ordinal);
+
+    private IReadOnlyList<SharedComponentOverrideImpact> Orphans => SharedComponentImpactText.OrphansOf(Preview);
+
+    private int FreshBaselineCount =>
+        Preview?.UpdateSharedImpact.AffectedBaselines.Count(b => b.IsCurrentlyFresh) ?? 0;
+
+    private string LinkedCopiesSummary => SharedComponentImpactText.DescribeLinkedCopies(Preview!.Consumers);
+
+    private string? SlotDeltaSummary
+    {
+        get
+        {
+            SharedComponentSlotDelta? delta = Preview?.UpdateSharedImpact.SlotDelta;
+            if (delta is null)
+            {
+                return null;
+            }
+
+            List<string> parts = [];
+            if (delta.AddedSlotTags.Count > 0)
+            {
+                parts.Add($"{delta.AddedSlotTags.Count} added");
+            }
+
+            if (delta.RemovedSlotTags.Count > 0)
+            {
+                parts.Add($"{delta.RemovedSlotTags.Count} removed");
+            }
+
+            if (delta.RenamedSlots.Count > 0)
+            {
+                parts.Add($"{delta.RenamedSlots.Count} renamed");
+            }
+
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+    }
+}

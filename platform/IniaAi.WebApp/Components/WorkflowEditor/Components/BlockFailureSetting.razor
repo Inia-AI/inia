@@ -1,0 +1,62 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.WebApp.Components.WorkflowEditor.State
+
+@if (IsShown)
+{
+    <div class="editor-eyebrow mt-4 mb-2">On failure</div>
+
+    <MudSelect T="FailureChoice"
+               Label="@SELECT_LABEL"
+               Variant="Variant.Outlined"
+               Value="@Choice"
+               ValueChanged="@OnChoiceChanged"
+               Style="max-width: 360px;">
+        <MudSelectItem T="FailureChoice" Value="FailureChoice.FollowBlockType">@FollowBlockTypeLabel</MudSelectItem>
+        <MudSelectItem T="FailureChoice" Value="FailureChoice.StopTheRun">@STOP_THE_RUN_LABEL</MudSelectItem>
+        <MudSelectItem T="FailureChoice" Value="FailureChoice.ContinueTheRun">@CONTINUE_THE_RUN_LABEL</MudSelectItem>
+    </MudSelect>
+}
+
+@code {
+    public const string SELECT_LABEL = "If this block fails";
+    public const string FOLLOW_BLOCK_TYPE_STOPS_LABEL = "Follow the block type (the run stops)";
+    public const string FOLLOW_BLOCK_TYPE_CONTINUES_LABEL = "Follow the block type (the run continues)";
+    public const string STOP_THE_RUN_LABEL = "Stop the run";
+    public const string CONTINUE_THE_RUN_LABEL = "Continue the run";
+
+    public enum FailureChoice
+    {
+        FollowBlockType,
+        StopTheRun,
+        ContinueTheRun,
+    }
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [CascadingParameter]
+    public EditorSurfaceState? SurfaceState { get; set; }
+
+    private bool IsShown => SurfaceState?.Capabilities.ShowFailureSetting ?? true;
+
+    private string FollowBlockTypeLabel => Block.AbortsExecutionOnFailureByDefault()
+        ? FOLLOW_BLOCK_TYPE_STOPS_LABEL
+        : FOLLOW_BLOCK_TYPE_CONTINUES_LABEL;
+
+    private FailureChoice Choice => Block.Properties.IsCritical switch
+    {
+        true => FailureChoice.StopTheRun,
+        false => FailureChoice.ContinueTheRun,
+        null => FailureChoice.FollowBlockType,
+    };
+
+    private void OnChoiceChanged(FailureChoice choice)
+    {
+        Block.Properties.IsCritical = choice switch
+        {
+            FailureChoice.StopTheRun => true,
+            FailureChoice.ContinueTheRun => false,
+            _ => null,
+        };
+    }
+}

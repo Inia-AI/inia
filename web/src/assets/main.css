@@ -1,0 +1,1359 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  p, h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+  }
+
+  /* Tailwind v4 preflight sets background-color: transparent on form elements.
+     Restore white background as default — components can override with bg-* utilities. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']),
+  textarea,
+  select {
+    background-color: var(--background);
+  }
+}
+
+/* ========================================
+   THEME: Shadcn color mappings for Tailwind v4
+   ======================================== */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Status-semantic palette — use `text-success`, `text-error`, `text-warning`,
+     `text-info` (and bg-/border- variants) anywhere a colour signals state of
+     a thing. Don't reach for raw `text-green-*` / `text-red-*` / `text-yellow-*`
+     / `text-blue-*` for status semantics; those should be reserved for
+     decorative palettes (category tags, demo screens, charts). */
+  --color-success: var(--accent-success);
+  --color-error: var(--accent-error);
+  --color-warning: var(--accent-warning);
+  --color-info: var(--accent-info);
+
+  --color-surface: var(--surface);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Third action rank, between the primary fill and a bare ghost. Utility actions
+   — download, export — that should read as clickable without outranking the
+   page's primary CTA.
+
+   Deliberately NOT a semantic colour: amber is warning, and peach is rust
+   lightened (hue 21.0 against rust's 21.2), so either would make a download
+   read as a state. This is the treatment the design mock gives "View Report" —
+   pale blue fill, navy type, navy edge — and it inverts with the theme because
+   both halves already do. */
+.btn-utility {
+  background: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+  /* Not the navy edge the mock draws. That mock places one of these on a card;
+     here they repeat on every row of a table, and a full-strength outline at
+     weight 600 reads as a page of buttons shouting. The edge cannot simply go —
+     the pale fill is 1.51 against a white ground, under the 3.0 WCAG needs to
+     define a component — so it drops to the muted ink, which still clears it at
+     5.79 on white and 5.19 on sand while sitting well back. */
+  border: 1px solid var(--text-muted) !important;
+  border-radius: var(--radius-button);
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+
+  &:hover {
+    background: color-mix(in srgb, var(--secondary) 88%, var(--foreground));
+    border-color: var(--secondary-foreground) !important;
+  }
+}
+
+
+/* ========================================
+   SAFELIST: Dynamic grid classes used in templates
+   ======================================== */
+@source inline("{,sm:,md:,lg:,xl:,2xl:}{grid-cols-,row-start-,col-start-,row-span-,col-span-}{1,2,3,4,5,6,7,8,9,10,11,12}");
+
+/* ========================================
+   CSS VARIABLES
+   ======================================== */
+:root {
+  /* Shadcn UI variables - Light Mode.
+     Inia brand palette. Every pair below is verified to WCAG 2.1 AA:
+     4.5:1 for body text, 3.0:1 for large text and UI component boundaries.
+     Ratios are noted where they matter; do not nudge a hex without recomputing. */
+  --background: #f6f2ec; /* sand — the page ground, warmer than white */
+  --foreground: #1a3850; /* navy on sand 10.91 */
+
+  --muted: #ebe7e0; /* stone — recessed panels */
+  --muted-foreground: #47657d; /* on sand 5.50, on white 6.13 */
+
+  --card: #ffffff;
+  --card-foreground: #1a3850; /* 12.17 */
+
+  --popover: #ffffff;
+  --popover-foreground: #1a3850;
+
+  --border: #a5b4c0; /* visible on sand at 1.90 — the old hsl(214 32% 91%) was 1.05 */
+  --input: #a5b4c0;
+
+  /* Primary is navy, not the old hsl(328 94% 65%) magenta, which reached only
+     2.37 against this ground and 2.65 on white — it failed AA as a button
+     label and as text. Navy with sand type is 10.91. */
+  --primary: #1a3850;
+  --primary-foreground: #f6f2ec;
+
+  --secondary: #c0d5ea; /* pale blue, navy label 8.08 */
+  --secondary-foreground: #1a3850;
+
+  --accent: #ebe7e0; /* hover fills */
+  --accent-foreground: #1a3850;
+
+  /* Destructive is the FILL value and no longer aliases --accent-error, which
+     is now the INK value (see the semantic block below). Brand rust reaches
+     4.83 with white type but only 4.33 with sand, so this one button is the
+     palette's single white-ink carve-out. */
+  --destructive: #be5014;
+  --destructive-foreground: #ffffff; /* 4.83 — the tightest pair in the set */
+  /* On sand the fill separates on its own (4.33), so the border matches it.
+     In dark mode it must not — see .dark. */
+  --destructive-border: #be5014;
+
+  --ring: #015294; /* focus, 7.14 on sand / 7.97 on white */
+
+  --radius: 0.5rem;
+
+  --surface: #ffffff;
+
+  /* ========================================
+     DESIGN SYSTEM - Light Mode
+     ======================================== */
+
+  /* Layer Backgrounds */
+  --bg-0: #f6f2ec;
+  --bg-1: #ffffff;
+  --bg-2: #ebe7e0;
+
+  /* Borders & Strokes */
+  --stroke: rgba(165, 180, 192, 0.6);
+  --stroke-hover: rgba(165, 180, 192, 0.9);
+  /* A solid rule, where --stroke is a translucent one. 1.90 against the page —
+     the greys these replaced sat at 1.05 and were effectively invisible. */
+  --divider: #a5b4c0;
+  --bg-3: #e0dbd2;
+  /* Informational callout, from the palette's blue rather than Tailwind's. */
+  --bg-info: #d0dfec;
+  --stroke-info: #105993;
+  --text-info: #105993;
+
+  /* Text Colors — the neutral ramp is built on navy's own hue (206.7deg) so it
+     reads as part of the palette rather than as generic grey. */
+  --text-primary: #1a3850; /* 10.91 */
+  --text-secondary: #47657d; /* 5.50 */
+  /* Solved against stone, the darkest light surface it sits on, so it clears
+     4.5 everywhere. The codebase uses this as real text — status lines, agent
+     presence, timestamps — not as a disabled state, and at its previous #758d9f
+     that text measured 3.46 on a card. */
+  --text-muted: #546878; /* stone 4.70 / sand 5.19 / white 5.79 */
+  /* Real text, so it shares --text-muted: on stone, an ink visibly lighter than muted falls under 4.5. */
+  --text-tertiary: var(--text-muted);
+  /* The live-agent accent for dots and carets: a graphic, so 3:1 is its bar. */
+  --presence: #1565b8; /* stone 4.75 / sand 5.25 / white 5.86 */
+
+  /* The indigo->violet gradient is retired. It is the generic "AI purple" the
+     brand guide names as the thing to avoid; navy->blue is the brand's own. */
+  --accent-indigo-from: #1a3850;
+  --accent-indigo-to: #015294;
+
+  /* The nav counter-inverts: a navy strip over the light page, a cream strip
+     over the dark page, so the header always contrasts with the ground. */
+  --nav-bg: #1a3850;
+  --nav-ink: #f6f2ec; /* 10.91 */
+  --nav-ink-muted: #b4c3cf;
+  --nav-active: #244c6d;
+  --nav-hover: #244c6d;
+  --nav-stroke: #43627c;
+
+  /* Brand glow, replacing the hardcoded rgba(108,140,255,*) purple. */
+  --shadow-brand: 0 4px 12px rgba(26, 56, 80, 0.28);
+  --shadow-brand-hover: 0 6px 16px rgba(26, 56, 80, 0.38);
+  /* Semantic colours carry THREE values each, because this codebase uses them
+     three ways: as ink (`text-error`), as a chip ground (`--accent-*-light`)
+     and as a solid fill. A single hex cannot serve all three — the previous
+     single values failed AA as body text at 1.70 to 3.37.
+       --accent-X         ink: text, icons, chip border
+       --accent-X-light   chip ground; a SOLID hex, not an alpha tint, so a
+                          chip's contrast does not change with what is behind it
+       --accent-X-fill    solid fill for buttons and badges, the brand hex
+     Every ink clears 4.5 on its own chip ground, on the page and on a card. */
+  --accent-success: #0b6243; /* on tint 5.43, ground 6.63, card 7.39 */
+  --accent-success-light: #c0e5d7;
+  --accent-success-border: #0b6243;
+  --accent-success-fill: #227557;
+
+  --accent-warning: #7b4b0e; /* brand amber is the FILL; as ink on sand it is 1.51 */
+  --accent-warning-light: #e9dbc9;
+  --accent-warning-border: #7b4b0e;
+  --accent-warning-fill: #fabc6f;
+
+  --accent-error: #903d10; /* brand rust as ink on sand is 4.33, 0.17 short */
+  --accent-error-light: #ecd9d0;
+  --accent-error-border: #903d10;
+  --accent-error-fill: #be5014;
+
+  --accent-info: #105993;
+  --accent-info-light: #d0dfec;
+  --accent-info-border: #105993;
+  --accent-info-fill: #015294;
+
+  /* Progress Bar Colors */
+  --progress-track: #ebe7e0;
+  --progress-indicator: linear-gradient(90deg, #1a3850, #015294);
+
+  /* Shadows */
+  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
+
+  /* Radii */
+  --radius-panel: 14px;
+  --radius-card: 12px;
+  --radius-button: 10px;
+  --radius-small: 8px;
+
+  /* Spacing (8px multiples) */
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+}
+
+.dark {
+  /* Shadcn UI variables - Dark Mode. Navy is the ground; sand is the ink.
+     This palette never uses pure white for type — the one exception is the
+     destructive button, noted below. */
+  --background: #1a3850;
+  --foreground: #f6f2ec; /* sand on navy 10.91 */
+
+  /* Muted backgrounds such as <TabsList />, <Skeleton /> and <Switch /> */
+  --muted: #112434; /* sunken, 1.30 below the ground */
+  --muted-foreground: #b4c3cf; /* solved against the RAISED surface (5.00), not the
+                                  ground, since that is the lightest thing it sits on */
+
+  /* Background color for <Card /> — raised, 1.35 above the ground */
+  --card: #244c6d;
+  --card-foreground: #f6f2ec; /* 8.08 */
+
+  /* Background color for popovers such as <DropdownMenu />, <HoverCard />, <Popover /> */
+  --popover: #244c6d;
+  --popover-foreground: #f6f2ec;
+
+  /* Default border color */
+  --border: #43627c;
+  /* Border color for inputs such as <Input />, <Select />, <Textarea /> */
+  --input: #43627c;
+
+  /* Primary inverts: on a navy ground the primary action is sand with navy
+     type, which is how the design mock draws it. */
+  --primary: #f6f2ec;
+  --primary-foreground: #1a3850; /* 10.91 */
+
+  /* Secondary is pale blue in BOTH modes — it is the one brand colour that
+     takes navy type on either ground, so it does not need to invert. */
+  --secondary: #c0d5ea;
+  --secondary-foreground: #1a3850; /* 8.08 */
+
+  /* Used for accents such as hover effects on <DropdownMenuItem>, <SelectItem>...etc */
+  --accent: rgba(192, 213, 234, 0.16);
+  --accent-foreground: #f6f2ec;
+
+  /* Destructive keeps the brand rust in both modes, but rust reaches only 2.52
+     against navy, so on this ground the button's BOUNDARY comes from a sand
+     border rather than from the fill. Its label stays white (4.83) — rust is
+     the palette's one white-ink carve-out. --accent-error is the ink token and
+     is deliberately a different colour here; see the semantic block. */
+  --destructive: #be5014;
+  --destructive-foreground: #ffffff;
+  --destructive-border: #f6f2ec; /* 10.91 against the ground */
+
+  /* Focus ring inverts with the link colour */
+  --ring: #c0d5ea; /* 8.08 on ground, 5.99 on a card */
+
+  /* Border radius for card, input and buttons */
+  --radius: 0.5rem;
+
+  /* Surface color for content background of the pages */
+  --surface: #112434;
+
+  /* ========================================
+     DESIGN SYSTEM - Modern Dashboard Aesthetic
+     ======================================== */
+
+  /* Layer Backgrounds */
+  --bg-0: #112434;
+  --bg-1: #1a3850;
+  --bg-2: #244c6d;
+
+  /* Borders & Strokes */
+  --stroke: rgba(67, 98, 124, 0.6);
+  --stroke-hover: rgba(67, 98, 124, 0.9);
+  --divider: #43627c;
+  --bg-3: #2c5478;
+  --bg-info: #2d4154;
+  --stroke-info: #c0d5ea;
+  --text-info: #c0d5ea;
+
+  /* Text Colors */
+  --text-primary: #f6f2ec; /* 10.91 */
+  --text-secondary: #b4c3cf; /* 6.75 on ground, 5.00 on a card */
+  /* Solved against the raised card, the lightest dark surface it sits on. */
+  --text-muted: #b0bdc8; /* card 4.70 / ground 6.35 / sunken 8.27 */
+  --text-tertiary: var(--text-muted);
+  --presence: #6ea8dc; /* card 3.56 / ground 4.81 / sunken 6.26 */
+
+  /* Retired AI-purple gradient — see :root. */
+  --accent-indigo-from: #c0d5ea;
+  --accent-indigo-to: #f6f2ec;
+
+  /* Counter-inverted: cream strip over the dark page — see :root. */
+  --nav-bg: #f6f2ec;
+  --nav-ink: #1a3850; /* 10.91 */
+  --nav-ink-muted: #47657d; /* 5.50 */
+  --nav-active: #ebe7e0;
+  --nav-hover: #ebe7e0;
+  --nav-stroke: #a5b4c0;
+
+  --shadow-brand: 0 4px 12px rgba(6, 14, 22, 0.45);
+  --shadow-brand-hover: 0 6px 16px rgba(6, 14, 22, 0.55);
+  /* Semantic inks are LIGHT here, because nothing dark is legible on navy —
+     brand rust as text is 2.52. Three of the four are the brand hex directly;
+     success needs lightening because the derived green is too dark for its own
+     chip ground. Chip grounds are solid, not alpha, for the same reason as in
+     light mode. */
+  --accent-success: #b0ecd7; /* on tint 5.40, ground 9.17, card 6.79 */
+  --accent-success-light: #336050;
+  --accent-success-border: #b0ecd7;
+  --accent-success-fill: #6cc7a6;
+
+  --accent-warning: #fabc6f; /* on tint 6.29, ground 7.24, card 5.36 */
+  --accent-warning-light: #4c3c29;
+  --accent-warning-border: #fabc6f;
+  --accent-warning-fill: #fabc6f;
+
+  /* Peach is rust lightened — hue 21.0 against rust's 21.2 — so error keeps one
+     identity across modes while staying legible on a dark ground. */
+  --accent-error: #f3c1a6; /* on tint 6.49, ground 7.53, card 5.58 */
+  --accent-error-light: #523a2c;
+  --accent-error-border: #f3c1a6;
+  --accent-error-fill: #be5014;
+
+  --accent-info: #c0d5ea; /* on tint 6.99, ground 8.08, card 5.99 */
+  --accent-info-light: #2d4154;
+  --accent-info-border: #c0d5ea;
+  --accent-info-fill: #c0d5ea;
+
+  /* Progress Bar Colors */
+  --progress-track: #43627c;
+  --progress-indicator: linear-gradient(90deg, #c0d5ea, #f6f2ec);
+
+  /* Shadows */
+  --shadow-panel: 0 10px 30px rgba(6, 8, 18, 0.4);
+  --shadow-card: 0 4px 16px rgba(6, 8, 18, 0.3);
+  --shadow-hover: 0 8px 24px rgba(6, 8, 18, 0.4);
+
+  /* Radii */
+  --radius-panel: 14px;
+  --radius-card: 12px;
+  --radius-button: 10px;
+  --radius-small: 8px;
+
+  /* Spacing (8px multiples) */
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --spacing-xl: 48px;
+}
+
+/* ========================================
+   GLOBAL STYLES
+   ======================================== */
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* Destructive treatment for cancel-run dropdown menu items.
+   reka-ui portals DropdownMenuContent out of the originating component's
+   scoped style tree, so this rule has to live globally. Mirrors the
+   `destructiveSoft` button variant — red text, light tint on hover/focus —
+   so the cancel action reads the same in dropdowns and standalone buttons. */
+.cancel-run-item {
+  color: var(--accent-error);
+}
+
+.cancel-run-item:hover,
+.cancel-run-item:focus,
+.cancel-run-item[data-highlighted] {
+  background: color-mix(in srgb, var(--destructive) 12%, transparent);
+  color: var(--accent-error);
+}
+
+.cancel-run-item svg {
+  color: var(--accent-error);
+}
+
+
+/* ========================================
+   TEXTAREA STYLES
+   Consistent monospace styling for all textareas
+   ======================================== */
+textarea {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+.dark {
+  input[type='text'],
+  textarea {
+    background-color: var(--background);
+  }
+}
+
+fact {
+  position: relative;
+  display: inline;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+fact::after {
+  content: '[i]';
+  font-size: 0.75em;
+  vertical-align: super;
+  color: var(--accent-indigo-from);
+  margin-left: 2px;
+  font-weight: 600;
+}
+
+fact:hover {
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--text-secondary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+fact[role='button']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Hide styling for facts with empty sources */
+fact.fact-empty {
+  cursor: default;
+}
+
+fact.fact-empty::after {
+  display: none;
+}
+
+fact.fact-empty:hover {
+  text-decoration: none;
+}
+
+fact_source,
+cited-text {
+  display: none !important;
+}
+
+/* Fact tooltip container - matches TooltipContent styling */
+#fact-tooltip-container {
+  position: fixed;
+  z-index: 50;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--stroke);
+  background: var(--bg-1);
+  color: var(--text-primary);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  box-shadow: var(--shadow-card);
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  visibility: hidden;
+}
+
+/* Cited text tooltip - shows source quote on hover */
+#fact-cited-text-tooltip {
+  position: fixed;
+  z-index: 60;
+  overflow: hidden;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--stroke);
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  box-shadow: var(--shadow-card);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  visibility: hidden;
+  max-width: 400px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.fact-source-with-cite {
+  cursor: help;
+}
+
+/* Fact trace button in tooltip - for drilling into block sources */
+.fact-trace-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--accent-indigo-from);
+  background: rgba(26, 56, 80, 0.1);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.fact-trace-btn:hover {
+  background: rgba(26, 56, 80, 0.2);
+  color: var(--accent-indigo-to);
+}
+
+/* Block source styling in tooltip */
+.fact-unverified-badge,
+.source-chain-unverified-badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-warning-border);
+  background: var(--accent-warning-light);
+  color: var(--accent-warning);
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.fact-source-unverified {
+  color: var(--text-secondary);
+}
+
+.fact-block-source {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fact-block-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 14px;
+  height: 12px;
+  margin-right: 4px;
+  color: var(--text-tertiary);
+}
+
+/* Pages and links behind a block citation, in the fact tooltip */
+.fact-drawn-from {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  max-width: 420px;
+}
+
+.fact-drawn-from-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.fact-drawn-from-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.fact-drawn-from-item {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.fact-drawn-from-item.is-match .fact-source-link {
+  font-weight: 600;
+}
+
+.fact-show-all-btn {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--accent-indigo-from);
+  cursor: pointer;
+}
+
+.fact-show-all-btn:hover {
+  text-decoration: underline;
+}
+
+.fact-drawn-from-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--stroke);
+  color: var(--text-secondary);
+}
+
+.fact-drawn-from-block {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Bullet point for document/URL sources in tooltip */
+.fact-source-bullet {
+  margin-right: 6px;
+}
+
+/* Link styling for document and URL sources in tooltip */
+.fact-source-link {
+  color: var(--accent-indigo-from);
+  text-decoration: underline;
+}
+
+/* Text styling for legacy sources without links */
+.fact-source-text {
+  color: var(--text-secondary);
+}
+
+input[type='radio'] {
+  accent-color: var(--primary);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+input[type='radio']:focus-visible {
+  outline: 2px solid var(--ring);
+}
+
+/* Optional fade effect for smooth expand/collapse */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-2);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--primary) 80%, transparent);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary) var(--bg-2);
+}
+
+/* ========================================
+   PAGE LAYOUT UTILITIES
+   Reusable patterns for view-level components
+   ======================================== */
+@layer components {
+
+.page-view {
+  /* Full-page view wrapper */
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg-0);
+  padding: var(--spacing-md) var(--spacing-lg);
+  @media (max-width: 768px) {
+    padding: var(--spacing-md);
+  }
+}
+
+.page-container {
+  /* Centered content container */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  /* Page header section */
+  margin-bottom: var(--spacing-md);
+}
+
+.page-header-with-action {
+  /* Page header with action button (common in management views) */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+
+    & .btn-gradient-primary {
+      width: 100%;
+    }
+  }
+}
+
+.page-title {
+  /* Main page title */
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  letter-spacing: -0.02em;
+  @media (max-width: 768px) {
+    font-size: 24px;
+  }
+}
+
+.page-subtitle {
+  /* Page subtitle/description */
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.card-panel {
+  /* Card/panel with elevated styling */
+  background: var(--bg-1);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-panel);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-card);
+  @media (max-width: 768px) {
+    padding: var(--spacing-sm);
+  }
+}
+
+.strata {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.strata-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.docket {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.docket-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.docket-row + .docket-row {
+  border-top: 1px solid var(--stroke);
+}
+
+.docket-name {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-gradient-primary {
+  /* Primary gradient button (used across app) */
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border: none !important;
+  border-radius: var(--radius-button);
+  padding: 12px 32px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(26, 56, 80, 0.3);
+  }
+}
+
+.badge-gradient {
+  /* Pill/chip variant matching .btn-gradient-primary (Badge `variant="gradient"`) */
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: transparent;
+}
+
+.badge-gradient:hover {
+  filter: brightness(1.05);
+}
+
+.table-container {
+  /* Table container for data display (used in management views) */
+  position: relative;
+}
+
+.empty-state {
+  /* Empty state message for tables */
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.section-heading {
+  /* Card/section title, one step below .page-title */
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.banner {
+  /* Inline notice strip inside a page or card */
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-small, 6px);
+  font-size: 13px;
+}
+
+.banner-error {
+  color: var(--accent-error);
+  background: var(--accent-error-light);
+}
+
+.banner-warning {
+  color: var(--accent-warning);
+  background: var(--accent-warning-light);
+}
+
+.banner-muted {
+  color: var(--text-secondary);
+  background: var(--bg-2);
+}
+
+.loading-overlay {
+  /* Loading overlay for tables */
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-panel);
+
+  .dark & {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ========================================
+   DETAIL PAGE LAYOUT UTILITIES
+   Common patterns for detail/summary pages
+   ======================================== */
+
+.loading-container {
+  /* Loading state container */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+}
+
+.error-container {
+  /* Error state container */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+}
+
+.error-message {
+  text-align: center;
+  padding: var(--spacing-xl);
+  background: var(--bg-1);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-card);
+
+  & h1 {
+    color: var(--accent-error);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  & p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.inline-link {
+  color: var(--accent-info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.inline-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.inline-link:focus-visible {
+  outline: 2px solid var(--accent-info);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.inline-link-sm {
+  font-size: 13px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.notes {
+  margin: var(--spacing-sm) 0;
+  padding-left: var(--spacing-md);
+  list-style: disc;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.run-note {
+  display: block;
+  font-size: 11px;
+  color: var(--accent-error);
+}
+
+.mono {
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.data-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--stroke);
+  vertical-align: middle;
+}
+
+.button-reset {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.button-reset:focus-visible {
+  outline: 2px solid var(--accent-info);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.focus-ring--inset:focus-visible {
+  outline-offset: -2px;
+}
+
+.hit-target {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.table-action-button {
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-small, 4px);
+}
+
+.table-action-button:focus-visible {
+  outline: 2px solid var(--accent-indigo-to);
+  outline-offset: 2px;
+}
+
+.action-buttons {
+  /* Action buttons container */
+  display: flex;
+  gap: var(--spacing-sm);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+
+    & button {
+      width: 100%;
+    }
+  }
+}
+
+.content-layout {
+  /* Content layout - sidebar + main pattern */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
+}
+
+.sidebar-nav {
+  /* Left sidebar navigation/info panel */
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: 320px;
+    flex-shrink: 0;
+  }
+}
+
+.main-content-area {
+  /* Main content area */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  overflow: hidden;
+}
+
+.section-title {
+  /* Section title */
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--stroke);
+}
+
+.section-title-with-toggle {
+  /* Section title with inline toggle */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--stroke);
+}
+
+.section-title-inline {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.collapsed-sidebar {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  padding-right: var(--spacing-sm);
+}
+
+.info-grid {
+  /* Info grid for key-value pairs */
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.info-value {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* ========================================
+   STATUS INDICATORS
+   Status badges and indicators
+   ======================================== */
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+
+  &.status-ok {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--accent-success);
+  }
+
+  &.status-warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--accent-warning);
+  }
+
+  &.status-error {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-error);
+  }
+}
+
+.status-ok {
+  &.status-indicator {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--accent-success);
+  }
+}
+
+.status-warning {
+  &.status-indicator {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--accent-warning);
+  }
+}
+
+.status-error {
+  &.status-indicator {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-error);
+  }
+}
+
+.status-icon {
+  line-height: 1;
+}
+
+.approved-yes {
+  color: var(--accent-success);
+  font-weight: 500;
+}
+
+.approved-no {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.message-error {
+  color: var(--accent-error);
+  font-size: 12px;
+}
+
+.message-warning {
+  color: var(--accent-warning);
+  font-size: 12px;
+}
+
+.message-none {
+  color: var(--text-secondary);
+}
+
+
+/* Tabular numerics for execution durations — applied wherever a formatDuration()
+   value is rendered so digit widths stay aligned and the value reads as a metric. */
+.duration-display {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  letter-spacing: 0.02em;
+}
+
+/* The ::after stretches over the nearest positioned ancestor, so the row must set
+   position: relative. The row's padding and gaps then activate the button, and the focus
+   ring outlines the whole row. */
+.row-main-button {
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible::after {
+    outline: auto;
+  }
+}
+
+.row-main-button-raised {
+  position: relative;
+  z-index: 1;
+}
+
+} /* end @layer components */

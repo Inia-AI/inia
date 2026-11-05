@@ -1,0 +1,70 @@
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2">
+            Retiring freezes '@Component.Name'. It disappears from the insert pickers and its
+            definition can no longer change until it is unretired.
+        </MudText>
+
+        @if (Consumers.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">
+                No live template copies are linked to this component.
+            </MudText>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                @LinkedCopiesSummary will be disconnected and kept in place as independent local copies.
+            </MudAlert>
+            <MudSimpleTable Dense="true" Elevation="0" Class="mt-2">
+                <thead>
+                    <tr>
+                        <th>Workflow type</th>
+                        <th style="text-align: right;">Linked copies</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (SharedComponentConsumer consumer in Consumers)
+                    {
+                        <tr>
+                            <td>@(string.IsNullOrWhiteSpace(consumer.WorkflowTypeName) ? consumer.WorkflowTypeId : consumer.WorkflowTypeName)</td>
+                            <td style="text-align: right;">@consumer.LinkedInstanceCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Confirm">Retire</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SharedComponentSummaryDto Component { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<SharedComponentConsumer> Consumers { get; set; } = [];
+
+    private string LinkedCopiesSummary => SharedComponentImpactText.DescribeLinkedCopies(Consumers);
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,0 +1,55 @@
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+@using MudBlazor
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Workflow.Name"
+                      Label="Name"
+                      Required="true"
+                      RequiredError="Name is required"
+                      Class="mb-4" />
+
+        <MudTextField @bind-Value="Workflow.Description"
+                      Label="Description"
+                      Lines="3"
+                      Class="mb-4" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Color="Color.Secondary"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Color="Color.Primary"
+                   OnClick="Submit">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Workflow Workflow { get; set; } = default!;
+
+    private async Task Submit()
+    {
+        try
+        {
+            await UserDataUnitOfWork.CompleteAsync();
+            MudDialog.Close(DialogResult.Ok(Workflow));
+        }
+        catch
+        {
+            MudDialog.Close(DialogResult.Cancel());
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

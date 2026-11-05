@@ -1,0 +1,39 @@
+﻿<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudTextField Label="@($"Enter {(ItemTypeName is null ? "value" : ItemTypeName)}")"
+                      Margin="0" @bind-Value="@Value" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Confirm">
+            Add@(ItemTypeName is null ? "": $" {ItemTypeName}")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ItemTypeName { get; set; }
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private void Confirm()
+    {
+        MudDialog?.Close(DialogResult.Ok(Value));
+    }
+}

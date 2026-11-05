@@ -1,0 +1,929 @@
+@using System.Text.RegularExpressions
+@using Block = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using ErrorOr
+@using IniaAi.Application.Commands.SharedComponents.ApplySharedComponentReconcile
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Application.Queries.SharedComponents.GetSharedComponentInstanceDiff
+@using IniaAi.Application.Queries.SharedComponents.GetWorkflowSharedComponentReconcile
+@using IniaAi.Application.Queries.SharedComponents.PreviewSharedComponentReconcile
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.Core.Workflows.Diff
+@using IniaAi.Domain.Entities.SharedComponents.Enums
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Components.WorkflowEditor.Dialogs
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.DependencyInjection
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDialogService DialogService
+
+<MudPaper Outlined="true" Elevation="0" Class="pa-4 my-3">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Outlined.LibraryBooks" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Library sync</MudText>
+        </MudStack>
+        <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                       Size="Size.Small"
+                       aria-label="Close Library sync"
+                       OnClick="async () => await OnClose.InvokeAsync()" />
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">
+        Every copy in this template that comes from the Library, compared with its component.
+        Pick what to do per copy, then apply everything in one step. Pushing your changes updates
+        every workflow that uses the component.
+    </MudText>
+
+    @if (_editorHadUnsavedChanges)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+            The editor has unsaved changes. This comparison reads the last saved version of the
+            template, so your changes are not in it. Save to include them.
+        </MudAlert>
+    }
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_loadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true">@_loadError</MudAlert>
+    }
+    else if (_result is not null && _result.Instances.Count == 0)
+    {
+        <MudAlert Severity="Severity.Normal" Variant="Variant.Outlined" Dense="true">
+            Nothing in this template is linked to the Library yet. Use "From Library…" at any gap,
+            or share a block or section from its menu.
+        </MudAlert>
+    }
+    else if (_result is not null)
+    {
+        @if (HiddenCount > 0)
+        {
+            <MudSwitch T="bool"
+                       @bind-Value="_showInSync"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       Label="@($"Show up-to-date items ({HiddenCount})")" />
+        }
+
+        @if (!VisibleRows.Any())
+        {
+            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                @(HiddenCount == 1
+                    ? "The 1 Library copy in this template is up to date."
+                    : $"All {HiddenCount} Library copies in this template are up to date.")
+            </MudAlert>
+        }
+
+        @foreach (IGrouping<string, SharedComponentInstanceReconcileRow> group in ComponentGroups())
+        {
+            SharedComponentInstanceReconcileRow first = group.First();
+
+            <div class="mt-3">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="flex-wrap">
+                    <MudIcon Icon="@SharedComponentKindIcon.For(first.Kind)" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle2">
+                        @(first.ComponentName ?? "No longer in the Library")
+                    </MudText>
+                    @if (!string.IsNullOrEmpty(first.HeadContentHash))
+                    {
+                        <span class="editor-mono-field">@WorkflowVersionCode.Short(first.HeadContentHash)</span>
+                    }
+                    @if (first.ComponentState == SharedComponentState.Retired)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="ma-0">
+                            Retired
+                        </MudChip>
+                    }
+                    else if (first.ComponentName is null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Class="ma-0">
+                            Missing
+                        </MudChip>
+                    }
+                </MudStack>
+
+                @foreach (SharedComponentInstanceReconcileRow row in group)
+                {
+                    <div class="d-flex align-center flex-wrap py-1 ps-6" style="gap: 12px;">
+                        <div class="flex-grow-1" style="min-width: 220px;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="flex-wrap">
+                                <MudText Typo="Typo.body2">@NodeLabel(row)</MudText>
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Variant="Variant.Outlined"
+                                         Color="@RelationColor(row.Relation)"
+                                         Class="ma-0">
+                                    @LibraryReconcilePlanner.RowBadgeLabel(row)
+                                </MudChip>
+                                @if (LibraryReconcilePlanner.HasContentDifference(row))
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Outlined.Difference"
+                                               aria-expanded="@(IsDifferenceOpen(row) ? "true" : "false")"
+                                               OnClick="async () => await ToggleDifferenceAsync(row)">
+                                        @(IsDifferenceOpen(row) ? "Hide differences" : "Show differences")
+                                    </MudButton>
+                                }
+                            </MudStack>
+
+                            @if (ActionFor(row) == SharedComponentReconcileAction.UpdateShared)
+                            {
+                                <div class="mt-1">
+                                    @if (_impactLoading.Contains(row.SharedComponentId))
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                    }
+                                    else if (!_pushImpacts.TryGetValue(row.SharedComponentId, out SharedComponentReconcilePreviewResult? impact))
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                            The push impact could not be loaded.
+                                        </MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                            @PushImpactSummary(impact)
+                                        </MudText>
+                                        @if (FreshBaselineCount(impact) > 0)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Warning" Class="d-block">
+                                                @(FreshBaselineCount(impact) == 1
+                                                    ? "1 regression baseline is currently fresh and becomes stale."
+                                                    : $"{FreshBaselineCount(impact)} regression baselines are currently fresh and become stale.")
+                                            </MudText>
+                                        }
+                                    }
+                                    @if (row.Kind == SharedComponentKind.Section && SectionPushRefCount(row) > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                            @SharedComponentImpactText.SectionPushPointerNote()
+                                        </MudText>
+                                    }
+                                    @if (row.Kind == SharedComponentKind.Section && HiddenEntryCount(row) > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Warning" Class="d-block">
+                                            @SharedComponentImpactText.HiddenEntriesPushWarning(HiddenEntryCount(row))
+                                        </MudText>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <MudSelect T="SharedComponentReconcileAction"
+                                   Value="@ActionFor(row)"
+                                   ValueChanged="async action => await SetActionAsync(row, action)"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Dense="true"
+                                   Disabled="@_applying"
+                                   Style="max-width: 320px;"
+                                   aria-label="@($"Decision for {NodeLabel(row)}")">
+                            @foreach (SharedComponentReconcileAction action in row.AvailableActions)
+                            {
+                                <MudSelectItem T="SharedComponentReconcileAction" Value="@action">
+                                    @ActionLabel(action, row.Relation)
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </div>
+
+                    @if (IsDifferenceOpen(row))
+                    {
+                        <div class="ps-6 pb-2">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-1">
+                                From the Library version to this copy
+                            </MudText>
+                            @if (!_differences.TryGetValue(row.TargetPath, out ErrorOr<WorkflowDiff> difference))
+                            {
+                                <MudProgressLinear Indeterminate="true" />
+                            }
+                            else if (difference.IsError)
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                    The differences could not be loaded: @difference.FirstError.Description
+                                </MudText>
+                            }
+                            else if (difference.Value.IsEmpty)
+                            {
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                    No field of this copy differs from the Library version. Names and labels are not compared.
+                                </MudText>
+                            }
+                            else
+                            {
+                                <WorkflowVersionChangesPanel Diff="difference.Value" />
+                            }
+                        </div>
+                    }
+
+                    @foreach (SharedComponentEntryReconcileRow entry in VisibleEntries(row))
+                    {
+                        <div class="d-flex align-center flex-wrap py-1 ps-12" style="gap: 12px;">
+                            <div class="flex-grow-1" style="min-width: 200px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="flex-wrap">
+                                    @if (entry.OverrideState == SharedComponentEntryOverrideState.Hidden)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Outlined.VisibilityOff"
+                                                 Size="Size.Small"
+                                                 Class="mud-text-disabled" />
+                                    }
+                                    else if (entry.Origin == SharedComponentEntryOrigin.DefinitionRef)
+                                    {
+                                        <MudTooltip Text="@($"References Library block '{entry.RefComponentName ?? entry.RefSharedComponentId}'")">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Link"
+                                                     Size="Size.Small"
+                                                     Color="Color.Primary" />
+                                        </MudTooltip>
+                                    }
+                                    <MudText Typo="Typo.body2"
+                                             Class="@(entry.OverrideState == SharedComponentEntryOverrideState.Hidden ? "mud-text-disabled" : null)">
+                                        @entry.DisplayName
+                                    </MudText>
+                                    @if (entry.OverrideState == SharedComponentEntryOverrideState.Hidden)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="ma-0">
+                                            Hidden here
+                                        </MudChip>
+                                    }
+                                    else if (EntryLiveMissing(entry))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Class="ma-0">
+                                            Deleted here
+                                        </MudChip>
+                                    }
+                                    else if (entry.DeletedByDefinition)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Class="ma-0">
+                                            Removed from Library definition
+                                        </MudChip>
+                                    }
+                                    else if (entry.Origin == SharedComponentEntryOrigin.LocalInsert && entry.RefSharedComponentId is null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="ma-0">
+                                            Added here
+                                        </MudChip>
+                                    }
+                                    @if (LibraryReconcilePlanner.EntryBadgeLabel(entry) is { } entryBadge)
+                                    {
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Variant="Variant.Outlined"
+                                                 Color="@RelationColor(entry.Relation ?? SharedComponentRelation.InSync)"
+                                                 Class="ma-0">
+                                            @entryBadge
+                                        </MudChip>
+                                    }
+                                </MudStack>
+
+                                @if (EntryActionFor(row, entry) == SharedComponentReconcileAction.UpdateShared)
+                                {
+                                    <div class="mt-1">
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block">
+                                            @EntryPushCaption(row, entry)
+                                        </MudText>
+                                    </div>
+                                }
+                            </div>
+
+                            <MudSelect T="SharedComponentReconcileAction"
+                                       Value="@EntryActionFor(row, entry)"
+                                       ValueChanged="async action => await SetEntryActionAsync(row, entry, action)"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Dense="true"
+                                       Disabled="@(_applying || !LibraryReconcilePlanner.EntrySelectsEnabled(ActionFor(row)))"
+                                       Style="max-width: 320px;"
+                                       aria-label="@($"Decision for entry {entry.DisplayName}")">
+                                @foreach (SharedComponentReconcileAction action in entry.AvailableActions)
+                                {
+                                    <MudSelectItem T="SharedComponentReconcileAction" Value="@action">
+                                        @ActionLabel(action, entry.Relation ?? SharedComponentRelation.InSync)
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        @if (_applyError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                @_applyError
+            </MudAlert>
+        }
+
+        @if (_applyDisclosures.Count > 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                <MudText Typo="Typo.body2">Applied. Some entries were adjusted along the way:</MudText>
+                <ul class="mud-typography-body2 my-1 ps-5">
+                    @foreach (string line in _applyDisclosures)
+                    {
+                        <li>@line</li>
+                    }
+                </ul>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ContinueAfterDisclosuresAsync">
+                    Continue
+                </MudButton>
+            </MudAlert>
+        }
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-3">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@ApplyDisabled"
+                       OnClick="ApplyAsync">
+                @(_applying
+                    ? "Applying..."
+                    : PendingCount == 1 ? "Apply 1 decision" : $"Apply {PendingCount} decisions")
+            </MudButton>
+            @if (PendingCount == 0)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Pick a decision other than "Keep as is" to enable Apply.
+                </MudText>
+            }
+            else if (_result?.BaseVersionId is null && !_loading && !_applying)
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Save the template once before applying — decisions need a saved version to anchor to.
+                </MudText>
+            }
+        </MudStack>
+    }
+</MudPaper>
+
+@code {
+    private static readonly Regex _pathPattern = new(
+        @"^Sections\[(\d+)\](?:\.Blocks\[(\d+)\])?$",
+        RegexOptions.Compiled);
+
+    [Parameter, EditorRequired]
+    public string OrganizationId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string UserId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string WorkflowTypeId { get; set; } = string.Empty;
+
+    [Parameter]
+    public Workflow? Workflow { get; set; }
+
+    [Parameter]
+    public Func<bool> HasUnsavedEditorChanges { get; set; } = () => false;
+
+    [Parameter]
+    public EventCallback<string?> OnApplied { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private WorkflowSharedComponentReconcileResult? _result;
+    private readonly HashSet<string> _openDifferences = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ErrorOr<WorkflowDiff>> _differences = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _differencesLoading = new(StringComparer.Ordinal);
+    private int _differencesGeneration;
+
+    private readonly Dictionary<string, SharedComponentReconcileAction> _actions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SharedComponentReconcileAction> _entryActions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SharedComponentReconcilePreviewResult> _pushImpacts = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _impactLoading = new(StringComparer.Ordinal);
+    private List<string> _applyDisclosures = [];
+    private string? _pendingAnchorVersionId;
+    private bool _loading = true;
+    private bool _applying;
+    private bool _showInSync;
+    private bool _editorHadUnsavedChanges;
+    private string? _loadError;
+    private string? _applyError;
+
+    private int _hiddenCount;
+
+    private int HiddenCount => _hiddenCount;
+
+    private IEnumerable<SharedComponentInstanceReconcileRow> VisibleRows =>
+        _result?.Instances.Where(row => _showInSync || LibraryReconcilePlanner.ShouldShow(row)) ?? [];
+
+    private int _pendingCount;
+
+    private int PendingCount => _pendingCount;
+
+    private void RefreshPendingCount()
+    {
+        _pendingCount = _result is null
+            ? 0
+            : LibraryReconcilePlanner.BuildDecisions(_result.Instances, _actions, _entryActions, acknowledgeOrphans: false).Count;
+    }
+
+    private bool ApplyDisabled =>
+        _loading || _applying || PendingCount == 0 || _result?.BaseVersionId is null || _applyDisclosures.Count > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editorHadUnsavedChanges = HasUnsavedEditorChanges();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+
+        ErrorOr<WorkflowSharedComponentReconcileResult> result = await SendAsync(
+            new GetWorkflowSharedComponentReconcileQuery(OrganizationId, UserId, WorkflowTypeId));
+
+        if (result.IsError)
+        {
+            _result = null;
+            _loadError = $"Could not read the Library state of this template: {result.FirstError.Description}";
+        }
+        else
+        {
+            _result = result.Value with { Instances = LibraryReconcilePlanner.Listed(result.Value.Instances) };
+            InitializeDefaultActions();
+            _differencesGeneration++;
+            _openDifferences.Clear();
+            _differences.Clear();
+            _differencesLoading.Clear();
+        }
+
+        _hiddenCount = LibraryReconcilePlanner.QuietCount(_result?.Instances);
+        RefreshPendingCount();
+        _loading = false;
+    }
+
+    private void InitializeDefaultActions()
+    {
+        _actions.Clear();
+        _entryActions.Clear();
+        foreach (SharedComponentInstanceReconcileRow row in _result!.Instances)
+        {
+            _actions[row.TargetPath] = LibraryReconcilePlanner.DefaultActionFor(row);
+            if (row.Entries is null)
+            {
+                continue;
+            }
+
+            foreach (SharedComponentEntryReconcileRow entry in row.Entries)
+            {
+                _entryActions[LibraryReconcilePlanner.EntryActionKey(row, entry)] =
+                    LibraryReconcilePlanner.DefaultEntryAction(entry);
+            }
+        }
+    }
+
+    private IEnumerable<IGrouping<string, SharedComponentInstanceReconcileRow>> ComponentGroups()
+    {
+        return VisibleRows.GroupBy(row => row.SharedComponentId, StringComparer.Ordinal);
+    }
+
+    private SharedComponentReconcileAction ActionFor(SharedComponentInstanceReconcileRow row)
+    {
+        return _actions.GetValueOrDefault(row.TargetPath, SharedComponentReconcileAction.KeepLocal);
+    }
+
+    private async Task SetActionAsync(SharedComponentInstanceReconcileRow row, SharedComponentReconcileAction action)
+    {
+        _actions[row.TargetPath] = action;
+        RefreshPendingCount();
+
+        if (action == SharedComponentReconcileAction.UpdateShared)
+        {
+            await EnsurePushImpactAsync(row.SharedComponentId);
+        }
+    }
+
+    private IEnumerable<SharedComponentEntryReconcileRow> VisibleEntries(SharedComponentInstanceReconcileRow row)
+    {
+        if (row.Entries is null)
+        {
+            return [];
+        }
+
+        return _showInSync
+            ? row.Entries
+            : row.Entries.Where(entry => !LibraryReconcilePlanner.IsQuietEntry(entry));
+    }
+
+    private SharedComponentReconcileAction EntryActionFor(
+        SharedComponentInstanceReconcileRow row,
+        SharedComponentEntryReconcileRow entry)
+    {
+        return _entryActions.GetValueOrDefault(
+            LibraryReconcilePlanner.EntryActionKey(row, entry), SharedComponentReconcileAction.KeepLocal);
+    }
+
+    private async Task SetEntryActionAsync(
+        SharedComponentInstanceReconcileRow row,
+        SharedComponentEntryReconcileRow entry,
+        SharedComponentReconcileAction action)
+    {
+        _entryActions[LibraryReconcilePlanner.EntryActionKey(row, entry)] = action;
+        RefreshPendingCount();
+
+        if (action == SharedComponentReconcileAction.UpdateShared && entry.RefSharedComponentId is not null)
+        {
+            await EnsurePushImpactAsync(entry.RefSharedComponentId);
+        }
+    }
+
+    private static bool EntryLiveMissing(SharedComponentEntryReconcileRow entry)
+    {
+        return entry.EntryPath is null && entry.OverrideState == SharedComponentEntryOverrideState.None;
+    }
+
+    private static int HiddenEntryCount(SharedComponentInstanceReconcileRow row)
+    {
+        return row.Entries?.Count(e => e.OverrideState == SharedComponentEntryOverrideState.Hidden) ?? 0;
+    }
+
+    private static int SectionPushRefCount(SharedComponentInstanceReconcileRow row)
+    {
+        return row.Entries?.Count(e =>
+            e.Origin == SharedComponentEntryOrigin.DefinitionRef
+            && e.OverrideState == SharedComponentEntryOverrideState.None) ?? 0;
+    }
+
+    private string EntryPushCaption(
+        SharedComponentInstanceReconcileRow row,
+        SharedComponentEntryReconcileRow entry)
+    {
+        if (entry.Origin == SharedComponentEntryOrigin.DefinitionRef)
+        {
+            return SharedComponentImpactText.RefEntryPushScope(row.ComponentName);
+        }
+
+        if (entry.RefSharedComponentId is null)
+        {
+            return SharedComponentImpactText.LocalInsertPushNote();
+        }
+
+        return _pushImpacts.TryGetValue(entry.RefSharedComponentId, out SharedComponentReconcilePreviewResult? impact)
+            ? PushImpactSummary(impact)
+            : "Loading the push impact…";
+    }
+
+    private async Task EnsurePushImpactAsync(string componentId)
+    {
+        if (_pushImpacts.ContainsKey(componentId) || !_impactLoading.Add(componentId))
+        {
+            return;
+        }
+
+        try
+        {
+            ErrorOr<SharedComponentReconcilePreviewResult> preview = await SendAsync(
+                new PreviewSharedComponentReconcileQuery(OrganizationId, UserId, componentId, null));
+            if (!preview.IsError)
+            {
+                _pushImpacts[componentId] = preview.Value;
+            }
+        }
+        finally
+        {
+            _ = _impactLoading.Remove(componentId);
+        }
+    }
+
+    private async Task ApplyAsync()
+    {
+        await ApplyCoreAsync(acknowledgeOrphans: false);
+    }
+
+    private async Task ApplyCoreAsync(bool acknowledgeOrphans, bool acknowledgeOverwrittenEntries = false)
+    {
+        if (_result?.BaseVersionId is null || _applying)
+        {
+            return;
+        }
+
+        if (HasUnsavedEditorChanges())
+        {
+            _applyError = LibraryReconcilePlanner.UNSAVED_CHANGES_REFUSAL;
+
+            return;
+        }
+
+        _applying = true;
+        _applyError = null;
+
+        ErrorOr<SharedComponentReconcileApplyResult> result = await SendAsync(
+            new ApplySharedComponentReconcileCommand(
+                OrganizationId,
+                UserId,
+                WorkflowTypeId,
+                _result.BaseVersionId,
+                LibraryReconcilePlanner.BuildDecisions(
+                    _result.Instances,
+                    _actions,
+                    _entryActions,
+                    acknowledgeOrphans,
+                    acknowledgeOverwrittenEntries)));
+
+        if (result.IsError)
+        {
+            await HandleApplyErrorAsync(result.FirstError);
+            return;
+        }
+
+        SharedComponentConsumerSaveResult? anchorSave = result.Value.WorkflowSaves
+            .FirstOrDefault(save => string.Equals(save.WorkflowTypeId, WorkflowTypeId, StringComparison.Ordinal));
+
+        _applying = false;
+        List<string> disclosures = anchorSave is null
+            ? []
+            : [.. anchorSave.SectionReconciles.SelectMany(SharedComponentImpactText.DescribeSectionReconcile)];
+        if (disclosures.Count > 0)
+        {
+            _applyDisclosures = disclosures;
+            _pendingAnchorVersionId = anchorSave?.VersionId;
+
+            return;
+        }
+
+        await OnApplied.InvokeAsync(anchorSave?.VersionId);
+    }
+
+    private async Task ContinueAfterDisclosuresAsync()
+    {
+        string? anchorVersionId = _pendingAnchorVersionId;
+        _applyDisclosures = [];
+        _pendingAnchorVersionId = null;
+        await OnApplied.InvokeAsync(anchorVersionId);
+    }
+
+    private async Task HandleApplyErrorAsync(Error error)
+    {
+        _applying = false;
+
+        if (error.Code == SharedComponentErrorCodes.ORPHANS_NEED_ACKNOWLEDGEMENT)
+        {
+            IReadOnlyList<SharedComponentOverrideImpact> orphans =
+                SharedComponentOrphanMetadata.ReadOrphanedOverrides(error);
+            if (orphans.Count == 0)
+            {
+                _applyError = error.Description;
+                return;
+            }
+
+            if (await SignatureOrphanAckDialog.ConfirmAsync(DialogService, orphans))
+            {
+                await ApplyCoreAsync(acknowledgeOrphans: true);
+            }
+
+            return;
+        }
+
+        if (error.Code == SharedComponentErrorCodes.OVERWRITES_LOCAL_ENTRIES)
+        {
+            if (await OverwrittenEntriesAckDialog.ConfirmAsync(DialogService, error))
+            {
+                await ApplyCoreAsync(acknowledgeOrphans: true, acknowledgeOverwrittenEntries: true);
+            }
+            else
+            {
+                _applyError = error.Description;
+            }
+
+            return;
+        }
+
+        if (SharedComponentErrorCodes.IsStaleHeadToken(error))
+        {
+            _applyError = "Something changed while this panel was open — the template or a Library"
+                + " component moved on. The list below has been refreshed; review it and apply again.";
+            await LoadAsync();
+            return;
+        }
+
+        _applyError = error.Description;
+    }
+
+    private static string ActionLabel(SharedComponentReconcileAction action, SharedComponentRelation relation)
+    {
+        return action switch
+        {
+            SharedComponentReconcileAction.UpdateShared => "Push my changes to the Library",
+            SharedComponentReconcileAction.AdoptHead => relation == SharedComponentRelation.HeadAhead
+                ? "Update to Library version"
+                : "Adopt the Library version",
+            SharedComponentReconcileAction.BreakOut => "Break out (keep as local copy)",
+            SharedComponentReconcileAction.Hide => "Hide in this workflow",
+            SharedComponentReconcileAction.Unhide => "Restore here",
+            _ => "Keep as is",
+        };
+    }
+
+    private static Color RelationColor(SharedComponentRelation relation)
+    {
+        return relation switch
+        {
+            SharedComponentRelation.LocalAhead => Color.Info,
+            SharedComponentRelation.HeadAhead => Color.Warning,
+            SharedComponentRelation.Diverged => Color.Warning,
+            SharedComponentRelation.ComponentMissing => Color.Error,
+            _ => Color.Default,
+        };
+    }
+
+    private static string PushImpactSummary(SharedComponentReconcilePreviewResult impact)
+    {
+        int copies = impact.Consumers.Sum(consumer => consumer.LinkedInstanceCount);
+        if (copies == 0)
+        {
+            return "No live copies are linked, so only the Library entry changes.";
+        }
+
+        return "Becomes the Library head and immediately rewrites "
+            + $"{SharedComponentImpactText.DescribeLinkedCopies(impact.Consumers)}.";
+    }
+
+    private static int FreshBaselineCount(SharedComponentReconcilePreviewResult impact)
+    {
+        return impact.UpdateSharedImpact.AffectedBaselines.Count(baseline => baseline.IsCurrentlyFresh);
+    }
+
+    private string NodeLabel(SharedComponentInstanceReconcileRow row)
+    {
+        if (Workflow is not null)
+        {
+            string? resolved = row.Kind == SharedComponentKind.Section
+                ? ResolveSectionLabel(row)
+                : ResolveBlockLabel(row);
+            if (!string.IsNullOrWhiteSpace(resolved))
+            {
+                return resolved;
+            }
+        }
+
+        return HumanizePath(row.TargetPath);
+    }
+
+    private string? ResolveSectionLabel(SharedComponentInstanceReconcileRow row)
+    {
+        List<Section> ordered = OrderedSections();
+        Section? section = row.TargetStableId is not null
+            ? ordered.FirstOrDefault(s => string.Equals(s.StableSectionId, row.TargetStableId, StringComparison.Ordinal))
+            : null;
+
+        if (section is null
+            && TryParsePath(row.TargetPath, out int sectionRank, out int? _)
+            && sectionRank < ordered.Count)
+        {
+            section = ordered[sectionRank];
+        }
+
+        return section?.Title;
+    }
+
+    private string? ResolveBlockLabel(SharedComponentInstanceReconcileRow row)
+    {
+        List<Section> ordered = OrderedSections();
+
+        if (row.TargetStableId is not null)
+        {
+            foreach (Section section in ordered)
+            {
+                Block? match = section.Blocks.FirstOrDefault(
+                    b => string.Equals(b.StableBlockId, row.TargetStableId, StringComparison.Ordinal));
+                if (match is not null)
+                {
+                    return ComposeBlockLabel(section, match);
+                }
+            }
+        }
+
+        if (TryParsePath(row.TargetPath, out int sectionRank, out int? blockRank)
+            && blockRank is not null
+            && sectionRank < ordered.Count)
+        {
+            List<Block> orderedBlocks = [.. ordered[sectionRank].Blocks.OrderBy(b => b.Order)];
+            if (blockRank.Value < orderedBlocks.Count)
+            {
+                return ComposeBlockLabel(ordered[sectionRank], orderedBlocks[blockRank.Value]);
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ComposeBlockLabel(Section section, Block block)
+    {
+        string? blockLabel = !string.IsNullOrWhiteSpace(block.Name)
+            ? block.Name
+            : !string.IsNullOrWhiteSpace(block.ReplacementTag) ? block.ReplacementTag : null;
+        if (blockLabel is null)
+        {
+            return null;
+        }
+
+        return string.IsNullOrWhiteSpace(section.Title) ? blockLabel : $"{section.Title} › {blockLabel}";
+    }
+
+    private List<Section> OrderedSections()
+    {
+        return [.. Workflow!.Sections.OrderBy(s => s.Order)];
+    }
+
+    private static string HumanizePath(string path)
+    {
+        Match match = _pathPattern.Match(path);
+        if (!match.Success)
+        {
+            return path;
+        }
+
+        string label = $"Section {int.Parse(match.Groups[1].Value) + 1}";
+        if (match.Groups[2].Success)
+        {
+            label += $" › Block {int.Parse(match.Groups[2].Value) + 1}";
+        }
+
+        return label;
+    }
+
+    private static bool TryParsePath(string path, out int sectionRank, out int? blockRank)
+    {
+        sectionRank = 0;
+        blockRank = null;
+
+        Match match = _pathPattern.Match(path);
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        sectionRank = int.Parse(match.Groups[1].Value);
+        if (match.Groups[2].Success)
+        {
+            blockRank = int.Parse(match.Groups[2].Value);
+        }
+
+        return true;
+    }
+
+    private bool IsDifferenceOpen(SharedComponentInstanceReconcileRow row)
+    {
+        return _openDifferences.Contains(row.TargetPath);
+    }
+
+    private async Task ToggleDifferenceAsync(SharedComponentInstanceReconcileRow row)
+    {
+        string key = row.TargetPath;
+        if (!_openDifferences.Add(key))
+        {
+            _ = _openDifferences.Remove(key);
+            if (_differences.TryGetValue(key, out ErrorOr<WorkflowDiff> loaded) && loaded.IsError)
+            {
+                _ = _differences.Remove(key);
+            }
+
+            return;
+        }
+
+        if (_differences.ContainsKey(key) || !_differencesLoading.Add(key))
+        {
+            return;
+        }
+
+        int generation = _differencesGeneration;
+        ErrorOr<WorkflowDiff> difference;
+        try
+        {
+            difference = await SendAsync(new GetSharedComponentInstanceDiffQuery(
+                OrganizationId,
+                UserId,
+                WorkflowTypeId,
+                TargetPath: string.IsNullOrEmpty(row.TargetStableId) ? row.TargetPath : null,
+                TargetStableId: row.TargetStableId));
+        }
+        finally
+        {
+            if (generation == _differencesGeneration)
+            {
+                _ = _differencesLoading.Remove(key);
+            }
+        }
+
+        if (generation != _differencesGeneration || (difference.IsError && !_openDifferences.Contains(key)))
+        {
+            return;
+        }
+
+        _differences[key] = difference;
+    }
+
+    private Task<TResponse> SendAsync<TResponse>(IRequest<TResponse> request)
+    {
+        return ServiceScopeFactory.SendScopedAsync(request);
+    }
+}

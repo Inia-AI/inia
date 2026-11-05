@@ -1,0 +1,92 @@
+@using IniaAi.WebApp.Services
+@using MudBlazor
+
+@inject AppState AppState
+@inject ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@implements IDisposable
+
+@if (AppState.UserOrganizations.Count > 1)
+{
+    <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+        <ActivatorContent Context="menuContext">
+            <button type="button" class="appbar-card appbar-tenant" aria-label="Organization" @onclick="menuContext.ToggleAsync">
+                <span class="appbar-tenant-name">@AppState.UserOrganizations.FirstOrDefault(org => org.Id == AppState.CurrentOrganizationId)?.Name</span>
+                <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" />
+            </button>
+        </ActivatorContent>
+        <ChildContent>
+            @foreach (var org in AppState.UserOrganizations.OrderBy(o => o.Name))
+            {
+                <MudMenuItem OnClick="() => OnOrganizationChanged(org.Id)">
+                    <div class="d-flex align-center gap-1">
+                        <MudText Typo="Typo.body2">@org.Name</MudText>
+                        @if (AppState.CurrentOrganizationId == org.Id)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" />
+                        }
+                    </div>
+                </MudMenuItem>
+            }
+        </ChildContent>
+    </MudMenu>
+}
+else if (AppState.UserOrganizations.Count == 1)
+{
+    <!-- Show current organization name when user has only one -->
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mr-4">
+        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+        <MudText Typo="Typo.body2">@AppState.UserOrganizations.First().Name</MudText>
+    </MudStack>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        AppState.OrganizationChanged += OnAppStateOrganizationChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OrganizationChanged -= OnAppStateOrganizationChanged;
+    }
+
+    private void OnAppStateOrganizationChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnOrganizationChanged(string organizationId)
+    {
+        if (string.IsNullOrEmpty(organizationId) || organizationId == AppState.CurrentOrganizationId)
+        {
+            return;
+        }
+
+        try
+        {
+            await AppState.SwitchOrganization(organizationId);
+
+            try
+            {
+                await JsRuntime.InvokeVoidAsync("localStorage.setItem", TenantPreference.STORAGE_KEY, organizationId);
+            }
+            catch (JSException)
+            {
+                // Persisting the selection is best-effort; a storage failure must not block the switch.
+            }
+
+            var selectedOrg = AppState.UserOrganizations.FirstOrDefault(o => o.Id == organizationId);
+            if (selectedOrg is not null)
+            {
+                Snackbar.Add($"Switched to {selectedOrg.Name}", Severity.Success);
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to switch organization: {ex.Message}", Severity.Error);
+        }
+    }
+}

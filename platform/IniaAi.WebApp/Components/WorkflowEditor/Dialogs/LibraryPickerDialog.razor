@@ -1,0 +1,269 @@
+@using ErrorOr
+@using IniaAi.Application.Queries.SharedComponents.ListSharedComponents
+@using IniaAi.Application.Queries.Workflows.Versions
+@using IniaAi.WebApi.Contracts.Enums
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApi.Contracts.Responses.SharedComponents
+@using IniaAi.Application.Common.Dispatching
+@using Microsoft.Extensions.DependencyInjection
+
+@inject AppState AppState
+@inject IServiceScopeFactory ServiceScopeFactory
+
+<MudDialog>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_loadError is not null)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Error">
+                Could not load the Library: @_loadError
+            </MudText>
+        }
+        else if (_components.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                No @KindLabel components are available in the Library yet.
+            </MudText>
+        }
+        else
+        {
+            <MudTextField T="string"
+                          Value="_searchText"
+                          ValueChanged="OnSearchChanged"
+                          Immediate="true"
+                          AutoFocus="true"
+                          Clearable="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="@($"Search {KindLabel}s by name, description, or category")"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          OnKeyDown="OnSearchKeyDown" />
+
+            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">
+                @_filtered.Count of @_components.Count shown — ↑/↓ to highlight, Enter to insert
+            </MudText>
+
+            <div style="max-height: 420px; overflow-y: auto;" class="mt-1">
+                @if (_filtered.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">
+                        Nothing matches this search.
+                    </MudText>
+                }
+                else
+                {
+                    string? renderedCategory = null;
+                    @for (int i = 0; i < _filtered.Count; i++)
+                    {
+                        int rowIndex = i;
+                        SharedComponentSummaryDto component = _filtered[rowIndex];
+                        string category = component.CategoryName ?? UNCATEGORIZED_LABEL;
+
+                        @if (!string.Equals(category, renderedCategory, StringComparison.Ordinal))
+                        {
+                            renderedCategory = category;
+                            <MudText Typo="Typo.overline" Class="mud-text-secondary d-block mt-2 px-2">
+                                @category
+                            </MudText>
+                        }
+
+                        <div @key="component.Id"
+                             style="@RowStyle(rowIndex)"
+                             @onclick="() => _highlightIndex = rowIndex"
+                             @ondblclick="() => SubmitIndex(rowIndex)">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@SharedComponentKindIcon.For(component.Kind)"
+                                         Color="Color.Primary"
+                                         Size="Size.Small" />
+                                <div style="min-width: 0; flex-grow: 1;">
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@component.Name</MudText>
+                                    @if (!string.IsNullOrEmpty(component.Description))
+                                    {
+                                        <MudText Typo="Typo.caption"
+                                                 Class="mud-text-secondary"
+                                                 Style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @component.Description
+                                        </MudText>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="white-space: nowrap;">
+                                    @ConsumerLabel(component)
+                                </MudText>
+                                @if (component.HeadContentHash is not null)
+                                {
+                                    <MudText Typo="Typo.caption"
+                                             Class="mud-text-secondary"
+                                             Style="font-family: monospace;">
+                                        @WorkflowVersionCode.Short(component.HeadContentHash)
+                                    </MudText>
+                                }
+                                @if (component.HeadCreatedAtUtc is not null)
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="white-space: nowrap;">
+                                        @component.HeadCreatedAtUtc.Value.ToString("yyyy-MM-dd")
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="Cancel">Cancel</MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="() => SubmitIndex(_highlightIndex)"
+                   Disabled="@(!HasHighlight)">Insert</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string UNCATEGORIZED_LABEL = "Uncategorized";
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public SharedComponentKind Kind { get; set; } = SharedComponentKind.Block;
+
+    private bool _isLoading = true;
+    private string _searchText = string.Empty;
+    private int _highlightIndex = -1;
+    private List<SharedComponentSummaryDto> _components = [];
+    private List<SharedComponentSummaryDto> _filtered = [];
+
+    private string KindLabel => Kind == SharedComponentKind.Section ? "section" : "block";
+
+    private string? _loadError;
+    private string _normalizedSearch = string.Empty;
+
+    private bool HasHighlight => _highlightIndex >= 0 && _highlightIndex < _filtered.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? organizationId = AppState.CurrentOrganizationId ?? AppState.User?.OrganizationId;
+        string? userId = AppState.User?.Id;
+        if (string.IsNullOrEmpty(organizationId) || string.IsNullOrEmpty(userId))
+        {
+            _isLoading = false;
+            return;
+        }
+
+        using IServiceScope scope = ServiceScopeFactory.CreateScope();
+        ISender sender = scope.ServiceProvider.GetRequiredService<ISender>();
+        ErrorOr<List<SharedComponentSummaryDto>> result = await sender.Send(
+            new ListSharedComponentsQuery(organizationId, userId, Kind: Kind, InsertableOnly: true));
+
+        if (result.IsError)
+        {
+            _loadError = result.FirstError.Description;
+        }
+        else
+        {
+            _components = [.. result.Value
+                .OrderBy(c => c.CategoryName is null)
+                .ThenBy(c => c.CategoryName, StringComparer.Ordinal)
+                .ThenBy(c => c.Name, StringComparer.Ordinal)];
+        }
+
+        RecomputeFilter();
+        _isLoading = false;
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchText = value ?? string.Empty;
+        RecomputeFilter();
+    }
+
+    private void RecomputeFilter()
+    {
+        _normalizedSearch = _searchText.Trim();
+        _filtered = _normalizedSearch.Length == 0
+            ? [.. _components]
+            : [.. _components.Where(Matches)];
+        _highlightIndex = _filtered.Count > 0 ? 0 : -1;
+    }
+
+    private bool Matches(SharedComponentSummaryDto component)
+    {
+        return ContainsSearch(component.Name)
+            || ContainsSearch(component.Description)
+            || ContainsSearch(component.CategoryName);
+    }
+
+    private bool ContainsSearch(string? text)
+    {
+        return text is not null
+            && text.Contains(_normalizedSearch, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnSearchKeyDown(KeyboardEventArgs args)
+    {
+        switch (args.Key)
+        {
+            case "ArrowDown":
+                if (_filtered.Count > 0)
+                {
+                    _highlightIndex = Math.Min(_highlightIndex + 1, _filtered.Count - 1);
+                }
+
+                break;
+            case "ArrowUp":
+                if (_filtered.Count > 0)
+                {
+                    _highlightIndex = Math.Max(_highlightIndex - 1, 0);
+                }
+
+                break;
+            case "Enter":
+                SubmitIndex(_highlightIndex);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private string RowStyle(int rowIndex)
+    {
+        string baseStyle = "cursor: pointer; border-radius: 4px; padding: 6px 8px;";
+
+        return _highlightIndex == rowIndex
+            ? baseStyle + " background-color: var(--mud-palette-primary-hover);"
+            : baseStyle;
+    }
+
+    private static string ConsumerLabel(SharedComponentSummaryDto component)
+    {
+        string label = component.ConsumerCount == 1 ? "1 consumer" : $"{component.ConsumerCount} consumers";
+
+        return component.ViaSectionConsumerCount > 0
+            ? $"{label} ({component.ViaSectionConsumerCount} via sections)"
+            : label;
+    }
+
+    private void SubmitIndex(int index)
+    {
+        if (index < 0 || index >= _filtered.Count)
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(_filtered[index]));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

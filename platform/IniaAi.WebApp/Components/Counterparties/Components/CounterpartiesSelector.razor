@@ -1,0 +1,63 @@
+﻿@using IniaAi.Common.Constants
+@using IniaAi.Domain.Entities.Counterparties
+
+<MudCard Outlined="true">
+    <MudCardContent>
+        <MudStack Row="true">
+            <MudSelect T="Counterparty"
+                       @bind-Value="EditorContext.Counterparty"
+                       Label="@($"Select {CounterpartyTerms.SINGULAR}")"
+                       ToStringFunc="@(c => c?.Name)"
+                       Dense="true"
+                       Clearable="true"
+                       Variant="Variant.Outlined">
+                @foreach (var counterparty in Counterparties.Except(EditorContext.PeerCompanies ?? new List<Counterparty>()))
+                {
+                    <MudSelectItem T="Counterparty" Value="@counterparty">
+                        @counterparty.Name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+
+            <MudSelect T="Counterparty"
+                       Label="Select Peer Companies"
+                       MultiSelection="true"
+                       Dense="true"
+                       Clearable="true"
+                       Variant="Variant.Outlined"
+                       SelectedValues="@EditorContext.PeerCompanies"
+                       SelectedValuesChanged="@(values => { OnPeerCompaniesChanged(values.ToHashSet()); })"
+                       ToStringFunc="@(c => c?.Name)">
+
+                @foreach (var counterparty in Counterparties.Except(EditorContext.Counterparty is not null ? new List<Counterparty> { EditorContext.Counterparty } : new List<Counterparty>()))
+                {
+                    <MudSelectItem T="Counterparty" Value="@counterparty">
+                        @counterparty.Name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+
+
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+     [CascadingParameter(Name = "Counterparties")]
+     public List<Counterparty> Counterparties { get; set; } = new();
+    //public Counterparty? Counterparty { get; set; }
+
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    public List<Counterparty> PeerCompanies { get; set; } = new();
+
+    private void OnPeerCompaniesChanged(HashSet<Counterparty> selected)
+    {
+        EditorContext.PeerCompanies = selected.ToList();
+        StateHasChanged(); // optional, forces re-render
+    }
+
+}

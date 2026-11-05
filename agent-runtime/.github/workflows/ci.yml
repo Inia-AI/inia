@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      capture_diagnostics:
+        description: "Capture the runner and sandbox diagnostics even when check passes"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event.pull_request.draft != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/gates
+
+      - name: Runner and sandbox diagnostics (on a red check, or on demand)
+        if: ${{ failure() || (github.event_name == 'workflow_dispatch' && inputs.capture_diagnostics) }}
+        run: ./scripts/ci-sandbox-diagnostics.sh agent-runtime:dev "$PWD/sandbox/seccomp-bwrap.json"

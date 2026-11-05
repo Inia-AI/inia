@@ -1,0 +1,335 @@
+[
+  {
+    "block": "Fund facts",
+    "content": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: <fact id=\"c0\">$89,997,355</fact>\n\nAssets under management as at 31 December 2025: <fact id=\"c1\">$96,159,302</fact>\n\nManagement fee: <fact id=\"c2\">1.5%</fact> of net asset value per year\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947",
+    "citations": [
+      {
+        "id": "c0",
+        "value": "$89,997,355",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "northwind-factsheet.pdf",
+            "page": 1,
+            "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+          }
+        ]
+      },
+      {
+        "id": "c1",
+        "value": "$96,159,302",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "northwind-factsheet.pdf",
+            "page": 1,
+            "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "value": "1.5%",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "northwind-factsheet.pdf",
+            "page": 1,
+            "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+          }
+        ]
+      }
+    ],
+    "citedSourcesByBlock": []
+  },
+  {
+    "block": "Web profiles",
+    "content": "Based on the web pages:\n\nAlex Rivera, Managing Partner, took their current role on <fact id=\"c0\">May 2011</fact>.\n\nMorgan Lee, Partner, took their current role on <fact id=\"c1\">January 2016</fact>.",
+    "citations": [
+      {
+        "id": "c0",
+        "value": "May 2011",
+        "sources": [
+          {
+            "type": "Url",
+            "url": "https://example.org/northwind/team",
+            "citedText": "Our team\n\nAlex Rivera | Managing Partner | start date: 2011-05-01\nMorgan Lee | Partner | start date: 2016-01-15"
+          }
+        ]
+      },
+      {
+        "id": "c1",
+        "value": "January 2016",
+        "sources": [
+          {
+            "type": "Url",
+            "url": "https://example.org/northwind/team",
+            "citedText": "Our team\n\nAlex Rivera | Managing Partner | start date: 2011-05-01\nMorgan Lee | Partner | start date: 2016-01-15"
+          }
+        ]
+      }
+    ],
+    "citedSourcesByBlock": []
+  },
+  {
+    "block": "Summary",
+    "content": "The fund has a net asset value of <fact id=\"c0\">$89,997,355</fact> as at <fact id=\"c1\">31 December 2025</fact>, with assets under management of <fact id=\"c2\">$96,159,302</fact> as at <fact id=\"c1\">31 December 2025</fact>. The excess of assets under management over net asset value is <fact id=\"c3\">$6,161,947</fact>. Alex Rivera became Managing Partner in <fact id=\"c4\">May 2011</fact>.",
+    "citations": [
+      {
+        "id": "c0",
+        "value": "$89,997,355",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "northwind-factsheet.pdf",
+            "page": 1,
+            "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+          }
+        ]
+      },
+      {
+        "id": "c1",
+        "value": "31 December 2025",
+        "sources": [
+          {
+            "type": "Block",
+            "block": "Fund facts",
+            "citedText": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: $89,997,355\n\nAssets under management as at 31 December 2025: $96,159,302\n\nManagement fee: 1.5% of net asset value per year\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947",
+            "upstream": [],
+            "matching": [
+              {
+                "type": "Document",
+                "document": "northwind-factsheet.pdf",
+                "page": 1,
+                "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "value": "$96,159,302",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "northwind-factsheet.pdf",
+            "page": 1,
+            "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "value": "$6,161,947",
+        "sources": [
+          {
+            "type": "Block",
+            "block": "Fund facts",
+            "citedText": "**Fund Key Metrics**\n\nNet asset value as at 31 December 2025: $89,997,355\n\nAssets under management as at 31 December 2025: $96,159,302\n\nManagement fee: 1.5% of net asset value per year\n\n**Derived figures**\n\nExcess of assets under management over net asset value: $6,161,947",
+            "upstream": [],
+            "matching": []
+          }
+        ]
+      },
+      {
+        "id": "c4",
+        "value": "May 2011",
+        "sources": [
+          {
+            "type": "Url",
+            "url": "https://example.org/northwind/team",
+            "citedText": "Our team\n\nAlex Rivera | Managing Partner | start date: 2011-05-01\nMorgan Lee | Partner | start date: 2016-01-15"
+          }
+        ]
+      }
+    ],
+    "citedSourcesByBlock": [
+      {
+        "block": "Fund facts",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "northwind-factsheet.pdf",
+            "page": 1,
+            "citedText": "Key figures\n\nNet asset value as at 31 December 2025: $89,997,355\nAssets under management as at 31 December 2025: $96,159,302\nFund established: 9 March 2013, Delaware limited liability company\nManagement fee: 1.5% of net asset value per year\n\nThe fund invests in listed small-cap equities in North America.\n"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "block": "Statement figures",
+    "content": "Revenue for the year was <fact id=\"c0\">£41.5m</fact>, the operating loss for the year was <fact id=\"c1\">£2.4m</fact>, and cash at the year end was <fact id=\"c2\">£3.5m</fact>.\n\nContingent consideration was <fact id=\"c3\">£2.506m</fact>.",
+    "citations": [
+      {
+        "id": "c0",
+        "value": "£41.5m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "Harbour Media Group plc\n\nAnnual report for the year ended 31 December 2025\n\nFinancial review\n\nRevenue for the year was £41.5m (2024: £36.6m)."
+          }
+        ]
+      },
+      {
+        "id": "c1",
+        "value": "£2.4m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "The operating loss for the year was £2.4m (2024: £0.6m). "
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "value": "£3.5m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "Cash at the year end was £3.5m.\n"
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "value": "£2.506m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 2,
+            "citedText": "Consolidated statement of financial position\nAs at 31 December 2025\n\n                                   2025      2024\n                                  £'000     £'000\nContingent consideration           2,506     1,230\nTrade and other payables           4,120     3,875"
+          }
+        ]
+      }
+    ],
+    "citedSourcesByBlock": []
+  },
+  {
+    "block": "USD conversion",
+    "content": "Revenue: <fact id=\"c0\">£41.5m</fact> ($55.0m)\n\nOperating loss: <fact id=\"c1\">£2.4m</fact> ($3.2m)\n\nCash at year end: <fact id=\"c2\">£3.5m</fact> ($4.6m)\n\nContingent consideration: <fact id=\"c3\">£2.506m</fact> ($3.3m)",
+    "citations": [
+      {
+        "id": "c0",
+        "value": "£41.5m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "Harbour Media Group plc\n\nAnnual report for the year ended 31 December 2025\n\nFinancial review\n\nRevenue for the year was £41.5m (2024: £36.6m)."
+          }
+        ]
+      },
+      {
+        "id": "c1",
+        "value": "£2.4m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "The operating loss for the year was £2.4m (2024: £0.6m). "
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "value": "£3.5m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "Cash at the year end was £3.5m.\n"
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "value": "£2.506m",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 2,
+            "citedText": "Consolidated statement of financial position\nAs at 31 December 2025\n\n                                   2025      2024\n                                  £'000     £'000\nContingent consideration           2,506     1,230\nTrade and other payables           4,120     3,875"
+          }
+        ]
+      }
+    ],
+    "citedSourcesByBlock": []
+  },
+  {
+    "block": "Performance draft",
+    "content": "In 2025, the company generated revenue of <fact id=\"c0\">$55.0m</fact> while recording an operating loss of <fact id=\"c1\">$3.2m</fact>. Year-end cash totaled <fact id=\"c2\">$4.6m</fact>.",
+    "citations": [
+      {
+        "id": "c0",
+        "value": "$55.0m",
+        "sources": [
+          {
+            "type": "Block",
+            "block": "USD conversion",
+            "citedText": "Revenue: £41.5m ($55.0m)",
+            "upstream": [],
+            "matching": []
+          }
+        ]
+      },
+      {
+        "id": "c1",
+        "value": "$3.2m",
+        "sources": [
+          {
+            "type": "Block",
+            "block": "USD conversion",
+            "citedText": "Operating loss: £2.4m ($3.2m)",
+            "upstream": [],
+            "matching": []
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "value": "$4.6m",
+        "sources": [
+          {
+            "type": "Block",
+            "block": "USD conversion",
+            "citedText": "Cash at year end: £3.5m ($4.6m)",
+            "upstream": [],
+            "matching": []
+          }
+        ]
+      }
+    ],
+    "citedSourcesByBlock": [
+      {
+        "block": "USD conversion",
+        "sources": [
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 1,
+            "citedText": "Harbour Media Group plc\n\nAnnual report for the year ended 31 December 2025\n\nFinancial review\n\nRevenue for the year was £41.5m (2024: £36.6m)."
+          },
+          {
+            "type": "Document",
+            "document": "harbour-media-annual-report.pdf",
+            "page": 2,
+            "citedText": "Consolidated statement of financial position\nAs at 31 December 2025\n\n                                   2025      2024\n                                  £'000     £'000\nContingent consideration           2,506     1,230\nTrade and other payables           4,120     3,875"
+          }
+        ]
+      }
+    ]
+  }
+]

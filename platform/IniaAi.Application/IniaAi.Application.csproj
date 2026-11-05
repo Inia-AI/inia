@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ErrorOr" />
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+        <PackageReference Include="FluentValidation" />
+        <PackageReference Include="Microsoft.AspNetCore.OData" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Common.Interfaces\IniaAi.Common.Interfaces.csproj" />
+        <ProjectReference Include="..\IniaAi.Core\IniaAi.Core.csproj" />
+        <ProjectReference Include="..\IniaAi.Domain\IniaAi.Domain.csproj" />
+        <ProjectReference Include="..\IniaAi.WebApi.Contracts\IniaAi.WebApi.Contracts.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Workflows\EditorAgent\Resources\*.md" />
+        <EmbeddedResource Include="Workflows\EditorAgent\Resources\check_workflow.py" />
+        <EmbeddedResource Include="Workflows\EditorAgent\Resources\wf.py" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>$(AssemblyName).UnitTests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+</Project>

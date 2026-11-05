@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ErrorOr" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
+        <PackageReference Include="MimeKit" />
+        <PackageReference Include="Selenium.WebDriver" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Application\IniaAi.Application.csproj" />
+        <ProjectReference Include="..\IniaAi.Common.Interfaces\IniaAi.Common.Interfaces.csproj" />
+        <ProjectReference Include="..\IniaAi.Core\IniaAi.Core.csproj" />
+        <ProjectReference Include="..\IniaAi.Domain\IniaAi.Domain.csproj" />
+        <ProjectReference Include="..\IniaAi.FileFormats\IniaAi.FileFormats.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>$(AssemblyName).Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\chartBuilder\charts.global.js" />
+        <None Include="Resources\chartBuilder\LICENSE-*;Resources\chartBuilder\NOTICE-*" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+</Project>

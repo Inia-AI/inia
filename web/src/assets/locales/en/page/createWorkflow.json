@@ -1,0 +1,84 @@
+{
+  "title": "Create New Report",
+  "subtitle": "A few quick steps and we'll generate your report",
+  "retry": "Retry",
+  "back": "Back",
+  "continue": "Continue",
+  "stepList": "Steps",
+  "stepCompleted": "completed",
+  "steps": {
+    "type": { "title": "Report type", "hint": "Choose what to generate" },
+    "documents": { "title": "Documents", "hint": "Add source files" },
+    "details": { "title": "Details", "hint": "@:{'terms.Company'} & parameters" },
+    "review": { "title": "Review", "hint": "Confirm & generate" }
+  },
+  "typeStep": {
+    "title": "Choose a report type",
+    "lead": "Pick the kind of analysis you want to run. We'll tailor the next steps to it.",
+    "loadTypesFailed": "We couldn't load the report types.",
+    "loadingDetails": "Loading report details…",
+    "loadDetailsFailed": "We couldn't load the details for this report."
+  },
+  "documentsStep": {
+    "title": "Upload documents",
+    "lead": "Add the source files for {name}. We'll classify and process them for you.",
+    "required": "Required",
+    "needed": "This report needs",
+    "suggested": "Suggested",
+    "optional": "Optional",
+    "singleOnly": "· 1 only",
+    "reviewFollowing": "Please review the following:",
+    "missingRequiredNote": "Upload and classify the required document to continue: | Upload and classify the required documents to continue:",
+    "singularViolationNote": "Only one document of this class is allowed — remove the extras to continue: | Only one document per class is allowed for these classes — remove the extras to continue:",
+    "letUsDecide": "Let us decide",
+    "classOptionalNote": "You do not need to choose a class. We read each document and decide what it is. Choose one only when you are sure.",
+    "classPartlyOptionalNote": "After you upload a document, we work out its type for you. We cannot do this for {documents}. When you upload one, choose its type yourself in the list next to the file. | After you upload a document, we work out its type for you. We cannot do this for these types: {documents}. When you upload one of them, choose its type yourself in the list next to the file."
+  },
+  "reRunChanges": {
+    "title": "This workflow has changed since the original run",
+    "lead": "Your original inputs and documents are filled in. Check what changed, then submit.",
+    "needsVariables": "Needs your input: {names}",
+    "needsDocuments": "Needs documents: {names}",
+    "unavailableDocuments": "Deleted since the original run, so left out: {names}",
+    "removed": "Removed from the workflow, so left out: {names}",
+    "defaulted": "New to the workflow, filled in with its default: {names}",
+    "badge": {
+      "NoValue": "Needs a value",
+      "InvalidValue": "Enter a new value",
+      "Confidential": "Enter again"
+    }
+  },
+  "detailsStep": {
+    "title": "Configure the details",
+    "lead": "Set the @:{'terms.company'}, peers and any parameters this report needs."
+  },
+  "reviewStep": {
+    "title": "Review & generate",
+    "lead": "Give everything a final check, then generate your report.",
+    "reportType": "Report type",
+    "documents": "Documents",
+    "noDocuments": "No documents added",
+    "unclassified": "Not classified",
+    "weDecide": "We decide",
+    "templateDefault": "{value} (template default)"
+  },
+  "form": {
+    "labels": {
+      "fundManagerCoverageLocation": "Coverage Location (optional)",
+      "counterpartyId": "@:{'terms.Company'}",
+      "peerCompanies": "Peer @:{'terms.companies'}",
+      "organizationalStructure": "Organisational Structure",
+      "file": {
+        "name": "File Name",
+        "status": "Status"
+      }
+    },
+    "submitLabel": "Submit",
+    "errors": {
+      "counterpartyRequired": "Choose a @:{'terms.company'} for this report.",
+      "uploadFailed": "Failed to upload {count} document. Please try again. | Failed to upload {count} documents. Please try again."
+    }
+  },
+  "success": "Report generation started successfully",
+  "failed": "Report generation failed"
+}

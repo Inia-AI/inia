@@ -1,0 +1,10 @@
+{
+  "label": "The model refused one step of this run | The model refused {n} steps of this run",
+  "body": "A refused block has no output, so a section that uses it may be empty or missing. A refused page has no text, so blocks read it as an image. Nothing was retried on another model.",
+  "inSection": "in {section}",
+  "categoryReason": "(refusal category: {category})",
+  "writtenReason": "(it wrote a refusal in place of an answer)",
+  "times": "({count} times)",
+  "openLogs": "Open the execution logs",
+  "badge": "Refused by the model"
+}

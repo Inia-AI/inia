@@ -1,0 +1,155 @@
+[
+  {
+    "id": "category-funds",
+    "name": "Funds",
+    "description": null,
+    "workflows": null
+  },
+  {
+    "id": "category-corporate",
+    "name": "Corporate",
+    "description": "Corporate credit.",
+    "workflows": [
+      {
+        "id": "workflow-category-plain",
+        "workflowTypeId": "CorpRead",
+        "workflowTypeName": "Corporate Read",
+        "isAvailable": true,
+        "documentClassKeys": [
+          "AnnualReport",
+          "Output"
+        ],
+        "variables": [
+          {
+            "id": "workflow-category-plain-variable-ReviewYear",
+            "replacementTag": "ReviewYear",
+            "displayName": "Review year",
+            "description": "The year under review.",
+            "type": "Dropdown",
+            "isRequired": true,
+            "isHidden": false,
+            "isConfidential": false,
+            "defaultValue": "2025",
+            "options": {
+              "2024": "2024",
+              "2025": "2025"
+            }
+          },
+          {
+            "id": "workflow-category-plain-variable-Secret",
+            "replacementTag": "Secret",
+            "displayName": "Secret",
+            "description": "A confidential input.",
+            "type": "String",
+            "isRequired": true,
+            "isHidden": true,
+            "isConfidential": true,
+            "defaultValue": null,
+            "options": {}
+          }
+        ],
+        "documentClasses": [
+          {
+            "key": "AnnualReport",
+            "displayName": "Annual Report",
+            "description": "The audited annual report.",
+            "requirement": "Required",
+            "shouldBeSingular": true,
+            "isOutputDocument": false,
+            "documentCategoryId": "category-financials",
+            "llmDescription": "An annual report with audited statements."
+          },
+          {
+            "key": "Output",
+            "displayName": "Output",
+            "description": "The generated workbook.",
+            "requirement": "Optional",
+            "shouldBeSingular": false,
+            "isOutputDocument": true,
+            "documentCategoryId": null,
+            "llmDescription": null
+          }
+        ],
+        "counterpartyTypeMappings": [
+          "type-corporation",
+          "type-hedge-fund"
+        ],
+        "isCounterpartyRequired": false,
+        "supportsPeerCompanies": false,
+        "classifiesDocuments": false,
+        "classesToChoose": [],
+        "creditCost": null
+      },
+      {
+        "id": "workflow-category-second",
+        "workflowTypeId": "CorpRead",
+        "workflowTypeName": "Corporate Read",
+        "isAvailable": true,
+        "documentClassKeys": [
+          "AnnualReport",
+          "Output"
+        ],
+        "variables": [
+          {
+            "id": "workflow-category-second-variable-ReviewYear",
+            "replacementTag": "ReviewYear",
+            "displayName": "Review year",
+            "description": "The year under review.",
+            "type": "Dropdown",
+            "isRequired": true,
+            "isHidden": false,
+            "isConfidential": false,
+            "defaultValue": "2025",
+            "options": {
+              "2024": "2024",
+              "2025": "2025"
+            }
+          },
+          {
+            "id": "workflow-category-second-variable-Secret",
+            "replacementTag": "Secret",
+            "displayName": "Secret",
+            "description": "A confidential input.",
+            "type": "String",
+            "isRequired": true,
+            "isHidden": true,
+            "isConfidential": true,
+            "defaultValue": null,
+            "options": {}
+          }
+        ],
+        "documentClasses": [
+          {
+            "key": "AnnualReport",
+            "displayName": "Annual Report",
+            "description": "The audited annual report.",
+            "requirement": "Required",
+            "shouldBeSingular": true,
+            "isOutputDocument": false,
+            "documentCategoryId": "category-financials",
+            "llmDescription": "An annual report with audited statements."
+          },
+          {
+            "key": "Output",
+            "displayName": "Output",
+            "description": "The generated workbook.",
+            "requirement": "Optional",
+            "shouldBeSingular": false,
+            "isOutputDocument": true,
+            "documentCategoryId": null,
+            "llmDescription": null
+          }
+        ],
+        "counterpartyTypeMappings": [
+          "type-corporation",
+          "type-hedge-fund"
+        ],
+        "isCounterpartyRequired": false,
+        "supportsPeerCompanies": false,
+        "classifiesDocuments": false,
+        "classesToChoose": [],
+        "creditCost": null
+      }
+    ]
+  }
+]

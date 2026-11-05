@@ -1,0 +1,583 @@
+﻿@using System.Buffers
+@using IniaAi.Application.Documents
+@using IniaAi.Common.Extensions
+@using IniaAi.Common.Interfaces.Persistence
+@using IniaAi.Configuration.Storage
+@using IniaAi.Domain.Entities.Documents
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.FileFormats.Inspection
+@using IniaAi.FileFormats.Unlock
+@using IniaAi.WebApp.Components.Documents.Dialogs
+@using System.Security.Cryptography
+
+@implements IDisposable
+
+@inject IOptions<PlatformSettings> Options
+@inject AppState AppState
+@inject ILogger<DocumentUploadCard> Logger
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IDialogService DialogService
+@inject IFileStorageManager FileStorageManager
+@inject DocumentIntakeGate IntakeGate
+@inject IReadableFormats ReadableFormats
+
+<MudCard Outlined="true">
+    <MudCardContent Class="pb-0">
+        <MudStack Spacing="2">
+            @if (_animateProgressBar || (_progress > 0 && _progress < 100))
+            {
+                <MudProgressLinear Color="Color.Primary"
+                                   Rounded="true"
+                                   Striped="@_animateProgressBar"
+                                   Value="@_progress"
+                                   Size="MudBlazor.Size.Medium" />
+            }
+
+            @if (Documents.Any())
+            {
+                <MudTable CustomHeader="true"
+                          CustomFooter="true"
+                          Class="pa-0"
+                          Elevation="0"
+                          Items="@Documents"
+                          Dense="true"
+                          MultiSelection="false"
+                          Breakpoint="MudBlazor.Breakpoint.None">
+                    <ColGroup>
+                        <col style="width: 40px;" />
+
+                        <col style="width: 10%;" />
+
+                        @if (_documentClasses.Any())
+                        {
+                            <col style="width: 30%;" />
+
+                            <col style="width: 40px;" />
+                        }
+
+                        <col />
+
+                        <col style="width: 40px;" />
+                    </ColGroup>
+
+                    <RowTemplate>
+                        <MudTd Class="pa-0" Style="text-align: left;">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Preview"
+                                           aria-label="@($"Preview document {context.Document?.Name}")"
+                                           Color="Color.Secondary"
+                                           OnClick="() => ShowDocumentPreviewDialogAsync(context.Document)" />
+                        </MudTd>
+
+                        <MudTd Class="px-0" Style="text-align: left;">
+                            @context.Document?.Name
+                        </MudTd>
+
+                        @if (_documentClasses.Any())
+                        {
+                            <MudTd>
+                                <MudSelect T="string"
+                                @bind-Value="context.DocumentClass">
+                                    @foreach (var documentClass in _documentClasses)
+                                    {
+                                        <MudSelectItem Value="documentClass">
+                                            @documentClass
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudTd>
+
+                            <MudTd Class="pe-0">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                                               Color="Color.Secondary"
+                                               aria-label="Clear document class"
+                                               OnClick="() => ClearDocumentClass(context)" />
+                            </MudTd>
+                        }
+
+                        <MudTd />
+
+                        <MudTd Class="pe-0" Style="text-align: right;">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           Class="editor-soft-button"
+                                           aria-label="Remove document"
+                                           OnClick="async () => await RemoveDocumentAsync(context)" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+
+            @if (HasEmailDocuments)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4">
+                    <MudCheckBox T="bool"
+                                 @bind-Value="EmailIntake.ExtractAttachments"
+                                 Label="Extract attachments from emails"
+                                 Color="Color.Primary"
+                                 Dense="true" />
+
+                    @if (EmailIntake.ExtractAttachments && _documentClasses.Any())
+                    {
+                        <MudSelect T="string"
+                                   @bind-Value="EmailIntake.AttachmentsDocumentClass"
+                                   Label="Class for extracted attachments"
+                                   Clearable="true"
+                                   Style="max-width: 300px;">
+                            @foreach (var documentClass in _documentClasses)
+                            {
+                                <MudSelectItem Value="documentClass">
+                                    @documentClass
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </MudStack>
+            }
+        </MudStack>
+    </MudCardContent>
+
+    <MudCardActions Class="pl-4">
+        <MudFileUpload @ref="_fileUpload"
+                       T="IReadOnlyList<IBrowserFile>"
+                       FilesChanged="async(files) => await UploadFilesAsync(files)"
+                       Accept="@UploadPickerFormats.Accept(ReadableFormats)"
+                       MaximumFileCount="25">
+            <CustomContent>
+                <MudButton Variant="Variant.Filled"
+                           OnClick="@(async () => await context.OpenFilePickerAsync())"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.CloudUpload">
+                    Upload Files
+                </MudButton>
+            </CustomContent>
+            <SelectedTemplate />
+        </MudFileUpload>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    private long _progressBarMax;
+    private long _progressBarValue;
+    private int _progress => (int)(_progressBarValue * 100 / (_progressBarMax == 0 ? 1 : _progressBarMax));
+    private bool _animateProgressBar = false;
+    private MudFileUpload<IReadOnlyList<IBrowserFile>> _fileUpload = default!;
+    private PlatformSettings _platformSettings => Options.Value;
+    private long _maxFileSizeB => _platformSettings.IniaAi.MaxFileSizeMb * 1024 * 1024;
+    private User _user = default!;
+    private List<string> _documentClasses = [];
+
+    public List<DocumentInfo> Documents = [];
+
+    /// <summary>
+    /// True on a host whose users answer for what they upload, as workflow engineers do in the
+    /// editor: the intake gate then refuses only what would harm the platform itself.
+    /// </summary>
+    [Parameter]
+    public bool ContentIsVouchedFor { get; set; }
+
+    public EmailIntakeSelection EmailIntake { get; } = new();
+
+    /// <summary>
+    /// Told when the user removes a document; returns the documents that were derived from it and
+    /// go with it, such as the body and attachments of an email an editor test run expanded.
+    /// </summary>
+    public Func<DocumentInfo, IReadOnlyList<DocumentInfo>>? DocumentRemoved { get; set; }
+
+    private bool HasEmailDocuments => Documents.Any(d => d.Document?.MediaType.IsEmail() ?? false);
+
+    protected override void OnInitialized()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User, nameof(AppState.User));
+
+        _user = AppState.User;
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+
+        Documents.Clear();
+    }
+
+    public void DocumentClassesChanged(List<string> documentClasses)
+    {
+        _documentClasses = documentClasses;
+    }
+
+    public Task DocumentsChangedAsync()
+    {
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async Task ResetAsync()
+    {
+        _animateProgressBar = false;
+        _progressBarValue = 0;
+        _progressBarMax = 0;
+
+        Documents.Clear();
+
+        await _fileUpload.ClearAsync();
+    }
+
+    private void ClearDocumentClass(DocumentInfo documentInfo)
+    {
+        documentInfo.DocumentClass = string.Empty;
+    }
+
+    private async Task ShowDocumentPreviewDialogAsync(Document? document)
+    {
+        if (document is null)
+        {
+            Logger.LogError("Document is null");
+            return;
+        }
+
+        var parameters = new DialogParameters<DocumentPreviewDialog> { };
+        parameters.Add(x => x.Document, document);
+        var options = new DialogOptions()
+        {
+            MaxWidth = MaxWidth.Medium,
+            CloseButton = true,
+        };
+
+        var filename = document.FileMetadata?.Name ?? "Document";
+
+        await DialogService.ShowAsync<DocumentPreviewDialog>(filename, parameters, options);
+    }
+
+    private async Task<string?> ShowPasswordDialogAsync(string fileName, bool isRetry)
+    {
+        var parameters = new DialogParameters<DocumentPasswordDialog>();
+        parameters.Add(x => x.FileName, fileName);
+        parameters.Add(x => x.IsRetry, isRetry);
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = false,
+            BackdropClick = false,
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<DocumentPasswordDialog>(
+            $"Unlock {fileName}",
+            parameters,
+            options);
+        DialogResult? result = await dialog.Result;
+
+        return result is { Canceled: false, Data: string password }
+            ? password
+            : null;
+    }
+
+    private async Task UploadFilesAsync(IReadOnlyList<IBrowserFile> files)
+    {
+        // The upload control reports a cleared selection as a null list.
+        if (files is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            AppState.Notify("Please select an organization before uploading documents", Severity.Warning);
+            Logger.LogWarning("No organization selected for document upload");
+            return;
+        }
+
+        const int BufferSize = 4096;
+        const int UIUpdateIntervalMs = 250;
+
+        using var timer = new Timer(_ => InvokeAsync(() => StateHasChanged()));
+        timer.Change(
+            TimeSpan.FromMilliseconds(UIUpdateIntervalMs),
+            TimeSpan.FromMilliseconds(UIUpdateIntervalMs));
+
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+
+        try
+        {
+            foreach (var file in files)
+            {
+                try
+                {
+                    await ProcessFileAsync(file, buffer);
+                }
+                catch (Exception e)
+                {
+                    HandleUploadError(file.Name, e);
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+            ResetProgressBar();
+        }
+    }
+
+    private async Task ProcessFileAsync(IBrowserFile file, byte[] buffer)
+    {
+        if (IsFileDuplicate(file))
+        {
+            return;
+        }
+
+        await UploadFileInitDocumentInfosAsync(file, buffer);
+    }
+
+    private bool IsFileDuplicate(IBrowserFile file)
+    {
+        var fileIsDuplicate = Documents
+            .Any(d => d.Document?.Name == file.Name && d.Document.FileMetadata?.SizeBytes == file.Size);
+
+        if (fileIsDuplicate)
+        {
+            Logger.LogInformation(
+                "Skipping duplicate file: {FileName}",
+                file.Name);
+        }
+
+        return fileIsDuplicate;
+    }
+
+    private async Task UploadFileInitDocumentInfosAsync(IBrowserFile file, byte[] buffer)
+    {
+        string storageFileName = file.Name;
+        var currentOrgId = AppState.CurrentOrganizationId ?? throw new InvalidOperationException("No organization selected");
+        var mouth = new IntakeMouth(UserDataUnitOfWork, currentOrgId, ContentIsVouchedFor: ContentIsVouchedFor);
+
+        IntakeScreening screening = await IntakeGate.ScreenAsync(
+            storageFileName,
+            file.Size,
+            _ => UploadNewFile(file, buffer),
+            password: null,
+            mouth,
+            FileContentInspector.Default,
+            CancellationToken.None);
+
+        bool passwordSupplied = false;
+
+        while (screening.Outcome is IntakeOutcome.PasswordRequired or IntakeOutcome.PasswordIncorrect)
+        {
+            string? password = await ShowPasswordDialogAsync(
+                file.Name,
+                isRetry: screening.Outcome is IntakeOutcome.PasswordIncorrect);
+
+            if (password is null)
+            {
+                AppState.Notify(
+                    $"Skipped {file.Name}: it stays password-protected and was not uploaded.",
+                    Severity.Warning);
+                return;
+            }
+
+            passwordSupplied = true;
+            screening = await IntakeGate.ScreenAsync(
+                screening.Bytes, storageFileName, password, mouth, CancellationToken.None);
+        }
+
+        if (screening.Outcome is IntakeOutcome.UnsupportedProtection)
+        {
+            AppState.Notify(
+                $"{file.Name} uses certificate- or DRM-based protection that cannot be removed. Ask the sender for an unprotected copy.",
+                Severity.Error);
+            return;
+        }
+
+        if (screening.Outcome is IntakeOutcome.Refused)
+        {
+            Logger.LogWarning(
+                "Refused upload {FileName} for organization {OrganizationId}: {ReasonCode}",
+                storageFileName,
+                currentOrgId,
+                screening.ReasonCode);
+            AppState.Notify($"Skipped {file.Name}: {screening.Detail}", Severity.Error);
+            return;
+        }
+
+        byte[] fileBytes = screening.Bytes;
+        FileUnlockResult? unlockResult = screening.Unlock;
+        string storageContentType = screening.ContentType;
+
+        string hash = CalculateMD5(fileBytes);
+
+        Logger.LogInformation(
+            "File copied to memory and hashed. FileName: {FileName}, Hash: {Hash}, Size: {Size} bytes.",
+            storageFileName,
+            hash,
+            fileBytes.Length);
+
+        string fileNameNoExtension = Path.GetFileNameWithoutExtension(storageFileName);
+
+        var document = await UserDataUnitOfWork.Documents.GetDocumentByFileNameAndSize(fileNameNoExtension, fileBytes.Length, currentOrgId);
+        bool isNew = false;
+        if (document is null)
+        {
+            Logger.LogInformation("Creating document '{FileName}' for organization {OrganizationId}", storageFileName, currentOrgId);
+
+            document = await UserDataUnitOfWork.Documents.UploadNewFileCreateNewDocumentAsync(
+                fileBytes,
+                currentOrgId,
+                _user.Id,
+                storageFileName,
+                FileStorageManager.GetProviderForTenant(currentOrgId),
+                screening.MediaType);
+            isNew = true;
+            await UserDataUnitOfWork.CompleteAsync();
+        }
+
+        // Store file content using storage manager after document is persisted
+        // This ensures the File.Id is available for storage
+        if (document.FileMetadata is not null && isNew)
+        {
+            try
+            {
+                var storagePath = await FileStorageManager.StoreFileAsync(
+                    document.FileMetadata.StorageProvider.ToString(),
+                    currentOrgId,
+                    StorageCategories.Documents,
+                    document.FileMetadata.Id.ToString(),
+                    fileBytes,
+                    storageContentType);
+
+                // Update ExternalStoragePath with the returned storage path
+                document.FileMetadata.ExternalStoragePath = storagePath;
+
+                // Save the ExternalStoragePath update to database
+                await UserDataUnitOfWork.CompleteAsync();
+
+                Logger.LogInformation(
+                    "File stored successfully. FileId: {FileId}, Provider: {Provider}, StoragePath: {StoragePath}.",
+                    document.FileMetadata.Id,
+                    document.FileMetadata.StorageProvider,
+                    storagePath);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to store file content for {FileId}", document.FileMetadata.Id);
+
+                UserDataUnitOfWork.Documents.Remove(document);
+                await UserDataUnitOfWork.CompleteAsync();
+
+                AppState.Notify($"Error storing file {file.Name}: {ex.Message}");
+                return;
+            }
+        }
+
+        if (screening.HasMacros)
+        {
+            document.HasMacros = true;
+        }
+
+        if (unlockResult is { WasPasswordProtected: true })
+        {
+            document.WasPasswordProtected = true;
+
+            await UserDataUnitOfWork.Repository<DocumentUnlockAuditLog>().AddAsync(DocumentUnlockAuditLog.For(
+                document,
+                unlockResult.ContainedSignature,
+                passwordSupplied,
+                _user.Id,
+                _user.Email));
+
+            if (unlockResult.ContainedSignature)
+            {
+                AppState.Notify(
+                    "This document contained a digital signature. Removing the password protection "
+                    + "invalidates the signature; the document content is unchanged.",
+                    Severity.Warning);
+            }
+        }
+
+        var documentInfo = (await UserDataUnitOfWork.Documents.CreateDocumentInfoAsync(document));
+
+        Documents.Add(documentInfo);
+
+        Logger.LogInformation("Successfully uploaded file {FileName}", file.Name);
+        AppState.Notify($"File {file.Name} uploaded successfully");
+
+        await UserDataUnitOfWork.CompleteAsync();
+    }
+
+    private static string CalculateMD5(byte[] bytes)
+    {
+        var hash = MD5.HashData(bytes);
+        return Convert.ToHexString(hash);
+    }
+
+    private async Task<byte[]> UploadNewFile(IBrowserFile file, byte[] buffer)
+    {
+        InitializeProgressBar(file.Size);
+
+        using var memoryStream = new MemoryStream((int)file.Size); // Pre-allocate capacity
+        using var fileStream = file.OpenReadStream(maxAllowedSize: _maxFileSizeB);
+
+        await CopyStreamWithProgressAsync(fileStream, memoryStream, buffer);
+
+        return memoryStream.ToArray();
+    }
+
+    private async Task CopyStreamWithProgressAsync(
+        Stream source,
+        MemoryStream destination,
+        byte[] buffer)
+    {
+        int read;
+        while ((read = await source.ReadAsync(buffer, 0, buffer.Length)) > 0)
+        {
+            destination.Write(buffer, 0, read);
+            UpdateProgressBar(destination.Position);
+        }
+    }
+
+    private void HandleUploadError(string fileName, Exception e)
+    {
+        _progressBarValue = 0;
+        AppState.Notify($"Error uploading {fileName}: {e.Message}");
+        Logger.LogError(e, "Error uploading {FileName}", fileName);
+    }
+
+    private void InitializeProgressBar(long max)
+    {
+        _progressBarMax = max;
+        _progressBarValue = 0;
+        _animateProgressBar = true;
+    }
+
+    private void UpdateProgressBar(long value)
+    {
+        _progressBarValue = value;
+    }
+
+    private void ResetProgressBar()
+    {
+        _animateProgressBar = false;
+    }
+
+    private async Task RemoveDocumentAsync(DocumentInfo documentInfo)
+    {
+        Documents.Remove(documentInfo);
+        UserDataUnitOfWork.Documents.RemoveDocumentInfo(documentInfo);
+
+        foreach (DocumentInfo derived in DocumentRemoved?.Invoke(documentInfo) ?? [])
+        {
+            UserDataUnitOfWork.Documents.RemoveDocumentInfo(derived);
+        }
+
+        await UserDataUnitOfWork.CompleteAsync();
+
+        if (!Documents.Any())
+        {
+            // seems we need to clear files stored in file uploader to prevent issue of upload button not
+            // working when uploading previously removed file, if the file was the last remaining file
+            await _fileUpload.ClearAsync();
+
+            _progressBarValue = 0;
+        }
+    }
+}

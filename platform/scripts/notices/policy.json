@@ -1,0 +1,57 @@
+{
+  "sources": [
+    {"type": "nuget", "path": "artifacts/obj/*/project.assets.json"},
+    {"type": "npm", "path": "IniaAi.WebApp/wwwroot/js/src/package-lock.json"}
+  ],
+  "allowed": ["0BSD", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MIT", "MPL-2.0", "PostgreSQL"],
+  "declared": [
+    {"package": "nuget:Amazon.AspNetCore.DataProtection.SSM", "metadata": "file LICENSE sha256:cfc7749b96f63bd3", "licence": "Apache-2.0"},
+    {"package": "nuget:Amazon.Extensions.Configuration.SystemsManager", "metadata": "file LICENSE sha256:cfc7749b96f63bd3", "licence": "Apache-2.0"},
+    {"package": "nuget:Bogus", "metadata": "file LICENSE sha256:84faff6562766978", "licence": "MIT AND BSD-3-Clause"},
+    {"package": "nuget:ErrorOr", "metadata": "no licence in its metadata", "licence": "MIT"},
+    {"package": "nuget:Fare", "metadata": "url https://github.com/moodmosaic/Fare/blob/master/LICENCE", "licence": "MIT"},
+    {"package": "nuget:google-search-results-dotnet", "metadata": "file MIT-LICENSE.txt sha256:62b9b932cf5effd0", "licence": "MIT"},
+    {"package": "nuget:NReco.Text.AhoCorasickDoubleArrayTrie", "metadata": "url https://raw.githubusercontent.com/nreco/AhoCorasickDoubleArrayTrie/master/LICENSE", "licence": "Apache-2.0"},
+    {"package": "nuget:SharpToken", "metadata": "file LICENSE sha256:bb317dce953a18c5", "licence": "MIT"},
+    {"package": "nuget:starkbank-ecdsa", "metadata": "url https://opensource.org/licenses/MIT", "licence": "MIT"},
+    {"package": "nuget:System.ComponentModel.Annotations", "metadata": "url https://github.com/dotnet/corefx/blob/master/LICENSE.TXT", "licence": "MIT"},
+    {"package": "nuget:System.Security.Cryptography.ProtectedData", "metadata": "url https://github.com/dotnet/corefx/blob/master/LICENSE.TXT", "licence": "MIT"}
+  ],
+  "exceptions": [
+    {
+      "packages": ["nuget:Microsoft.Data.SqlClient.SNI.runtime"],
+      "version": "6.0.3",
+      "licence": "LicenseRef-Microsoft-SqlClient-SNI",
+      "terms": "terms/microsoft-sqlclient-sni.txt",
+      "reason": "Microsoft.Data.SqlClient, the SQL Server provider, needs it on Windows."
+    },
+    {
+      "packages": ["nuget:Microsoft.Identity.Client.NativeInterop"],
+      "version": "0.20.6",
+      "licence": "LicenseRef-Microsoft-Identity-Client-NativeInterop",
+      "terms": "terms/microsoft-identity-client-nativeinterop.txt",
+      "reason": "Microsoft.Data.SqlClient, the SQL Server provider, brings Microsoft.Identity.Client.Broker, which needs it."
+    },
+    {
+      "packages": ["nuget:Microsoft.NETCore.Platforms"],
+      "version": "1.1.0",
+      "licence": "LicenseRef-Microsoft-DotNet-Library",
+      "terms": "terms/microsoft-dotnet-library.txt",
+      "reason": "AutoFixture, a test data library, brings Fare, which targets .NET Standard 1.x and needs it."
+    },
+    {
+      "packages": ["nuget:Microsoft.VisualStudio.Azure.Containers.Tools.Targets"],
+      "version": "1.23.0",
+      "licence": "LicenseRef-Microsoft-Visual-Studio-Container-Tools",
+      "terms": "terms/microsoft-visual-studio-container-tools.txt",
+      "reason": "Lets Visual Studio run the API in its container. Its build targets act only inside Visual Studio."
+    },
+    {
+      "packages": ["nuget:NETStandard.Library"],
+      "version": "1.6.1",
+      "licence": "LicenseRef-Microsoft-DotNet-Library",
+      "terms": "terms/microsoft-dotnet-library.txt",
+      "reason": "AutoFixture, a test data library, brings Fare, which targets .NET Standard 1.x and needs it."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+﻿@using IniaAi.WebApp.Components.Account.Shared
+
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.PageNotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized Context="authenticationState">
+                <RedirectUnauthorized User="authenticationState.User" />
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

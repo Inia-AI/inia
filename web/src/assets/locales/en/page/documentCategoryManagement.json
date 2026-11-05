@@ -1,0 +1,32 @@
+{
+  "title": "Document Category Management",
+  "subtitle": "Manage document categories for templates (workflow editors and super admins)",
+  "createLabel": "Create Category",
+  "emptyText": "No document categories found",
+  "table": {
+    "id": "ID",
+    "name": "Name",
+    "displayOrder": "Display Order",
+    "actions": "Actions"
+  },
+  "rowActions": {
+    "edit": "Edit {category}",
+    "delete": "Delete {category}"
+  },
+  "dialog": {
+    "createTitle": "Create Document Category",
+    "editTitle": "Edit Document Category",
+    "deleteTitle": "Delete Document Category",
+    "deleteConfirmation": "Are you sure you want to delete"
+  },
+  "form": {
+    "nameLabel": "Name",
+    "namePlaceholder": "Enter category name",
+    "displayOrderLabel": "Display Order",
+    "displayOrderPlaceholder": "Enter display order (0, 1, 2, ...)",
+    "submitLabel": "Create",
+    "updateLabel": "Update",
+    "cancelLabel": "Cancel",
+    "deleteLabel": "Delete"
+  }
+}

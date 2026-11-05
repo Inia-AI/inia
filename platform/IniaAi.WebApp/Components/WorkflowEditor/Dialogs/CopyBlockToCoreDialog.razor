@@ -1,0 +1,158 @@
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+
+@inject IServiceScopeFactory ServiceScopeFactory
+
+@implements IDisposable
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudSelect T="WorkflowType"
+                   Label="Select Workflow Type to Copy Block To"
+                   Variant="Variant.Outlined"
+                   @bind-Value="SelectedWorkflowType"
+                   @bind-Value:after="OnWorkflowTypeChanged"
+                   Validation="@(new Func<WorkflowType, string>(ValidateWorkflowType))">
+            @if (!_workflowTypes.Any())
+            {
+                <MudSelectItem T="WorkflowType" Disabled>
+                    No Workflow Types Available
+                </MudSelectItem>
+            }
+            else
+            {
+                foreach (var workflowType in _workflowTypes)
+                {
+                    <MudSelectItem T="WorkflowType" Value="@workflowType">
+                        @workflowType.Name
+                    </MudSelectItem>
+                }
+            }
+        </MudSelect>
+
+        @if (SelectedWorkflowType is not null && _availableSections.Any())
+        {
+            <MudSelect T="Section"
+                       Label="Select Target Section"
+                       Variant="Variant.Outlined"
+                       @bind-Value="SelectedSection"
+                       Validation="@(new Func<Section, string>(ValidateSection))">
+                @foreach (var availableSection in _availableSections)
+                {
+                    <MudSelectItem T="Section" Value="@availableSection">
+                        @availableSection.Title
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        @if (SelectedSection is not null)
+        {
+            <MudTextField Label="Position in Target Section"
+                          Variant="Variant.Outlined"
+                          Margin="0"
+                          @bind-Value="@TargetPosition" />
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="@Cancel">Cancel</MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@Submit"
+                   Disabled="@(!IsFormValid)">Copy Block</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private ICoreUnitOfWork _coreUnitOfWork = default!;
+    private IServiceScope _serviceScope = default!;
+
+    private List<WorkflowType> _workflowTypes = [];
+    private List<Section> _availableSections = [];
+
+    public WorkflowType? SelectedWorkflowType { get; set; }
+    public Section? SelectedSection { get; set; }
+    public int TargetIndex { get; set; } = 0;
+
+    private int TargetPosition
+    {
+        get => TargetIndex;
+        set => TargetIndex = Math.Max(0, value);
+    }
+
+    private bool IsFormValid =>
+        SelectedWorkflowType is not null &&
+        SelectedSection is not null &&
+        TargetIndex >= 0;
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+        _serviceScope?.Dispose();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _serviceScope = ServiceScopeFactory.CreateScope();
+        _coreUnitOfWork = _serviceScope
+            .ServiceProvider
+            .GetRequiredService<ICoreUnitOfWork>();
+
+        var workflowTypes = await _coreUnitOfWork.WorkflowTypes.GetAllAsync();
+        _workflowTypes = workflowTypes.ToList();
+    }
+
+    private async Task OnWorkflowTypeChanged()
+    {
+        SelectedSection = null;
+        TargetIndex = 0;
+        _availableSections.Clear();
+
+        if (SelectedWorkflowType is not null)
+        {
+            var coreWorkflow = await _coreUnitOfWork.Workflows.GetByTypeIdAsync(SelectedWorkflowType.Id);
+            if (coreWorkflow is not null)
+            {
+                _availableSections = coreWorkflow.Sections.Where(s => !s.IsSeparator).OrderBy(s => s.Order).ToList();
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private string ValidateWorkflowType(WorkflowType workflowType)
+    {
+        return workflowType is null ? "Please select a workflow type" : string.Empty;
+    }
+
+    private string ValidateSection(Section section)
+    {
+        return section is null ? "Please select a target section" : string.Empty;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        if (IsFormValid)
+        {
+            MudDialog.Close(DialogResult.Ok((SelectedWorkflowType!, SelectedSection!, TargetIndex)));
+        }
+    }
+
+    private async Task SelectedWorkflowTypeChanged(WorkflowType? workflowType)
+    {
+        SelectedWorkflowType = workflowType;
+        await OnWorkflowTypeChanged();
+    }
+}

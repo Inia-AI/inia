@@ -1,0 +1,27 @@
+{
+  "description": "The audited annual report.",
+  "sources": [
+    "User Upload",
+    "Email"
+  ],
+  "topics": "Revenue, Leverage",
+  "tableOfContents": "1. Overview\n2. Financial statements",
+  "pageCount": 3,
+  "fileMetadataId": "file-read",
+  "id": "document-read",
+  "name": "Annual report",
+  "mediaType": "ApplicationPdf",
+  "sizeBytes": 482113,
+  "extension": ".pdf",
+  "userId": "user-read",
+  "documentCategoryId": "category-annual",
+  "workflowTypeId": "AssetManagerCreditAnalysis",
+  "class": "Annual Report",
+  "wasPasswordProtected": true,
+  "processingState": "Processed",
+  "processingRequestedAt": null,
+  "processedAt": "2026-09-07T08:05:00Z",
+  "processingError": null,
+  "createdAt": "2026-09-07T08:00:00Z",
+  "updatedAt": "2026-09-07T08:01:00Z"
+}

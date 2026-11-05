@@ -1,0 +1,237 @@
+{
+  "stampedAt": "2026-09-24",
+  "sdkVersion": "0.3.281",
+  "cliVersion": "2.1.281",
+  "runtimeVersion": "0.3.1017",
+  "modelPin": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "calibrationRuns": 6,
+  "prompts": {
+    "bash-loop": {
+      "promptSha256": "994f7819324ee905f4fadd47106f458843ed9119b8a6eea6211cfff3a7a7cb89",
+      "stagedInputsSha256": "absent",
+      "samples": 12,
+      "metrics": {
+        "wallMs": {
+          "min": 11459,
+          "p25": 12077.5,
+          "median": 12408.5,
+          "p75": 13245.25,
+          "max": 15175,
+          "samples": 12
+        },
+        "contextTokens": {
+          "min": 27979,
+          "p25": 28275,
+          "median": 28403,
+          "p75": 28667.25,
+          "max": 28835,
+          "samples": 12
+        },
+        "outputTokens": {
+          "min": 496,
+          "p25": 561.25,
+          "median": 594.5,
+          "p75": 627.25,
+          "max": 752,
+          "samples": 12
+        },
+        "numTurns": {
+          "min": 5,
+          "p25": 5,
+          "median": 5,
+          "p75": 5,
+          "max": 5,
+          "samples": 12
+        },
+        "estimatedCostUsd": {
+          "min": 0.009893,
+          "p25": 0.010341,
+          "median": 0.01069,
+          "p75": 0.011194,
+          "max": 0.01536,
+          "samples": 12
+        },
+        "sdkToFloorRatio": {
+          "min": 1.068447,
+          "p25": 1.096277,
+          "median": 1.101376,
+          "p75": 1.104401,
+          "max": 1.110449,
+          "samples": 12
+        }
+      },
+      "toolCalls": {
+        "Bash": {
+          "min": 3,
+          "p25": 3,
+          "median": 3,
+          "p75": 3,
+          "max": 3,
+          "samples": 12
+        },
+        "StructuredOutput": {
+          "min": 1,
+          "p25": 1,
+          "median": 1,
+          "p75": 1,
+          "max": 1,
+          "samples": 12
+        }
+      }
+    },
+    "pdf-read": {
+      "promptSha256": "86944a07102bffd7d2470b0b432556bf2048be66c79c643428369f6f0d759ccd",
+      "stagedInputsSha256": "3c2e6fdd1624218311a8d66d38049e8d134a96865531ec49ea34f1dc241ab13d",
+      "samples": 12,
+      "metrics": {
+        "wallMs": {
+          "min": 8143,
+          "p25": 8942.5,
+          "median": 9346,
+          "p75": 10405.75,
+          "max": 13448,
+          "samples": 12
+        },
+        "contextTokens": {
+          "min": 14846,
+          "p25": 14941.25,
+          "median": 14983.5,
+          "p75": 14994.75,
+          "max": 23240,
+          "samples": 12
+        },
+        "outputTokens": {
+          "min": 268,
+          "p25": 282.25,
+          "median": 303.5,
+          "p75": 308,
+          "max": 513,
+          "samples": 12
+        },
+        "numTurns": {
+          "min": 3,
+          "p25": 3,
+          "median": 3,
+          "p75": 3,
+          "max": 4,
+          "samples": 12
+        },
+        "estimatedCostUsd": {
+          "min": 0.008566,
+          "p25": 0.008616,
+          "median": 0.008715,
+          "p75": 0.008764,
+          "max": 0.012392,
+          "samples": 12
+        },
+        "sdkToFloorRatio": {
+          "min": 1.085306,
+          "p25": 1.125937,
+          "median": 1.126575,
+          "p75": 1.127423,
+          "max": 1.128296,
+          "samples": 12
+        }
+      },
+      "toolCalls": {
+        "Read": {
+          "min": 1,
+          "p25": 1,
+          "median": 1,
+          "p75": 1,
+          "max": 1,
+          "samples": 12
+        },
+        "StructuredOutput": {
+          "min": 1,
+          "p25": 1,
+          "median": 1,
+          "p75": 1,
+          "max": 1,
+          "samples": 12
+        }
+      }
+    },
+    "subagent": {
+      "promptSha256": "cf78613978ca63b0b13e3c53c983075b1ce6953d5ef56be0783bf30735aae09f",
+      "stagedInputsSha256": "absent",
+      "samples": 12,
+      "metrics": {
+        "wallMs": {
+          "min": 11627,
+          "p25": 11977.5,
+          "median": 12382,
+          "p75": 14004.25,
+          "max": 17185,
+          "samples": 12
+        },
+        "contextTokens": {
+          "min": 25652,
+          "p25": 25819.25,
+          "median": 25968,
+          "p75": 26095.25,
+          "max": 32865,
+          "samples": 12
+        },
+        "outputTokens": {
+          "min": 453,
+          "p25": 490,
+          "median": 567.5,
+          "p75": 625,
+          "max": 877,
+          "samples": 12
+        },
+        "numTurns": {
+          "min": 3,
+          "p25": 3,
+          "median": 3,
+          "p75": 3,
+          "max": 3,
+          "samples": 12
+        },
+        "estimatedCostUsd": {
+          "min": 0.013496,
+          "p25": 0.013673,
+          "median": 0.01429,
+          "p75": 0.014509,
+          "max": 0.028479,
+          "samples": 12
+        },
+        "sdkToFloorRatio": {
+          "min": 1.069092,
+          "p25": 1.153099,
+          "median": 1.156375,
+          "p75": 1.165515,
+          "max": 1.169096,
+          "samples": 12
+        }
+      },
+      "toolCalls": {
+        "Agent": {
+          "min": 1,
+          "p25": 1,
+          "median": 1,
+          "p75": 1,
+          "max": 1,
+          "samples": 12
+        },
+        "Bash": {
+          "min": 1,
+          "p25": 1,
+          "median": 1,
+          "p75": 1,
+          "max": 1,
+          "samples": 12
+        },
+        "StructuredOutput": {
+          "min": 1,
+          "p25": 1,
+          "median": 1,
+          "p75": 1,
+          "max": 1,
+          "samples": 12
+        }
+      }
+    }
+  }
+}

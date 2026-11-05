@@ -1,0 +1,232 @@
+@using IniaAi.Application.Commands.Signatures.SweepPendingSignatureOverrides
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.Admin.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+@using IniaAi.WebApp.Services
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILogger<TenantManagementCard> Logger
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject AppState AppState
+
+<MudCard Outlined="true" Elevation="0" Class="admin-card">
+    <div class="admin-card__head">
+        <div class="admin-card__title">
+            Tenants
+            <span class="admin-card__count">@_organizations.Count</span>
+        </div>
+        <div class="admin-card__head-actions">
+            <MudTextField @bind-Value="_search"
+                          Placeholder="Search tenants"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Outlined.Search"
+                          IconSize="Size.Small"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          Clearable="true"
+                          Class="admin-search" />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="CreateTenantAsync">
+                Create Tenant
+            </MudButton>
+        </div>
+    </div>
+
+    <MudTable Items="_organizations"
+              Filter="FilterTenant"
+              Dense="true"
+              Hover="true"
+              Elevation="0">
+        <ColGroup>
+            <col style="width: 220px;" />
+            <col />
+            <col style="width: 130px;" />
+            <col style="width: 90px;" />
+        </ColGroup>
+
+        <HeaderContent>
+            <MudTh>
+                <MudTableSortLabel SortBy="new Func<Organization, object>(x => x.Id)">ID</MudTableSortLabel>
+            </MudTh>
+            <MudTh>
+                <MudTableSortLabel InitialDirection="SortDirection.Ascending" SortBy="new Func<Organization, object>(x => x.Name)">Name</MudTableSortLabel>
+            </MudTh>
+            <MudTh>
+                <MudTableSortLabel SortBy="new Func<Organization, object>(x => x.IsActive)">Status</MudTableSortLabel>
+            </MudTh>
+            <MudTh Style="text-align: right;">Actions</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="ID">
+                <MudText Typo="Typo.body2" Class="editor-mono-field">@context.Id</MudText>
+            </MudTd>
+            <MudTd DataLabel="Name">
+                @context.Name
+                @if (context.IsSelfServe)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-1">Self-serve</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <span class="admin-status @(context.IsActive ? "admin-status--ok" : "admin-status--off")">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </span>
+            </MudTd>
+            <MudTd Style="text-align: right;">
+                <MudTooltip Text="Edit Tenant">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                   aria-label="@($"Edit tenant {context.Name}")"
+                                   Size="Size.Small"
+                                   OnClick="async () => await EditTenantAsync(context)" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudCard>
+
+@code {
+    private List<Organization> _organizations = new();
+    private string _search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrganizations();
+    }
+
+    private bool FilterTenant(Organization organization)
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            return true;
+        }
+
+        return organization.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || organization.Id.Contains(_search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task LoadOrganizations()
+    {
+        _organizations = (await UserDataUnitOfWork.Organizations.GetAllAsync()).OrderBy(o => o.Name).ToList();
+    }
+
+    private async Task CreateTenantAsync()
+    {
+        var organization = new Organization("New Tenant");
+
+        var parameters = new DialogParameters<TenantInfoDialog> { };
+        parameters.Add(x => x.Organization, organization);
+        parameters.Add(x => x.IsNew, true);
+
+        var dialog = await DialogService.ShowAsync<TenantInfoDialog>("Create Tenant", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                await UserDataUnitOfWork.Organizations.AddAsync(organization);
+                await UserDataUnitOfWork.CompleteAsync();
+                Snackbar.Add($"Tenant '{organization.Name}' created", Severity.Success);
+                await LoadOrganizations();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to create tenant");
+                Snackbar.Add("Failed to create tenant. Please try again.", Severity.Error);
+            }
+        }
+        else
+        {
+            await UserDataUnitOfWork.UntrackAsync(organization);
+        }
+    }
+
+    private async Task EditTenantAsync(Organization organization)
+    {
+        var parameters = new DialogParameters<TenantInfoDialog> { };
+        parameters.Add(x => x.Organization, organization);
+        parameters.Add(x => x.IsNew, false);
+
+        int previousThreshold = organization.SignatureReviewThreshold;
+
+        var dialog = await DialogService.ShowAsync<TenantInfoDialog>("Edit Tenant", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                await UserDataUnitOfWork.CompleteAsync();
+                Snackbar.Add($"Tenant '{organization.Name}' updated", Severity.Success);
+
+                // Lowering the threshold must retroactively resolve pendings that now
+                // clear the new bar — the Cast promotion only fires on a fresh vote, so
+                // without this sweep a 4→2 change on a pending with 2 approvals sits
+                // forever.
+                if (organization.SignatureReviewThreshold < previousThreshold)
+                {
+                    await SweepPendingsAfterThresholdChangeAsync(organization);
+                }
+
+                await LoadOrganizations();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to update tenant {TenantId}", organization.Id);
+                Snackbar.Add("Failed to update tenant. Please try again.", Severity.Error);
+            }
+        }
+        else
+        {
+            await UserDataUnitOfWork.RevertAsync(organization);
+            await LoadOrganizations();
+        }
+    }
+
+    /// <summary>
+    /// Dispatches the sweep command and surfaces the result as a snackbar.
+    /// Errors are swallowed into a generic warning — the tenant save already succeeded,
+    /// the sweep is a follow-up correctness pass.
+    /// </summary>
+    private async Task SweepPendingsAfterThresholdChangeAsync(Organization organization)
+    {
+        try
+        {
+            var command = new SweepPendingSignatureOverridesCommand(
+                organization.Id,
+                AppState.User?.Id ?? string.Empty);
+
+            var result = await ServiceScopeFactory.SendScopedAsync(command);
+            if (result.IsError)
+            {
+                Snackbar.Add(
+                    "Threshold saved but pending-override sweep failed. Existing pendings will still auto-resolve on the next vote.",
+                    Severity.Warning);
+                return;
+            }
+
+            var counts = result.Value;
+            if (counts.Promoted > 0 || counts.Cancelled > 0)
+            {
+                Snackbar.Add(
+                    $"New threshold swept {counts.Promoted} promotion(s) and {counts.Cancelled} cancellation(s).",
+                    Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Pending-override sweep failed for tenant {TenantId}", organization.Id);
+            Snackbar.Add(
+                "Threshold saved but pending-override sweep failed. Existing pendings will still auto-resolve on the next vote.",
+                Severity.Warning);
+        }
+    }
+}

@@ -1,0 +1,56 @@
+{
+  "Sections": [
+    {
+      "Blocks": [
+        {
+          "ReplacementTag": "bound",
+          "Name": "Bound",
+          "Order": 0,
+          "Type": "AiQuery",
+          "Properties": {
+            "UserPromptTemplate": "Read the revenue.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "RegressionSchema": "{\"revenue\":{\"Source\":\"xml\",\"Locator\":\"revenue\"}}",
+          "StableBlockId": "9b5237e9b0794c3eb6a1567618f59c3c",
+          "Id": "26d2fca6-508b-45a2-948a-aa0eb50fc2e2"
+        },
+        {
+          "ReplacementTag": "legacy",
+          "Name": "Legacy",
+          "Order": 1,
+          "Type": "AiQuery",
+          "Properties": {
+            "UserPromptTemplate": "Read the manager and the assets.",
+            "MaxTokens": 8000,
+            "ShouldUseAdvancedModel": true,
+            "ShouldUsePageImages": false,
+            "Type": "AiQuery"
+          },
+          "RegressionSchema": "{\"manager\":{\"Type\":\"text\",\"Tolerance\":0,\"Source\":\"regex\",\"Locator\":\"Manager: (.+)\"},\"aum\":{\"Type\":\"Numeric\",\"Tolerance\":5}}",
+          "StableBlockId": "5e473e1003f14797a9c6340f8db83ecb",
+          "Id": "cc0ea37a-98ed-4297-876c-6dc1dc663aff"
+        }
+      ],
+      "Name": "Body",
+      "Title": "",
+      "Order": 0,
+      "StableSectionId": "30f3e9691256478291263e36cded1a39",
+      "Id": "9e5b7330-41e2-45e3-9f05-a0e4e02045a2"
+    }
+  ],
+  "RegressionFields": [
+    {
+      "Name": "revenue",
+      "Type": "numeric",
+      "Tolerance": 0.5
+    }
+  ],
+  "Name": "RegressionFieldsPin",
+  "Title": "Regression fields pin",
+  "Description": null,
+  "Id": "f87b3775-0305-4d0e-a5cf-3cc092755dd0"
+}

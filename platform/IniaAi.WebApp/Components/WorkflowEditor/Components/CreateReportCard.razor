@@ -1,0 +1,349 @@
+@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Application.Common.Workflows
+@using IniaAi.Core.Services.AgentRuntime
+@using IniaAi.Common.Constants
+@using IniaAi.Domain.Entities.Documents
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.Services.Models.Jobs
+@using WorkflowBlock = IniaAi.Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.AiConnection.Abstractions
+@using IniaAi.WebApp.Services
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Options
+@using IniaAi.Configuration
+
+@inject ILogger<CreateReportCard> Logger
+@inject IJobsService JobService
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject AppState AppState
+@inject IDialogService DialogService
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+@inject IOptions<IniaAi.Configuration.Platform.AgentRuntimeSettings> AgentRuntimeSettingsOptions
+@inject IniaAi.AiConnection.Common.TenantModelFamilyResolver TenantModelFamilyResolver
+
+<MudCard Outlined="true">
+    <MudCardContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Wrap="Wrap.Wrap">
+            <MudButton StartIcon="@Icons.Material.Outlined.Description"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="() => ExecuteJob()">
+                Generate Report
+            </MudButton>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private User _user = default!;
+    private bool _checkDocumentsFirst;
+
+    [CascadingParameter(Name = "EditorContext")]
+    public WorkflowEditorContext EditorContext { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Job Job { get; set; } = default!;
+
+    [Parameter]
+    public bool ShouldAnonymise { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        ArgumentNullException.ThrowIfNull(AppState.User);
+
+        _user = AppState.User;
+    }
+
+
+    #region Private
+
+    private async Task ExecuteJob()
+    {
+        // The same pre-spend gate the shared orchestrator applies: this button enqueues the
+        // in-memory editor workflow, which a file upload can fill without a save, so the
+        // save-time gate alone does not bound what reaches here.
+        if (AgentBlockGuard.DescribeSubmitRefusal(
+                EditorContext.Workflow,
+                AgentRuntimeSettingsOptions.Value,
+                AgentModelTiers.For(
+                    AgentRuntimeSettingsOptions.Value,
+                    PlatformSettingsOptions.Value.ModelRouting,
+                    AppState.CurrentOrganizationId))
+            is { } agentRefusal)
+        {
+            AppState.Notify(agentRefusal.Message, Severity.Warning);
+            return;
+        }
+
+        // Check for blocks needing previews before report generation
+        var blocksNeedingPreviews = PromptPreviewService.GetBlocksNeedingPreviews(EditorContext.Workflow);
+
+        if (blocksNeedingPreviews.Any())
+        {
+            bool shouldProceed = await ShowPreviewWarningDialog(blocksNeedingPreviews.Count);
+            if (!shouldProceed)
+            {
+                return; // User cancelled
+            }
+        }
+
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            AppState.Notify("Please select an organization to generate reports", Severity.Warning);
+            return;
+        }
+
+        EditorContext.Workflow.User = _user;
+        EditorContext.Workflow.UserId = _user.Id;
+        EditorContext.Workflow.OrganizationId = AppState.CurrentOrganizationId;
+
+        Job.SetUserId(_user.Id);
+        Job.SetOrganizationId(AppState.CurrentOrganizationId);
+
+        Job.CounterpartyId = EditorContext.Counterparty?.Id;
+        Job.PeerCompanyIds = EditorContext.PeerCompanies?.Select(x => x.Id).ToList();
+        Job.Workflow = EditorContext.Workflow;
+        Job.IsConfidential = ShouldAnonymise;
+        Job.Name = Job.GetJobName(
+            Job.Workflow,
+            [
+                EditorContext.Counterparty?.Name,
+                _user.UserName ?? _user.Email
+            ]);
+
+        Job.InputIsVouchedFor = AppState.IsTrustedEditor && !_checkDocumentsFirst;
+
+        foreach (DocumentInfo runDocument in EditorContext.RunDocumentsFor(Job.Id))
+        {
+            await UserDataUnitOfWork.Documents.AddDocumentInfoAsync(runDocument);
+            Job.DocumentInfos.Add(runDocument.Id);
+
+            if (!string.IsNullOrEmpty(runDocument.DocumentClass) && runDocument.Document is not null)
+            {
+                runDocument.Document.Class = runDocument.DocumentClass;
+            }
+        }
+
+        foreach ((string replacementTag, string value) in EditorContext.VariableValues)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                continue;
+            }
+
+            Job.Inputs[replacementTag] = value;
+            Job.InputsObject[replacementTag] = value;
+        }
+
+        (string emailIntakeMode, string? emailAttachmentsClass) = EmailIntakeModes.Resolve(
+            EditorContext.EmailIntake.ExtractAttachments,
+            EditorContext.EmailIntake.AttachmentsDocumentClass);
+        EmailIntakeModes.WriteJobInputs(Job.Inputs, emailIntakeMode, emailAttachmentsClass);
+
+        await UserDataUnitOfWork.CompleteAsync();
+
+        JobService.Execute(Job, shouldUseQueue: true);
+
+        AppState.Notify("Job started successfully.", Severity.Success);
+
+        Job = JobService.CreateUserJob(AppState.CurrentOrganizationId, _user.Id, EditorContext.WorkflowTypeId);
+        _checkDocumentsFirst = false;
+
+        StateHasChanged();
+    }
+
+
+    private async Task<bool> ShowPreviewWarningDialog(int blockCount)
+    {
+        var blocksNeedingPreviews = PromptPreviewService.GetBlocksNeedingPreviews(EditorContext.Workflow);
+
+        var parameters = new DialogParameters
+        {
+            ["BlockCount"] = blockCount,
+            ["OnPreviewGeneration"] = EventCallback.Factory.Create<ReportPreviewWarningDialog>(this, async (dialogInstance) =>
+            {
+                var success = await GeneratePreviewsWithProgress(blocksNeedingPreviews, dialogInstance);
+                dialogInstance.CompleteGeneration(success);
+            })
+        };
+
+        var options = new DialogOptions()
+        {
+            CloseButton = false, // Prevent closing during generation
+            MaxWidth = MaxWidth.Medium
+        };
+
+        var dialog = await DialogService.ShowAsync<ReportPreviewWarningDialog>("Missing Prompt Previews", parameters, options);
+
+        // Wait for user choice
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return false; // User cancelled
+        }
+
+        var actionResult = (string?)result.Data;
+
+        // Handle different results
+        return actionResult switch
+        {
+            "proceed" => true,
+            "generated" => true,
+            "failed" => false, // Could ask user if they want to proceed anyway
+            _ => false
+        };
+    }
+
+    private async Task<bool> GeneratePreviewsWithProgress(List<WorkflowBlock> blocks, ReportPreviewWarningDialog dialogInstance)
+    {
+        int successCount = 0;
+        int errorCount = 0;
+        int completedCount = 0;
+
+        try
+        {
+            dialogInstance?.SetGeneratingState(true);
+
+            // Use parallel processing for better performance while maintaining progress tracking
+            await using var progressTimer = new Timer(state =>
+            {
+                var dialog = state as ReportPreviewWarningDialog;
+                if (dialog is not null)
+                {
+                    // Update progress based on completed count
+                    var currentCompleted = Volatile.Read(ref completedCount);
+                    var currentSuccess = Volatile.Read(ref successCount);
+                    var currentErrors = Volatile.Read(ref errorCount);
+
+                    dialog.UpdateProgress(currentCompleted, blocks.Count,
+                        currentCompleted < blocks.Count ? "Processing..." : "Complete",
+                        currentSuccess, currentErrors);
+                }
+            }, dialogInstance, TimeSpan.Zero, TimeSpan.FromMilliseconds(500)); // Update every 500ms
+
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = 3 // Limit concurrent requests to be respectful to AI service
+            };
+
+            await Parallel.ForEachAsync(blocks, parallelOptions, async (block, cancellationToken) =>
+            {
+                if (block.Properties is not AiQueryProperties props)
+                {
+                    Interlocked.Increment(ref errorCount);
+                    Interlocked.Increment(ref completedCount);
+                    Logger.LogError("Block {BlockId} has invalid properties type. Expected AiQueryProperties.", block.Id);
+                    return;
+                }
+
+                var previewGenerated = await TryGeneratePreviewWithRetry(props, block.ReplacementTag, maxRetries: 2);
+
+                if (previewGenerated)
+                {
+                    Interlocked.Increment(ref successCount);
+                }
+                else
+                {
+                    // Apply graceful degradation
+                    props.UserPromptTemplatePreview = CreateFallbackPreview(props);
+                    Interlocked.Increment(ref errorCount);
+                }
+
+                Interlocked.Increment(ref completedCount);
+            });
+
+            // Final progress update
+            dialogInstance?.UpdateProgress(blocks.Count, blocks.Count, "Complete", successCount, errorCount);
+
+            // Show results for a moment before closing
+            await Task.Delay(1000);
+
+            // Show results notification
+            if (successCount > 0)
+            {
+                AppState.Notify($"Generated {successCount} prompt previews for report", Severity.Success);
+            }
+
+            if (errorCount > 0)
+            {
+                AppState.Notify($"Failed to generate {errorCount} prompt previews (used fallback)", Severity.Warning);
+            }
+
+            // Return true if at least some previews were generated (including fallbacks)
+            return successCount + errorCount == blocks.Count;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Critical error during preview generation");
+            AppState.Notify("Critical error during preview generation", Severity.Error);
+
+            dialogInstance?.SetGeneratingState(false);
+            return false;
+        }
+        finally
+        {
+            dialogInstance?.SetGeneratingState(false);
+        }
+    }
+
+    private async Task<bool> TryGeneratePreviewWithRetry(AiQueryProperties props, string blockTag, int maxRetries = 2)
+    {
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            try
+            {
+                using var scope = ServiceScopeFactory.CreateScope();
+                var chatConnector = scope.ServiceProvider.GetRequiredService<IChatConnector>();
+
+                // Use organization-specific model family for preview generation
+                var modelFamily = TenantModelFamilyResolver.GetModelFamilyForFunction(AppState.CurrentOrganizationId, IniaAi.AiConnection.Common.FunctionType.WorkflowReasoning);
+
+                var userPrompt = $"Create a privacy-safe preview for this user prompt template:\n\n{props.UserPromptTemplate}";
+                var response = (await chatConnector
+                    .GetResponseAsync(
+                        userPrompt,
+                        PlatformSettingsOptions.Value.PromptTemplates.UserPromptPreviewSystemPrompt,
+                        family: modelFamily))
+                    .GetPlainText();
+
+                if (!string.IsNullOrWhiteSpace(response))
+                {
+                    props.UserPromptTemplatePreview = response.Trim();
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Attempt {Attempt} failed for block {BlockId}: {Error}",
+                    attempt + 1, blockTag, ex.Message);
+
+                // Exponential backoff for retry
+                if (attempt < maxRetries - 1)
+                {
+                    await Task.Delay(1000 * (attempt + 1));
+                }
+            }
+        }
+
+        Logger.LogError("All {MaxRetries} attempts failed for block {BlockId}", maxRetries, blockTag);
+        return false;
+    }
+
+    private string CreateFallbackPreview(AiQueryProperties props)
+    {
+        // Create a basic fallback preview when AI generation fails
+        int previewLength = Math.Min(150, props.UserPromptTemplate?.Length ?? 150);
+        string? truncatedPrompt = props.UserPromptTemplate is not null && props.UserPromptTemplate.Length > previewLength
+            ? props.UserPromptTemplate.Substring(0, previewLength) + "..."
+            : props.UserPromptTemplate;
+
+        return $"[Preview unavailable - {nameof(BlockTypes.AiQuery)} block]: {truncatedPrompt}";
+    }
+
+    #endregion
+}

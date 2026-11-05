@@ -1,0 +1,19 @@
+<style>@((MarkupString)Css)</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Selector { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, string> Variables { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyDictionary<string, string>? DarkSchemeVariables { get; set; }
+
+    private string Css => DarkSchemeVariables is null
+        ? Rule(Variables)
+        : $"{Rule(Variables)} @media (prefers-color-scheme: dark) {{ {Rule(DarkSchemeVariables)} }}";
+
+    private string Rule(IReadOnlyDictionary<string, string> variables) =>
+        $"{Selector} {{ {string.Join(" ", variables.Select(variable => $"{variable.Key}: {variable.Value};"))} }}";
+}

@@ -1,0 +1,202 @@
+﻿@attribute [Route(AppRoutes.CREATE_USER)]
+@attribute [Authorize(Roles = Roles.ADMIN_ROLES)]
+
+@using System.ComponentModel.DataAnnotations
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.WebApp.Components.Components
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject ILogger<CreateUser> Logger
+@inject AppState AppState
+@inject UserManager<User> UserManager
+
+<PageTitle>Inia AI - Create New User</PageTitle>
+
+<MudGrid Spacing="2" Class="my-2 wrap-page">
+    <MudItem xs="12" Class="py-0">
+        <MudCard Outlined="true">
+            <MudCardHeader>
+                Create New User
+            </MudCardHeader>
+
+            <MudCardContent>
+                <MudForm @ref="_form"
+                         @bind-IsValid="@_success"
+                         @bind-Errors="@_errors">
+                    <MudTextField T="string"
+                                    Label="First Name"
+                                    @bind-Value="_firstName"
+                                    Required="true"
+                                    RequiredError="First name is required!" />
+
+                    <MudTextField T="string"
+                                    Label="Last Name"
+                                    @bind-Value="_lastName"
+                                    Required="true"
+                                    RequiredError="Last name is required!" />
+
+                    <MudTextField T="string"
+                                    Label="Middle Name (Optional)"
+                                    @bind-Value="_middleName" />
+
+                    <MudTextField T="string"
+                                    Label="Email"
+                                    @bind-Value="_email"
+                                    Required="true"
+                                    RequiredError="Email is required!"
+                                    Validation="@(new EmailAddressAttribute() {ErrorMessage = "The email address is invalid"})" />
+
+                    <MudTextField T="string"
+                                    Label="Password"
+                                    HelperText="Choose a strong password"
+                                    @bind-Value="_password"
+                                    InputType="InputType.Password"
+                                    Validation="@(new Func<string, IEnumerable<string>>(PasswordPolicy.Problems))"
+                                    Required="true"
+                                    RequiredError="@PasswordPolicy.REQUIRED" />
+
+
+                    <MudSelect T="Organization"
+                               @bind-Value="_organization"
+                               Required="true"
+                               RequiredError="Organisation is required!" >
+                        @foreach (var organization in _organizations)
+                        {
+                            <MudSelectItem Value="organization">@organization.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudForm>
+
+                <MudButton Variant="Variant.Filled"
+                            Color="Color.Primary"
+                            DropShadow="false"
+                            OnClick="CreateNewUser">
+                    Create User
+                </MudButton>
+
+                <MudText Typo="Typo.subtitle2">
+                    @($"Errors ({_errors.Length})")
+                </MudText>
+
+                @foreach (var error in _errors)
+                {
+                    <MudText Color="@Color.Error">
+                        @error
+                    </MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private bool _success;
+    private string[] _errors = [];
+    private string? _firstName;
+    private string? _lastName;
+    private string? _middleName;
+    private string? _email;
+    private string? _password;
+    private MudForm _form = default!;
+    private IEnumerable<Organization> _organizations = [];
+    private Organization? _organization;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _organizations = AppState.IsSuperAdmin
+            ? await UserDataUnitOfWork.Organizations.GetAllAsync()
+            : AppState.UserOrganizations;
+    }
+
+    private async Task CreateNewUser()
+    {
+        await _form.ValidateAsync();
+
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        if (_organization is null)
+        {
+            throw new InvalidOperationException("Cannot create user as organization is null.");
+        }
+
+        bool userExists = await UserManager.FindByEmailAsync(_email!) is not null
+            || await UserManager.FindByNameAsync(_email!) is not null;
+
+        if (userExists)
+        {
+            AppState.Notify($"A user with email or username '{_email}' already exists", Severity.Error);
+            return;
+        }
+
+        User user = new(_organization)
+        {
+            UserName = _email,
+            NormalizedUserName = _email?.ToUpperInvariant(),
+            Email = _email,
+            NormalizedEmail = _email?.ToUpperInvariant(),
+            EmailConfirmed = true,
+            FirstName = _firstName,
+            LastName = _lastName,
+            MiddleName = string.IsNullOrWhiteSpace(_middleName) ? null : _middleName
+        };
+
+        user.SetPassword(_password ?? throw new InvalidOperationException("Password field is null"));
+
+        IdentityRole? userRole = (await UserDataUnitOfWork
+            .Repository<IdentityRole>()
+            .FindAsync((r) => r.Name == Roles.USER))
+            .FirstOrDefault();
+
+        if (userRole is null)
+        {
+            AppState.Notify("Default role not found", Severity.Error);
+            return;
+        }
+
+        IdentityUserRole<string> userRoleMapping = new()
+        {
+            RoleId = userRole.Id,
+            UserId = user.Id
+        };
+
+        // Create UserOrganization entry to match User.OrganizationId
+        UserOrganization userOrganization = new()
+        {
+            UserId = user.Id,
+            OrganizationId = _organization.Id,
+            IsDefault = true,
+            IsActive = true,
+            JoinedAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            await UserDataUnitOfWork.Users.AddAsync(user);
+            await UserDataUnitOfWork.Repository<IdentityUserRole<string>>().AddAsync(userRoleMapping);
+            await UserDataUnitOfWork.Repository<UserOrganization>().AddAsync(userOrganization);
+            await UserDataUnitOfWork.CompleteAsync();
+        }
+        catch (Exception ex)
+        {
+            await UserDataUnitOfWork.UntrackAsync(user);
+            await UserDataUnitOfWork.UntrackAsync(userRoleMapping);
+            await UserDataUnitOfWork.UntrackAsync(userOrganization);
+
+            Logger.LogError(ex, "Failed to create user for organization {OrganizationId}", _organization.Id);
+            AppState.Notify("Failed to create user. Check the logs for details.", Severity.Error);
+            return;
+        }
+
+        AppState.Notify("User created successfully", Severity.Success);
+        // Don't log UserName/email — log only the opaque user ID.
+        Logger.LogInformation(
+            "User created successfully with id '{id}'",
+            user.Id);
+    }
+}

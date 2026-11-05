@@ -1,0 +1,358 @@
+@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+
+<MudText Typo="Typo.body1"
+         Class="mb-2">
+    Merge JSON — combine multiple JSON inputs into a single output.
+</MudText>
+
+<MudAlert Severity="Severity.Info"
+          Dense="true"
+          Class="mb-3"
+          NoIcon="false">
+    Each input references a block that produces JSON (e.g. <b>{block_0}</b>) — set its mode to <b>Single JSON</b>.
+    If a block instead emits text containing many JSONs (e.g. <code>&lt;page1(file.pdf)&gt;{...}&lt;/page1(file.pdf)&gt;</code>),
+    set the mode to <b>XML Tag Pattern</b> (glob: <code>*</code> matches any tag, <code>page*</code> matches names starting with <code>page</code>) or
+    <b>Regex</b> (capture group 1 wraps the JSON snippet). Extracted snippets all flow into the same merge.
+    Objects are <b>deep merged</b> (nested objects recurse, nested arrays concatenate, primitives: last wins).
+    Arrays are concatenated. Mixed types are collected into an array. Invalid JSON is skipped.
+</MudAlert>
+
+<MudStack>
+    <MudStack Row="true"
+              AlignItems="AlignItems.Center"
+              Class="mb-2">
+        <div class="editor-eyebrow mt-2">JSON inputs</div>
+
+        <MudSpacer />
+
+        <MudButton Variant="Variant.Text"
+                   Class="editor-soft-button"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="AddInput">
+            Add JSON Input
+        </MudButton>
+    </MudStack>
+
+    @for (int i = 0; i < _props.JsonInputs.Count; i++)
+    {
+        int index = i;
+        MergeJsonInputExtraction extraction = ReadExtraction(index);
+
+        <MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-2 rounded">
+            <MudGrid Spacing="2">
+                <MudItem xs="11">
+                    <MudStack Row="true" Class="mb-2" AlignItems="AlignItems.Center">
+                        <MudSelect T="JsonExtractionMode"
+                                   Variant="Variant.Outlined"
+                                   Label="Mode"
+                                   Dense="true"
+                                   Value="@extraction.Mode"
+                                   ValueChanged="@(async (JsonExtractionMode m) => await UpdateMode(index, m))"
+                                   Style="min-width: 180px; max-width: 240px;">
+                            <MudSelectItem Value="JsonExtractionMode.Single">Single JSON</MudSelectItem>
+                            <MudSelectItem Value="JsonExtractionMode.XmlTagPattern">XML Tag Pattern</MudSelectItem>
+                            <MudSelectItem Value="JsonExtractionMode.Regex">Regex</MudSelectItem>
+                        </MudSelect>
+
+                        @if (extraction.Mode != JsonExtractionMode.Single)
+                        {
+                            <MudTextField T="string"
+                                          Variant="Variant.Outlined"
+                                          Label="@PatternLabel(extraction.Mode)"
+                                          HelperText="@PatternHelper(extraction.Mode)"
+                                          Class="editor-mono-field"
+                                          Value="@extraction.Pattern"
+                                          ValueChanged="@(async (string p) => await UpdatePattern(index, p))" />
+                        }
+                    </MudStack>
+
+                    <MudGrid Spacing="2" Class="editor-twin-grid">
+                        <MudItem xs="12" md="6">
+                            <MudTextField Variant="Variant.Outlined"
+                                          Label="@($"JSON Input {index + 1}")"
+                                          Placeholder="@PlaceholderFor(extraction.Mode)"
+                                          HelperText="@HelperFor(extraction.Mode)"
+                                          Class="editor-mono-field"
+                                          Sizing="InputSizing.Auto"
+                                          MaxLines="10"
+                                          Value="@_props.JsonInputs[index]"
+                                          ValueChanged="@((string newValue) => UpdateInputValue(index, newValue))" />
+                        </MudItem>
+
+                        @if (_props.ExecutionState is not null
+                            && index < _props.ExecutionState.JsonInputs.Count)
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudTextField Variant="Variant.Outlined"
+                                              Label="@($"JSON Input {index + 1} After Execution")"
+                                              Class="editor-mono-field editor-resolved"
+                                              ReadOnly="true"
+                                              Sizing="InputSizing.Auto"
+                                              MaxLines="10"
+                                              Value="@_props.ExecutionState.JsonInputs[index]" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudItem>
+
+                <MudItem xs="1" Style="align-self: center;">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Class="editor-soft-button"
+                                   aria-label="Remove JSON input"
+                                   OnClick="@(() => RemoveInput(index))" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+
+    @if (_props.JsonInputs.Count == 0)
+    {
+        <MudText Typo="Typo.body2"
+                 Color="Color.Warning"
+                 Class="mb-2">
+            No JSON inputs configured. Add at least one input to merge.
+        </MudText>
+    }
+</MudStack>
+
+<MudDivider Class="my-4" />
+
+<MudStack>
+    <MudStack Row="true"
+              AlignItems="AlignItems.Center"
+              Class="mb-2">
+        <div class="editor-eyebrow mt-2">Pre-parse transforms</div>
+
+        <MudSpacer />
+
+        <MudButton Variant="Variant.Text"
+                   Class="editor-soft-button"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="AddTransform">
+            Add Transform
+        </MudButton>
+    </MudStack>
+
+    <MudAlert Severity="Severity.Info"
+              Dense="true"
+              Class="mb-3"
+              NoIcon="false">
+        Find/replace rules applied to every input (and every extracted snippet) <b>before</b> JSON parsing —
+        use them to sanitise inputs that would otherwise be invalid JSON. Rules run in order.
+        To strip digit-group separators (e.g. <code>1,54,03,063</code> → <code>15403063</code>) use
+        <b>Find</b> <code>(?&lt;=\d),(?=\d)</code>, empty <b>Replace</b>, <b>Regex</b> on.
+        <b>Caution:</b> that rule removes <i>any</i> comma between two digits, so it also corrupts JSON number
+        arrays (<code>[1,234]</code> → <code>[1234]</code>) and grouped digits inside strings — silently, since
+        the result still parses. Patterns are static config, not template-resolved at runtime.
+    </MudAlert>
+
+    @for (int i = 0; i < Transforms.Count; i++)
+    {
+        int index = i;
+        MergeJsonPreParseTransform transform = Transforms[index];
+
+        <MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-2 rounded">
+            <MudGrid Spacing="2">
+                <MudItem xs="11">
+                    <MudGrid Spacing="2" Class="editor-twin-grid">
+                        <MudItem xs="12" md="6">
+                            <MudTextField Variant="Variant.Outlined"
+                                          Label="@($"Find {index + 1}")"
+                                          Placeholder="e.g. (?<=\d),(?=\d)"
+                                          HelperText="@(transform.IsRegex ? ".NET regex; $1 capture refs allowed in Replace" : "Literal substring")"
+                                          Class="editor-mono-field"
+                                          Value="@transform.Find"
+                                          ValueChanged="@((string v) => UpdateTransform(index, t => t.Find = v))" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField Variant="Variant.Outlined"
+                                          Label="@($"Replace {index + 1}")"
+                                          Placeholder="(empty = delete match)"
+                                          Class="editor-mono-field"
+                                          Value="@transform.ReplaceWith"
+                                          ValueChanged="@((string v) => UpdateTransform(index, t => t.ReplaceWith = v))" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudStack Row="true" Class="mt-2" AlignItems="AlignItems.Center" Spacing="4">
+                        <MudSwitch T="bool"
+                                   Color="Color.Primary"
+                                   Label="Regex"
+                                   Value="@transform.IsRegex"
+                                   ValueChanged="@((bool v) => UpdateTransform(index, t => t.IsRegex = v))" />
+
+                        <MudSwitch T="bool"
+                                   Color="Color.Primary"
+                                   Label="Case sensitive"
+                                   Value="@transform.CaseSensitive"
+                                   ValueChanged="@((bool v) => UpdateTransform(index, t => t.CaseSensitive = v))" />
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="1" Style="align-self: center;">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Class="editor-soft-button"
+                                   aria-label="Remove transform"
+                                   OnClick="@(() => RemoveTransform(index))" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback BlockChanged { get; set; }
+
+    private MergeJsonProperties _props => Block.Properties as MergeJsonProperties
+        ?? throw new InvalidOperationException("Block properties must be of type MergeJsonProperties");
+
+    // Render-side read accessor. Coalesces a null PreParseTransforms (a foreign workflow may serialize
+    // it as null) to a transient empty list — never assigns back, so it stays mutation-free during render.
+    private List<MergeJsonPreParseTransform> Transforms => _props.PreParseTransforms ?? [];
+
+    // Read-only — never mutates _props.InputExtractions during render. Returns a transient default
+    // when the parallel list is shorter than JsonInputs (the legacy back-compat shape).
+    private MergeJsonInputExtraction ReadExtraction(int index)
+    {
+        if (index < _props.InputExtractions.Count)
+        {
+            return _props.InputExtractions[index];
+        }
+
+        return new MergeJsonInputExtraction();
+    }
+
+    // Append default entries until index is reachable. Only called from event handlers,
+    // never from render — safe to mutate _props here.
+    private MergeJsonInputExtraction MaterializeExtraction(int index)
+    {
+        while (_props.InputExtractions.Count <= index)
+        {
+            _props.InputExtractions.Add(new MergeJsonInputExtraction());
+        }
+
+        return _props.InputExtractions[index];
+    }
+
+    private static string PatternLabel(JsonExtractionMode mode)
+    {
+        return mode is JsonExtractionMode.XmlTagPattern ? "Tag Glob" : "Regex Pattern";
+    }
+
+    private static string PatternHelper(JsonExtractionMode mode)
+    {
+        return mode is JsonExtractionMode.XmlTagPattern
+            ? "* matches any tag; page* matches page1, page2, …"
+            : "Capture group 1 must wrap the JSON snippet";
+    }
+
+    private static string PlaceholderFor(JsonExtractionMode mode)
+    {
+        return mode is JsonExtractionMode.Single
+            ? "e.g. {block_0}"
+            : "Text containing multiple JSONs (e.g. {block_0})";
+    }
+
+    private static string HelperFor(JsonExtractionMode mode)
+    {
+        return mode is JsonExtractionMode.Single
+            ? "Reference a block that produces JSON"
+            : "Reference a block whose output contains multiple JSONs";
+    }
+
+    private async Task AddInput()
+    {
+        _props.JsonInputs.Add("");
+        // Don't pre-populate InputExtractions — missing entries default to Single at execution time,
+        // and read-side ReadExtraction returns a transient default. Keeping this list lazily-populated
+        // means viewing an old workflow doesn't dirty its persisted shape.
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task RemoveInput(int index)
+    {
+        if (index >= 0 && index < _props.JsonInputs.Count)
+        {
+            _props.JsonInputs.RemoveAt(index);
+            if (index < _props.InputExtractions.Count)
+            {
+                _props.InputExtractions.RemoveAt(index);
+            }
+            await BlockChanged.InvokeAsync();
+        }
+    }
+
+    private async Task UpdateInputValue(int index, string newValue)
+    {
+        if (index >= 0 && index < _props.JsonInputs.Count)
+        {
+            _props.JsonInputs[index] = newValue;
+            await BlockChanged.InvokeAsync();
+        }
+    }
+
+    private async Task UpdateMode(int index, JsonExtractionMode mode)
+    {
+        MergeJsonInputExtraction extraction = MaterializeExtraction(index);
+        if (extraction.Mode != mode)
+        {
+            extraction.Pattern = mode switch
+            {
+                JsonExtractionMode.XmlTagPattern => "*",
+                JsonExtractionMode.Regex => "",
+                _ => extraction.Pattern,
+            };
+        }
+        extraction.Mode = mode;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task UpdatePattern(int index, string pattern)
+    {
+        MergeJsonInputExtraction extraction = MaterializeExtraction(index);
+        extraction.Pattern = pattern;
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task AddTransform()
+    {
+        _props.PreParseTransforms ??= [];
+        _props.PreParseTransforms.Add(new MergeJsonPreParseTransform());
+        await BlockChanged.InvokeAsync();
+    }
+
+    private async Task RemoveTransform(int index)
+    {
+        _props.PreParseTransforms ??= [];
+        if (index >= 0 && index < _props.PreParseTransforms.Count)
+        {
+            _props.PreParseTransforms.RemoveAt(index);
+            await BlockChanged.InvokeAsync();
+        }
+    }
+
+    private async Task UpdateTransform(int index, Action<MergeJsonPreParseTransform> mutate)
+    {
+        _props.PreParseTransforms ??= [];
+        if (index >= 0 && index < _props.PreParseTransforms.Count)
+        {
+            mutate(_props.PreParseTransforms[index]);
+            await BlockChanged.InvokeAsync();
+        }
+    }
+}

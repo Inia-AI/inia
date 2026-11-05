@@ -1,0 +1,177 @@
+@using System.Globalization
+@using ErrorOr
+@using IniaAi.Application.Commands.StoredKeys.DeleteStoredKey
+@using IniaAi.Application.Queries.StoredKeys.GetStoredKeys
+@using IniaAi.WebApp.Components.Admin.Dialogs
+@using IniaAi.WebApp.Components.WorkflowEditor.Common
+
+@inject IServiceScopeFactory ServiceScopeFactory
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject AppState AppState
+@implements IDisposable
+
+<MudCard Outlined="true" Elevation="0" Class="admin-card">
+    <div class="admin-card__head">
+        <div class="admin-card__title">
+            Stored keys
+            <span class="admin-card__count">@_storedKeys.Count</span>
+        </div>
+        <div class="admin-card__head-actions">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="AddAsync">
+                Add Key
+            </MudButton>
+        </div>
+    </div>
+
+    <MudText Typo="Typo.body2" Class="px-4 pb-3">
+        API keys for this organization's web API call blocks. A block chooses a key by its name,
+        so the key stays out of the workflow and its run records.
+    </MudText>
+
+    <MudTable Items="_storedKeys"
+              Dense="true"
+              Hover="true"
+              Elevation="0">
+        <ColGroup>
+            <col />
+            <col style="width: 160px;" />
+            <col style="width: 110px;" />
+        </ColGroup>
+
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Last changed</MudTh>
+            <MudTh Style="text-align: right;">Actions</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Name">
+                <MudText Typo="Typo.body2" Class="editor-mono-field">@context.Name</MudText>
+            </MudTd>
+            <MudTd DataLabel="Last changed">@context.ChangedAt.ToString(CHANGED_AT_FORMAT, CultureInfo.InvariantCulture)</MudTd>
+            <MudTd Style="text-align: right;">
+                <MudTooltip Text="Replace Value">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                   aria-label="@($"Replace the value of {context.Name}")"
+                                   Size="Size.Small"
+                                   OnClick="async () => await ReplaceAsync(context.Name)" />
+                </MudTooltip>
+                <MudTooltip Text="Delete Key">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                   Color="Color.Error"
+                                   aria-label="@($"Delete {context.Name}")"
+                                   Size="Size.Small"
+                                   OnClick="async () => await DeleteAsync(context.Name)" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2">This organization has no stored keys.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudCard>
+
+@code {
+    private const string CHANGED_AT_FORMAT = "d MMM yyyy";
+
+    private IReadOnlyList<StoredKeySummary> _storedKeys = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OrganizationChanged += OnOrganizationChanged;
+        await LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        AppState.OrganizationChanged -= OnOrganizationChanged;
+    }
+
+    private void OnOrganizationChanged(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadAsync()
+    {
+        if (AppState.CurrentOrganizationId is not { } organizationId)
+        {
+            _storedKeys = [];
+            return;
+        }
+
+        ErrorOr<IReadOnlyList<StoredKeySummary>> result = await ServiceScopeFactory.SendScopedAsync(
+            new GetStoredKeysQuery(organizationId, AppState.User?.Id ?? string.Empty));
+
+        _storedKeys = result.IsError ? [] : result.Value;
+    }
+
+    private async Task AddAsync()
+    {
+        await ShowKeyDialogAsync("Add Stored Key", string.Empty, isNew: true);
+    }
+
+    private async Task ReplaceAsync(string name)
+    {
+        await ShowKeyDialogAsync($"Replace {name}", name, isNew: false);
+    }
+
+    private async Task ShowKeyDialogAsync(string title, string name, bool isNew)
+    {
+        var parameters = new DialogParameters<StoredKeyDialog>
+        {
+            { x => x.Name, name },
+            { x => x.IsNew, isNew },
+            { x => x.ExistingNames, _storedKeys.Select(key => key.Name).ToList() },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<StoredKeyDialog>(title, parameters, options);
+        DialogResult? result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string savedName })
+        {
+            _ = Snackbar.Add($"Stored key '{savedName}' saved", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(string name)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            $"Delete {name}?",
+            "Workflows that use this key fail at their web API call until someone adds a key with the same name.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed != true || AppState.CurrentOrganizationId is not { } organizationId)
+        {
+            return;
+        }
+
+        ErrorOr<Deleted> result = await ServiceScopeFactory.SendScopedAsync(
+            new DeleteStoredKeyCommand(organizationId, AppState.User?.Id ?? string.Empty, name));
+
+        if (!AppState.NotifyErrors(result))
+        {
+            _ = Snackbar.Add($"Stored key '{name}' deleted", Severity.Success);
+        }
+
+        await LoadAsync();
+    }
+}

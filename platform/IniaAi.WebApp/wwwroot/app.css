@@ -1,0 +1,3269 @@
+@import url("open-iconic/font/css/open-iconic-bootstrap.min.css");
+
+:root {
+    --bs-nav-link-padding-y: 0.5rem;
+    --bs-nav-link-padding-x: 1rem;
+    --editor-surface-1: var(--mud-palette-surface);
+    --editor-border: color-mix(in srgb, transparent, var(--mud-palette-text-primary) 9%);
+    --editor-radius-control: 8px;
+    --editor-control-size: 42px;
+    --editor-surface-subpanel: var(--mud-palette-background-gray);
+    --editor-tag-tint: color-mix(in srgb, var(--editor-tag-accent) 70%, var(--mud-palette-text-primary));
+    --editor-tag-ring: color-mix(in srgb, var(--editor-tag-accent) 55%, var(--mud-palette-text-primary));
+    /* Gap between the appbar and sticky cards; iniaStickyHeaders (App.razor) reads this to keep
+       its pin lines in sync with the CSS sticky top. */
+    --editor-sticky-gap: 16px;
+}
+
+.appbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.appbar-card {
+    background: var(--inia-strip-card);
+    color: var(--inia-strip-card-ink);
+    border: 1px solid var(--inia-strip-card-border);
+    border-radius: 10px;
+    cursor: pointer;
+    font: inherit;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.appbar-card:hover {
+    background: var(--inia-strip-card-hover);
+}
+
+.appbar-tenant {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 110px;
+    height: 36px;
+    padding: 0 8px 0 12px;
+    font-size: 14px;
+}
+
+.appbar-tenant-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.appbar-theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.appbar-theme-toggle:hover {
+    transform: scale(1.05);
+}
+
+.appbar-theme-icon {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+    font-size: 20px;
+    line-height: 1;
+    transition: transform 0.3s ease;
+}
+
+.appbar-theme-icon--moon {
+    filter: brightness(0) saturate(100%) invert(47%) sepia(96%) saturate(2457%) hue-rotate(201deg) brightness(101%) contrast(101%);
+}
+
+.appbar-theme-toggle:hover .appbar-theme-icon {
+    transform: rotate(20deg) scale(1.1);
+}
+
+.appbar-log {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--mud-palette-text-secondary);
+    cursor: pointer;
+    font: inherit;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+.appbar-log span {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.appbar-log:hover {
+    color: var(--mud-palette-text-primary);
+    background: var(--mud-palette-background-gray);
+}
+
+.mud-icon-button.appbar-account,
+.appbar-static-account {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 2px solid var(--mud-palette-text-secondary);
+    color: var(--mud-palette-text-primary);
+}
+
+.mud-icon-button.appbar-account .mud-icon-root {
+    font-size: 18px;
+}
+
+/* The Account menu of a page rendered without a live connection: a details element opens it. */
+.appbar-static-menu {
+    position: relative;
+}
+
+.appbar-static-account {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    list-style: none;
+}
+
+.appbar-static-account::-webkit-details-marker {
+    display: none;
+}
+
+.appbar-static-menu-items {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: var(--mud-zindex-popover);
+    min-width: 180px;
+    padding: 8px 0;
+    border-radius: var(--mud-default-borderradius);
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    box-shadow: var(--mud-elevation-8);
+}
+
+.appbar-static-menu-items a,
+.appbar-static-menu-items button {
+    display: block;
+    width: 100%;
+    padding: 6px 16px;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.appbar-static-menu-items a:hover,
+.appbar-static-menu-items button:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.mud-icon-button.appbar-account:hover,
+.appbar-static-account:hover {
+    border-color: var(--mud-palette-text-primary);
+    background: var(--mud-palette-background-gray);
+}
+
+.workflow-separator {
+    display: block;
+    width: 100%;
+    height: 0;
+    border-top: 2px dashed var(--mud-palette-text-primary);
+    margin: 16px 0;
+}
+
+/* Strip MudExpansionPanel chrome when the panel is being used purely as a separator inside the workflow map.
+   Keeps the panel's own border-bottom so the rhythmic divider between this panel and the next section is preserved. */
+.workflow-separator-panel,
+.workflow-separator-panel .mud-expand-panel-header,
+.workflow-separator-panel .mud-expand-panel-text {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+.workflow-separator-panel .mud-expand-panel-header {
+    padding: 0 !important;
+    min-height: 0 !important;
+    cursor: default !important;
+}
+
+.workflow-separator-panel .mud-expand-panel-text {
+    padding: 0 !important;
+    width: 100%;
+}
+
+.workflow-separator-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 4px 0;
+}
+
+.workflow-separator-row .workflow-separator {
+    flex: 1;
+    margin: 0;
+}
+
+html,
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* Tabs ship uppercased by MudBlazor; match the sentence/Title-case set on
+   buttons via the theme so the whole app reads consistently. */
+.mud-tabs .mud-tab {
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.mud-nav-link:not(.active) {
+    color: var(--mud-palette-text-primary);
+}
+
+.mud-nav-link:not(.active) .mud-nav-link-icon {
+    color: var(--mud-palette-text-primary) !important;
+    fill: var(--mud-palette-text-primary) !important;
+}
+
+.editor-card-title {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.editor-eyebrow {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    line-height: 1.4;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* .mud-input-slot is targeted because MudBlazor sets an explicit font-size on the
+   input that a class on the field root would not cascade into. */
+.editor-report-title,
+.editor-report-title .mud-input-slot {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+}
+
+.editor-report-name,
+.editor-report-name .mud-input-slot {
+    font-size: 16px !important;
+    font-weight: 400 !important;
+}
+
+.editor-report-name {
+    opacity: 0.7;
+}
+
+.editor-report-description,
+.editor-report-description .mud-input-slot {
+    font-size: 14px !important;
+    font-weight: 400 !important;
+}
+
+.editor-report-description {
+    opacity: 0.6;
+}
+
+.editor-section-title,
+.editor-section-title .mud-input-slot {
+    font-size: 24px !important;
+    font-weight: 600 !important;
+}
+
+/* The block-name field shares the merged header row with chips and actions.
+   Layout must live in a class: MudTextField forwards Style to the inner
+   .mud-input, where flex-basis would set HEIGHT (column flex), not width. */
+.editor-block-name {
+    flex: 1 1 240px;
+    min-width: 200px;
+}
+
+/* Force monospace over MudBlazor's proportional body font. */
+.editor-mono-field,
+.editor-mono-field .mud-input-slot,
+.field-diff-pane {
+    font-family: monospace !important;
+}
+
+/* Field values and labels stay mono, but helper sentences read better proportional —
+   font-family inherits from the field root, so helpers must opt back out. */
+.editor-mono-field .mud-input-helper-text,
+.editor-mono-field .mud-input-label,
+.editor-mono-field legend {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* Replacement-tag highlighting: js/tag-highlight.js mirrors each mono field into a
+   backdrop layer behind the (transparent-background) textarea/input and wraps
+   {placeholder} matches in marks. The backdrop's own text must stay invisible —
+   only the pills may paint, or the real text would render doubled. */
+.tag-highlight-backdrop {
+    position: absolute;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    margin: 0;
+    border: none;
+    box-sizing: border-box;
+    color: transparent;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.tag-highlight-backdrop--single {
+    white-space: pre;
+    overflow-wrap: normal;
+}
+
+.tag-highlight-backdrop .tag-hl--unknown {
+    background: color-mix(in srgb, var(--mud-palette-warning) 24%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mud-palette-warning) 55%, transparent) !important;
+}
+
+.tag-highlight-backdrop .tag-hl {
+    color: transparent;
+    background: color-mix(in srgb, var(--editor-tag-tint) 34%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--editor-tag-ring) 80%, transparent);
+    border-radius: 4px;
+    padding: 2px 0;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+/* Version-history before/after dialog: word-level diff marks, styled like the
+   replacement-tag pills above but tinted by change direction, and struck through or underlined
+   so the direction reads without colour. */
+.field-diff-pane {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.field-diff-pane mark {
+    color: inherit;
+    border-radius: 4px;
+    padding: 1px 0;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.field-diff-pane mark.diff-removed {
+    background: color-mix(in srgb, var(--mud-palette-error) 22%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mud-palette-error) 55%, transparent);
+    text-decoration: line-through;
+}
+
+.field-diff-pane mark.diff-added {
+    background: color-mix(in srgb, var(--mud-palette-success) 22%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mud-palette-success) 55%, transparent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* The diff's screen-reader labels stay out of a copied selection. */
+.field-diff-pane .mud-sr-only {
+    user-select: none;
+}
+
+/* ===== Prompt editor (CodeMirror-backed template fields with signature chips) ===== */
+
+.prompt-editor {
+    position: relative;
+    /* Align the frame's DRAWN border with MudTextField borders in the same row.
+       A fieldset draws its top border at the LEGEND'S VERTICAL MIDPOINT, not at
+       its rect top — with the 12px legend that is rect+6. MudBlazor's control
+       border sits 16px below the grid item (8px item padding handled by the grid
+       + 8px .mud-input-control margin). host = +17, frame rect = host − 15,
+       drawn line = rect + 6 → +8 relative to the control box: borders coincide
+       and the legend's optical center matches MudBlazor's notched label.
+       margin-bottom mirrors .mud-input-control's 4px so stretched twins end
+       on the same line. */
+    margin-top: 17px;
+    margin-bottom: 4px;
+}
+
+/* Outlined-field chrome mimicking MudBlazor: a pointer-events-none fieldset whose
+   legend cuts the border gap for the label, so no background-color knowledge is
+   needed to mask the border on any card surface. */
+.prompt-editor__frame {
+    position: absolute;
+    inset: -15px 0 0 0;
+    margin: 0;
+    padding: 0 9px;
+    border: 1px solid var(--mud-palette-lines-inputs);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.prompt-editor__frame legend {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0 4px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.prompt-editor:focus-within .prompt-editor__frame {
+    border: 2px solid var(--mud-palette-primary);
+}
+
+.prompt-editor:focus-within .prompt-editor__frame legend {
+    color: var(--mud-palette-primary);
+}
+
+.prompt-editor .cm-editor {
+    background: transparent;
+}
+
+.prompt-editor .cm-editor.cm-focused {
+    outline: none;
+}
+
+.prompt-editor .cm-scroller {
+    font-family: monospace;
+    font-size: 16px;
+    line-height: 1.45;
+    overflow: auto;
+    min-height: var(--prompt-editor-min, 91px);
+    max-height: var(--prompt-editor-max, 712px);
+}
+
+.prompt-editor .cm-content {
+    padding: 10px 0 12px;
+    caret-color: var(--mud-palette-text-primary);
+    /* Fill the scroller's minimum so clicks in the empty area below the last
+       line land on the content element and CodeMirror maps them to a cursor
+       position; outside it they only focus. */
+    min-height: calc(var(--prompt-editor-min, 91px) - 22px);
+}
+
+.prompt-editor .cm-placeholder {
+    color: var(--mud-palette-text-secondary);
+    opacity: 0.55;
+}
+
+.prompt-editor .cm-line {
+    padding: 0 14px;
+}
+
+.prompt-editor .cm-tag-pill--unknown {
+    background: color-mix(in srgb, var(--mud-palette-warning) 24%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mud-palette-warning) 55%, transparent) !important;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete {
+    background-color: var(--editor-surface-subpanel, var(--mud-palette-surface));
+    border: 1px solid var(--editor-border);
+    border-radius: var(--editor-radius-control);
+    overflow: hidden;
+    z-index: 1400;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+    font-family: monospace;
+    font-size: 14px;
+    max-height: 260px;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+    color: var(--mud-palette-text-primary);
+    padding: 4px 10px;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 24%, transparent);
+    color: var(--mud-palette-text-primary);
+}
+
+.prompt-editor .cm-tag-pill {
+    background: color-mix(in srgb, var(--editor-tag-tint) 34%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--editor-tag-ring) 80%, transparent);
+    border-radius: 4px;
+    padding: 2px 0;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.prompt-editor .cm-signature-chip {
+    background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mud-palette-primary) 50%, transparent);
+    border-radius: 5px;
+    padding: 1px 6px;
+    cursor: pointer;
+    white-space: pre-wrap;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.prompt-editor .cm-signature-chip::before {
+    content: '✎ ';
+    opacity: 0.65;
+}
+
+.prompt-editor .cm-signature-chip:hover {
+    box-shadow: inset 0 0 0 1px var(--mud-palette-primary);
+}
+
+.prompt-editor .cm-signature-chip--override {
+    background: color-mix(in srgb, var(--mud-palette-secondary) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mud-palette-secondary) 55%, transparent);
+}
+
+.prompt-editor .cm-signature-chip--override:hover {
+    box-shadow: inset 0 0 0 1px var(--mud-palette-secondary);
+}
+
+.prompt-editor__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1399;
+    background: transparent;
+}
+
+.prompt-editor__popover {
+    position: absolute;
+    z-index: 1400;
+    width: min(520px, calc(100vw - 48px));
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+    box-shadow: var(--mud-elevation-8);
+    padding: 16px;
+}
+
+/* Read-only execution-state twins ship with MudBlazor's disabled ink, which lands
+   below comfortable contrast on both palettes. They are meant to be read, not edited. */
+.workflow-editor-root .mud-input.mud-disabled .mud-input-slot,
+.workflow-editor-root .mud-input.mud-disabled textarea.mud-input-slot {
+    color: var(--mud-palette-text-secondary) !important;
+    -webkit-text-fill-color: var(--mud-palette-text-secondary) !important;
+}
+
+.editor-block-card {
+    --editor-block-bg: var(--editor-surface-1);
+    background-color: var(--editor-block-bg) !important;
+}
+
+/* Blocks between Loop Start and Loop End (inclusive) share a faint sky wash so the
+   loop body reads as one contiguous group in both the section view and the map. */
+.editor-in-loop,
+.editor-block-card.editor-in-loop {
+    --editor-block-bg: color-mix(in srgb, var(--editor-loop-hue) 9%, var(--editor-surface-1));
+    background-color: var(--editor-block-bg) !important;
+}
+
+.editor-output-source {
+    position: relative;
+}
+
+.editor-output-source::before,
+.section-edit-shell.section-stuck .editor-output-source .section-sticky-bar::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: var(--mud-default-borderradius, 4px);
+    bottom: var(--mud-default-borderradius, 4px);
+    width: 3px;
+    border-radius: 3px;
+    background: var(--editor-output-hue);
+    pointer-events: none;
+}
+
+.map-output-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--editor-output-hue);
+    flex: 0 0 auto;
+}
+
+.editor-shared,
+.section-edit-shell.section-stuck .editor-shared .section-sticky-bar {
+    position: relative;
+    border-color: color-mix(in srgb, var(--editor-library-hue) 55%, transparent) !important;
+}
+
+.editor-shared::after,
+.section-edit-shell.section-stuck .editor-shared .section-sticky-bar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: var(--mud-default-borderradius, 4px);
+    bottom: var(--mud-default-borderradius, 4px);
+    width: 3px;
+    border-radius: 3px;
+    background: var(--editor-library-hue);
+    pointer-events: none;
+}
+
+.editor-shared.editor-output-source::before,
+.section-edit-shell.section-stuck .editor-shared.editor-output-source .section-sticky-bar::before {
+    left: 6px;
+}
+
+.editor-shared--broken,
+.section-edit-shell.section-stuck .editor-shared--broken .section-sticky-bar {
+    border-color: color-mix(in srgb, var(--mud-palette-error) 55%, transparent) !important;
+}
+
+.editor-shared--broken::after,
+.section-edit-shell.section-stuck .editor-shared--broken .section-sticky-bar::after {
+    background: var(--mud-palette-error);
+}
+
+.editor-popover-dismiss {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+}
+
+.map-section-title {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    position: relative;
+}
+
+.map-section-title.editor-shared {
+    padding-left: 10px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--editor-library-hue) 22%, transparent), transparent 60%);
+}
+
+.map-section-title.editor-shared--broken {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--mud-palette-error) 22%, transparent), transparent 60%);
+}
+
+.library-accent-badge.mud-chip {
+    color: color-mix(in srgb, var(--editor-library-hue), var(--mud-palette-text-primary) 18%) !important;
+    background-color: color-mix(in srgb, var(--editor-library-hue) 12%, transparent) !important;
+    border-color: color-mix(in srgb, var(--editor-library-hue) 45%, transparent) !important;
+}
+
+.library-accent-badge.mud-chip .mud-icon-root {
+    color: inherit !important;
+}
+
+.library-accent-badge.mud-icon-root {
+    color: var(--editor-library-hue) !important;
+}
+
+.editor-action-bar .mud-button-root {
+    height: var(--editor-control-size);
+    min-height: var(--editor-control-size);
+}
+
+.editor-action-bar .mud-icon-button,
+.editor-action-bar .editor-soft-button.mud-icon-button {
+    height: var(--editor-control-size);
+    width: var(--editor-control-size);
+    border-radius: var(--editor-radius-control);
+}
+
+.block-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--chip-hue), var(--mud-palette-text-primary) 20%);
+    background: color-mix(in srgb, var(--chip-hue) 15%, var(--mud-palette-surface));
+    border: 1px solid color-mix(in srgb, var(--chip-hue) 40%, transparent);
+}
+
+.block-type-chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--chip-hue);
+    flex: 0 0 auto;
+}
+
+.block-type-chip--mini {
+    height: 18px;
+    padding: 0 7px;
+    gap: 5px;
+    font-size: 9.5px;
+    letter-spacing: 0.4px;
+}
+
+.block-type-chip--mini::before {
+    width: 5px;
+    height: 5px;
+}
+
+.editor-soft-button {
+    background-color: color-mix(in srgb, currentColor 14%, transparent) !important;
+    border: 1px solid color-mix(in srgb, currentColor 26%, transparent) !important;
+    border-radius: var(--editor-radius-control) !important;
+}
+
+.editor-soft-button:hover {
+    background-color: color-mix(in srgb, currentColor 24%, transparent) !important;
+    border-color: color-mix(in srgb, currentColor 46%, transparent) !important;
+}
+
+/* The !important background above suppresses MudBlazor's :focus-visible background
+   swap — its only keyboard-focus affordance — so restore an explicit indicator. */
+.editor-soft-button:focus-visible {
+    background-color: color-mix(in srgb, currentColor 24%, transparent) !important;
+    border-color: color-mix(in srgb, currentColor 46%, transparent) !important;
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 1px;
+}
+
+.editor-plain-button {
+    appearance: none;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    cursor: pointer;
+}
+
+.editor-plain-button:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+    border-radius: var(--editor-radius-control);
+}
+
+.disclosure-panel__header {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    justify-content: flex-start;
+    text-align: start;
+}
+
+.disclosure-panel__header > .mud-expand-panel-text {
+    min-width: 0;
+}
+
+.disclosure-panel__actions {
+    display: flex;
+    align-items: center;
+    margin-inline-end: 8px;
+}
+
+.mud-expand-panel .disclosure-panel__header:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: -2px;
+}
+
+/* Icon-only soft buttons render shorter than the small text buttons they share an
+   action row with. Square them to the text-button height so the row reads as one set. */
+.editor-soft-button.mud-icon-button {
+    height: 33px;
+    width: 33px;
+}
+
+/* A template field paired with an execution-state twin sits in a 50/50 MudGrid.
+   Before a run there is no twin, so the template is the grid's only item — it must
+   fill the row, not sit at half width. It splits to 50/50 only once the twin renders.
+   Opt-in per grid: a structural :only-child match would also stretch deliberately
+   narrow single-field grids (e.g. ExaSearch's crawl settings). */
+.editor-twin-grid > .mud-grid-item:only-child {
+    flex-basis: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Twins share one height: each side naturally sizes to its own content (autogrow
+   textarea vs CodeMirror), so a resolved value with more lines than its template
+   left the pair ending at different depths. The grid row is already the max of
+   the two; stretch each side's input chrome down to fill it. Scoped to multiline
+   fields — single-line inputs keep their fixed control height. */
+.editor-twin-grid > .mud-grid-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-twin-grid > .mud-grid-item > .mud-input-control {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-twin-grid > .mud-grid-item > .mud-input-control > .mud-input-control-input-container {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The bordered .mud-input stretches so paired borders end together; the textarea
+   inside keeps its autogrow inline height as the row's size input. min-height
+   (not height) then fills the stretched border at render time: percentage
+   min-height is ignored during intrinsic sizing, so the collapse that
+   height:100% !important caused on textarea+textarea pairs cannot recur, and
+   the shorter twin's text gets the full box instead of clipping above dead
+   space. */
+.editor-twin-grid .mud-input-control-input-container > .mud-input:has(> textarea) {
+    flex: 1 1 auto;
+    align-items: stretch;
+}
+
+.editor-twin-grid .mud-input:has(> textarea) > textarea.mud-input-slot {
+    /* 18.5px = MudBlazor's outlined-with-label slot margin-top, which a
+       percentage min-height does not account for. */
+    min-height: calc(100% - 18.5px);
+}
+
+.editor-twin-grid .prompt-editor {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-twin-grid .prompt-editor .cm-editor {
+    flex: 1 1 auto;
+}
+
+/* Execution-state values (resolved templates, run outputs): ReadOnly, not Disabled —
+   full-contrast text that can be selected and copied, because reading these IS the
+   point. The faint neutral wash marks them as engine-written, replacing the old
+   disabled grey. */
+.editor-resolved .mud-input.mud-input-outlined {
+    background-color: color-mix(in srgb, var(--mud-palette-text-primary) 4%, transparent);
+}
+
+.editor-block-card .mud-expand-panel {
+    border: 1px solid var(--editor-border) !important;
+    border-radius: var(--editor-radius-control) !important;
+}
+
+.editor-subpanel {
+    background-color: var(--editor-surface-subpanel) !important;
+}
+
+.workflow-map-sticky {
+    position: sticky;
+    top: calc(var(--mud-appbar-height, 64px) + var(--editor-sticky-gap));
+    min-width: 300px;
+    max-height: calc(100vh - var(--mud-appbar-height, 64px) - 2 * var(--editor-sticky-gap));
+    overflow-y: auto;
+}
+
+.section-edit-shell {
+    position: relative;
+    scroll-margin-top: calc(var(--mud-appbar-height, 64px) + var(--editor-sticky-gap));
+}
+
+#workflow-tabs {
+    scroll-margin-top: calc(var(--mud-appbar-height, 64px) + var(--editor-sticky-gap));
+}
+
+.section-stuck-sentinel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    pointer-events: none;
+}
+
+.section-edit-card {
+    position: sticky;
+    top: calc(var(--mud-appbar-height, 64px) + var(--editor-sticky-gap));
+    z-index: 3;
+    scroll-margin-top: calc(var(--mud-appbar-height, 64px) + var(--editor-sticky-gap));
+    background-color: var(--editor-surface-1) !important;
+}
+
+/* A pinned header keeps the height it had in the page (iniaStickyHeaders holds it), so the content under it
+   does not jump. Only its compact bar is painted; the rest of the slot is see-through and lets clicks pass. */
+.section-edit-shell.section-stuck .section-edit-card {
+    padding: 0 !important;
+    border-color: transparent !important;
+    background-color: transparent !important;
+    pointer-events: none;
+}
+
+.section-edit-shell.section-stuck .section-edit-card::before,
+.section-edit-shell.section-stuck .section-edit-card::after {
+    display: none;
+}
+
+.section-sticky-bar {
+    position: relative;
+    transition: box-shadow 200ms ease;
+}
+
+.section-edit-shell.section-stuck .section-sticky-bar {
+    padding: 8px 8px 8px 20px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background-color: var(--editor-surface-1);
+    box-shadow: 0 calc(-1 * var(--editor-sticky-gap)) 0 0 var(--mud-palette-background), var(--mud-elevation-8);
+    pointer-events: auto;
+}
+
+.section-edit-shell.section-stuck.has-stuck-block .section-sticky-bar {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: 0 calc(-1 * var(--editor-sticky-gap)) 0 0 var(--mud-palette-background);
+}
+
+/* --editor-block-pin-offset is the height of what is pinned above a block list: none outside a section, and in an
+   open section the section bar, which iniaStickyHeaders measures once it pins (84px is the first guess). The bar
+   is taller when its buttons wrap, so App.razor's clearStickyHeaders measures again after a scroll to a block. */
+.block-pin-scope {
+    --editor-block-pin-offset: 0px;
+}
+
+.section-edit-shell .block-pin-scope {
+    --editor-block-pin-offset: 84px;
+}
+
+.block-pin-scope .block-sticky-slot {
+    position: sticky;
+    top: calc(var(--mud-appbar-height, 64px) + var(--editor-sticky-gap) + var(--editor-block-pin-offset));
+    z-index: 2;
+}
+
+.block-pin-scope .block-sticky-slot.block-stuck {
+    align-items: flex-start;
+    padding: 0 !important;
+    pointer-events: none;
+}
+
+.block-pin-scope .block-stuck .block-header {
+    padding: 8px 8px 8px 20px;
+    border-bottom: 1px solid var(--editor-border);
+    background-color: var(--editor-block-bg);
+    box-shadow: 0 calc(-1 * var(--editor-sticky-gap)) 0 0 var(--mud-palette-background), var(--mud-elevation-8);
+    pointer-events: auto;
+}
+
+/* Pinned headers keep every control, arranged in two slim rows: title, chips, Remove and More on top, the
+   labelled buttons below. */
+.section-edit-shell.section-stuck .section-header,
+.block-pin-scope .block-stuck .block-header {
+    --editor-control-size: 30px;
+    display: grid !important;
+    align-items: center;
+    gap: 6px 10px !important;
+}
+
+.section-edit-shell.section-stuck .section-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "title end"
+        "buttons buttons";
+}
+
+.block-pin-scope .block-stuck .block-header {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+        "title type status end"
+        "buttons buttons buttons buttons";
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar,
+.block-pin-scope .block-stuck .block-header .editor-action-bar,
+.block-pin-scope .block-stuck .block-header__meta {
+    display: contents !important;
+}
+
+.section-edit-shell.section-stuck .section-header__title,
+.block-pin-scope .block-stuck .block-header__title {
+    grid-area: title;
+    min-width: 0;
+    align-items: center !important;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar__buttons,
+.block-pin-scope .block-stuck .block-header .editor-action-bar__buttons {
+    grid-area: buttons;
+    gap: 5px !important;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar__end,
+.block-pin-scope .block-stuck .block-header .editor-action-bar__end {
+    grid-area: end;
+}
+
+.block-pin-scope .block-stuck .block-header .block-type-chip {
+    grid-area: type;
+}
+
+.block-pin-scope .block-stuck .block-header__status {
+    grid-area: status;
+}
+
+.block-pin-scope .block-stuck .block-header__spacer,
+.block-pin-scope .block-stuck .block-header__stamp {
+    display: none !important;
+}
+
+.block-pin-scope .block-stuck .block-header .editor-block-name {
+    min-width: 0;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-section-title,
+.section-edit-shell.section-stuck .section-header .editor-section-title .mud-input-slot {
+    font-size: 19px !important;
+    line-height: 1.3;
+}
+
+.block-pin-scope .block-stuck .block-header .editor-section-title,
+.block-pin-scope .block-stuck .block-header .editor-section-title .mud-input-slot {
+    font-size: 16px !important;
+    line-height: 1.3;
+}
+
+.section-edit-shell.section-stuck .section-header__title .mud-input-control,
+.block-pin-scope .block-stuck .block-header__title .mud-input-control {
+    margin: 0;
+}
+
+.section-edit-shell.section-stuck .section-header__title .mud-input-slot,
+.block-pin-scope .block-stuck .block-header__title .mud-input-slot {
+    padding-block: 0;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar .mud-button-root,
+.block-pin-scope .block-stuck .block-header .editor-action-bar .mud-button-root {
+    padding-inline: 8px;
+    font-size: 12.5px;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar .mud-icon-button,
+.block-pin-scope .block-stuck .block-header .editor-action-bar .mud-icon-button {
+    padding: 0;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar .mud-icon-root,
+.block-pin-scope .block-stuck .block-header .editor-action-bar .mud-icon-root {
+    font-size: 20px;
+}
+
+.section-edit-shell.section-stuck .section-header .editor-action-bar .mud-button-icon-start,
+.block-pin-scope .block-stuck .block-header .editor-action-bar .mud-button-icon-start {
+    margin-inline: -2px 6px;
+}
+
+.block-pin-scope .editor-block-card {
+    scroll-margin-top: calc(var(--mud-appbar-height, 64px) + 2 * var(--editor-sticky-gap) + var(--editor-block-pin-offset));
+}
+
+.section-top-button {
+    display: none !important;
+}
+
+.section-edit-shell.section-stuck .section-top-button {
+    display: inline-flex !important;
+}
+
+.section-template {
+    margin-top: 8px;
+}
+
+.section-edit-shell.section-stuck .section-template {
+    visibility: hidden;
+}
+
+/* Keep long replacement tags from overflowing the map card. */
+.workflow-chip-row {
+    margin-left: 8px;
+    min-width: 0;
+}
+
+.workflow-chip-row .chip {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.workflow-chip-row .chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+
+.map-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.map-status .mud-icon-root {
+    font-size: 1.1rem;
+}
+
+.map-status .mud-progress-circular {
+    width: 1rem;
+    height: 1rem;
+}
+
+h1:focus {
+    outline: none;
+}
+
+a,
+.btn-link {
+    color: var(--mud-palette-info);
+}
+
+.content {
+    padding-top: 1.1rem;
+}
+
+.valid.modified:not([type="checkbox"]) {
+    outline: 1px solid var(--mud-palette-success);
+}
+
+.invalid {
+    outline: 1px solid var(--mud-palette-error);
+}
+
+.validation-message {
+    color: var(--mud-palette-error);
+}
+
+#blazor-error-ui {
+    background: color-mix(in srgb, var(--mud-palette-warning) 20%, var(--mud-palette-surface));
+    bottom: 0;
+    box-shadow: var(--mud-elevation-2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, var(--mud-palette-error);
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: var(--mud-palette-error-text);
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred.";
+    }
+
+/* Center the entire column header content block */
+th.actions-col .column-header {
+    display: flex;
+    justify-content: center !important;
+    align-items: center;
+    width: 100%;
+}
+
+.actions-header {
+    display: inline-block;
+    font-weight: 500;
+    line-height: 1;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+td.actions-col {
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    padding: 0.5rem;
+}
+
+/* ── Administration ───────────────────────────────────────────────────────
+   Tenants / Users / Roles share one card + table language, built from the
+   same surface, border and radius tokens as the workflow editor. */
+.admin-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 4px 4px 32px;
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 10px 2px 18px;
+}
+
+.admin-header__title {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.15;
+}
+
+.admin-header__subtitle {
+    font-size: 13.5px;
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.3;
+    margin-top: 3px;
+}
+
+.admin-tabs .mud-tabs-toolbar {
+    background: transparent;
+    border-bottom: 1px solid var(--editor-border);
+}
+
+.admin-card {
+    background-color: var(--editor-surface-1) !important;
+    border: 1px solid color-mix(in srgb, transparent, var(--mud-palette-text-primary) 13%) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--mud-elevation-1) !important;
+    overflow: hidden;
+}
+
+.admin-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--editor-border);
+}
+
+.admin-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.admin-card__count {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mud-palette-text-secondary);
+}
+
+.admin-card__head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-search {
+    width: 240px;
+}
+
+.admin-search.mud-input-control {
+    margin-top: 0;
+}
+
+.admin-search .mud-input.mud-input-outlined {
+    border-radius: var(--editor-radius-control);
+}
+
+.admin-card .mud-table-root {
+    background: transparent;
+}
+
+.admin-card .mud-table-cell {
+    border-bottom: 1px solid var(--editor-border);
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.admin-card .mud-table-row:last-child .mud-table-cell {
+    border-bottom: none;
+}
+
+.admin-card .mud-table-head .mud-table-cell {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.admin-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--mud-palette-primary), var(--mud-palette-text-primary) 22%);
+    background: color-mix(in srgb, var(--mud-palette-primary) 11%, var(--mud-palette-surface));
+    border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 26%, transparent);
+}
+
+.admin-chip__star {
+    font-size: 13px !important;
+    color: var(--mud-palette-warning);
+}
+
+.admin-chip-more {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Role chips: lighten MudBlazor's solid dark close glyph so the role name leads
+   and removal reads as a quiet affordance until hovered. */
+.admin-card .mud-chip.mud-chip-outlined {
+    border-color: color-mix(in srgb, transparent, var(--mud-palette-text-primary) 20%);
+    background: var(--mud-palette-surface);
+}
+
+.admin-card .mud-chip .mud-chip-close-button {
+    color: var(--mud-palette-text-secondary);
+    opacity: 0.7;
+}
+
+.admin-card .mud-chip .mud-chip-close-button:hover {
+    color: var(--mud-palette-error);
+    opacity: 1;
+}
+
+.admin-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.admin-status::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.admin-status--ok {
+    color: var(--mud-palette-success);
+}
+
+.admin-status--off {
+    color: var(--mud-palette-text-secondary);
+}
+
+.admin-user-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.admin-user-cell__primary {
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.admin-user-cell__secondary {
+    font-size: 12.5px;
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.3;
+}
+
+.admin-empty {
+    font-size: 13px;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Dependency graph (Components/WorkflowEditor/Dependencies, wwwroot/js/dependency-graph.js): the
+   editor's Graph tab and the dependency chain slide-over. */
+
+/* On the Graph tab the graph takes the editor's full width; the workflow map beside the tabs steps aside. */
+.workflow-editor-root--wide > .mud-grid-item-xs-9 {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+.workflow-editor-root--wide > .mud-grid-item-xs-3 {
+    display: none;
+}
+
+.dep-view {
+    --dep-focus: var(--mud-palette-primary);
+    --dep-up: var(--mud-palette-tertiary);
+    --dep-down: var(--mud-palette-secondary);
+    --dep-edge: color-mix(in srgb, var(--mud-palette-text-secondary) 60%, transparent);
+    --dep-edge-faint: color-mix(in srgb, var(--mud-palette-text-secondary) 35%, transparent);
+    --dep-document: var(--mud-palette-info);
+    --dep-counterparty: var(--mud-palette-success);
+    --dep-gate: var(--mud-palette-warning);
+    --dep-issue: var(--mud-palette-error);
+    --dep-card: var(--mud-palette-surface);
+    --dep-canvas: var(--mud-palette-background);
+    --dep-group: color-mix(in srgb, var(--mud-palette-background-gray) 55%, transparent);
+    --dep-line: var(--editor-border);
+
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background: var(--dep-card);
+}
+
+/* The tab fills the window below the tab bar, ending above the floating save and download buttons. */
+.dep-view--tab {
+    height: calc(100vh - var(--mud-appbar-height) - 96px);
+    min-height: 480px;
+    margin-top: 8px;
+    border: 1px solid var(--dep-line);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.dep-view--slideover {
+    flex: 1 1 auto;
+}
+
+/* Over the right of the editor, below the app bar and above the floating save and download buttons,
+   so the editor behind it stays visible and scrolls. */
+.dep-slideover {
+    --dep-line: var(--editor-border);
+    --dep-focus: var(--mud-palette-primary);
+
+    position: fixed;
+    top: calc(var(--mud-appbar-height) + 8px);
+    right: 8px;
+    bottom: 88px;
+    z-index: 1050;
+    display: flex;
+    width: var(--dep-slideover-width, 40vw);
+    min-width: min(360px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--dep-line);
+    border-radius: 12px;
+    box-shadow: var(--mud-elevation-12);
+    overflow: hidden;
+    animation: dep-slide-in 0.18s ease-out;
+}
+
+@keyframes dep-slide-in {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dep-slideover {
+        animation: none;
+    }
+}
+
+.dep-slideover--resizing {
+    user-select: none;
+}
+
+.dep-slideover__resize {
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background-color 0.15s ease;
+}
+
+.dep-slideover__resize:hover,
+.dep-slideover__resize:focus-visible,
+.dep-slideover--resizing .dep-slideover__resize {
+    background: color-mix(in srgb, var(--dep-focus) 18%, transparent);
+    outline: none;
+}
+
+.dep-view__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 8px 4px 10px;
+    border-bottom: 1px solid var(--dep-line);
+}
+
+.dep-view__title {
+    font-weight: 600 !important;
+    margin-right: 4px;
+}
+
+.dep-view__toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--dep-line);
+}
+
+.dep-view__toolbar .mud-switch {
+    margin-right: auto;
+}
+
+.dep-view__toolbar .mud-typography {
+    font-size: 13px;
+}
+
+.dep-view__trail {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--dep-line);
+}
+
+.dep-view__crumb {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: inherit;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--dep-line);
+    background: var(--dep-card);
+    color: var(--mud-palette-text-primary);
+    cursor: pointer;
+}
+
+.dep-view__crumb:hover {
+    border-color: var(--dep-focus);
+}
+
+.dep-view__crumb--current {
+    background: var(--dep-focus);
+    color: var(--mud-palette-primary-text);
+    border-color: var(--dep-focus);
+}
+
+.dep-view__trail-sep {
+    color: var(--mud-palette-text-secondary);
+    font-size: 12px;
+}
+
+.dep-view__canvas {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: var(--dep-canvas);
+    overflow: hidden;
+}
+
+.dep-view__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--mud-palette-text-secondary);
+    border-bottom: 1px solid var(--dep-line);
+}
+
+.dep-view__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dep-legend {
+    display: inline-block;
+    width: 18px;
+    border-top: 2px solid var(--dep-edge);
+}
+
+.dep-legend--document {
+    border-top-color: var(--dep-document);
+}
+
+.dep-legend--counterparty {
+    border-top-color: var(--dep-counterparty);
+}
+
+.dep-legend--gate {
+    border-top-style: dashed;
+    border-top-color: var(--dep-gate);
+}
+
+.dep-legend--agent-added,
+.dep-legend--agent-changed {
+    width: 12px;
+    height: 8px;
+    border: 1.5px dashed var(--mud-palette-success);
+    border-radius: 3px;
+}
+
+.dep-legend--agent-changed {
+    border-color: var(--mud-palette-primary);
+}
+
+.dep-viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+}
+
+.dep-viewport--dragging {
+    cursor: grabbing;
+}
+
+.dep-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+}
+
+.dep-edges {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.dep-edge {
+    fill: none;
+    stroke: var(--dep-edge);
+    stroke-width: 1.5px;
+    transition: opacity 0.15s ease;
+}
+
+.dep-edge--role-up {
+    stroke: var(--dep-up);
+}
+
+.dep-edge--role-down {
+    stroke: var(--dep-down);
+}
+
+.dep-edge--document {
+    stroke: var(--dep-document);
+}
+
+.dep-edge--counterparty {
+    stroke: var(--dep-counterparty);
+}
+
+.dep-edge--gate {
+    stroke: var(--dep-gate);
+    stroke-dasharray: 6 4;
+}
+
+.dep-edge--input,
+.dep-edge--stub {
+    stroke: var(--dep-edge-faint);
+    stroke-dasharray: 3 3;
+    stroke-width: 1.2px;
+}
+
+.dep-edge--issue {
+    stroke: var(--dep-issue);
+}
+
+.dep-edge-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 12px;
+    pointer-events: stroke;
+}
+
+.dep-arrow {
+    fill: var(--dep-edge);
+}
+
+.dep-arrow--up {
+    fill: var(--dep-up);
+}
+
+.dep-arrow--down {
+    fill: var(--dep-down);
+}
+
+.dep-arrow--document {
+    fill: var(--dep-document);
+}
+
+.dep-arrow--counterparty {
+    fill: var(--dep-counterparty);
+}
+
+.dep-arrow--gate {
+    fill: var(--dep-gate);
+}
+
+.dep-arrow--muted {
+    fill: var(--dep-edge-faint);
+}
+
+.dep-arrow--issue {
+    fill: var(--dep-issue);
+}
+
+.dep-stage--animate {
+    transition: transform 280ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dep-stage--animate {
+        transition: none;
+    }
+}
+
+.dep-stage--tracing .dep-card:not(.dep-trace) {
+    opacity: 0.3;
+}
+
+.dep-stage--tracing .dep-edge:not(.dep-trace) {
+    opacity: 0.06;
+}
+
+.dep-group {
+    position: absolute;
+    border: 1px solid var(--dep-line);
+    border-radius: 12px;
+    background: var(--dep-group);
+}
+
+.dep-group--verification {
+    border-style: dashed;
+    border-color: color-mix(in srgb, var(--dep-gate) 60%, transparent);
+}
+
+.dep-group__title {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    right: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    text-align: left;
+}
+
+.dep-group__title--button {
+    font-family: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+.dep-group__title--button:hover {
+    color: var(--mud-palette-text-primary);
+}
+
+.dep-group__hint {
+    margin-left: 6px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.dep-card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    overflow: hidden;
+    background: var(--dep-card);
+    color: var(--mud-palette-text-primary);
+    border: 1px solid var(--dep-line);
+    border-radius: 10px;
+    box-shadow: var(--mud-elevation-1);
+    transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dep-card[data-action] {
+    cursor: pointer;
+}
+
+.dep-card[data-action]:hover,
+.dep-card[data-action]:focus-visible,
+.dep-card:has(.dep-card__primary):hover,
+.dep-card:has(.dep-card__primary:focus-visible) {
+    border-color: var(--dep-focus);
+    box-shadow: var(--mud-elevation-4);
+    outline: none;
+}
+
+.dep-card:has(.dep-card__primary) {
+    cursor: pointer;
+}
+
+.dep-card__primary {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dep-card__primary:focus-visible {
+    outline: none;
+}
+
+.dep-card--role-up {
+    border-left: 3px solid var(--dep-up);
+}
+
+.dep-card--role-down {
+    border-left: 3px solid var(--dep-down);
+}
+
+.dep-card--role-focus {
+    border: 2px solid var(--dep-focus);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dep-focus) 16%, transparent), var(--mud-elevation-4);
+}
+
+.dep-card--cycle {
+    outline: 2px dashed var(--dep-gate);
+    outline-offset: 3px;
+}
+
+.dep-card__top,
+.dep-card__meta,
+.dep-card__foot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dep-card__meta--wrap {
+    flex-wrap: wrap;
+    row-gap: 3px;
+}
+
+.dep-card__foot {
+    margin-top: auto;
+}
+
+.dep-card__status {
+    /* Room for the run-status dot of a later version. */
+    display: none;
+}
+
+.dep-card__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.dep-card__variants {
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--dep-down);
+}
+
+.dep-card__section {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.dep-card__pill {
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 99px;
+    background: var(--mud-palette-background-gray);
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+
+.dep-card__warning {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--dep-gate);
+}
+
+.dep-count,
+.dep-card__open {
+    font: inherit;
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 99px;
+    border: 1px solid var(--dep-line);
+    background: var(--dep-card);
+    color: var(--mud-palette-text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dep-count:hover,
+.dep-card__open:hover {
+    color: var(--mud-palette-text-primary);
+    border-color: var(--dep-focus);
+}
+
+.dep-count--open {
+    background: color-mix(in srgb, var(--dep-focus) 12%, var(--dep-card));
+    color: var(--mud-palette-text-primary);
+}
+
+.dep-card__open {
+    margin-left: auto;
+    color: var(--dep-down);
+}
+
+.dep-card--section {
+    border-left: 4px solid var(--dep-focus);
+}
+
+.dep-card--section.dep-card--role-focus {
+    border-left-width: 4px;
+}
+
+.dep-card--stub {
+    justify-content: center;
+    align-items: center;
+    padding: 4px 10px;
+    border-style: dashed;
+    background: transparent;
+    box-shadow: none;
+    color: var(--mud-palette-text-secondary);
+}
+
+.dep-card--stub .dep-card__name {
+    flex: 0 1 auto;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.dep-card--input {
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 99px;
+    border-style: dashed;
+    background: var(--mud-palette-background-gray);
+    box-shadow: none;
+}
+
+.dep-card--input .dep-card__name {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 500;
+    font-size: 11px;
+}
+
+.dep-card--input .dep-card__section {
+    flex: 0 0 auto;
+    font-size: 10px;
+}
+
+/* What the agent's undecided proposal does: a block it adds, or one it changes. */
+.dep-card--agent-added {
+    border: 1.5px dashed var(--mud-palette-success);
+    background: color-mix(in srgb, var(--mud-palette-success) 10%, var(--dep-card));
+}
+
+.dep-card--agent-changed {
+    border: 1.5px dashed var(--mud-palette-primary);
+}
+
+.dep-card--unresolved {
+    border: 1.5px dashed var(--dep-issue);
+    background: color-mix(in srgb, var(--dep-issue) 8%, var(--dep-card));
+}
+
+.dep-card--unresolved .dep-card__name {
+    color: var(--dep-issue);
+    white-space: normal;
+    line-height: 1.2;
+}
+
+.dep-zoom {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+}
+
+.dep-zoom__button {
+    width: 28px;
+    height: 28px;
+    font: inherit;
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 8px;
+    border: 1px solid var(--dep-line);
+    background: var(--dep-card);
+    color: var(--mud-palette-text-primary);
+    cursor: pointer;
+    box-shadow: var(--mud-elevation-1);
+}
+
+.dep-zoom__button:hover {
+    border-color: var(--dep-focus);
+}
+
+.dep-note,
+.dep-status {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    max-width: calc(100% - 90px);
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 8px;
+    background: var(--dep-card);
+    color: var(--mud-palette-text-secondary);
+    border: 1px solid var(--dep-line);
+    z-index: 2;
+}
+
+.dep-status {
+    top: auto;
+    bottom: 8px;
+}
+
+.dep-tooltip {
+    position: absolute;
+    z-index: 3;
+    max-width: 320px;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    border-radius: 8px;
+    background: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+    box-shadow: var(--mud-elevation-8);
+    pointer-events: none;
+    overflow-wrap: anywhere;
+}
+
+.dep-tooltip__title {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.dep-tooltip__muted {
+    opacity: 0.8;
+}
+
+.dep-tooltip__mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+}
+
+.editor-block-card.editor-block-flash {
+    animation: editor-block-flash 1.6s ease-out;
+}
+
+@keyframes editor-block-flash {
+    0%,
+    40% {
+        box-shadow: 0 0 0 3px var(--mud-palette-secondary);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* Agent mode in the workflow editor (Components/WorkflowEditor/Agent, wwwroot/js/editor-agent.js):
+   the conversation covers the editor as one calm, centred column; the editor stays loaded beneath.
+   It sits right of the navigation drawer when that is open, under the floating save buttons. */
+.mud-layout {
+    --editor-agent-left: 0px;
+}
+
+.mud-layout:has(.mud-drawer--open) {
+    --editor-agent-left: var(--mud-drawer-width-left, 250px);
+}
+
+/* The page beneath does not scroll while the conversation covers it. */
+html:has(.editor-agent-screen),
+body:has(.editor-agent-screen) {
+    overflow: hidden;
+}
+
+.editor-agent-screen {
+    position: fixed;
+    top: var(--mud-appbar-height, 64px);
+    left: var(--editor-agent-left);
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    background: var(--mud-palette-background);
+    color: var(--mud-palette-text-primary);
+    animation: editor-agent-fade 160ms ease-out;
+}
+
+@keyframes editor-agent-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.editor-agent-column {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.editor-agent-screen--wide .editor-agent-column {
+    max-width: 1440px;
+}
+
+/* A long workflow name truncates; the buttons keep their full width (a MudButton clips its own
+   label when a flex row shrinks it). */
+.editor-agent-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px 8px 16px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    min-width: 0;
+}
+
+.editor-agent-bar > .mud-button-root {
+    flex-shrink: 0;
+}
+
+.editor-agent-bar-icon {
+    color: var(--editor-agent-accent);
+}
+
+.editor-agent-bar-title {
+    font-weight: 600;
+}
+
+.editor-agent-bar-subject {
+    flex: 0 1 auto;
+    min-width: 0;
+    color: var(--mud-palette-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-agent-bar-subject::before {
+    content: "·";
+    margin-right: 8px;
+}
+
+/* The way into Agent mode, at the right end of the app bar: the page's one amber control. */
+.editor-agent-entry-anchor {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.mud-button-root.editor-agent-entry {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 10px;
+    background-color: var(--editor-agent-accent);
+    color: var(--editor-agent-accent-ink);
+    font-weight: 700;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+.mud-button-root.editor-agent-entry:hover {
+    background-color: color-mix(in srgb, var(--editor-agent-accent) 85%, var(--editor-agent-accent-ink));
+}
+
+.mud-button-root.editor-agent-entry--back {
+    background-color: transparent;
+    border: 1px solid var(--editor-agent-accent);
+    color: var(--mud-palette-text-primary);
+}
+
+.mud-button-root.editor-agent-entry--back:hover {
+    background-color: color-mix(in srgb, transparent, var(--editor-agent-accent) 18%);
+}
+
+/* The one-time hint, pointing up at the entry. */
+.editor-agent-hint {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    z-index: 1400;
+    width: 280px;
+    padding: 12px 12px 8px 16px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-top: 3px solid var(--editor-agent-accent);
+    border-radius: 10px;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    box-shadow: var(--mud-elevation-8);
+    animation: editor-agent-fade 160ms ease-out;
+}
+
+.editor-agent-hint::before {
+    content: "";
+    position: absolute;
+    top: -9px;
+    right: 28px;
+    border: 6px solid transparent;
+    border-bottom-color: var(--editor-agent-accent);
+}
+
+.editor-agent-hint-text {
+    margin: 0 0 4px;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.editor-agent-hint-dismiss {
+    display: flex;
+    margin-left: auto;
+}
+
+/* The bottom padding keeps the newest message clear of the composer. */
+.editor-agent-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 24px 0 48px;
+    scroll-padding-bottom: 48px;
+}
+
+.editor-agent-scroll > .editor-agent-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.editor-agent-caption {
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.editor-agent-muted {
+    color: var(--mud-palette-text-secondary);
+}
+
+.editor-agent-empty {
+    margin-top: 10vh;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.editor-agent-empty-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.editor-agent-message {
+    overflow-wrap: anywhere;
+}
+
+.editor-agent-message--user {
+    align-self: flex-end;
+    max-width: 80%;
+    padding: 8px 16px;
+    border-radius: 16px;
+    background: var(--mud-palette-background-gray);
+}
+
+.editor-agent-message-text {
+    white-space: pre-wrap;
+}
+
+.editor-agent-message--agent {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.editor-agent-quiet-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+.editor-agent-quiet-line .editor-agent-trail {
+    flex: 1 1 auto;
+}
+
+.editor-agent-trail {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.editor-agent-trail summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.editor-agent-trail summary::-webkit-details-marker {
+    display: none;
+}
+
+.editor-agent-trail-spinner {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0;
+}
+
+.editor-agent-trail-chevron {
+    transition: transform 120ms ease;
+}
+
+.editor-agent-trail[open] .editor-agent-trail-chevron {
+    transform: rotate(180deg);
+}
+
+.editor-agent-trail-icon {
+    color: var(--mud-palette-success);
+}
+
+.editor-agent-steps {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0 0 0 8px;
+    border-left: 1px solid var(--mud-palette-lines-default);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.editor-agent-step {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding-left: 8px;
+}
+
+.editor-agent-step-icon {
+    font-size: 1rem !important;
+    align-self: center;
+}
+
+.editor-agent-step-spinner {
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.editor-agent-step--running {
+    color: var(--mud-palette-text-primary);
+}
+
+.editor-agent-remark {
+    padding-left: 8px;
+    font-style: italic;
+    color: var(--mud-palette-text-secondary);
+}
+
+.editor-agent-quiet-line--live {
+    align-items: flex-start;
+}
+
+.editor-agent-step--hero {
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
+}
+
+.editor-agent-answer {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.editor-agent-answer h1,
+.editor-agent-answer h2,
+.editor-agent-answer h3,
+.editor-agent-answer h4,
+.editor-agent-answer h5,
+.editor-agent-answer h6 {
+    font-size: 1.05rem;
+    line-height: 1.4;
+    font-weight: 600;
+    margin: 16px 0 8px;
+}
+
+.editor-agent-answer p {
+    margin: 8px 0;
+}
+
+.editor-agent-answer ul,
+.editor-agent-answer ol {
+    margin: 8px 0 8px 24px;
+}
+
+.editor-agent-answer code {
+    font-family: var(--mud-typography-default-family, monospace);
+    background: var(--mud-palette-background-gray);
+    border-radius: 4px;
+    padding: 0 4px;
+}
+
+.editor-agent-answer pre {
+    overflow-x: auto;
+    background: var(--mud-palette-background-gray);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.editor-agent-answer pre code {
+    padding: 0;
+}
+
+.editor-agent-answer table {
+    border-collapse: collapse;
+    margin: 8px 0;
+}
+
+.editor-agent-answer th,
+.editor-agent-answer td {
+    border: 1px solid var(--mud-palette-lines-default);
+    padding: 4px 8px;
+}
+
+/* A block link reads as a link, not as bold text: the theme's link colour, underlined on hover. */
+.editor-agent-answer a[data-block-id] {
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--mud-palette-info);
+    text-decoration: none;
+    text-underline-offset: 3px;
+}
+
+.editor-agent-answer a[data-block-id]:hover {
+    text-decoration: underline;
+}
+
+.editor-agent-answer a[data-block-id]:focus-visible {
+    outline: 2px solid var(--mud-palette-info);
+    outline-offset: 2px;
+}
+
+/* The composer stays at the bottom at one size whether idle, sending or running; on a narrow
+   screen it rises above the floating save buttons. */
+/* The message box stays the conversation's normal width, even in the wide review, and keeps
+   clear of the editor's floating save buttons at the bottom right (about 216px wide), which never
+   move: when the space right of the centred box is narrower than that, the box gives up the
+   difference on its right. */
+.editor-agent-composer {
+    --editor-agent-fab-clearance: 232px;
+    flex: 0 0 auto;
+    padding: 8px 0 16px;
+}
+
+.editor-agent-composer > .editor-agent-column,
+.editor-agent-screen--wide .editor-agent-composer > .editor-agent-column {
+    max-width: 760px;
+    padding-right: max(16px, calc(var(--editor-agent-fab-clearance) - max(0px, (100% - 760px) / 2)));
+}
+
+.editor-agent-composer-box {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 16px;
+    background: var(--mud-palette-surface);
+    padding: 8px 8px 8px 16px;
+    transition: border-color 120ms ease;
+}
+
+.editor-agent-composer-box:focus-within {
+    border-color: var(--mud-palette-primary);
+}
+
+.editor-agent-input textarea {
+    min-height: 4.5em;
+}
+
+.editor-agent-composer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+}
+
+.editor-agent-composer-row > .mud-button-root,
+.editor-agent-composer-row > .mud-menu {
+    flex-shrink: 0;
+}
+
+/* Send and Stop take the same place at the same size. */
+.editor-agent-composer-row > .editor-agent-send {
+    min-width: 88px;
+}
+
+.editor-agent-hint {
+    margin-right: 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The reports picked for the next message, as small chips above the input. */
+.editor-agent-report-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-top: 4px;
+}
+
+.editor-agent-report-chips .mud-chip {
+    margin: 0;
+}
+
+/* The Stop beside a running answer's steps keeps its size; the steps take the remaining width. */
+.editor-agent-quiet-line--live > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.editor-agent-stop {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    white-space: nowrap;
+}
+
+/* The reports a sent message carried, under its text. */
+.editor-agent-report-chips--sent {
+    justify-content: flex-start;
+    padding-top: 8px;
+}
+
+/* Feedback the agent suggests dismissing: the reader's comment and the agent's reason, the button beside them. */
+.editor-agent-dismissals {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.editor-agent-dismissal {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+}
+
+.editor-agent-dismissal-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The "Choose reports" dialog: filters on top, one row per report, the count beside the actions. */
+.editor-agent-reports-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.editor-agent-reports-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 12px;
+}
+
+.editor-agent-reports-filter-row {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+}
+
+@media (max-width: 720px) {
+    .editor-agent-reports-filter-row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+.editor-agent-reports-list {
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
+    max-height: 50vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.editor-agent-report-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.editor-agent-report-row-chosen {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.editor-agent-report-row-blocked .editor-agent-report-row-text {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.editor-agent-report-row-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.editor-agent-report-row .editor-agent-feedback-delete {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.editor-agent-report-row-documents {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-agent-reports-empty {
+    padding: 24px 8px;
+    text-align: center;
+}
+
+.editor-agent-reports-more {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+}
+
+.editor-agent-reports-count {
+    padding-left: 16px;
+}
+
+.editor-agent-model-option {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+}
+
+.editor-agent-model-name {
+    font-weight: 600;
+}
+
+.editor-agent-bar-cost {
+    margin-right: 8px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A step repeated in a row shows once, with how many times. */
+.editor-agent-step-count {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* A proposal: the agent's overview, then one quiet group per section, one row per block.
+   Hairlines, not boxes; the eye goes to what changes, the controls stay out of the way. */
+.editor-agent-edits {
+    --ea-muted: var(--mud-palette-text-secondary);
+    --ea-line: color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
+    --ea-wash: color-mix(in srgb, var(--mud-palette-text-primary) 4%, transparent);
+    border: 1px solid var(--ea-line);
+    border-radius: 14px;
+    background: var(--mud-palette-surface);
+    overflow: hidden;
+}
+
+.editor-agent-edits-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 0;
+}
+
+.editor-agent-edits-head > .mud-icon-root {
+    display: none;
+}
+
+.editor-agent-edits-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ea-muted);
+}
+
+.editor-agent-overview {
+    margin: 0;
+    padding: 6px 16px 16px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    border-bottom: 1px solid var(--ea-line);
+}
+
+.editor-agent-section {
+    border-bottom: 1px solid var(--ea-line);
+}
+
+.editor-agent-section:last-of-type {
+    border-bottom: none;
+}
+
+.editor-agent-section-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px 10px 16px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.editor-agent-section-head::-webkit-details-marker {
+    display: none;
+}
+
+.editor-agent-section-head::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid var(--ea-muted);
+    border-bottom: 1.5px solid var(--ea-muted);
+    transform: rotate(-45deg);
+    transition: transform 120ms ease-out;
+    margin-right: 2px;
+}
+
+.editor-agent-section[open] > .editor-agent-section-head::before {
+    transform: rotate(45deg);
+}
+
+.editor-agent-section-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.editor-agent-section-head .mud-button-root {
+    opacity: 0.55;
+    transition: opacity 120ms ease-out;
+}
+
+.editor-agent-section-head:hover .mud-button-root,
+.editor-agent-section-head .mud-button-root:focus-visible {
+    opacity: 1;
+}
+
+.editor-agent-section > .editor-agent-edit-reason {
+    padding: 0 16px 8px 30px;
+}
+
+.editor-agent-edit-cards {
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 4px;
+}
+
+/* One block: a row, divided from the next by a hairline. */
+.editor-agent-edit-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px 12px 30px;
+    border-top: 1px solid var(--ea-line);
+}
+
+.editor-agent-edit-card--decided {
+    gap: 2px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.editor-agent-edit-card--decided {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.editor-agent-edit-card--decided .editor-agent-edit-name {
+    color: var(--ea-muted);
+    font-weight: 400;
+}
+
+.editor-agent-edit-card--decided .editor-agent-edit-reason,
+.editor-agent-edit-card--decided .editor-agent-caption,
+.editor-agent-edit-card--decided .editor-agent-kind {
+    display: none;
+}
+
+.editor-agent-edit-card--refused {
+    opacity: 0.7;
+}
+
+.editor-agent-edit-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.editor-agent-edit-card-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+}
+
+.editor-agent-edit-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-agent-edit-reason,
+.editor-agent-edit-text,
+.editor-agent-edit-flag {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.editor-agent-edit-reason {
+    color: var(--ea-muted);
+}
+
+.editor-agent-edit-flag {
+    color: var(--ea-muted);
+}
+
+.editor-agent-edit-flag--warn {
+    color: var(--mud-palette-warning-darken);
+}
+
+.editor-agent-edit-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.editor-agent-edit-tags:empty {
+    display: none;
+}
+
+.editor-agent-edit-card-foot {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 0;
+    margin-top: 2px;
+}
+
+.editor-agent-edit-card--decided .editor-agent-edit-card-foot {
+    display: none;
+}
+
+.editor-agent-edits-more,
+.editor-agent-link {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--ea-muted, var(--mud-palette-text-secondary));
+    cursor: pointer;
+}
+
+.editor-agent-link:hover {
+    color: var(--mud-palette-primary);
+}
+
+.editor-agent-edits-more {
+    margin: 0 16px 8px;
+}
+
+.editor-agent-tag {
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: var(--ea-wash, transparent);
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+
+.editor-agent-tag--warn {
+    background: color-mix(in srgb, var(--mud-palette-warning) 16%, transparent);
+    color: var(--mud-palette-warning-darken);
+}
+
+.editor-agent-tag--done {
+    background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent);
+    color: var(--mud-palette-success-darken);
+}
+
+/* What happens to a block or section: a coloured dot and one word. */
+.editor-agent-kind {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.editor-agent-kind::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mud-palette-text-disabled);
+}
+
+.editor-agent-kind--edited::before {
+    background: var(--mud-palette-primary);
+}
+
+.editor-agent-kind--added::before {
+    background: var(--mud-palette-success);
+}
+
+.editor-agent-kind--removed::before {
+    background: var(--mud-palette-error);
+}
+
+.editor-agent-kind--moved::before {
+    background: var(--mud-palette-info);
+}
+
+/* One changed field: a quiet label over its value. */
+.editor-agent-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.editor-agent-field-label {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* A short value changes in place: the old struck through, the new as it will read. */
+.editor-agent-inline-change {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.editor-agent-inline-change .editor-agent-old {
+    color: var(--mud-palette-text-secondary);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--mud-palette-error) 60%, transparent);
+}
+
+.editor-agent-inline-change .editor-agent-arrow {
+    color: var(--mud-palette-text-disabled);
+}
+
+.editor-agent-inline-change .editor-agent-new {
+    font-weight: 500;
+}
+
+.editor-agent-edits .editor-agent-value {
+    border: none;
+    background: var(--ea-wash);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    line-height: 1.55;
+}
+
+/* Long text: the words added in a light tint, the words removed struck through. */
+.editor-agent-edits .field-diff-pane mark.diff-added {
+    background: color-mix(in srgb, var(--mud-palette-success) 18%, transparent);
+    box-shadow: none;
+    border-radius: 3px;
+}
+
+.editor-agent-edits .field-diff-pane mark.diff-removed {
+    background: none;
+    box-shadow: none;
+    color: var(--mud-palette-text-secondary);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--mud-palette-error) 60%, transparent);
+}
+
+.editor-agent-value--new {
+    box-shadow: inset 2px 0 0 var(--mud-palette-success);
+}
+
+.editor-agent-facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.editor-agent-facts dt {
+    color: var(--mud-palette-text-secondary);
+}
+
+.editor-agent-facts dd {
+    margin: 0;
+}
+
+.editor-agent-facts del {
+    color: var(--mud-palette-text-secondary);
+    text-decoration-color: color-mix(in srgb, var(--mud-palette-error) 60%, transparent);
+    margin-right: 6px;
+}
+
+.editor-agent-facts ins {
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.editor-agent-conflict-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.editor-agent-edits-checks,
+.editor-agent-edits-note {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+    border-top: 1px solid var(--ea-line, var(--mud-palette-lines-default));
+}
+
+.editor-agent-edits-checks summary {
+    cursor: pointer;
+}
+
+.editor-agent-edits-checks ul {
+    margin: 8px 0 0 16px;
+}
+
+.editor-agent-edits-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px 16px;
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+    border-top: 1px solid var(--ea-line, var(--mud-palette-lines-default));
+}
+
+.editor-agent-edits-foot .mud-icon-root {
+    color: var(--mud-palette-success);
+}
+
+/* The same review across the screen, for a large proposal: rows in two columns. */
+.editor-agent-edits--wide .editor-agent-edit-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+    align-items: start;
+}
+
+.editor-agent-edits--wide .editor-agent-value {
+    max-height: 480px;
+}
+
+/* The block drawer: one block's essentials, sliding in from the right. */
+.editor-agent-detail-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.editor-agent-detail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    width: min(560px, 100%);
+    overflow-y: auto;
+    /* Room below the last action for the floating save buttons, which stay where they are. */
+    padding: 16px 24px 128px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--mud-palette-surface);
+    border-left: 1px solid var(--mud-palette-lines-default);
+    box-shadow: var(--mud-elevation-8);
+    animation: editor-agent-slide 180ms ease-out;
+}
+
+@keyframes editor-agent-slide {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+
+    to {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+.editor-agent-detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.editor-agent-detail-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.editor-agent-detail-facts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.editor-agent-detail-settings {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin: 0;
+}
+
+.editor-agent-detail-settings dd {
+    margin: 0;
+}
+
+.editor-agent-value {
+    white-space: pre-wrap;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--mud-palette-background);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+/* Prompts read as prose here, not as code. */
+.editor-agent-value.field-diff-pane {
+    font-family: inherit !important;
+}
+
+.editor-agent-sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.editor-agent-conflict {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--mud-palette-warning);
+}
+
+.editor-agent-conflict p {
+    margin: 0;
+}
+
+/* A block or section the agent's accepted changes touched, until the next save. */
+.editor-agent-changed {
+    outline: 2px solid var(--editor-agent-accent);
+    outline-offset: 2px;
+    position: relative;
+}
+
+/* A block or section the agent proposes to change, until the user accepts or rejects it. */
+.editor-agent-proposed {
+    outline: 2px dashed var(--editor-agent-accent);
+    outline-offset: 2px;
+    position: relative;
+}
+
+.editor-agent-changed-label {
+    display: inline-block;
+    align-self: flex-start;
+    margin: 8px 0 0 20px;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--editor-agent-accent);
+    color: var(--editor-agent-accent-ink);
+    font-weight: 600;
+}

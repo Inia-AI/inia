@@ -1,0 +1,83 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <IsTestProject>false</IsTestProject>
+
+        <ServerGarbageCollection>false</ServerGarbageCollection>
+
+        <Version>1.0.0</Version> <!-- Default version -->
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+        <FileVersion>$(Version)</FileVersion>
+        <InformationalVersion>$(Version)</InformationalVersion>
+
+        <InformationalVersion Condition="'$(SourceRevisionId)' != ''">1.0.0+$(SourceRevisionId)</InformationalVersion>
+        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AWSSDK.ServiceQuotas" />
+        <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
+        <PackageReference Include="AWSSDK.SSO" />
+        <PackageReference Include="AWSSDK.SSOOIDC" />
+        <PackageReference Include="CodeBeam.MudBlazor.Extensions" />
+        <PackageReference Include="HtmlSanitizer" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite">
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+        <PackageReference Include="MudBlazor" />
+        <PackageReference Include="MudBlazor.Markdown" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="Serilog.Settings.Configuration" />
+        <PackageReference Include="System.Runtime.Caching">
+            <TreatAsUsed>true</TreatAsUsed>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.AiConnection\IniaAi.AiConnection.csproj" />
+        <ProjectReference Include="..\IniaAi.Application\IniaAi.Application.csproj" />
+        <ProjectReference Include="..\IniaAi.Configuration\IniaAi.Configuration.csproj" />
+        <ProjectReference Include="..\IniaAi.Core\IniaAi.Core.csproj" />
+        <ProjectReference Include="..\IniaAi.Domain\IniaAi.Domain.csproj">
+            <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.FileFormats\IniaAi.FileFormats.csproj" />
+        <ProjectReference Include="..\IniaAi.Migrations.Mssql\IniaAi.Migrations.Mssql.csproj">
+            <TreatAsUsed>true</TreatAsUsed>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.Migrations.PostgreSql\IniaAi.Migrations.PostgreSql.csproj">
+            <TreatAsUsed>true</TreatAsUsed>
+        </ProjectReference>
+        <ProjectReference Include="..\IniaAi.Services\IniaAi.Services.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>$(AssemblyName).Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Update="Locales\Resource.resx">
+            <Generator>PublicResXFileCodeGenerator</Generator>
+            <LastGenOutput>Resource.Designer.cs</LastGenOutput>
+        </EmbeddedResource>
+        
+        <EmbeddedResource Update="Locales\Resource.nl-NL.resx">
+            <Generator>PublicResXFileCodeGenerator</Generator>
+        </EmbeddedResource>
+    </ItemGroup>
+</Project>

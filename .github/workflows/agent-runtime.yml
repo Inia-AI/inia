@@ -1,0 +1,32 @@
+name: Agent runtime
+
+# Builds the dev and prod images of agent-runtime/ and runs its gates: the docs gate, the seccomp
+# checks, the quality gates and the library scan. It needs no secret.
+on:
+  pull_request:
+    paths: ["agent-runtime/**", ".github/workflows/agent-runtime.yml"]
+  push:
+    branches: [main]
+    paths: ["agent-runtime/**", ".github/workflows/agent-runtime.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./agent-runtime/.github/actions/gates
+        with:
+          tree: agent-runtime

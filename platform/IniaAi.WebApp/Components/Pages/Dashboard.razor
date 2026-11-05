@@ -1,0 +1,163 @@
+﻿@attribute [Route(AppRoutes.HOME)]
+@attribute [Route(AppRoutes.DASHBOARD)]
+@attribute [Authorize]
+
+@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Domain.Entities.Documents.Enums
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.Services.Jobs
+@using IniaAi.Services.Models.Jobs
+@using IniaAi.WebApp.Components.Components
+@using Microsoft.AspNetCore.Authorization
+
+@implements IDisposable
+
+@inject AppState AppState
+@inject ILogger<Dashboard> Logger
+@inject IJobsService JobsService
+
+<PageTitle>Inia AI - @AppState.GetName(AppState.CurrentRoute)</PageTitle>
+
+<MudGrid Spacing="2" Class="my-2">
+    @if (!string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+    {
+        var currentOrg = AppState.UserOrganizations.FirstOrDefault(o => o.Id == AppState.CurrentOrganizationId);
+        if (currentOrg is not null)
+        {
+            <MudItem xs="12">
+                <MudCard Outlined="true" Class="mb-1">
+                    <MudCardContent Class="pa-3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                            <MudText Typo="Typo.body1">
+                                <strong>Organization:</strong> @currentOrg.Name
+                            </MudText>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    }
+    else
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Warning" Class="mb-1">
+                Please select an organization to view dashboard data.
+            </MudAlert>
+        </MudItem>
+    }
+
+    <MudItem md="12" xs="12">
+        <MudGrid>
+            <MudItem xs="12">
+                <CascadingValue Value="Jobs">
+                    <JobsCard />
+                </CascadingValue>
+            </MudItem>
+        </MudGrid>
+    </MudItem>
+</MudGrid>
+
+@code {
+    protected List<Job> Jobs { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AppState.User is null)
+        {
+            Logger.LogError("User ID is null or empty");
+            return;
+        }
+
+        // No OrganizationChanged subscription — MainLayout's @Body @key re-creates this page per organization.
+        Jobs = await GetJobsAsync(AppState.User);
+
+        RegisterJobsServiceEventHandlers(
+            Handle_JobsService_JobStateChanged,
+            Handle_JobsService_JobsCollectionChanged);
+    }
+
+    public void Dispose()
+    {
+        UnregisterJobsServiceEventHandlers(
+            Handle_JobsService_JobStateChanged,
+            Handle_JobsService_JobsCollectionChanged);
+    }
+
+    #region Private
+
+    private void RegisterJobsServiceEventHandlers(
+        EventHandler<JobStateChangeEventArgs> jobStateChangeHandler,
+        EventHandler jobCollectionChangeHandler)
+    {
+        JobsService.JobStateChanged += jobStateChangeHandler;
+        JobsService.JobCollectionChanged += jobCollectionChangeHandler;
+    }
+
+    public void UnregisterJobsServiceEventHandlers(
+        EventHandler<JobStateChangeEventArgs> jobStateChangeHandler,
+        EventHandler jobCollectionChangeHandler)
+    {
+        JobsService.JobStateChanged -= jobStateChangeHandler;
+        JobsService.JobCollectionChanged -= jobCollectionChangeHandler;
+    }
+
+    private async void Handle_JobsService_JobsCollectionChanged(object? sender, EventArgs args)
+    {
+        // Raised on a background job thread — run the reload and the field write on
+        // the circuit dispatcher, not just the StateHasChanged.
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                Jobs = await GetJobsAsync(AppState.User);
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh jobs after the job collection changed");
+        }
+    }
+
+    private async void Handle_JobsService_JobStateChanged(
+        object? sender,
+        JobStateChangeEventArgs args)
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                Jobs = await GetJobsAsync(AppState.User);
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh jobs after a job state change");
+        }
+    }
+
+    private async Task<List<Job>> GetJobsAsync(User? user)
+    {
+        if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
+        {
+            return [];
+        }
+
+        var jobs = new List<Job>();
+
+        foreach (Job job in await JobsService.GetJobsAsync())
+        {
+            if (job.OrganizationId == AppState.CurrentOrganizationId && job.ListedAsReport)
+            {
+                jobs.Add(job);
+            }
+        }
+
+        return jobs;
+    }
+
+    #endregion
+}

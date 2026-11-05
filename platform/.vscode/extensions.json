@@ -1,0 +1,19 @@
+{
+    "recommendations": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "editorconfig.editorconfig",
+        "dbaeumer.vscode-eslint",
+        "github.copilot-chat",
+        "esbenp.prettier-vscode",
+        "kevin-chatham.aspnetcorerazor-html-css-class-completion",
+        "zbecknell.t4-support",
+        "wayou.vscode-icons-mac",
+        "ms-vscode-remote.remote-wsl",
+        "tomoki1207.pdf",
+        "redhat.vscode-yaml",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "cweijan.dbclient-jdbc",
+        "cweijan.vscode-mysql-client2"
+    ]
+}

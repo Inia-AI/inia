@@ -1,0 +1,102 @@
+@using IniaAi.Common.Interfaces.Services.AgentRuntime
+@using IniaAi.Core.Services.AgentRuntime
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions
+
+@inject IAgentRuntimeEnvironmentProvider EnvironmentProvider
+
+<MudExpansionPanels Outlined="true" Elevation="0" Class="mt-4">
+    <MudExpansionPanel Text="@PANEL_TITLE"
+                       Expanded="@_expanded"
+                       ExpandedChanged="@OnExpandedChanged"
+                       data-testid="agent-added-automatically">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-3">
+            @PANEL_CAPTION
+        </MudText>
+
+        <MudTextField T="string"
+                      Variant="Variant.Outlined"
+                      Label="@ENVIRONMENT_LABEL"
+                      Class="editor-mono-field editor-resolved"
+                      ReadOnly="true"
+                      Sizing="InputSizing.Auto"
+                      Lines="4"
+                      MaxLines="20"
+                      Value="@EnvironmentText()"
+                      data-testid="agent-added-environment" />
+
+        <MudTextField T="string"
+                      Variant="Variant.Outlined"
+                      Label="@RUN_FACTS_LABEL"
+                      Class="editor-mono-field editor-resolved mt-3"
+                      ReadOnly="true"
+                      Sizing="InputSizing.Auto"
+                      Lines="4"
+                      MaxLines="20"
+                      Value="@RunFactsPreview()"
+                      data-testid="agent-added-run-facts" />
+
+        @if (!string.IsNullOrWhiteSpace(FixedInstructions))
+        {
+            <MudTextField T="string"
+                          Variant="Variant.Outlined"
+                          Label="@FixedInstructionsLabel"
+                          Class="editor-mono-field editor-resolved mt-3"
+                          ReadOnly="true"
+                          Sizing="InputSizing.Auto"
+                          Lines="4"
+                          MaxLines="20"
+                          Value="@FixedInstructions"
+                          data-testid="agent-added-fixed-instructions" />
+        }
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    public const string PANEL_TITLE = "Added automatically";
+    public const string PANEL_CAPTION =
+        "The agent is told this on every run: the runtime environment, then the task setup, then the block's instructions. Do not write it into the prompts.";
+    public const string ENVIRONMENT_LABEL = "Runtime environment";
+    public const string RUN_FACTS_LABEL = "Task setup";
+    public const string ENVIRONMENT_NOT_AVAILABLE = "Environment text not available";
+    public const string ENVIRONMENT_LOADING = "Loading the environment text";
+
+    [Parameter, EditorRequired]
+    public IAgentRunProperties Props { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public bool HasOutputSchema { get; set; }
+
+    /// <summary>Fixed text the block puts inside the instructions, ahead of the authored system prompt.</summary>
+    [Parameter]
+    public string? FixedInstructions { get; set; }
+
+    [Parameter]
+    public string? FixedInstructionsLabel { get; set; }
+
+    private bool _expanded;
+    private AgentRuntimeEnvironmentView? _environment;
+
+    private async Task OnExpandedChanged(bool expanded)
+    {
+        _expanded = expanded;
+        if (expanded && _environment is null)
+        {
+            _environment = await EnvironmentProvider.GetAsync();
+        }
+    }
+
+    private string EnvironmentText()
+    {
+        if (_environment is null)
+        {
+            return ENVIRONMENT_LOADING;
+        }
+
+        return _environment.Environment?.Text ?? ENVIRONMENT_NOT_AVAILABLE;
+    }
+
+    private string RunFactsPreview()
+    {
+        return AgentRunFacts.Preview(Props.WorkerSkills, HasOutputSchema) ?? string.Empty;
+    }
+}

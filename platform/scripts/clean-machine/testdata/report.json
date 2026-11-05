@@ -1,0 +1,93 @@
+{
+  "value": [
+    {
+      "id": "79b46c14-f0ba-4e59-92f5-bfa1bbd414cf",
+      "order": 0,
+      "title": "Key figures",
+      "layout": null,
+      "excludeFromWordExport": false,
+      "paragraphs": [
+        {
+          "id": "5ab35370-6d80-4d9f-9d16-4ce5d39a79c6",
+          "kind": "Paragraph",
+          "order": 0,
+          "title": "Key figures",
+          "subtitle": "Key figures for 2025",
+          "confidence": 0,
+          "content": "Revenue: <fact id=\"c0\">EUR 48.6 million</fact>\nNet profit: <fact id=\"c1\">EUR 5.9 million</fact>\nTotal assets: <fact id=\"c2\">EUR 112.4 million</fact>\nEmployees: <fact id=\"c3\">1,284</fact>",
+          "replacementTag": "key_figures",
+          "chartPayload": null,
+          "tablePayload": null,
+          "sources": [],
+          "citations": [
+            {
+              "id": "c0",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "015b91fa-5fd8-4aa8-b99c-f5339ec8677c",
+                  "pageNumber": 2,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 2,
+                  "unverified": false,
+                  "citedText": "Revenue for the year rose to EUR 48.6 million, up from EUR 44.1 million\nin 2024, as volumes on our coastal routes recovered.\n\n"
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c1",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "5d6dcfbf-b8e7-4d58-a7fe-3c8cf9ff6b33",
+                  "pageNumber": 3,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 3,
+                  "unverified": false,
+                  "citedText": "Net profit for 2025 was EUR 5.9 million, compared with EUR 4.7 million\nfor 2024. "
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c2",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "c407cfed-1a3d-4475-b03d-755c3a8286ae",
+                  "pageNumber": 4,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 4,
+                  "unverified": false,
+                  "citedText": "Balance sheet\n\nAt 31 December 2025\n\nTotal assets at the end of 2025 were EUR 112.4 million."
+                }
+              ],
+              "isNumerical": true
+            },
+            {
+              "id": "c3",
+              "sources": [
+                {
+                  "$type": "Document",
+                  "type": "Document",
+                  "pageId": "980e208a-bcdf-46fa-91f0-d72490295458",
+                  "pageNumber": 5,
+                  "documentName": "annual-report.pdf",
+                  "filePageNumber": 5,
+                  "unverified": false,
+                  "citedText": "Our people\n\nAt the end of 2025 the company employed 1,284 people, most of them\ndrivers and depot staff."
+                }
+              ],
+              "isNumerical": true
+            }
+          ],
+          "citedSourcesByBlock": []
+        }
+      ]
+    }
+  ]
+}

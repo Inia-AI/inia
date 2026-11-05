@@ -1,0 +1,124 @@
+﻿@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Common.Extensions
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Spacing="4">
+    <MudCheckBox Label="Use Caching"
+                 Color="Color.Primary"
+                 @bind-Value="@_props.ShouldUseCachingForInputContext"
+                 @bind-Value:after="async () =>  await BlockChanged.InvokeAsync(Block)" />
+
+    @if(Block.RagSettings.Count > 0)
+    {
+        <MudCheckBox Label="Use Page Overviews Instead of Full Text"
+                     Color="Color.Primary"
+                     @bind-Value="@_props.ShouldUseOverviews"
+                     @bind-Value:after="async () =>  await BlockChanged.InvokeAsync(Block)" />
+
+        <MudCheckBox Label="Include Page Images"
+                     Color="Color.Primary"
+                     @bind-Value="@_props.ShouldUsePageImages" />
+    }
+</MudStack>
+
+@if(Block.RagSettings.Count > 0)
+{
+    <MudCheckBox Label="Process Pages in Batches"
+                 Color="Color.Primary"
+                 @bind-Value="@_props.ShouldChunkLargeInputContexts"
+                 @bind-Value:after="async () =>  await BlockChanged.InvokeAsync(Block)" />
+
+    @if (_props.ShouldChunkLargeInputContexts)
+    {
+        <MudGrid Spacing="2" Class="mt-1">
+            <MudItem xs="6" sm="3">
+                <MudSelect T="ChunkingMode"
+                           Label="Chunking Mode"
+                           @bind-Value="@_props.ChunkingMode"
+                           @bind-Value:after="async () =>  await BlockChanged.InvokeAsync(Block)"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="ChunkingMode.FixedPageCount">
+                        Fixed Page Count
+                    </MudSelectItem>
+                    <MudSelectItem Value="ChunkingMode.OptimalCharacters">
+                        Optimal by Characters
+                    </MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            @if (_props.ChunkingMode is ChunkingMode.FixedPageCount)
+            {
+                <MudItem xs="6" sm="3">
+                    <MudNumericField Label="Pages per Batch"
+                                     @bind-Value="@_props.ChunkSize"
+                                     Min="1"
+                                     Max="100"
+                                     HideSpinButtons="true"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="6" sm="3">
+                    <MudNumericField Label="Max Characters"
+                                     @bind-Value="@_props.MaxChunkCharacters"
+                                     Min="1000"
+                                     Max="500000"
+                                     Step="1000"
+                                     HideSpinButtons="true"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="6" sm="3">
+                    <MudCheckBox Label="Preserve Order"
+                                 Color="Color.Primary"
+                                 @bind-Value="@_props.PreservePageOrder"
+                                 @bind-Value:after="async () =>  await BlockChanged.InvokeAsync(Block)" />
+                </MudItem>
+            }
+
+            <MudItem xs="6" sm="3">
+                <MudTextField T="string"
+                            @bind-Value="@_props.ConditionalTagTemplate"
+                            Label="Stop Tag"
+                            Class="editor-mono-field"
+                            Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+    }
+
+    @if(_props.ShouldChunkLargeInputContexts)
+    {
+        <MudText Typo="Typo.caption">
+            @if (_props.ChunkingMode is ChunkingMode.FixedPageCount)
+            {
+                <text>Pages will be processed in batches of @(_props.ChunkSize).</text>
+            }
+            else
+            {
+                <text>Pages will be grouped optimally with up to @(_props.MaxChunkCharacters.ToString("N0")) characters per batch.</text>
+                @if (!_props.PreservePageOrder)
+                {
+                    <text> Pages may be reordered for better packing.</text>
+                }
+            }
+            <text> Use a Stop Tag to end processing early.</text>
+        </MudText>
+    }
+}
+
+@code {
+    private AiQueryProperties _props => Block.Properties as AiQueryProperties
+        ?? throw new InvalidOperationException("Block properties must be of type AiQueryProperties");
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public EventCallback BlockChanged { get; set; }
+}

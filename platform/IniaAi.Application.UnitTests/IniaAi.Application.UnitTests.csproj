@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NSubstitute" />
+        <PackageReference Include="xunit.v3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\IniaAi.Application\IniaAi.Application.csproj" />
+        <ProjectReference Include="..\IniaAi.FileFormats.ContractTests\IniaAi.FileFormats.ContractTests.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.DependencyInjection\IniaAi.Testing.DependencyInjection.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing.Documents\IniaAi.Testing.Documents.csproj" />
+        <ProjectReference Include="..\IniaAi.Testing\IniaAi.Testing.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\IniaAi.WebApi.IntegrationTests\TestResources\WorkflowHandlerFunctionalityTest.workflow.json" Link="TestResources\WorkflowHandlerFunctionalityTest.workflow.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>

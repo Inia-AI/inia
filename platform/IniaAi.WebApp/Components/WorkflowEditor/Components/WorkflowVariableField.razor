@@ -1,0 +1,180 @@
+@using System.Globalization
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.WebApp.Components.Dialogs
+
+@inject ILogger<WorkflowVariableField> Logger
+@inject IDialogService DialogService
+
+@switch (Variable.Type)
+{
+    case WorkflowVariableTypes.String:
+        <MudTextField T="string"
+                      Variant="Variant.Outlined"
+                      Label="@FieldName"
+                      Value="@Value"
+                      ValueChanged="@(value => ValueChanged.InvokeAsync(value ?? string.Empty))" />
+        break;
+
+    case WorkflowVariableTypes.Number:
+        <MudNumericField T="double?"
+                         Variant="Variant.Outlined"
+                         Label="@FieldName"
+                         Value="@NumericValue"
+                         ValueChanged="@(value => ValueChanged.InvokeAsync(value?.ToString(CultureInfo.InvariantCulture) ?? string.Empty))" />
+        break;
+
+    case WorkflowVariableTypes.DateTime:
+        <MudDatePicker Label="@FieldName"
+                       Variant="Variant.Outlined"
+                       Date="@DateValue"
+                       DateChanged="@(date => ValueChanged.InvokeAsync(date?.ToString("yyyy-MM-dd") ?? string.Empty))" />
+        break;
+
+    case WorkflowVariableTypes.List:
+        <MudField Variant="Variant.Outlined" Label="@FieldName">
+            <MudTable T="string"
+                      Class="pa-0"
+                      Dense="true"
+                      Elevation="0"
+                      Items="@SelectedItems">
+                <RowTemplate>
+                    <MudTd Class="px-0" DataLabel="@FieldName">
+                        @context
+                    </MudTd>
+
+                    <MudTd Class="px-0" Style="text-align: right;">
+                        <MudIconButton Size="Size.Small"
+                                       Icon="@Icons.Material.Outlined.Delete"
+                                       Color="Color.Error"
+                                       Class="editor-soft-button"
+                                       aria-label="Remove item"
+                                       OnClick="@(() => RemoveItemAsync(context))" />
+                    </MudTd>
+                </RowTemplate>
+
+                <FooterContent>
+                    <MudTd />
+
+                    <MudTd Style="text-align: right;">
+                        <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                                   Variant="Variant.Text"
+                                   Class="editor-soft-button"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="AddItemAsync">
+                            Add Item
+                        </MudButton>
+                    </MudTd>
+                </FooterContent>
+            </MudTable>
+        </MudField>
+        break;
+
+    case WorkflowVariableTypes.Dropdown:
+        <MudSelect T="string"
+                   Variant="Variant.Outlined"
+                   Label="@FieldName"
+                   Value="@Value"
+                   ValueChanged="@(value => ValueChanged.InvokeAsync(value ?? string.Empty))">
+            @foreach (var option in Variable.Options)
+            {
+                <MudSelectItem Value="@option.Key">@option.Value</MudSelectItem>
+            }
+        </MudSelect>
+        break;
+
+    case WorkflowVariableTypes.MultiSelect:
+        <MudSelect T="string"
+                   Variant="Variant.Outlined"
+                   Label="@FieldName"
+                   MultiSelection="true"
+                   SelectedValues="@SelectedItems"
+                   SelectedValuesChanged="@((IReadOnlyCollection<string> values) => ValueChanged.InvokeAsync(Serialize(values)))">
+            @foreach (var option in Variable.Options)
+            {
+                <MudSelectItem Value="@option.Key">@option.Value</MudSelectItem>
+            }
+        </MudSelect>
+        break;
+}
+
+@code {
+    private const char SEPARATOR = '|';
+
+    [Parameter, EditorRequired]
+    public WorkflowVariable Variable { get; set; } = default!;
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private string FieldName
+    {
+        get
+        {
+            string name = string.IsNullOrEmpty(Variable.DisplayName)
+                ? Variable.ReplacementTag
+                : Variable.DisplayName;
+
+            return name + (Variable.IsRequired ? " *" : " (optional)");
+        }
+    }
+
+    private double? NumericValue =>
+        double.TryParse(Value, NumberStyles.Number, CultureInfo.InvariantCulture, out double parsed)
+            ? parsed
+            : null;
+
+    private DateTime? DateValue =>
+        DateTime.TryParse(Value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsed)
+            ? parsed
+            : null;
+
+    private IReadOnlyCollection<string> SelectedItems => Deserialize(Value);
+
+    private static string[] Deserialize(string? value) =>
+        string.IsNullOrEmpty(value)
+            ? []
+            : value.Split(SEPARATOR, StringSplitOptions.RemoveEmptyEntries);
+
+    private static string Serialize(IEnumerable<string> values) => string.Join(SEPARATOR, values);
+
+    private async Task RemoveItemAsync(string value)
+    {
+        var values = Deserialize(Value).ToList();
+        if (values.Remove(value))
+        {
+            await ValueChanged.InvokeAsync(Serialize(values));
+        }
+    }
+
+    private async Task AddItemAsync()
+    {
+        DialogParameters<AddItemDialog> parameters = [];
+        parameters.Add(x => x.ItemTypeName, Variable.DisplayName);
+
+        var dialog = await DialogService.ShowAsync<AddItemDialog>($"Add {Variable.DisplayName}", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        if (result.Data is not string value)
+        {
+            Logger.LogWarning("Invalid result from add-item dialog.");
+            return;
+        }
+
+        var values = Deserialize(Value).ToList();
+        if (!string.IsNullOrWhiteSpace(value) && !values.Contains(value))
+        {
+            values.Add(value);
+            await ValueChanged.InvokeAsync(Serialize(values));
+        }
+    }
+}

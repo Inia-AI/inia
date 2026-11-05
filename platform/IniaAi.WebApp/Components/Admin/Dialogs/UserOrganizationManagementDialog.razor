@@ -1,0 +1,422 @@
+@using IniaAi.Application.Common.Interfaces.Services
+@using IniaAi.Domain.Entities.UserManagement
+@using IniaAi.Domain.UserData.Interfaces
+
+@inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject IUserSessionRevoker SessionRevoker
+@inject ISnackbar Snackbar
+@inject AppState AppState
+@inject ILogger<UserOrganizationManagementDialog> Logger
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Outlined.Business" />
+            <MudText Typo="Typo.h6">Manage Organizations for @User.GetFullName()</MudText>
+        </MudStack>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStack Spacing="3">
+            <!-- Current Organizations -->
+            <MudCard Outlined="true">
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Current Organizations</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_currentUserOrganizations.Any())
+                    {
+                        <MudStack Spacing="2">
+                            @foreach (var userOrg in _currentUserOrganizations.OrderBy(uo => uo.Organization?.Name))
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Text">
+                                            @userOrg.Organization?.Name
+                                        </MudChip>
+                                        @if (userOrg.IsDefault)
+                                        {
+                                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">
+                                                <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="margin-right: 4px;" />
+                                                Default
+                                            </MudChip>
+                                        }
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                            Joined: @userOrg.JoinedAt.ToString("MMM dd, yyyy")
+                                        </MudText>
+                                    </MudStack>
+
+                                    <MudStack Row="true" Spacing="1">
+                                        @if (CanChange(userOrg) && !userOrg.IsDefault && _currentUserOrganizations.Count > 1)
+                                        {
+                                            <MudButton Size="Size.Small"
+                                                       Variant="Variant.Text"
+                                                       Color="Color.Success"
+                                                       StartIcon="@Icons.Material.Filled.Star"
+                                                       OnClick="() => SetAsDefault(userOrg)">
+                                                Set Default
+                                            </MudButton>
+                                        }
+
+                                        @if (CanChange(userOrg))
+                                        {
+                                            <MudButton Size="Size.Small"
+                                                       Variant="Variant.Text"
+                                                       Color="Color.Error"
+                                                       StartIcon="@Icons.Material.Filled.RemoveCircle"
+                                                       OnClick="() => RemoveFromOrganization(userOrg)">
+                                                Remove
+                                            </MudButton>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                            User is not assigned to any organizations.
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Add to Organization -->
+            <MudCard Outlined="true">
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Add to Organization</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+                        <MudSelect T="string"
+                                   @bind-Value="_selectedOrganizationId"
+                                   Label="Select Organization"
+                                   Variant="Variant.Outlined"
+                                   Dense="true"
+                                   Clearable="true"
+                                   Style="flex: 1;">
+                            @foreach (var org in _availableOrganizations.OrderBy(o => o.Name))
+                            {
+                                <MudSelectItem @key="org.Id" Value="@org.Id">@org.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudCheckBox @bind-Value="_setAsDefaultOnAdd"
+                                     Label="Set as Default"
+                                     Size="Size.Small"
+                                     Dense="true" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddToOrganization"
+                                   Disabled="string.IsNullOrEmpty(_selectedOrganizationId)">
+                            Add
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Summary -->
+            @if (_hasChanges)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body2">
+                            <strong>Changes will be saved when you click Save:</strong>
+                        </MudText>
+                        @foreach (var change in _changesSummary)
+                        {
+                            <MudText Typo="Typo.caption">• @change</MudText>
+                        }
+                    </MudStack>
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="!_hasChanges">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public User User { get; set; } = default!;
+
+    [Parameter]
+    public List<UserOrganization> UserOrganizations { get; set; } = new();
+
+    private List<UserOrganization> _currentUserOrganizations = new();
+    private List<Organization> _availableOrganizations = new();
+    private string? _selectedOrganizationId;
+    private bool _setAsDefaultOnAdd = false;
+    private bool _hasChanges = false;
+    private List<string> _changesSummary = new();
+
+    // Track changes
+    private List<UserOrganization> _toAdd = new();
+    private List<UserOrganization> _toRemove = new();
+    private List<UserOrganization> _toUpdate = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Clone the current user organizations to avoid modifying the original list
+        _currentUserOrganizations = UserOrganizations.Select(uo => new UserOrganization
+        {
+            UserId = uo.UserId,
+            OrganizationId = uo.OrganizationId,
+            IsDefault = uo.IsDefault,
+            IsActive = uo.IsActive,
+            JoinedAt = uo.JoinedAt,
+            LeftAt = uo.LeftAt,
+            Organization = uo.Organization
+        }).ToList();
+
+        // Load all organizations
+        var allOrganizations = (await UserDataUnitOfWork.Organizations.FindAsync(o => o.IsActive)).ToList();
+
+        _availableOrganizations = allOrganizations.Where(org =>
+            AppState.CanActIn(org.Id) && !_currentUserOrganizations.Any(uo => uo.OrganizationId == org.Id)
+        ).ToList();
+    }
+
+    private void AddToOrganization()
+    {
+        if (string.IsNullOrEmpty(_selectedOrganizationId))
+        {
+            return;
+        }
+
+        var organization = _availableOrganizations.FirstOrDefault(o => o.Id == _selectedOrganizationId);
+        if (organization is null)
+        {
+            return;
+        }
+
+        // If this is the first organization or user wants to set as default
+        bool isDefault = _setAsDefaultOnAdd || !_currentUserOrganizations.Any();
+
+        // If setting as default, remove default from others
+        if (isDefault)
+        {
+            foreach (var existingOrg in _currentUserOrganizations.Where(uo => uo.IsDefault))
+            {
+                existingOrg.IsDefault = false;
+                if (!_toUpdate.Any(u => u.UserId == existingOrg.UserId && u.OrganizationId == existingOrg.OrganizationId))
+                {
+                    _toUpdate.Add(existingOrg);
+                }
+            }
+        }
+
+        var newUserOrg = new UserOrganization
+        {
+            UserId = User.Id,
+            OrganizationId = _selectedOrganizationId,
+            IsDefault = isDefault,
+            IsActive = true,
+            JoinedAt = DateTime.UtcNow,
+            Organization = organization
+        };
+
+        _currentUserOrganizations.Add(newUserOrg);
+        _toAdd.Add(newUserOrg);
+
+        // Remove from available organizations
+        _availableOrganizations.Remove(organization);
+
+        // Reset selection
+        _selectedOrganizationId = null;
+        _setAsDefaultOnAdd = false;
+
+        UpdateChangesStatus();
+    }
+
+    // An organization admin changes a user's membership only in the organizations the admin belongs to.
+    private bool CanChange(UserOrganization userOrg)
+    {
+        return AppState.CanActIn(userOrg.OrganizationId);
+    }
+
+    private void RemoveFromOrganization(UserOrganization userOrg)
+    {
+        // Don't allow removing the last organization
+        if (_currentUserOrganizations.Count <= 1)
+        {
+            Snackbar.Add("User must be assigned to at least one organization", Severity.Warning);
+            return;
+        }
+
+        _currentUserOrganizations.Remove(userOrg);
+
+        // If this was added in this session, just remove it from _toAdd
+        var existingAdd = _toAdd.FirstOrDefault(a => a.OrganizationId == userOrg.OrganizationId);
+        if (existingAdd is not null)
+        {
+            _toAdd.Remove(existingAdd);
+        }
+        else
+        {
+            // Mark for removal from database
+            _toRemove.Add(userOrg);
+        }
+
+        // Add back to available organizations
+        if (userOrg.Organization is not null && !_availableOrganizations.Any(o => o.Id == userOrg.OrganizationId))
+        {
+            _availableOrganizations.Add(userOrg.Organization);
+        }
+
+        // If this was the default and there are other organizations, set another as default
+        if (userOrg.IsDefault && _currentUserOrganizations.Any())
+        {
+            var newDefault = _currentUserOrganizations.First();
+            newDefault.IsDefault = true;
+
+            if (!_toUpdate.Any(u => u.UserId == newDefault.UserId && u.OrganizationId == newDefault.OrganizationId))
+            {
+                _toUpdate.Add(newDefault);
+            }
+        }
+
+        UpdateChangesStatus();
+    }
+
+    private void SetAsDefault(UserOrganization userOrg)
+    {
+        // Remove default from all current organizations
+        foreach (var org in _currentUserOrganizations.Where(uo => uo.IsDefault))
+        {
+            org.IsDefault = false;
+            if (!_toUpdate.Any(u => u.UserId == org.UserId && u.OrganizationId == org.OrganizationId))
+            {
+                _toUpdate.Add(org);
+            }
+        }
+
+        // Set this one as default
+        userOrg.IsDefault = true;
+        if (!_toUpdate.Any(u => u.UserId == userOrg.UserId && u.OrganizationId == userOrg.OrganizationId))
+        {
+            _toUpdate.Add(userOrg);
+        }
+
+        UpdateChangesStatus();
+    }
+
+    private void UpdateChangesStatus()
+    {
+        _hasChanges = _toAdd.Any() || _toRemove.Any() || _toUpdate.Any();
+
+        _changesSummary.Clear();
+
+        foreach (var add in _toAdd)
+        {
+            var defaultText = add.IsDefault ? " (as default)" : "";
+            _changesSummary.Add($"Add to {add.Organization?.Name}{defaultText}");
+        }
+
+        foreach (var remove in _toRemove)
+        {
+            _changesSummary.Add($"Remove from {remove.Organization?.Name}");
+        }
+
+        foreach (var update in _toUpdate.Where(u => !_toAdd.Any(a => a.OrganizationId == u.OrganizationId)))
+        {
+            if (update.IsDefault)
+            {
+                _changesSummary.Add($"Set {update.Organization?.Name} as default");
+            }
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            // Add new user-organization relationships
+            foreach (var userOrg in _toAdd)
+            {
+                var entity = new UserOrganization
+                {
+                    UserId = userOrg.UserId,
+                    OrganizationId = userOrg.OrganizationId,
+                    IsDefault = userOrg.IsDefault,
+                    IsActive = userOrg.IsActive,
+                    JoinedAt = userOrg.JoinedAt,
+                    AssignedByUserId = AppState.User?.Id
+                };
+                await UserDataUnitOfWork.Repository<UserOrganization>().AddAsync(entity);
+            }
+
+            // Remove user-organization relationships
+            foreach (var userOrg in _toRemove)
+            {
+                var existing = await UserDataUnitOfWork.Repository<UserOrganization>()
+                    .SingleOrDefaultAsync(uo => uo.UserId == userOrg.UserId && uo.OrganizationId == userOrg.OrganizationId);
+                if (existing is not null)
+                {
+                    UserDataUnitOfWork.Repository<UserOrganization>().Remove(existing);
+                }
+            }
+
+            // Update existing relationships (mainly for default changes)
+            foreach (var userOrg in _toUpdate)
+            {
+                var existing = await UserDataUnitOfWork.Repository<UserOrganization>()
+                    .SingleOrDefaultAsync(uo => uo.UserId == userOrg.UserId && uo.OrganizationId == userOrg.OrganizationId);
+                if (existing is not null)
+                {
+                    existing.IsDefault = userOrg.IsDefault;
+                }
+            }
+
+            // SYNC User.OrganizationId with default UserOrganization
+            // Find the default organization (either newly added, or updated to default)
+            var defaultUserOrg = _currentUserOrganizations.FirstOrDefault(uo => uo.IsDefault);
+            if (defaultUserOrg is not null)
+            {
+                // Update User.OrganizationId to match the default organization
+                var user = await UserDataUnitOfWork.Users.GetByIdAsync(User.Id);
+                if (user is not null && user.OrganizationId != defaultUserOrg.OrganizationId)
+                {
+                    user.OrganizationId = defaultUserOrg.OrganizationId;
+                    // EF Core automatically tracks changes - no need to call Update
+                }
+            }
+
+            await UserDataUnitOfWork.CompleteAsync();
+            if (_toRemove.Count > 0)
+            {
+                await SessionRevoker.RevokeAllAsync(User.Id);
+            }
+
+            Snackbar.Add($"Successfully updated organizations for {User.GetFullName()}", Severity.Success);
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to update organizations for user {UserId}", User.Id);
+            Snackbar.Add("Failed to update organizations. Please try again.", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

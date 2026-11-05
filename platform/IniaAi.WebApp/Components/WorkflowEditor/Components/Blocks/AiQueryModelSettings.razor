@@ -1,0 +1,271 @@
+﻿@using Block = Domain.Entities.Workflows.Blocks.Block
+@using IniaAi.Common
+@using IniaAi.Common.Enums
+@using IniaAi.Common.Extensions
+@using IniaAi.Domain.Core.Interfaces
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Blocks
+@using IniaAi.Domain.Entities.Workflows.Blocks.Properties
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.Configuration.Enums
+@using IniaAi.WebApp.Services
+@using AnthropicModel = IniaAi.Configuration.Enums.Anthropic.AiModel
+
+@inject IOptions<PlatformSettings> PlatformSettingsOptions
+
+<MudNumericField Label="Maximum Response Tokens"
+                 @bind-Value="@_props.MaxTokens"
+                 Min="1"
+                 Max="_maxTokens"
+                 HideSpinButtons="true"
+                 Variant="Variant.Outlined" />
+
+<MudCheckBox Color="Color.Primary" Label="Use Advanced Model"
+             @bind-Value="@_props.ShouldUseAdvancedModel"
+             @bind-Value:after="HandleAdvancedModelChange"
+             Disabled="@_shouldUseModelOverride" />
+
+@* Thinking Mode - Only available for Anthropic models *@
+@if (!_shouldUseModelOverride || _selectedProvider is ModelProvider.Anthropic)
+{
+    AnthropicModel? effectiveModel = GetEffectiveModel();
+    AnthropicModel? adaptiveModel = effectiveModel?.IsAdaptiveThinkingModel() is true ? effectiveModel : null;
+
+    <MudCheckBox Color="Color.Primary" Label="Use Thinking Mode"
+                 @bind-Value="@_props.ShouldUseThinkingMode"
+                 @bind-Value:after="HandleThinkingModeChange"
+                 Disabled="!_props.ShouldUseAdvancedModel && !_shouldUseModelOverride" />
+
+    @if (effectiveModel?.IsThinkingAlwaysOnModel() is true && !_props.ShouldUseThinkingMode)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">
+            This model always thinks; the effort below sets how much.
+        </MudText>
+    }
+
+    @if (_props.ShouldUseThinkingMode)
+    {
+        @if (adaptiveModel is not null)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                This model decides how much thinking each request needs; the thinking budget does not apply.
+            </MudText>
+        }
+        else
+        {
+            <MudNumericField Label="Thinking Budget"
+                             @bind-Value="@_props.ThinkingBudget"
+                             Min="1024"
+                             Max="@(_props.MaxTokens - 1)"
+                             HideSpinButtons="true"
+                             Variant="Variant.Outlined" />
+        }
+    }
+
+    @if (adaptiveModel is AnthropicModel effortModel)
+    {
+        <MudSelect T="ModelEffort?"
+                   @bind-Value="@_props.Effort"
+                   Label="Effort"
+                   HelperText="How eagerly the model spends tokens on thinking, tool use, and output"
+                   Placeholder="@AiQueryModelChoices.DefaultEffortPlaceholder(effortModel)"
+                   Clearable="true"
+                   Variant="Variant.Outlined">
+            @foreach ((ModelEffort effort, string label) in AiQueryModelChoices.EffortOptions(effortModel))
+            {
+                <MudSelectItem T="ModelEffort?" Value="@((ModelEffort?)effort)">
+                    @label
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (AiQueryModelChoices.EffortCapNotice(effortModel, _props.ShouldUseThinkingMode, _props.Effort) is string effortCapNotice)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                @effortCapNotice
+            </MudText>
+        }
+    }
+}
+
+<MudCheckBox T="bool"
+             Color="Color.Primary"
+             Label="Get Citations From Model"
+             Value="@_shouldGetCitationsFromModel"
+             ValueChanged="@HandleCitationsFromModelChange" />
+
+<MudCheckBox Color="Color.Primary" Label="Override Model Selection"
+             @bind-Value="@_shouldUseModelOverride"
+             @bind-Value:after="() => HandleModelIdOverrideChange(forceReset: true)" />
+
+@if (_shouldUseModelOverride)
+{
+    <MudSelect T="ModelProvider"
+               @bind-Value="@_selectedProvider"
+               @bind-Value:after="OnProviderChanged"
+               Label="Provider"
+               HelperText="Choose the model provider"
+               Disabled="!_shouldUseModelOverride"
+               Variant="Variant.Outlined">
+        <MudSelectItem Value="ModelProvider.Anthropic">Anthropic</MudSelectItem>
+    </MudSelect>
+
+    <MudSelect T="string"
+               @bind-Value="@_props.ModelIdOverride"
+               Label="Model"
+               HelperText="Select a model (overrides default)"
+               ToStringFunc="@AiQueryModelChoices.Describe"
+               Disabled="!_shouldUseModelOverride"
+               Variant="Variant.Outlined"
+               Clearable="true">
+        @if (_selectedProvider is ModelProvider.Anthropic)
+        {
+            @foreach (AnthropicModel model in AiQueryModelChoices.Selectable)
+            {
+                <MudSelectItem Value="@model.GetEnumMember()">
+                    @model.GetDescription()
+                </MudSelectItem>
+            }
+        }
+    </MudSelect>
+}
+
+@code {
+    private PlatformSettings _platformSettings => PlatformSettingsOptions.Value;
+
+    private AiQueryProperties _props => Block.Properties as AiQueryProperties
+        ?? throw new InvalidOperationException("Block properties must be of type AiQueryProperties");
+
+    private bool _shouldGetCitationsFromModel => _props.ShouldGetCitationsFromModel;
+
+    private bool _shouldUseModelOverride = false;
+
+    private ModelProvider _selectedProvider = ModelProvider.Anthropic;
+
+    private int _maxTokens => _props.ShouldUseThinkingMode
+        ? 128000
+        : string.IsNullOrWhiteSpace(_props.ModelIdOverride)
+            ? _props.ShouldUseAdvancedModel
+                ? _platformSettings.Anthropic.AdvancedModel.GetMaxTokens() ?? 32000
+                : _platformSettings.Anthropic.BasicModel.GetMaxTokens() ?? 32000
+            : GetModel()?.GetMaxTokens() ?? 8192;
+
+    [Parameter, EditorRequired]
+    public Block Block { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback BlockChangedCallback { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        _shouldUseModelOverride = !string.IsNullOrWhiteSpace(_props.ModelIdOverride);
+
+        HandleModelIdOverrideChange(forceReset: false);
+    }
+
+    private AnthropicModel? GetModel()
+    {
+        if (string.IsNullOrWhiteSpace(_props.ModelIdOverride))
+        {
+            return null;
+        }
+
+        return Utils.TryParseEnumFromEnumMemberAttribute(_props.ModelIdOverride, out AnthropicModel model)
+            ? model
+            : null;
+    }
+
+    private AnthropicModel? GetEffectiveModel()
+    {
+        if (_shouldUseModelOverride && !string.IsNullOrWhiteSpace(_props.ModelIdOverride))
+        {
+            return GetModel();
+        }
+
+        return _props.ShouldUseAdvancedModel
+            ? _platformSettings.Anthropic.AdvancedModel
+            : _platformSettings.Anthropic.BasicModel;
+    }
+
+    private void OnProviderChanged()
+    {
+        // Reset model selection when provider changes
+        _props.ModelIdOverride = null;
+
+        // Disable thinking mode for non-Anthropic providers
+        if (_selectedProvider is not ModelProvider.Anthropic)
+        {
+            _props.ShouldUseThinkingMode = false;
+        }
+    }
+
+    private void HandleAdvancedModelChange()
+    {
+        if (_props.ShouldUseAdvancedModel)
+        {
+            return;
+        }
+
+        _props.ShouldUseThinkingMode = false;
+
+        if (_props.MaxTokens > _maxTokens)
+        {
+            _props.MaxTokens = _maxTokens;
+        }
+    }
+
+    private void HandleThinkingModeChange()
+    {
+        if (_props.ShouldUseThinkingMode)
+        {
+            if (_props.ThinkingBudget > _props.MaxTokens - 1)
+            {
+                _props.ThinkingBudget = _props.MaxTokens - 1;
+            }
+
+            return;
+        }
+
+        if (_props.MaxTokens > _maxTokens)
+        {
+            _props.MaxTokens = _maxTokens;
+        }
+    }
+
+    private void HandleModelIdOverrideChange(bool forceReset)
+    {
+        if (_shouldUseModelOverride)
+        {
+            // When model override is enabled, we don't change any settings
+            // The user can configure them at their own risk
+            return;
+        }
+
+        if (forceReset)
+        {
+            // When model override is disabled, reset settings to defaults
+            _selectedProvider = ModelProvider.Anthropic;
+            _props.ModelIdOverride = null;
+            _props.ShouldUseAdvancedModel = true;
+            _props.ShouldUseThinkingMode = false;
+
+            if (_props.MaxTokens > _maxTokens)
+            {
+                _props.MaxTokens = _maxTokens;
+            }
+
+            _props.ThinkingBudget = 1024;
+            _props.Effort = null;
+        }
+    }
+
+    private async Task HandleCitationsFromModelChange(bool value)
+    {
+        _props.ShouldGetCitationsFromModel = value;
+
+        await BlockChangedCallback.InvokeAsync();
+    }
+}

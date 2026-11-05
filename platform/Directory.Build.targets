@@ -1,0 +1,28 @@
+<Project>
+    <!-- In a solution run every test project starts at the same moment, and the default report name
+         (user, machine and start time) let one project's report overwrite another's. -->
+    <PropertyGroup Condition="'$(IsTestProject)' == 'true' and '$(XunitTrxReport)' == 'true'">
+        <TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --report-xunit-trx --report-xunit-trx-filename $(MSBuildProjectName).trx</TestingPlatformCommandLineArguments>
+    </PropertyGroup>
+
+    <Target Name="AddTestTimeCeiling" BeforeTargets="GetAssemblyAttributes" Condition="'$(IsTestProject)' == 'true'">
+        <ItemGroup>
+            <AssemblyAttribute Include="IniaAi.Testing.XunitAttributes.TestTimeCeilingAttribute"
+                Condition="'@(ProjectReference->WithMetadataValue('Filename', 'IniaAi.Testing'))' != ''" />
+        </ItemGroup>
+    </Target>
+
+    <!-- SkiaSharp.NativeAssets.Win32 ships 80 MB of native debug symbols per Windows architecture, which the build would copy into every app and test project. Nothing here debugs native code. -->
+    <Target Name="DropNativePackageSymbols" AfterTargets="ResolvePackageAssets">
+        <ItemGroup>
+            <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)" Condition="'%(Extension)' == '.pdb'" />
+            <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Extension)' == '.pdb'" />
+        </ItemGroup>
+    </Target>
+    <!-- The Corvus JSON Schema packages bring analyzers that advise on their own JSON API, and they reach every project that references IniaAi.Domain, where they flag System.Text.Json code that never uses Corvus. -->
+    <Target Name="DropCorvusAnalyzers" BeforeTargets="CoreCompile">
+        <ItemGroup>
+            <Analyzer Remove="@(Analyzer)" Condition="$([System.String]::Copy('%(Analyzer.Filename)').StartsWith('Corvus.'))" />
+        </ItemGroup>
+    </Target>
+</Project>
