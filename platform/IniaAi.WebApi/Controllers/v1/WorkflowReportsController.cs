@@ -158,6 +158,7 @@ public sealed class WorkflowReportsController : ApiController
     /// <response code="404">Workflow report elements not found.</response>
     /// <response code="500">Server error occurred while processing the request.</response>
     [HttpGet("{id}/elements")]
+    [ReportContent]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ListResponse<ReportSectionDto>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -199,6 +200,7 @@ public sealed class WorkflowReportsController : ApiController
     /// <response code="403">Forbidden request.</response>
     /// <response code="500">Server error occurred while processing the request.</response>
     [HttpGet("{id}/data")]
+    [ReportContent]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ListResponse<ReportDataOutputDto>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -610,6 +612,7 @@ public sealed class WorkflowReportsController : ApiController
     /// <response code="404">Not found. No workflow output was found for the specified ID, or it belongs to another organization.</response>
     /// <response code="500">Internal server error. An unexpected error occurred during export.</response>
     [HttpGet("{id}/export/{format}")]
+    [ReportContent]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(List<Error>))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

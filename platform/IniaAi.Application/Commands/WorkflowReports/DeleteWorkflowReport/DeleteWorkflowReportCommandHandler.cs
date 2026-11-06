@@ -48,7 +48,7 @@ public class DeleteWorkflowReportCommandHandler : IRequestHandler<DeleteWorkflow
             return Error.NotFound(description: "Workflow Report not found.");
         }
 
-        if (workflowExecution.JobId is not null && (workflowExecution.WorkflowState is WorkflowState.Undefined or WorkflowState.Running))
+        if (workflowExecution.JobId is not null && WorkflowExecution.IsActiveState(workflowExecution.WorkflowState))
         {
             _logger.LogWarning("Cancelling JobId for WorkflowExecution with ID: {Id}", LogSanitizer.ForLog(request.Id));
             _jobsService.CancelJob(workflowExecution.JobId);

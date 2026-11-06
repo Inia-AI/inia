@@ -4,6 +4,7 @@ import { fullFileName } from '@/lib/fileName'
 import { WorkflowElement } from '@/components/organisms'
 import { WorkflowCredits, FilePreviewDialog } from '@/components/molecules'
 import API from '@/api'
+import { refusalDetail } from '@/api/base/errors'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import IniaIcon from '@/components/atoms/IniaIcon/IniaIcon.vue'
@@ -73,6 +74,7 @@ const {
   data: outputData,
   isLoading: isLoadingOutput,
   isError: isErrorOutput,
+  error: outputError,
   refetch: refetchOutput,
 } = API.WorkflowReports.useGetWorkflowReportSections(id)
 const { data: dataOutputData, refetch: refetchDataOutputs } =
@@ -450,6 +452,8 @@ const isError = computed(
   () => isErrorOutput.value || isErrorExecution.value,
 )
 
+const contentRefusal = computed(() => refusalDetail(outputError.value))
+
 const gridStyles = computed(() => gridContainerClass(activeSection.value?.layout))
 
 const isGridLayout = computed(() => !!gridStyles.value)
@@ -598,8 +602,14 @@ const onReRun = async () => {
 
     <div v-else-if="isError" class="error-container">
       <div class="error-message">
-        <h1>{{ $t('page.workflowDetails.loadError') }}</h1>
-        <p>{{ $t('page.workflowDetails.loadErrorHint') }}</p>
+        <template v-if="contentRefusal">
+          <h1>{{ $t('page.workflowDetails.contentRefused') }}</h1>
+          <p data-testid="report-content-refusal">{{ contentRefusal }}</p>
+        </template>
+        <template v-else>
+          <h1>{{ $t('page.workflowDetails.loadError') }}</h1>
+          <p>{{ $t('page.workflowDetails.loadErrorHint') }}</p>
+        </template>
         <Button variant="outline" as-child>
           <RouterLink :to="{ name: 'WorkflowReports' }">
             {{ $t('page.workflowDetails.backToReports') }}

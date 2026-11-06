@@ -2227,6 +2227,8 @@ namespace IniaAi.Migrations.Mssql.UserData
 
                     b.HasIndex("OrganizationId", "Status");
 
+                    b.HasIndex("Status", "OrganizationId");
+
                     b.ToTable("CreditEntries", "UserData");
                 });
 
@@ -4859,6 +4861,8 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.HasIndex("IdempotencyKey", "OrganizationId")
                         .IsUnique()
                         .HasFilter("[IdempotencyKey] IS NOT NULL AND [OrganizationId] IS NOT NULL");
+
+                    b.HasIndex("OrganizationId", "WorkflowState", "CompletedAt");
 
                     b.ToTable("WorkflowExecutions", "UserData");
                 });

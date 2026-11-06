@@ -22,6 +22,7 @@ namespace IniaAi.WebApi.Controllers.v1;
 /// </summary>
 [Route("api/v{version:apiVersion}/workflow-executions/{runId}/graph")]
 [RequiresCapability(OrganizationCapabilities.EXPLORE)]
+[ReportContent("runId")]
 public sealed class WorkflowExecutionsGraphController : ApiController
 {
     private const string RUN_NOT_FOUND = "Workflow execution not found.";

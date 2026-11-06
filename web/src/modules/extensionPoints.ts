@@ -75,7 +75,7 @@ export const extensionPoints = {
   capabilitiesVary: [] as (() => boolean)[],
   /** Pieces under a report type's name in the new report flow; each gets the type as `workflow`. */
   reportTypeDetails: [] as Component[],
-  /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow`. */
+  /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow`, and may emit `holds` with a reason that keeps Submit off, or null to release it. */
   reviewDetails: [] as Component[],
 }
 

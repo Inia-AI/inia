@@ -5,6 +5,7 @@
 
 @inject IUserDataUnitOfWork UserDataUnitOfWork
 @inject ILookupNormalizer Normalizer
+@inject AppState AppState
 
 <MudDialog DefaultFocus="DefaultFocus.FirstChild">
     <DialogContent>
@@ -97,8 +98,10 @@
 
     private async Task LoadUserOrganizations()
     {
-        var userOrgs = await UserDataUnitOfWork.Repository<UserOrganization>()
-            .FindAsync(uo => uo.UserId == User.Id && uo.IsActive);
+        var userOrgs = (await UserDataUnitOfWork.Repository<UserOrganization>()
+            .FindAsync(uo => uo.UserId == User.Id && uo.IsActive))
+            .Where(uo => AppState.CanActIn(uo.OrganizationId))
+            .ToList();
 
         // Load organizations for each UserOrganization
         foreach (var userOrg in userOrgs)

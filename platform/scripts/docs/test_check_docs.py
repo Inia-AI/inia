@@ -32,6 +32,10 @@ class CheckDocsTests(unittest.TestCase):
             ["README.md: docs/guide.md has no heading for the anchor #run-it"],
             self.page("[x](docs/guide.md#run-it)\n"))
 
+    def test_an_html_anchor_is_a_place_a_link_can_reach(self):
+        (self.tree / "docs" / "blocks.md").write_text('# Blocks\n\n<a id="agent-output-files"></a>\n', encoding="utf-8")
+        self.assertEqual([], self.page("[x](docs/blocks.md#agent-output-files)\n"))
+
     def test_an_anchor_on_the_same_page_must_name_one_of_its_headings(self):
         self.assertEqual(
             ["README.md: README.md has no heading for the anchor #later"],

@@ -1,4 +1,5 @@
 ﻿using ErrorOr;
+using IniaAi.Application.Common.Capabilities;
 using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Domain.Entities.Tools;
 using IniaAi.Domain.Entities.UserManagement;
@@ -70,11 +71,23 @@ public class AppState : IDisposable
 
     /// <summary>
     /// Whether the signed-in user may act in <paramref name="organizationId"/>: a super admin in any
-    /// organization, anyone else in the organizations they belong to.
+    /// organization not closed to staff, anyone else in the organizations they belong to that are not
+    /// closed to staff.
     /// </summary>
     public bool CanActIn(string organizationId)
     {
-        return IsSuperAdmin || UserOrganizations.Any(o => o.Id == organizationId);
+        return !_closedOrganizationIds.Contains(organizationId) && (IsSuperAdmin || UserOrganizations.Any(o => o.Id == organizationId));
+    }
+
+    /// <summary>
+    /// The organizations closed to staff, read now, so a customer who signed up after this sign-in
+    /// counts. A page that lists every organization leaves these out. The admin app's pages act across
+    /// organizations, so a support grant, which lets one person read one account, opens none of them here.
+    /// </summary>
+    public async Task<IReadOnlySet<string>> ClosedOrganizationsAsync()
+    {
+        _closedOrganizationIds = await ReadClosedOrganizationsAsync();
+        return _closedOrganizationIds;
     }
 
     /// <summary>
@@ -92,6 +105,10 @@ public class AppState : IDisposable
     private readonly NavigationManager _navigation;
 
     private readonly IDbContextFactory<UserDataDbContext> _userDataDbContextFactory;
+
+    private readonly IServiceScopeFactory _scopes;
+
+    private IReadOnlySet<string> _closedOrganizationIds = new HashSet<string>();
 
     /// <summary>
     /// Lazy cache for organization-scoped ConversionTypes. Shared across all components
@@ -114,6 +131,8 @@ public class AppState : IDisposable
         _authenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChangedAsync;
 
         _logger = logger;
+
+        _scopes = serviceProvider.GetRequiredService<IServiceScopeFactory>();
 
         _jobsService = serviceProvider.GetRequiredService<IJobsService>();
 
@@ -194,6 +213,15 @@ public class AppState : IDisposable
         }
     }
 
+    private async Task<IReadOnlySet<string>> ReadClosedOrganizationsAsync()
+    {
+        // Its own scope: the circuit's shared context may be busy with a page's query.
+        await using AsyncServiceScope scope = _scopes.CreateAsyncScope();
+        return scope.ServiceProvider.GetRequiredService<IOrganizationsClosedToStaff>().ClosedToAllStaff() is { } closed
+            ? (await closed.ToListAsync()).ToHashSet()
+            : new HashSet<string>();
+    }
+
     private async Task UpdateAuthenticationStateAsync()
     {
         AuthenticationState authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
@@ -206,6 +234,7 @@ public class AppState : IDisposable
         IsSuperAdmin = false;
         IsTrustedEditor = false;
         UserOrganizations.Clear();
+        _closedOrganizationIds = new HashSet<string>();
         CurrentOrganizationId = null;
         _conversionTypesLazy = null;
 
@@ -233,6 +262,9 @@ public class AppState : IDisposable
                     .Include(uo => uo.Organization)
                     .OrderBy(uo => uo.Organization.Name)
                     .ToListAsync();
+
+                _closedOrganizationIds = await ReadClosedOrganizationsAsync();
+                _ = userOrganizations.RemoveAll(membership => _closedOrganizationIds.Contains(membership.OrganizationId));
 
                 UserOrganizations = [.. userOrganizations.Select(uo => uo.Organization)];
 

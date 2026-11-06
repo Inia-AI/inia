@@ -6,10 +6,10 @@ describe('problemDetailsMessage', () => {
     expect(
       problemDetailsMessage({
         title: 'Not included',
-        detail: 'Your account has no active subscription, so new reports cannot start. Subscribe to run reports.',
+        detail: 'Uploads are turned off for this account, so new files cannot be added.',
         capability: 'upload',
       }),
-    ).toBe('Your account has no active subscription, so new reports cannot start. Subscribe to run reports.')
+    ).toBe('Uploads are turned off for this account, so new files cannot be added.')
   })
 
   it('keeps a specific title for any other refusal', () => {

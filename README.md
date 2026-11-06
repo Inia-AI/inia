@@ -55,14 +55,14 @@ put a TLS proxy in front of it, and set `INIA_BIND_ADDRESS` in `.env`.
   the settings an Ubuntu host needs for the Agent block.
 - [Optional keys](platform/README.md#optional-keys): the keys that turn on embeddings, web search
   and exchange rates.
-- [The Docker build and the one-command stack](docs/docker.md): the images, the services
-  and how secrets reach them.
+- [The Docker build and the one-command stack](docs/getting-started/docker-stack.md): the images,
+  the services and how secrets reach them.
 
 ## Documentation
 
-- [Quickstart](docs/quickstart.md): from a clone to a report with cited figures.
-- [All the docs](docs/README.md): the overview, the architecture, security, and how to add a block
-  type.
+- [Quickstart](docs/getting-started/quickstart.md): from a clone to a report with cited figures.
+- [All the docs](docs/index.md): the overview, the architecture, security, and how to add a block
+  type. [docs/llms.txt](docs/llms.txt) lists every page with what it holds and when to read it.
 - [The Vue app](web/README.md) and [the agent runtime](agent-runtime/README.md).
 - [Contributing](CONTRIBUTING.md), the [code of conduct](CODE_OF_CONDUCT.md) and
   [reporting a vulnerability](SECURITY.md).

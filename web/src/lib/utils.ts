@@ -301,8 +301,8 @@ export const hasMultipleTenants = (): boolean => {
 }
 
 /**
- * Get CSS class for observation status based on error/warning messages. A hedge fund
- * observation says whether its open warning needs review; any other reads its warning.
+ * Get CSS class for observation status based on error/warning messages. An observation
+ * with `warningNeedsReview` uses it; any other reads its warning.
  */
 export const getObservationStatusClass = (obs: {
   errorMessage: string | null

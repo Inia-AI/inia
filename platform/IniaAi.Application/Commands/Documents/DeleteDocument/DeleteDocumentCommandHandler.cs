@@ -59,6 +59,15 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
             return DocumentErrorFactory.NotFound();
         }
 
+        if (request.OwnOnly && document.UserId != request.UserId)
+        {
+            _logger.LogWarning(
+                "User {UserId} attempted to delete document {DocumentId}, which another user uploaded",
+                request.UserId,
+                document.Id);
+            return DocumentErrorFactory.NotFound();
+        }
+
         FileMetadata? fileMetadata = document.FileMetadata;
         string? storageProvider = fileMetadata?.StorageProvider.ToString();
         string? storagePath = fileMetadata?.ExternalStoragePath;

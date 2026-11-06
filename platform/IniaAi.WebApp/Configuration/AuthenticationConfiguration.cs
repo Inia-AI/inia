@@ -76,7 +76,7 @@ public static class AuthenticationConfiguration
         })
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<UserDataDbContext>()
-            .AddSignInManager()
+            .AddSignInManager<AdminAppSignInManager>()
             .AddDefaultTokenProviders();
 
         return services;

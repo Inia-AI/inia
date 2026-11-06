@@ -5,7 +5,6 @@ using IniaAi.Configuration;
 using IniaAi.Configuration.Storage;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.UserManagement;
-using IniaAi.Domain.Specifications.Documents;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.WebApp.Attributes;
 using IniaAi.WebApp.Services;
@@ -109,13 +108,8 @@ public class FileDownloadController : ControllerBase
         try
         {
             string input = fileName.Trim();
-            string lower = input.ToLowerInvariant();
-            string lowerNoExtension = Path.GetFileNameWithoutExtension(lower);
-
             IReadOnlyList<string>? readable = await _callerOrganizations.ReadableAsync(HttpContext);
-
-            FileMetadata? fileMetadata = await _userDataUnitOfWork.FileMetadata.GetFirstOrDefaultAsync(new NewestFileMetadataByNameSpec(lower, readable))
-                ?? await _userDataUnitOfWork.FileMetadata.GetFirstOrDefaultAsync(new NewestFileMetadataByNameSpec(lowerNoExtension, readable));
+            FileMetadata? fileMetadata = await FileMetadataByName.NewestAsync(_userDataUnitOfWork, fileName, readable);
 
             if (fileMetadata is null)
             {

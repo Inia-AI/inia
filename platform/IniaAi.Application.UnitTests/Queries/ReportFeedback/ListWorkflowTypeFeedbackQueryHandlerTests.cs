@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Capabilities;
 using ErrorOr;
 using IniaAi.Application.Common.Services;
 using IniaAi.Application.Queries.ReportFeedback;
@@ -33,7 +34,7 @@ public class ListWorkflowTypeFeedbackQueryHandlerTests : IDisposable
         _context = _serviceProvider.GetRequiredService<UserDataDbContext>();
 
         IUserDataUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
-        _handler = new ListWorkflowTypeFeedbackQueryHandler(unitOfWork, new UserDisplayNameResolver(unitOfWork));
+        _handler = new ListWorkflowTypeFeedbackQueryHandler(unitOfWork, new UserDisplayNameResolver(unitOfWork), new NoOrganizationsClosedToStaff());
     }
 
     [Fact]
@@ -137,6 +138,30 @@ public class ListWorkflowTypeFeedbackQueryHandlerTests : IDisposable
         Assert.False(result.IsError);
         Assert.Empty(result.Value.Items);
         Assert.False(result.Value.HasMore);
+    }
+
+    [Fact]
+    public async Task Handle_LeavesOutTheOrganizationsClosedToTheCaller()
+    {
+        await SeedItemAsync(ORG_A, WORKFLOW_TYPE_ID, "open org", DateTime.UtcNow);
+        await SeedItemAsync(ORG_B, WORKFLOW_TYPE_ID, "closed org", DateTime.UtcNow);
+        IUserDataUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
+        var handler = new ListWorkflowTypeFeedbackQueryHandler(unitOfWork, new UserDisplayNameResolver(unitOfWork), new ClosedOrganization(_context, ORG_B));
+
+        ErrorOr<ReportFeedbackPageDto> result = await handler.Handle(
+            new ListWorkflowTypeFeedbackQuery(SUPER_ADMIN_ORG, "super-admin", WORKFLOW_TYPE_ID, CallerIsSuperAdmin: true),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(ORG_A, Assert.Single(result.Value.Items).OrganizationId);
+    }
+
+    /// <summary>Closes one organization, as a query on the same context, the way a module's rule composes into the read.</summary>
+    private sealed class ClosedOrganization(UserDataDbContext context, string organizationId) : IOrganizationsClosedToStaff
+    {
+        public IQueryable<string>? ClosedTo(string? userId)
+        {
+            return context.Set<ReportFeedbackItem>().Where(item => item.OrganizationId == organizationId).Select(item => item.OrganizationId);
+        }
     }
 
     private async Task SeedItemAsync(

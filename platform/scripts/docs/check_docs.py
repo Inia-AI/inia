@@ -4,7 +4,8 @@ every Markdown page under docs/.
 Usage:
   python3 scripts/docs/check_docs.py [tree]
 
-- A relative link reaches a file or folder of the tree, and its #anchor a heading of its page.
+- A relative link reaches a file or folder of the tree, and its #anchor a heading of its page or an
+  HTML anchor such as <a id="name">.
 - An absolute link goes to a host on ALLOWED_HOSTS, so no page sends a reader to a host only some
   readers can open. Add a public host to the list when a page needs it.
 - On a page under docs/, each repository path named in backticks exists in the tree. A path counts
@@ -23,10 +24,38 @@ import urllib.parse
 
 TOP_PAGES = ["README.md", "CONTRIBUTING.md", "SECURITY.md"]
 DOCS = "docs"
-ALLOWED_HOSTS = {"github.com", "dotnet.microsoft.com"}
+ALLOWED_HOSTS = {
+    "ai.azure.com",
+    "atlassian.design",
+    "bunit.dev",
+    "c4model.com",
+    "datatracker.ietf.org",
+    "design-system.service.gov.uk",
+    "design.gitlab.com",
+    "developers.google.com",
+    "docs.aws.amazon.com",
+    "dotnet.microsoft.com",
+    "echarts.apache.org",
+    "exa.ai",
+    "github.com",
+    "gitlab.com",
+    "learn.microsoft.com",
+    "platform.claude.com",
+    "privacy.claude.com",
+    "reka-ui.com",
+    "tiptap.dev",
+    "vitest.dev",
+    "vue-i18n.intlify.dev",
+    "wundergraph.com",
+    "www.docker.com",
+    "www.nngroup.com",
+    "www.rfc-editor.org",
+    "zod.dev",
+}
 FENCE = re.compile(r"^(```|~~~).*?^\1[ \t]*$", re.M | re.S)
 LINK = re.compile(r"\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)|href=\"([^\"]+)\"")
 HEADING = re.compile(r"^#{1,6}[ \t]+(.+?)[ \t#]*$", re.M)
+HTML_ANCHOR = re.compile(r"<a\s+(?:id|name)=\"([^\"]+)\"")
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
 PATH = re.compile(r"[\w.-]+(?:/[\w.-]+)+/?")
 
@@ -49,9 +78,10 @@ def anchor(heading):
 
 @functools.cache
 def anchors(page):
+    text = without_code_blocks(page.read_text(encoding="utf-8"))
     seen = {}
-    result = set()
-    for heading in HEADING.findall(without_code_blocks(page.read_text(encoding="utf-8"))):
+    result = set(HTML_ANCHOR.findall(text))
+    for heading in HEADING.findall(text):
         slug = anchor(heading)
         count = seen.get(slug, 0)
         seen[slug] = count + 1

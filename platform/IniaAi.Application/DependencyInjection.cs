@@ -3,6 +3,7 @@ using IniaAi.Application.Commands.WorkflowExecutions.Shared;
 using IniaAi.Application.Commands.WorkflowExecutions.StartWorkflowExecution;
 using IniaAi.Application.Commands.Workflows.SaveWorkflow;
 using IniaAi.Application.Common.Capabilities;
+using IniaAi.Application.Common.Reports;
 using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.DailyAllowances;
 using IniaAi.Application.Common.DataManagement;
@@ -88,6 +89,8 @@ public static class DependencyInjection
         services.TryAddSingleton<BuiltInCounterpartyTypes>();
         services.TryAddSingleton<ModuleWorkflowTypes>();
         services.TryAddSingleton<IOrganizationCapabilities, EveryCapability>();
+        services.TryAddSingleton<IReportContentRule, EveryReportContent>();
+        services.TryAddSingleton<IOrganizationsClosedToStaff, NoOrganizationsClosedToStaff>();
         services.TryAddSingleton<IDailyAllowance, NoDailyLimit>();
         services.TryAddSingleton<IUploadLimits, NoUploadLimits>();
         services.TryAddSingleton<IWorkflowCreditCost, NoCreditCost>();

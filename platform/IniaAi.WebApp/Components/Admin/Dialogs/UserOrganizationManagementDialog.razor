@@ -187,7 +187,8 @@
         }).ToList();
 
         // Load all organizations
-        var allOrganizations = (await UserDataUnitOfWork.Organizations.FindAsync(o => o.IsActive)).ToList();
+        IReadOnlySet<string> closed = await AppState.ClosedOrganizationsAsync();
+        var allOrganizations = (await UserDataUnitOfWork.Organizations.FindAsync(o => o.IsActive)).Where(o => !closed.Contains(o.Id)).ToList();
 
         _availableOrganizations = allOrganizations.Where(org =>
             AppState.CanActIn(org.Id) && !_currentUserOrganizations.Any(uo => uo.OrganizationId == org.Id)

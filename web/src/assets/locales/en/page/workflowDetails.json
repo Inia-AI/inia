@@ -82,6 +82,7 @@
   "loading": "Loading...",
   "loadError": "This report could not be loaded",
   "loadErrorHint": "It may have been deleted, or the link is out of date.",
+  "contentRefused": "Report not available",
   "backToReports": "Back to reports",
   "subTitle": "Asset Managers",
   "notInExports": "Not in exports",

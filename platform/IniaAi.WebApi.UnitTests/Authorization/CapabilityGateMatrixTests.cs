@@ -67,6 +67,17 @@ public class CapabilityGateMatrixTests
         Assert.Empty(CapabilityGates.Of(controller, methodName));
     }
 
+    [Theory]
+    [InlineData(nameof(DocumentsController.DeleteDocument))]
+    [InlineData(nameof(DocumentsController.BulkDeleteDocuments))]
+    public void DocumentDeletion_LetsStaffThrough_AndAnyoneElseOnlyWithDeleteOwnDocuments(string methodName)
+    {
+        StaffOrCapabilityAttribute gate = ControllerMethods.Get(typeof(DocumentsController), methodName).GetCustomAttribute<StaffOrCapabilityAttribute>()!;
+
+        Assert.Equal(Domain.Entities.UserManagement.Roles.ADMIN_AND_OPERATOR_ROLES, gate.StaffRoles);
+        Assert.Equal(OrganizationCapabilities.DELETE_OWN_DOCUMENTS, gate.Capability);
+    }
+
     [Fact]
     public void EveryGate_NamesALaunchCapability()
     {

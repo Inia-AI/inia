@@ -1,5 +1,7 @@
+@using IniaAi.Application.Common.Capabilities
 @using IniaAi.Domain.Core.Interfaces
 @using IniaAi.Domain.UserData.Interfaces
+@using IniaAi.Domain.Entities.WorkflowExecutions
 @using IniaAi.Domain.Entities.Workflows
 @using IniaAi.Domain.Entities.Workflows.Enums
 @using IniaAi.WebApp.Components.UserWorkflows.Common
@@ -22,6 +24,7 @@
 @inject NavigationManager Navigation
 @inject ILogger<Workflows> Logger
 @inject AppState AppState
+@inject IOrganizationsClosedToStaff ClosedToStaff
 @inject IJSRuntime JsRuntime
 
 <PageTitle>Inia AI - @AppState.GetName(AppState.CurrentRoute)</PageTitle>
@@ -116,15 +119,21 @@
     {
         try
         {
-            var workflows = await UserDataUnitOfWork.Workflows.GetAllAsync();
-            _workflows = workflows.OrderByDescending(w => w.CreatedAt).ToList();
-            _outcomes = await LoadExecutionOutcomesAsync();
+            IQueryable<string>? closed = ClosedToStaff.ClosedToAllStaff();
+            IQueryable<Workflow> workflows = UserDataUnitOfWork.Workflows.GetAll();
+            if (closed is not null)
+            {
+                workflows = workflows.Where(w => w.OrganizationId == null || !closed.Contains(w.OrganizationId));
+            }
+
+            _workflows = await workflows.OrderByDescending(w => w.CreatedAt).ToListAsync();
+            _outcomes = await LoadExecutionOutcomesAsync(closed);
 
             foreach (var workflow in _workflows)
             {
                 workflow.WorkflowType = _workflowTypes
                     .FirstOrDefault(wt => wt.Id == workflow.WorkflowTypeId);
-        }
+            }
 
             // Initialize filtered workflows with all workflows
             FilterWorkflowsByType();
@@ -136,14 +145,20 @@
         }
     }
 
-    private async Task<List<ExecutionOutcome>> LoadExecutionOutcomesAsync()
+    private async Task<List<ExecutionOutcome>> LoadExecutionOutcomesAsync(IQueryable<string>? closed)
     {
         // WorkflowExecution has no foreign key to the snapshot it produced, so the outcome
         // columns are read once for every execution and joined in memory, never per row.
-        return await UserDataUnitOfWork.WorkflowExecutions
+        IQueryable<WorkflowExecution> executions = UserDataUnitOfWork.WorkflowExecutions
             .GetAll()
             .AsNoTracking()
-            .Where(e => e.WorkflowId != null)
+            .Where(e => e.WorkflowId != null);
+        if (closed is not null)
+        {
+            executions = executions.Where(e => e.OrganizationId == null || !closed.Contains(e.OrganizationId));
+        }
+
+        return await executions
             .Select(e => new ExecutionOutcome(
                 e.Id,
                 e.WorkflowId!,
@@ -179,7 +194,7 @@
     {
         bool? confirmed = await DialogService.ShowMessageBoxAsync(
             "Clear Workflows",
-            $"Delete all {_workflows.Count} executed workflows of every organization, whichever type is shown? This cannot be undone.",
+            $"Delete all {_workflows.Count} executed workflows listed here, whichever type is shown? This cannot be undone.",
             yesText: "Delete all",
             cancelText: "Cancel");
 

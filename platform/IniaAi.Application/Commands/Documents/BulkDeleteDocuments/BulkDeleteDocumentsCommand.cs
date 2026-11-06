@@ -10,7 +10,9 @@ namespace IniaAi.Application.Commands.Documents.BulkDeleteDocuments;
 /// all-or-nothing failure — useful for large batches where a single bad id
 /// should not block the rest.
 /// </summary>
+/// <param name="OwnOnly">The caller may delete only the documents they uploaded; another user's fails as an unknown id.</param>
 public sealed record BulkDeleteDocumentsCommand(
     string OrganizationId,
     string UserId,
-    List<string> DocumentIds) : IRequest<ErrorOr<BulkDeleteDocumentsResultDto>>;
+    List<string> DocumentIds,
+    bool OwnOnly = false) : IRequest<ErrorOr<BulkDeleteDocumentsResultDto>>;

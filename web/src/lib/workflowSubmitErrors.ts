@@ -47,3 +47,18 @@ export function submitValidationMessages(responseData: SubmitErrorResponseData |
 
   return []
 }
+
+const DOCUMENT_PROBLEM = /document/i
+
+/**
+ * Whether a refused submission is about the attached documents, so the user fixes it on the
+ * Documents step. Any other refusal, such as one about the account, stays on the step the user
+ * submitted from.
+ */
+export function isDocumentProblem(responseData: SubmitErrorResponseData | undefined): boolean {
+  const errors = responseData?.errors
+  if (errors && Object.keys(errors).length > 0) {
+    return Object.keys(errors).some(key => DOCUMENT_PROBLEM.test(key))
+  }
+  return submitValidationMessages(responseData).length > 0
+}

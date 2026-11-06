@@ -1,5 +1,6 @@
 @page "/Account/ExternalLogin"
 
+@using IniaAi.WebApp.Configuration
 @using System.Diagnostics.CodeAnalysis
 @using System.Security.Claims
 @using IniaAi.Application.Common.Interfaces.Services
@@ -24,6 +25,7 @@
 @code {
     private const string LOGIN_PAGE = "Account/Login";
     private const string NOT_REGISTERED_MESSAGE = "Error: Your account is not registered. Please contact your administrator.";
+    private const string NOT_ALLOWED_MESSAGE = "Error: This account cannot sign in to the admin app. Sign in to the Inia app instead, or ask an administrator if you need the admin app.";
     private const string DOMAIN_NOT_ALLOWED_MESSAGE = "Error: Email domain is not allowed.";
     private const string MISSING_EMAIL_MESSAGE = "Error: The external login did not provide an email address.";
     private const string EMAIL_NOT_VERIFIED_MESSAGE = "Error: The external login does not confirm that this email address belongs to you.";
@@ -88,9 +90,16 @@
         }
 
         User user = resolution.User!;
+        if (SignInManager is AdminAppSignInManager adminApp && !await adminApp.AdmitsAsync(user))
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            RedirectManager.RedirectToWithStatus(LOGIN_PAGE, NOT_ALLOWED_MESSAGE, HttpContext);
+        }
+
         await ExternalLoginResolver.LinkLoginIfNeededAsync(user, externalLoginInfo.LoginProvider, externalLoginInfo.ProviderKey);
 
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+
         await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
 
         Logger.LogInformation("User {UserId} authenticated via {Provider}", user.Id, externalLoginInfo.LoginProvider);

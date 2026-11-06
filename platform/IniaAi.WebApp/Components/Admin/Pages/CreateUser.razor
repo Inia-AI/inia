@@ -106,9 +106,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _organizations = AppState.IsSuperAdmin
-            ? await UserDataUnitOfWork.Organizations.GetAllAsync()
-            : AppState.UserOrganizations;
+        if (AppState.IsSuperAdmin)
+        {
+            IReadOnlySet<string> closed = await AppState.ClosedOrganizationsAsync();
+            _organizations = [.. (await UserDataUnitOfWork.Organizations.GetAllAsync()).Where(organization => !closed.Contains(organization.Id))];
+        }
+        else
+        {
+            _organizations = AppState.UserOrganizations;
+        }
     }
 
     private async Task CreateNewUser()
@@ -123,6 +129,12 @@
         if (_organization is null)
         {
             throw new InvalidOperationException("Cannot create user as organization is null.");
+        }
+
+        if ((await AppState.ClosedOrganizationsAsync()).Contains(_organization.Id))
+        {
+            AppState.Notify($"'{_organization.Name}' is a customer's own account, so Inia staff cannot add users to it. Choose another organization.", Severity.Error);
+            return;
         }
 
         bool userExists = await UserManager.FindByEmailAsync(_email!) is not null

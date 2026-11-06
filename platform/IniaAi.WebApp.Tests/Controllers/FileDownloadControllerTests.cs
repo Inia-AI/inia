@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Capabilities;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Messaging;
@@ -260,7 +261,7 @@ public class FileDownloadControllerTests : IDisposable
             _serviceProvider.GetRequiredService<ILogger<FileDownloadController>>(),
             platformSettings,
             _serviceProvider.GetRequiredService<IFileStorageManager>(),
-            new CallerOrganizations(_unitOfWork, platformSettings))
+            new CallerOrganizations(_unitOfWork, platformSettings, new NoOrganizationsClosedToStaff()))
         {
             ControllerContext = request,
         };

@@ -56,3 +56,10 @@ export function problemDetailsMessage(data: ProblemDetails | undefined): string 
   if (data?.title && !isGenericTitle(data.title)) return data.title
   return data?.detail || undefined
 }
+
+/** The reason the server gives for refusing a read, when it gives one. */
+export function refusalDetail(error: unknown): string | undefined {
+  if (!axios.isAxiosError(error) || error.response?.status !== HTTP_FORBIDDEN) return undefined
+  const detail = (error.response.data as ProblemDetails | undefined)?.detail
+  return detail?.trim() ? detail : undefined
+}

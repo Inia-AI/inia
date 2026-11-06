@@ -171,7 +171,8 @@
             if (AppState.IsSuperAdmin)
             {
                 // The Roles tab also surfaces system/service users so their roles can be managed by hand.
-                RoleAssignableUsers = [.. await UserDataUnitOfWork.Users.GetAllAsync()];
+                IReadOnlySet<string> closed = await AppState.ClosedOrganizationsAsync();
+                RoleAssignableUsers = [.. (await UserDataUnitOfWork.Users.GetAllAsync()).Where(u => !closed.Contains(u.OrganizationId))];
                 Users = [.. RoleAssignableUsers.Where(u => !u.IsSystem)];
             }
             else

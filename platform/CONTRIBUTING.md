@@ -35,7 +35,7 @@ the solution, run its tests and run the apps. A change meets this bar:
   anywhere else.
 - A message that a user reads says what happened in the user's terms, names the file, block or
   field, and gives the next step.
-- A new block type goes in its own project: `docs/add-a-block.md`, at the root of the repository,
+- A new block type goes in its own project: `docs/guides/blocks/add-a-block-type.md`, at the root of the repository,
   says how.
 
 ## Licence

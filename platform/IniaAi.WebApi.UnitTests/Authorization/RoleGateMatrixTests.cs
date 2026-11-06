@@ -29,8 +29,8 @@ public class RoleGateMatrixTests
         { typeof(TokenUsageController), nameof(TokenUsageController.GetOrganizationDashboard), [Roles.OPERATOR, Roles.SUPER_ADMIN, Roles.ADMIN] },
         { typeof(TokenUsageController), nameof(TokenUsageController.ListTokenUsage), [Roles.OPERATOR, Roles.SUPER_ADMIN, Roles.ADMIN] },
         { typeof(TokenUsageController), nameof(TokenUsageController.GetWorkflowTypeUsageSummary), [Roles.OPERATOR, Roles.SUPER_ADMIN, Roles.ADMIN] },
-        { typeof(DocumentsController), nameof(DocumentsController.DeleteDocument), [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.OPERATOR] },
-        { typeof(DocumentsController), nameof(DocumentsController.BulkDeleteDocuments), [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.OPERATOR] },
+        { typeof(DocumentsController), nameof(DocumentsController.DeleteDocument), [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.OPERATOR, Roles.USER] },
+        { typeof(DocumentsController), nameof(DocumentsController.BulkDeleteDocuments), [Roles.ADMIN, Roles.SUPER_ADMIN, Roles.OPERATOR, Roles.USER] },
         { typeof(WorkflowTypeFeedbackController), nameof(WorkflowTypeFeedbackController.ListFeedback), [Roles.SUPER_ADMIN] },
         { typeof(WorkflowReportsController), nameof(WorkflowReportsController.UpdateFeedbackStatus), [Roles.WORKFLOW_EDITOR, Roles.SUPER_ADMIN] },
     };

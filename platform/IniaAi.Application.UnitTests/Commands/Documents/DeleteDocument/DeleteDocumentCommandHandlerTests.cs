@@ -91,7 +91,29 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
         Assert.NotNull(reloaded);
     }
 
-    private async Task<Document> SeedDocumentAsync(string organizationId, string name)
+    [Fact]
+    public async Task Handle_OwnOnly_DeletesADocumentTheCallerUploaded()
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Mine", uploadedBy: USER_ID);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id, OwnOnly: true), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsError);
+        Assert.False(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Handle_OwnOnly_AnotherUsersDocument_ReturnsNotFoundAndLeavesIt()
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Theirs", uploadedBy: "user-other");
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id, OwnOnly: true), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorType.NotFound, result.FirstError.Type);
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+    }
+
+    private async Task<Document> SeedDocumentAsync(string organizationId, string name, string? uploadedBy = null)
     {
         var fileMetadata = new FileMetadata(
             organizationId,
@@ -105,6 +127,7 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
         {
             OrganizationId = organizationId,
             Name = name,
+            UserId = uploadedBy,
         };
         _ = await _context.Documents.AddAsync(document, TestContext.Current.CancellationToken);
         _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);

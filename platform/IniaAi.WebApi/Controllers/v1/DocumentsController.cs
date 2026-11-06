@@ -38,6 +38,9 @@ public sealed class DocumentsController : ApiController
 {
     private const string PLAIN_TEXT_UTF8 = $"{MediaTypeNames.Text.Plain}; charset=utf-8";
 
+    /// <summary>The roles document deletion admits; a plain user also needs the capability the gate checks.</summary>
+    private const string DOCUMENT_DELETE_ROLES = $"{Roles.ADMIN_AND_OPERATOR_ROLES},{Roles.USER}";
+
     private readonly ISender _sender;
 
     /// <summary>Initializes a new instance of the <see cref="DocumentsController"/> class.</summary>
@@ -123,13 +126,19 @@ public sealed class DocumentsController : ApiController
         return result.Match<IActionResult>(Ok, Problem);
     }
 
+    /// <summary>A caller outside the admin and operator roles deletes only the documents they uploaded.</summary>
+    private bool DeletesOwnOnly => !Roles.HeldBy(User, Roles.ADMIN_AND_OPERATOR_ROLES);
+
     /// <summary>
     /// Deletes a single document, its file metadata row, and the backing blob
     /// from storage. Blob deletion failures are logged but do not roll back the
-    /// database delete; the cleanup job handles orphan blobs.
+    /// database delete; the cleanup job handles orphan blobs. A user outside the
+    /// admin and operator roles needs the <c>delete-own-documents</c> capability
+    /// and deletes only the documents they uploaded.
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = Roles.ADMIN_AND_OPERATOR_ROLES)]
+    [Authorize(Roles = DOCUMENT_DELETE_ROLES)]
+    [StaffOrCapability(Roles.ADMIN_AND_OPERATOR_ROLES, OrganizationCapabilities.DELETE_OWN_DOCUMENTS)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -137,7 +146,7 @@ public sealed class DocumentsController : ApiController
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteDocument(string id)
     {
-        var command = new DeleteDocumentCommand(OrganizationId, UserId, id);
+        var command = new DeleteDocumentCommand(OrganizationId, UserId, id, OwnOnly: DeletesOwnOnly);
         ErrorOr<Deleted> result = await _sender.Send(command);
         return result.Match<IActionResult>(_ => NoContent(), Problem);
     }
@@ -145,17 +154,19 @@ public sealed class DocumentsController : ApiController
     /// <summary>
     /// Deletes many documents in a single call. Each id is processed
     /// independently; the response returns the deleted ids and a per-id failure
-    /// map for ids that could not be removed.
+    /// map for ids that could not be removed. A user outside the admin and
+    /// operator roles deletes only the documents they uploaded, as for one delete.
     /// </summary>
     [HttpPost("bulk-delete")]
-    [Authorize(Roles = Roles.ADMIN_AND_OPERATOR_ROLES)]
+    [Authorize(Roles = DOCUMENT_DELETE_ROLES)]
+    [StaffOrCapability(Roles.ADMIN_AND_OPERATOR_ROLES, OrganizationCapabilities.DELETE_OWN_DOCUMENTS)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(BulkDeleteDocumentsResultDto))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> BulkDeleteDocuments([FromBody] BulkDeleteDocumentsRequest request)
     {
-        var command = new BulkDeleteDocumentsCommand(OrganizationId, UserId, request.Ids);
+        var command = new BulkDeleteDocumentsCommand(OrganizationId, UserId, request.Ids, OwnOnly: DeletesOwnOnly);
         ErrorOr<BulkDeleteDocumentsResultDto> result = await _sender.Send(command);
         return result.Match<IActionResult>(Ok, Problem);
     }

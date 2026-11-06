@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Capabilities;
 using System.Globalization;
 using System.Text;
 using IniaAi.Common;
@@ -44,10 +45,12 @@ public sealed class EditorAgentFeedback
         + "Name the items each change fixes in its summary entry as \"feedback\"; suggest dismissing an item the workflow cannot fix in out/feedback.json.";
 
     private readonly IUserDataUnitOfWork _userData;
+    private readonly IOrganizationsClosedToStaff _closed;
 
-    public EditorAgentFeedback(IUserDataUnitOfWork userData)
+    public EditorAgentFeedback(IUserDataUnitOfWork userData, IOrganizationsClosedToStaff closed)
     {
         _userData = userData;
+        _closed = closed;
     }
 
     public Task<int> CountOpenAsync(
@@ -334,16 +337,20 @@ public sealed class EditorAgentFeedback
 
     /// <summary>
     /// The items on live reports of the workflow type, of the caller's organization or of every
-    /// organization: the scope the list reads from and a delete may reach.
+    /// organization open to staff: the scope the list reads from and a delete may reach.
     /// </summary>
     private IQueryable<ReportFeedbackItem> Visible(string organizationId, bool acrossOrganizations, string workflowTypeId)
     {
         IQueryable<WorkflowExecution> runs = _userData.Repository<WorkflowExecution>().GetAll();
-        return _userData.Repository<ReportFeedbackItem>()
+        IQueryable<ReportFeedbackItem> items = _userData.Repository<ReportFeedbackItem>()
             .GetAll()
             .Where(item => item.WorkflowTypeId == workflowTypeId
                 && (acrossOrganizations || item.OrganizationId == organizationId)
                 && runs.Any(run => run.Id == item.WorkflowExecutionId && !run.IsDeleted));
+
+        return acrossOrganizations && _closed.ClosedToAllStaff() is { } closed
+            ? items.Where(item => !closed.Contains(item.OrganizationId))
+            : items;
     }
 
     private static IQueryable<ReportFeedbackItem> Newest(IQueryable<ReportFeedbackItem> items)

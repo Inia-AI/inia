@@ -73,7 +73,7 @@ Add a key to `.env` at the root of the repository to turn on what it serves, the
 | `EXCHANGE_RATE_API_KEY` | The Exchange Rate block. |
 
 `.env.example`, at the root of the repository, also names the ports and the version that the Vue
-app shows. How the stack is built is in `docs/docker.md`, at the root of the repository.
+app shows. How the stack is built is in `docs/getting-started/docker-stack.md`, at the root of the repository.
 
 ## Prerequisites to work on the source
 

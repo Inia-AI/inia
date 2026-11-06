@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { AxiosError, AxiosHeaders } from 'axios'
 import { WorkflowState } from '@/enums'
 
-const { executionRef, sectionsRef, dataOutputsRef, logsRef, refetchSectionsMock, exportReportMock, downloadBlobMock, toastMock, roles, i18n } = vi.hoisted(() => ({
+const { executionRef, sectionsRef, sectionsErrorRef, dataOutputsRef, logsRef, refetchSectionsMock, exportReportMock, downloadBlobMock, toastMock, roles, i18n } = vi.hoisted(() => ({
   logsRef: { value: null as unknown },
   refetchSectionsMock: vi.fn(),
   roles: { superAdmin: false },
   executionRef: { value: null as unknown },
   sectionsRef: { value: null as unknown },
+  sectionsErrorRef: { value: null as unknown },
   dataOutputsRef: { value: null as unknown },
   exportReportMock: vi.fn(),
   downloadBlobMock: vi.fn(),
@@ -16,7 +18,8 @@ const { executionRef, sectionsRef, dataOutputsRef, logsRef, refetchSectionsMock,
 }))
 
 vi.mock('@/api', async () => {
-  const { ref: vueRef } = await vi.importActual<typeof import('vue')>('vue')
+  const { ref: vueRef, computed: vueComputed } = await vi.importActual<typeof import('vue')>('vue')
+  sectionsErrorRef.value = vueRef(null)
   executionRef.value = vueRef({ id: 'exec-1', workflowState: WorkflowState.Draft })
   sectionsRef.value = vueRef([])
   dataOutputsRef.value = vueRef([])
@@ -29,7 +32,8 @@ vi.mock('@/api', async () => {
         useGetWorkflowReportSections: () => ({
           data: sectionsRef.value,
           isLoading: vueRef(false),
-          isError: vueRef(false),
+          error: sectionsErrorRef.value,
+          isError: vueComputed(() => (sectionsErrorRef.value as { value: unknown }).value !== null),
           refetch: refetchSectionsMock,
         }),
         useGetWorkflowReportData: () => ({ data: dataOutputsRef.value, refetch: vi.fn() }),
@@ -648,5 +652,44 @@ describe('WorkflowDetails model refusals', () => {
     expect(notice.exists()).toBe(true)
     expect(notice.props('executionId')).toBe('exec-1')
     expect(notice.props('logs')).toEqual([refused])
+  })
+})
+
+describe('WorkflowDetails report the server will not show', () => {
+  const failWith = (status: number, data: unknown) => {
+    ;(sectionsErrorRef.value as { value: unknown }).value = new AxiosError('refused', String(status), undefined, undefined, {
+      status,
+      statusText: '',
+      data,
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    })
+  }
+
+  afterEach(() => {
+    ;(sectionsErrorRef.value as { value: unknown }).value = null
+  })
+
+  it('shows the reason the server gives for a failed run, not a not-found message', async () => {
+    const reason = 'This report did not finish, so it has nothing to show. Its credits were returned, so you can run it again.'
+    failWith(403, { title: 'Report not available', status: 403, detail: reason })
+
+    const wrapper = factory({ stubs: { RouterLink: true } })
+    await flushPromises()
+
+    expect(wrapper.get('h1').text()).toBe('page.workflowDetails.contentRefused')
+    expect(wrapper.get('[data-testid="report-content-refusal"]').text()).toBe(reason)
+    expect(wrapper.text()).not.toContain('page.workflowDetails.loadErrorHint')
+  })
+
+  it('keeps the not-found message for a report that cannot be read', async () => {
+    failWith(404, { title: 'Not Found', status: 404 })
+
+    const wrapper = factory({ stubs: { RouterLink: true } })
+    await flushPromises()
+
+    expect(wrapper.get('h1').text()).toBe('page.workflowDetails.loadError')
+    expect(wrapper.text()).toContain('page.workflowDetails.loadErrorHint')
+    expect(wrapper.find('[data-testid="report-content-refusal"]').exists()).toBe(false)
   })
 })

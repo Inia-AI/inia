@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
 import { fullFileName } from '@/lib/fileName'
-import { submitValidationMessages } from '@/lib/workflowSubmitErrors'
+import { isDocumentProblem, submitValidationMessages } from '@/lib/workflowSubmitErrors'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useForm, Field as FormField } from 'vee-validate'
@@ -93,6 +93,7 @@ const documentValidationErrors = ref<string[]>([])
 const documentValidationError = computed(() =>
   documentValidationErrors.value.length > 0 ? documentValidationErrors.value : null
 )
+const submitRefusal = ref<string | null>(null)
 
 
 interface VariableFieldDefinition {
@@ -290,6 +291,7 @@ const form = useForm<WorkflowFormData>({
 
 const handleSubmit = form.handleSubmit(async data => {
   documentValidationErrors.value = []
+  submitRefusal.value = null
 
   try {
     const {
@@ -330,12 +332,8 @@ const handleSubmit = form.handleSubmit(async data => {
     })
 
     const responseData = error?.response?.data
-    documentValidationErrors.value = submitValidationMessages(responseData)
-
-    // Always show a toast with first error or generic message
-    const toastMessage = documentValidationErrors.value.length > 0
-      ? documentValidationErrors.value[0]
-      : responseData?.message || responseData?.detail || $t('page.createWorkflow.failed')
+    const messages = submitValidationMessages(responseData)
+    const toastMessage = messages[0] ?? (responseData?.message || responseData?.detail || $t('page.createWorkflow.failed'))
 
     toast({
       class: 'text-sm',
@@ -343,8 +341,11 @@ const handleSubmit = form.handleSubmit(async data => {
       description: toastMessage,
     })
 
-    if (documentValidationErrors.value.length > 0) {
+    if (isDocumentProblem(responseData)) {
+      documentValidationErrors.value = messages
       goToStep(stepIndexByKey('documents'))
+    } else {
+      submitRefusal.value = toastMessage
     }
   }
 })
@@ -740,6 +741,9 @@ const canLeaveCurrentStep = computed(
 const goToStep = (index: number) => {
   if (index < 0 || index > stepKeys.length - 1) return
   if (index !== currentStepIndex.value && !canLeaveCurrentStep.value) return
+  if (index !== currentStepIndex.value) {
+    submitRefusal.value = null
+  }
   currentStepIndex.value = index
 }
 
@@ -792,8 +796,14 @@ const goNext = async () => {
   goToStep(currentStepIndex.value + 1)
 }
 
+const submitHolds = ref<Record<number, string | null>>({})
+const submitHeldBy = computed(() => Object.values(submitHolds.value).find(reason => !!reason) ?? null)
+const holdSubmit = (index: number, reason: string | null) => {
+  submitHolds.value = { ...submitHolds.value, [index]: reason }
+}
+
 const onFormSubmit = (event: Event) => {
-  if (!isLastStep.value) {
+  if (!isLastStep.value || submitHeldBy.value) {
     event.preventDefault()
     return
   }
@@ -1278,6 +1288,10 @@ const reviewVariables = computed(() => {
                   <p class="step-lead">{{ $t('page.createWorkflow.reviewStep.lead') }}</p>
                 </header>
 
+                <div v-if="submitRefusal" class="inline-error" role="alert" data-testid="submit-refusal">
+                  <p class="inline-error-text">{{ submitRefusal }}</p>
+                </div>
+
                 <dl class="review-list">
                   <div class="review-row">
                     <dt class="review-label">{{ $t('page.createWorkflow.reviewStep.reportType') }}</dt>
@@ -1329,8 +1343,13 @@ const reviewVariables = computed(() => {
                     v-for="(piece, index) in extensionPoints.reviewDetails"
                     :key="index"
                     :workflow="selectedWorkflow"
+                    @holds="(reason: string | null) => holdSubmit(index, reason)"
                   />
                 </dl>
+
+                <p v-if="submitHeldBy" id="submit-held" class="inline-error inline-error-text" data-testid="submit-held">
+                  {{ submitHeldBy }}
+                </p>
               </section>
             </div>
           </Transition>
@@ -1364,6 +1383,8 @@ const reviewVariables = computed(() => {
             fontSize="lg"
             class="btn-gradient-primary"
             :is-loading="isLoading"
+            :disabled="!!submitHeldBy"
+            :aria-describedby="submitHeldBy ? 'submit-held' : undefined"
           >
             {{ $t('page.createWorkflow.form.submitLabel') }}
           </Button>

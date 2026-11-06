@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Capabilities;
 using IniaAi.Configuration;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
@@ -23,6 +24,7 @@ public sealed class UserDataTestDatabase : IDisposable
         _ = services.AddLogging();
         _ = services.AddSqliteTestDatabaseServices();
         _ = services.AddSingleton(Options.Create(platformSettings));
+        _ = services.AddSingleton<IOrganizationsClosedToStaff, NoOrganizationsClosedToStaff>();
         _ = services.AddScoped<CallerOrganizations>();
 
         _root = services.BuildServiceProvider();

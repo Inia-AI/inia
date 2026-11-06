@@ -15,6 +15,7 @@ namespace IniaAi.Domain.Entities.SelfServe;
 /// </remarks>
 [Index(nameof(OrganizationId), nameof(CreatedAt))]
 [Index(nameof(OrganizationId), nameof(Status))]
+[Index(nameof(Status), nameof(OrganizationId))]
 [Index(nameof(WorkflowExecutionId))]
 [Index(nameof(PaymentEventId))]
 public class CreditEntry

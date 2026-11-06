@@ -114,7 +114,8 @@
 
     private async Task LoadOrganizations()
     {
-        _organizations = (await UserDataUnitOfWork.Organizations.GetAllAsync()).OrderBy(o => o.Name).ToList();
+        IReadOnlySet<string> closed = await AppState.ClosedOrganizationsAsync();
+        _organizations = (await UserDataUnitOfWork.Organizations.GetAllAsync()).Where(o => !closed.Contains(o.Id)).OrderBy(o => o.Name).ToList();
     }
 
     private async Task CreateTenantAsync()

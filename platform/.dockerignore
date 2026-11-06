@@ -1,7 +1,6 @@
 .github/
 .claude/
 artifacts/
-docs/
 tools/
 compose.yaml
 .env.example

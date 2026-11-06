@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import type { Ref } from 'vue'
+import { defineComponent, h, type Ref } from 'vue'
+import { extensionPoints } from '@/modules/extensionPoints'
 
 import { EN } from '@/assets/locales/en'
 import CreateWorkflow from './CreateWorkflow.vue'
@@ -410,6 +411,86 @@ describe('CreateWorkflow company field', () => {
 
     await vi.waitFor(() => expect(wrapper!.text()).toContain('Choose a company for this report.'))
     expect(wrapper!.text()).not.toContain('expected string')
+    expect(createExecution).not.toHaveBeenCalled()
+  })
+})
+
+describe('CreateWorkflow refused submission', () => {
+  const currentStepText = () => wrapper!.get('[aria-current="step"]').text()
+
+  const submitRefusedWith = async (data: object) => {
+    createExecution.mockRejectedValue({ response: { status: 400, data } })
+    await mountPage()
+    await chooseType('hf-monthly')
+    await press('Continue')
+    await press('Continue')
+    await press('Continue')
+    await vi.waitFor(() => expect(currentStepText()).toContain('Review'))
+    await press('Submit')
+    await vi.waitFor(() => expect(createExecution).toHaveBeenCalled())
+    await flushPromises()
+  }
+
+  it.each([
+    ['Run.NotEnoughCredits', 'This report costs 2 credits and you have 1 left. Subscribe to get more credits.'],
+    ['Run.Paused', 'New reports are paused because 3 reports failed today. Support will look at them and tell you when you can run reports again.'],
+    ['Run.NotOffered', 'This report is not available on your account. Choose a report from the list.'],
+  ])('keeps the user on the review step and shows a %s refusal there', async (code, message) => {
+    await submitRefusedWith({ title: 'One or more validation errors occurred.', status: 400, errors: { [code]: [message] } })
+
+    expect(currentStepText()).toContain('Review')
+    expect(wrapper!.get('[data-testid="submit-refusal"]').text()).toBe(message)
+    expect(wrapper!.get('[data-testid="submit-refusal"]').attributes('role')).toBe('alert')
+  })
+
+  it('shows a refusal without a validation map on the review step', async () => {
+    await submitRefusedWith({ title: 'Not included', status: 403, detail: 'Starting reports is not included in your account.', capability: 'runs' })
+
+    expect(currentStepText()).toContain('Review')
+    expect(wrapper!.get('[data-testid="submit-refusal"]').text()).toBe('Starting reports is not included in your account.')
+  })
+
+  it('still sends a refusal about the documents back to the documents step', async () => {
+    await submitRefusedWith({ errors: { 'Run.TooManyDocuments': ['This report reads at most 2 documents, and 3 are attached. Remove 1, then start it again.'] } })
+
+    expect(currentStepText()).toContain('Documents')
+    expect(wrapper!.text()).toContain('This report reads at most 2 documents, and 3 are attached.')
+    expect(wrapper!.find('[data-testid="submit-refusal"]').exists()).toBe(false)
+  })
+})
+
+describe('CreateWorkflow review piece that holds Submit', () => {
+  const holdingPiece = defineComponent({
+    emits: ['holds'],
+    setup: (_, { emit }) => {
+      emit('holds', 'This report costs 2 credits and you have 1 left. Subscribe to get more credits.')
+      return () => h('div', { class: 'review-row' })
+    },
+  })
+
+  beforeEach(() => {
+    extensionPoints.reviewDetails.push(holdingPiece)
+  })
+
+  afterEach(() => {
+    extensionPoints.reviewDetails.splice(extensionPoints.reviewDetails.indexOf(holdingPiece), 1)
+  })
+
+  it('turns Submit off and shows the reason beside it, so nothing is sent', async () => {
+    await mountPage()
+    await chooseType('hf-monthly')
+    await press('Continue')
+    await press('Continue')
+    await press('Continue')
+    await vi.waitFor(() => expect(wrapper!.get('[aria-current="step"]').text()).toContain('Review'))
+
+    const submit = wrapper!.get('button[type="submit"]')
+    expect(submit.attributes('disabled')).toBeDefined()
+    expect(wrapper!.get('[data-testid="submit-held"]').text()).toBe('This report costs 2 credits and you have 1 left. Subscribe to get more credits.')
+    expect(submit.attributes('aria-describedby')).toBe('submit-held')
+
+    await wrapper!.get('form').trigger('submit')
+    await flushPromises()
     expect(createExecution).not.toHaveBeenCalled()
   })
 })

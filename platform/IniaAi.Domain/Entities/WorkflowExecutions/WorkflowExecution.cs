@@ -9,6 +9,7 @@ namespace IniaAi.Domain.Entities.WorkflowExecutions;
 
 [Index(nameof(IdempotencyKey), nameof(OrganizationId), IsUnique = true)]
 [Index(nameof(HostBootId))]
+[Index(nameof(OrganizationId), nameof(WorkflowState), nameof(CompletedAt))]
 public class WorkflowExecution : Entity<WorkflowExecution>
 {
     public string? WorkflowId { get; set; }

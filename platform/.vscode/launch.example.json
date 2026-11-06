@@ -1,7 +1,5 @@
 {
     // =================================================================
-    // The profiles, their ports and databases: docs/local-development.md
-    //
     // Every config is a thin pointer to a launchSettings.json profile —
     // the single source of truth for env vars, connection strings, ports,
     // and AWS mode. Edit profiles in:

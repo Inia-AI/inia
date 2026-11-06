@@ -69,6 +69,16 @@ public class BulkDeleteDocumentsCommandHandler
                 continue;
             }
 
+            if (request.OwnOnly && document.UserId != request.UserId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to bulk-delete document {DocumentId}, which another user uploaded",
+                    request.UserId,
+                    document.Id);
+                result.Failed[id] = DocumentErrorFactory.NOT_FOUND_MESSAGE;
+                continue;
+            }
+
             FileMetadata? fileMetadata = document.FileMetadata;
             if (fileMetadata is not null
                 && !string.IsNullOrEmpty(fileMetadata.ExternalStoragePath))

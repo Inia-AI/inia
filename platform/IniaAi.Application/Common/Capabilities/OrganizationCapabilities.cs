@@ -24,6 +24,12 @@ public static class OrganizationCapabilities
     public const string MONITORING = "monitoring";
     public const string ADMIN_APP = "admin-app";
 
+    /// <summary>
+    /// A user without <c>Admin</c> or <c>Operator</c> deletes the documents they uploaded. Not in
+    /// <see cref="All"/>: the platform grants it to no one, and a closed module adds it.
+    /// </summary>
+    public const string DELETE_OWN_DOCUMENTS = "delete-own-documents";
+
     public static readonly FrozenSet<string> All = FrozenSet.ToFrozenSet(
         [
             RUN,

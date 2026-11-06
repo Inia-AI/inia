@@ -2,7 +2,8 @@ namespace IniaAi.Application.Common.Capabilities;
 
 /// <summary>
 /// What an organization may do, as <see cref="OrganizationCapabilities"/> names. The platform grants
-/// every one; a closed module may take some away.
+/// every one in <see cref="OrganizationCapabilities.All"/>; a closed module may take some away, and add
+/// one the platform grants to no one.
 /// </summary>
 public interface IOrganizationCapabilities
 {

@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Capabilities;
 using ErrorOr;
 using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.Mappings;
@@ -18,13 +19,16 @@ public class ListWorkflowTypeFeedbackQueryHandler : IRequestHandler<ListWorkflow
 
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly IUserDisplayNameResolver _nameResolver;
+    private readonly IOrganizationsClosedToStaff _closed;
 
     public ListWorkflowTypeFeedbackQueryHandler(
         IUserDataUnitOfWork userDataUnitOfWork,
-        IUserDisplayNameResolver nameResolver)
+        IUserDisplayNameResolver nameResolver,
+        IOrganizationsClosedToStaff closed)
     {
         _userDataUnitOfWork = userDataUnitOfWork;
         _nameResolver = nameResolver;
+        _closed = closed;
     }
 
     /// <inheritdoc />
@@ -55,7 +59,8 @@ public class ListWorkflowTypeFeedbackQueryHandler : IRequestHandler<ListWorkflow
                     status,
                     request.Take + 1,
                     cursorCreatedAtUtc,
-                    cursorId),
+                    cursorId,
+                    _closed.ClosedToAllStaff()),
                 cancellationToken);
 
         bool hasMore = rows.Count > request.Take;
