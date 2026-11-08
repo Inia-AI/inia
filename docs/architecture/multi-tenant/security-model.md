@@ -74,11 +74,11 @@ flowchart TD
     ALLOW_SUPER --> EXECUTE
     ALLOW_USER --> EXECUTE
 
-    style CLIENT fill:#e1f5fe
-    style DENY fill:#ffebee
-    style ALLOW_SUPER fill:#e8f5e8
-    style ALLOW_USER fill:#e8f5e8
-    style EXECUTE fill:#f3e5f5
+    style CLIENT fill:#e1f5fe,color:#1f2328
+    style DENY fill:#ffebee,color:#1f2328
+    style ALLOW_SUPER fill:#e8f5e8,color:#1f2328
+    style ALLOW_USER fill:#e8f5e8,color:#1f2328
+    style EXECUTE fill:#f3e5f5,color:#1f2328
 ```
 
 The middleware order in `Program.cs` is: `UseRouting` → `UseMultiTenant` → `EarlyTenantRejectionMiddleware` → `UseAuthentication` → `TenantUserContextMiddleware` → `UseAuthorization`.

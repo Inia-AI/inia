@@ -22,6 +22,12 @@ public static class RateLimitHeaders
     public static void WriteRefusal(HttpResponse response, string policyName, int quota, int windowSeconds, long secondsToReset)
     {
         Write(response, policyName, quota, windowSeconds, remaining: 0, secondsToReset);
-        response.Headers.RetryAfter = secondsToReset.ToString(CultureInfo.InvariantCulture);
+        WriteRetryAfter(response, secondsToReset);
+    }
+
+    /// <summary><c>Retry-After</c>: the seconds until the caller should try again.</summary>
+    public static void WriteRetryAfter(HttpResponse response, long seconds)
+    {
+        response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
     }
 }

@@ -11,6 +11,7 @@ description: "Builds a block type in its own project, step by step, on the Count
 A block type can live in its own project. The platform loads it from a setting, and the new type
 changes no file of the platform. This page builds one, step by step, on the example in
 `IniaAi.Samples.WordCount`: a **Count Words** block whose output is the number of words in a text.
+You need the .NET 10 SDK to build and test it ([prerequisites](../../../platform/README.md#prerequisites-to-work-on-the-source)).
 
 ## What a block type is made of
 

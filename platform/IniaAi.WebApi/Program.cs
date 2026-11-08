@@ -4,6 +4,7 @@ using HealthChecks.UI.Client;
 using IniaAi.Application;
 using IniaAi.Configuration.Extensions;
 using IniaAi.Infrastructure;
+using IniaAi.Infrastructure.Hosting;
 using IniaAi.Infrastructure.Persistence.Seed;
 using IniaAi.Infrastructure.Persistence.Setup;
 using IniaAi.WebApi.Configuration;
@@ -30,6 +31,7 @@ public class Program
 
         // Configuration and Logging
         IConfigurationRoot config = await builder.Configuration.SetupConfigurationAsync();
+        _ = builder.AddRunIntakeControl();
         _ = builder.Logging.ClearProviders();
         _ = builder.Logging.AddSerilog(Log.Logger);
 

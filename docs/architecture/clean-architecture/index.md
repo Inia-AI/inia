@@ -31,11 +31,11 @@ graph TD
     C --> FF[FileFormats]
     E[Infrastructure] --> B
 
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-    style E fill:#fce4ec
+    style A fill:#e1f5fe,color:#1f2328
+    style B fill:#f3e5f5,color:#1f2328
+    style C fill:#e8f5e8,color:#1f2328
+    style D fill:#fff3e0,color:#1f2328
+    style E fill:#fce4ec,color:#1f2328
 ```
 
 ## Layer Responsibilities

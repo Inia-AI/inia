@@ -42,7 +42,17 @@ namespace IniaAi.WebApi.Controllers.v1;
 [Route("api/v{version:apiVersion}")]
 public class AuthenticationController : ApiController
 {
-    private const string ACCOUNT_LOCKED_OUT = "account_locked_out";
+    /// <summary>The error of a sign-in refused because the account is locked.</summary>
+    public const string ACCOUNT_LOCKED_OUT = "account_locked_out";
+
+    /// <summary>What a module's grant tells a locked account.</summary>
+    public const string ACCOUNT_LOCKED_MESSAGE = "This account is locked, so it can't sign in. Contact support to unlock it.";
+
+    /// <summary>The error of a module's grant that signed in an account that never signs in, such as a system user.</summary>
+    public const string ACCOUNT_NOT_ALLOWED = "account_not_allowed";
+
+    /// <summary>What a module's grant tells an account that never signs in.</summary>
+    public const string ACCOUNT_NOT_ALLOWED_MESSAGE = "This email address can't be used to sign in. Use your own email address.";
     private const string SESSION_ENDED = "Your session has ended. Sign in again.";
 
     private readonly ILogger<AuthenticationController> _logger;
@@ -214,11 +224,12 @@ public class AuthenticationController : ApiController
             return BadRequest(new { error = result.Error, error_description = result.ErrorDescription });
         }
 
-        IActionResult? validationError = await ValidateUserCanAuthenticateAsync(user);
-        if (validationError is not null)
+        if (await AccountRefusalAsync(user) is { } refusal)
         {
             await _signInAttempts.AccountRefusedAsync(user, request.GrantType, ClientAddress);
-            return validationError;
+            return refusal == AccountRefusal.LockedOut
+                ? Unauthorized(new { error = ACCOUNT_LOCKED_OUT, error_description = ACCOUNT_LOCKED_MESSAGE })
+                : Unauthorized(new { error = ACCOUNT_NOT_ALLOWED, error_description = ACCOUNT_NOT_ALLOWED_MESSAGE });
         }
 
         return await GenerateTokenAsync(user, request.GrantType, request.GetScopes());
@@ -461,25 +472,38 @@ public class AuthenticationController : ApiController
     /// <returns>Null if valid, or an error IActionResult if validation fails.</returns>
     private async Task<IActionResult?> ValidateUserCanAuthenticateAsync(User user, bool requireEmailConfirmation = false)
     {
+        return await AccountRefusalAsync(user, requireEmailConfirmation) is null ? null : Forbid();
+    }
+
+    /// <summary>Why the account may not sign in, logged, or null when it may.</summary>
+    private async Task<AccountRefusal?> AccountRefusalAsync(User user, bool requireEmailConfirmation = false)
+    {
         if (user.IsSystem)
         {
             _logger.LogWarning("Login failed: System user attempted interactive login");
-            return Forbid();
+            return AccountRefusal.SystemUser;
         }
 
         if (requireEmailConfirmation && !await _userManager.IsEmailConfirmedAsync(user))
         {
             _logger.LogWarning("Login failed: Email not confirmed for user {UserId}", user.Id);
-            return Forbid();
+            return AccountRefusal.EmailNotConfirmed;
         }
 
         if (await _userManager.IsLockedOutAsync(user))
         {
             _logger.LogWarning("Login failed: User {UserId} is locked out", user.Id);
-            return Forbid();
+            return AccountRefusal.LockedOut;
         }
 
         return null;
+    }
+
+    private enum AccountRefusal
+    {
+        SystemUser,
+        EmailNotConfirmed,
+        LockedOut,
     }
 
     /// <summary>

@@ -5011,9 +5011,6 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.Property<string>("WorkflowId")
                         .HasColumnType("text");
 
-                    b.Property<int>("WorkflowState")
-                        .HasColumnType("integer");
-
                     b.Property<string>("WorkflowTypeId")
                         .HasColumnType("text");
 

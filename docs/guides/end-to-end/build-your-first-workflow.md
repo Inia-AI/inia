@@ -15,7 +15,7 @@ description: "Walks a prompt engineer through building a first workflow type wit
 **Prerequisites:**
 
 - An account with the `WorkflowEditor` role (or `SuperAdmin`) *(a super admin grants it: [who may grant what](../../features/user-management/authorization.md#how-roles-are-created-and-assigned)).*
-- Embeddings on the deployment. Step 3 picks pages by meaning, which compares the embeddings of the page overviews with your filter expression. On the [one-command Docker stack](../../getting-started/docker-stack.md) that needs a Cohere API key in `COHERE_API_KEY` ([optional keys](../../../platform/README.md#optional-keys)); without one, the retrieval block fails.
+- Optional: embeddings on the deployment, so that step 3 can pick pages by meaning. **Top N Pages** compares the embeddings of the page overviews with your filter expression. On the [one-command Docker stack](../../getting-started/docker-stack.md) that needs a Cohere API key in `COHERE_API_KEY` ([optional keys](../../../platform/README.md#optional-keys)). Without one, step 3 uses **Whole Document/All Pages**, which reads every page and needs no key.
 - One sample document to run against (a PDF works well — for example an annual report or a fund factsheet).
 - A rough idea of the one question you want the workflow to answer about that document ("summarise the fund's strategy", "list the key financial covenants"). You will turn that into a prompt in step 4.
 
@@ -54,17 +54,19 @@ On the same tab, give the workflow a page overview prompt: in the **Page overvie
 
 ### 3. Add a section and a retrieval block
 
-Workflows are organised into **sections** (groups of blocks). Add one section, then inside it add a **Retrieve Data From Documents** block. This block finds the pages of your document that match a query and outputs their text. Select the document class from step 2, click **Add Data Retrieval Settings**, set **Select The Filter Type To Use For Documents' Pages** to **Top N Pages**, and add one smart filter expression describing what to find (for example "investment strategy, objectives").
+Workflows are organised into **sections** (groups of blocks). Select **Add Section**, select **Open** on the new section, then select **Add Block**. A new block is an AI Query block: set **Select Block Type** to **Retrieve Data From Documents**. This block finds the pages of your document that match a query and outputs their text. Select the document class from step 2, click **Add Data Retrieval Settings**, set **Select The Filter Type To Use For Documents' Pages** to **Top N Pages**, and select **Add Expression** for one smart filter expression describing what to find (for example "investment strategy, objectives").
+
+If the deployment has no Cohere API key, set the filter type to **Whole Document/All Pages** instead. The block then outputs the text of every page, and it needs no expression.
 
 Give the block a **Replacement Tag** you will recognise, such as `strategy_pages`: that tag is how the next block reads these pages.
 
 → [Workflow Editor → Add Sections](../workflows/editor-guide.md#4-add-sections) · [Workflow Editor → Add Blocks](../workflows/editor-guide.md#6-add-blocks) · [Retrieve Data from Documents block](../blocks/block-reference.md#retrieve-data-from-documents-rag)
 
-**Checkpoint:** your section contains one Retrieve Data From Documents block with your document class, a Top N Pages setting with a filter expression, and the tag `strategy_pages`.
+**Checkpoint:** your section contains one Retrieve Data From Documents block with your document class, a Top N Pages setting with a filter expression (or Whole Document/All Pages), and the tag `strategy_pages`.
 
 ### 4. Add an AI Query block to do the analysis
 
-Below the retrieval block, add an **AI Query** block — this is the one that actually answers your question. In its **User prompt**, write the instruction you decided on up front and put the retrieval block's tag in braces where the pages belong. For example:
+Select **Add Block** again. The new block is an **AI Query** block, the one that answers your question. The editor adds it at the top of the section. Its place does not matter: a block runs after the blocks it reads. In its **User prompt**, write the instruction you decided on up front and put the retrieval block's tag in braces where the pages belong. For example:
 
 ```
 Using only the pages below, summarise the fund's investment strategy in three bullet points.
@@ -76,7 +78,7 @@ A block reads another block's output only through its `{tag}`: when the AI Query
 
 → [AI Query block](../blocks/block-reference.md#ai-query) · [Block Replacement Tags](../../architecture/workflow-engine/variable-system.md#block-replacement-tags)
 
-**Checkpoint:** your section has a Retrieve Data From Documents block followed by an AI Query block whose user prompt contains `{strategy_pages}`.
+**Checkpoint:** your section has a Retrieve Data From Documents block and an AI Query block whose user prompt contains `{strategy_pages}`.
 
 ### 5. Mark the result to appear in the report
 
@@ -90,6 +92,8 @@ A block's result reaches the report only when you include it. On the AI Query bl
 
 Click **Save**. Saving persists the template and adds an entry to its **version history**, so you can always see how it evolved and roll back — nothing to tag or commit by hand.
 
+After a prompt changes, Save first asks **Generate Prompt Previews?**. The previews are short summaries of your prompts that the run logs show instead of the prompts. **Generate Previews** writes them with one model call, and **Skip** leaves them out. Both save the workflow.
+
 → [Workflow Editor → Saving Changes](../workflows/editor-guide.md#saving-changes) · [Version History](../workflows/editor-guide.md#version-history)
 
 **Checkpoint:** the editor shows a "Last saved" stamp and **Version history** lists your save.
@@ -98,7 +102,7 @@ Click **Save**. Saving persists the template and adds an entry to its **version 
 
 The run controls sit above the template on the editor page:
 
-1. Click **Upload Files**, choose your sample document, and set its document class in the picker on its row to the class from step 2.
+1. Click **Upload Files**, choose your sample document, and set its document class in the picker on its row to the class from step 2. The picker lists each class by its key, such as `annualReport`.
 2. Fill any variables the panel below the counterparty picker asks for.
 3. Click **Generate Report**. This starts a background run (an *execution*).
 
@@ -137,7 +141,7 @@ The steps above are deliberately generic so they fit any document. Here is **one
 |-------|-------|
 | Replacement Tag | `strategy_pages` |
 | Document classes | `Annual Report` |
-| Select The Filter Type To Use For Documents' Pages | `Top N Pages` |
+| Select The Filter Type To Use For Documents' Pages | `Top N Pages` (`Whole Document/All Pages` without a Cohere API key, which needs none of the rows below) |
 | Smart Filter Expression Template | `investment strategy, objective, approach, how the fund invests` |
 | Number Of Pages To Use Template | `3` |
 | Start Index Template / End Index Template | empty (the whole document) |
@@ -189,7 +193,7 @@ You opened the finished report in IniaAi.Web and read the paragraph your AI Quer
 - **The block ran but cited or used the wrong pages** — that is a retrieval problem; walk it back with [Debug a retrieval problem](debug-retrieval.md).
 - **Your run is missing from the IniaAi.Web report list** — the list can be narrowed to the workflow types chosen for your user; see [Workflow type visibility](../../features/user-management/workflow-type-visibility.md).
 - **A variable, block, or document class is not behaving** — see the Troubleshooting and Common Issues sections of the [Workflow Editor guide](../workflows/editor-guide.md#common-issues) and the [Workflow Guides index](../workflows/index.md).
-- **The retrieval block fails and says it needs a Cohere API key**: the deployment has no embeddings; see the prerequisites.
+- **The answer says no pages were provided, and the deployment has no Cohere API key**: open the report's **Actions** menu in IniaAi.Web and select **View Logs**. The retrieval block shows **Failed** and says that its filter rule needs a Cohere API key. Set the filter type to **Whole Document/All Pages** (step 3), or add the key (see the prerequisites).
 - **Anything access-related** (you cannot see the editor pages, cannot upload, no workflow types listed) — an admin of your deployment owns that; [Authorization](../../features/user-management/authorization.md) says which role opens which page.
 
 

@@ -90,7 +90,8 @@ public sealed class LocalTestHttpServer : IDisposable
             $"Could not bind a loopback HTTP listener after {MAX_ATTEMPTS} attempts.");
     }
 
-    private static int ReserveFreeLoopbackPort()
+    /// <summary>A loopback port that is free now; another process can take it before the caller binds it.</summary>
+    public static int ReserveFreeLoopbackPort()
     {
         var probe = new TcpListener(IPAddress.Loopback, 0);
         probe.Start();

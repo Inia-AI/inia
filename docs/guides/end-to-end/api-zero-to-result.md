@@ -19,6 +19,17 @@ description: "Walks an API integrator from a system user through a token, discov
 - The ability to provision (or be given) a **system user** — `<client-id>` / `<client-secret>` *(a platform admin provisions this; see step 1).*
 - One or more input documents (PDF, image, or Office) for the workflow you intend to run.
 
+> [!TIP]
+> **On the one-command Docker stack**
+>
+> You run the deployment, so you have every value already. `<base-url>` is `http://localhost:8080`, `<tenant-id>` is `IniaAI` (the stack's one organization), and `<client-id>` is `service_user_iniaai`. The first start made the client secret. Read it from the folder of `compose.yaml`, inside the command that uses it:
+>
+> ```bash
+> CLIENT_SECRET=$(docker compose exec -T api cat /run/inia/platform/OpenIddict__ClientSecret)
+> ```
+>
+> The sample workflow `SampleAnnualReport` needs no counterparty and no document class, so it runs with `platform/samples/annual-report/annual-report.pdf` alone.
+
 Each step links the reference page that owns its contract. This page is the order and the success criteria.
 
 ## Steps
@@ -58,7 +69,7 @@ You need a **workflow type id** (e.g. `CorporatesCreditReport`) and its **docume
 
 ### 4. Find the counterparty
 
-A run is about one counterparty: the company the documents describe. Look it up by name and keep its `id`; create it only when the search finds nothing.
+A run is about one counterparty: the company the documents describe. Look it up by name and keep its `id`; create it only when the search finds nothing. Skip this step when the summary from step 3 says `"isCounterpartyRequired": false`: submit then takes no `counterpartyId`.
 
 ```bash
 curl -s -G "<base-url>/api/v1/counterparties" \

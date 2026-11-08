@@ -2,7 +2,6 @@ using IniaAi.Domain.Common;
 using IniaAi.Domain.Entities.Counterparties;
 using IniaAi.Domain.Entities.Workflows;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace IniaAi.Domain.Entities.WorkflowExecutions;
 
@@ -22,9 +21,6 @@ public class WorkflowReport : Entity<WorkflowReport>
     public string? AnalystName { get; set; }
     public DateTime? ReviewDate { get; set; }
     public string? Title { get; set; }
-
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public WorkflowState WorkflowState { get; set; } = WorkflowState.Undefined;
 
     public string? WorkflowExecutionId { get; set; }
 

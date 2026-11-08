@@ -1,6 +1,7 @@
 using ErrorOr;
 using IniaAi.Application.Commands.WorkflowExecutions.Shared;
 using IniaAi.Application.Common.Workflows;
+using IniaAi.Application.Errors;
 using IniaAi.Application.Workflows.Services;
 using IniaAi.Common.Interfaces.Services.Runs;
 using IniaAi.Core.Services;
@@ -15,6 +16,7 @@ using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.Core.Contexts;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Services.Models.Jobs;
+using IniaAi.Testing;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.DependencyInjection.Mocks;
 using IniaAi.WebApi.Contracts.Responses.WorkflowOutput;
@@ -27,7 +29,10 @@ namespace IniaAi.Application.UnitTests.Commands.WorkflowExecutions.Shared;
 /// <summary>
 /// A submission inserts its run and asks the admission inside one transaction: a refusal rolls the
 /// run back and queues nothing, and a write the admission makes commits or rolls back with the run.
-/// SQLite, because the rule is about what a real transaction leaves behind.
+/// While a deploy has paused run intake, a submission is refused as unavailable for now, with the
+/// update message and a time to try again, and leaves nothing either; a retry of a submission made
+/// before the pause still gets its run, and intake takes runs again once the pause lifts. SQLite,
+/// because the rule is about what a real transaction leaves behind.
 /// </summary>
 public sealed class RunAdmissionTests : IDisposable
 {
@@ -39,9 +44,12 @@ public sealed class RunAdmissionTests : IDisposable
     private readonly Microsoft.Extensions.DependencyInjection.ServiceProvider _provider;
     private readonly RecordingJobsService _jobs = new();
     private readonly HostBootIdentity _hostBoot = new();
+    private readonly SettableClock _clock = new(new DateTimeOffset(2026, 11, 6, 14, 0, 0, TimeSpan.Zero));
+    private readonly RunIntake _intake;
 
     public RunAdmissionTests()
     {
+        _intake = new RunIntake(_clock);
         var services = new ServiceCollection();
         _ = services.AddSqliteTestDatabaseServices();
         _provider = services.BuildServiceProvider();
@@ -109,7 +117,54 @@ public sealed class RunAdmissionTests : IDisposable
         _ = Assert.Single(await StoredAsync<HostBoot>());
     }
 
-    private Task<ErrorOr<WorkflowExecutionDto>> SubmitAsync(IServiceScope scope, IRunAdmission admission)
+    [Fact]
+    public async Task WhileIntakeIsPaused_ASubmissionIsRefusedAsUnavailable_AndLeavesNoRun()
+    {
+        _intake.Pause(TimeSpan.FromMinutes(30));
+        using IServiceScope scope = _provider.CreateScope();
+
+        ErrorOr<WorkflowExecutionDto> submitted = await SubmitAsync(scope, new AdmitEveryRun());
+
+        Assert.Equal(
+            (ServiceUnavailableError.ERROR_TYPE, RunIntake.PAUSED_CODE, RunIntake.PAUSED_MESSAGE),
+            ((int)submitted.FirstError.Type, submitted.FirstError.Code, submitted.FirstError.Description));
+        Assert.Equal(RunIntake.RetryAfter, ServiceUnavailableError.RetryAfterOf(submitted.FirstError));
+        Assert.Empty(_jobs.ExecutedJobs);
+        Assert.Empty(await StoredAsync<WorkflowExecution>());
+    }
+
+    [Fact]
+    public async Task ARetryOfASubmissionMadeBeforeThePause_GetsItsRun()
+    {
+        using IServiceScope scope = _provider.CreateScope();
+        ErrorOr<WorkflowExecutionDto> first = await SubmitAsync(scope, new AdmitEveryRun(), idempotencyKey: "retry-me");
+        _intake.Pause(TimeSpan.FromMinutes(30));
+
+        ErrorOr<WorkflowExecutionDto> retried = await SubmitAsync(scope, new AdmitEveryRun(), idempotencyKey: "retry-me");
+
+        Assert.False(retried.IsError, retried.IsError ? retried.FirstError.Description : string.Empty);
+        Assert.Equal(first.Value.Id, retried.Value.Id);
+        _ = Assert.Single(_jobs.ExecutedJobs);
+    }
+
+    [Fact]
+    public async Task APauseLiftsByItself_AndOpeningItEarlyTakesRunsAtOnce()
+    {
+        _intake.Pause(TimeSpan.FromMinutes(30));
+        _clock.Advance(TimeSpan.FromMinutes(31));
+        using IServiceScope scope = _provider.CreateScope();
+        ErrorOr<WorkflowExecutionDto> afterTheLimit = await SubmitAsync(scope, new AdmitEveryRun());
+
+        _intake.Pause(TimeSpan.FromMinutes(30));
+        _intake.Open();
+        ErrorOr<WorkflowExecutionDto> afterOpening = await SubmitAsync(scope, new AdmitEveryRun());
+
+        Assert.False(afterTheLimit.IsError, afterTheLimit.IsError ? afterTheLimit.FirstError.Description : string.Empty);
+        Assert.False(afterOpening.IsError, afterOpening.IsError ? afterOpening.FirstError.Description : string.Empty);
+        Assert.Equal(2, _jobs.ExecutedJobs.Count);
+    }
+
+    private Task<ErrorOr<WorkflowExecutionDto>> SubmitAsync(IServiceScope scope, IRunAdmission admission, string? idempotencyKey = null)
     {
         IUserDataUnitOfWork unitOfWork = scope.ServiceProvider.GetRequiredService<IUserDataUnitOfWork>();
         var orchestrator = new WorkflowExecutionOrchestrator(
@@ -128,7 +183,8 @@ public sealed class RunAdmissionTests : IDisposable
                 hostBoot: _hostBoot),
             new ExecutionFreezeSourceResolver(unitOfWork, NullLogger<ExecutionFreezeSourceResolver>.Instance),
             new NoCaseFreezeSources(),
-            runAdmission: admission);
+            runAdmission: admission,
+            runIntake: _intake);
 
         Workflow workflow = new() { WorkflowTypeId = WORKFLOW_TYPE_ID, Title = "Admission test" };
 
@@ -142,6 +198,7 @@ public sealed class RunAdmissionTests : IDisposable
             email: null,
             counterpartyId: null,
             peerCompanyIds: null,
+            idempotencyKey: idempotencyKey,
             ct: TestContext.Current.CancellationToken);
     }
 

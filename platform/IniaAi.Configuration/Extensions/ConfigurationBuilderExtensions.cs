@@ -214,7 +214,7 @@ public static class ConfigurationBuilderExtensions
                 throw new DirectoryNotFoundException($"{SETTINGS_DIRECTORIES} names '{directory}', which does not exist.");
             }
 
-            _ = builder.AddKeyPerFile(directory, optional: false);
+            _ = builder.Add(new SettingsDirectoryConfigurationSource(directory));
         }
 
         // Env vars always last

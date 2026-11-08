@@ -1121,12 +1121,13 @@ Executed workflow output is stored as a fixed three-level report tree — `Workf
 | `OrganizationId` | string (FK) | Owning organization (report queries filter on it) |
 | `WorkflowTypeId` | string | Cross-instance identity |
 | `JobId` | string | Associated background job |
-| `WorkflowState` | integer | `WorkflowState` enum |
 | `Title` | string | Report title |
 | `AnalystName` | string | Analyst name |
 | `ReviewDate` | datetime | Review date |
 | `WorkflowId` | string | The executed workflow (nullable) |
 | `UserId` | string | The user the run belongs to (nullable) |
+
+A report has no state of its own: the run's state is the `WorkflowState` of its `WorkflowExecutions` row.
 
 ### ReportSections
 **Purpose**: A report section under a `WorkflowReport`.

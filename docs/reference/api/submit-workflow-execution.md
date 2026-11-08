@@ -363,6 +363,7 @@ Validation errors use the standard `errors` map: the key is the error code, the 
 | 403 | Missing or unknown `X-Tenant-Id`, or an organization the token does not carry; see [Authentication](#authentication) |
 | 404 | `Workflow not found.`: no workflow matches `workflowTypeId`, or the organization has no access to its workflow type |
 | 415 | The request is not `multipart/form-data` |
+| 503 | `RunIntake.Paused`: a deploy is replacing the server, so new reports are refused for a few minutes, with `Retry-After: 120` and `The platform is being updated. New reports can start again in a few minutes.` A request with no `Idempotency-Key` that expands no email is refused before any file is stored. A request that repeats an earlier one's key, from the header or from an expanded email, still gets that run. |
 
 
 ```json

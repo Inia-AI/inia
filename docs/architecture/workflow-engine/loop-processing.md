@@ -193,9 +193,9 @@ flowchart TD
     M --> N[Persist cloned blocks to DB]
     N --> D
 
-    style C fill:#fff3e0
-    style J fill:#e8f5e8
-    style M fill:#ffebee
+    style C fill:#fff3e0,color:#1f2328
+    style J fill:#e8f5e8,color:#1f2328
+    style M fill:#ffebee,color:#1f2328
 ```
 
 ---

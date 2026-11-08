@@ -3,6 +3,7 @@ using ErrorOr;
 using IniaAi.Application.Errors;
 using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.RateLimits;
+using IniaAi.Common.Interfaces.Services.AgentRuntime;
 using IniaAi.Configuration;
 using IniaAi.Domain.Common;
 using IniaAi.WebApi.Filters;
@@ -138,6 +139,12 @@ public class ApiController : ControllerBase
                     if (value is RateLimitRefusal limit)
                     {
                         RateLimitHeaders.WriteRefusal(Response, limit.PolicyName, limit.Quota, limit.WindowSeconds, limit.RetryAfterSeconds);
+                        continue;
+                    }
+
+                    if (key == AgentRunAdmissionErrors.RETRY_AFTER_METADATA_KEY && value is TimeSpan retryAfter)
+                    {
+                        RateLimitHeaders.WriteRetryAfter(Response, (long)Math.Ceiling(retryAfter.TotalSeconds));
                         continue;
                     }
 

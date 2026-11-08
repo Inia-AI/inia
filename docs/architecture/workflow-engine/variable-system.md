@@ -111,10 +111,10 @@ flowchart LR
     C --> D["Replace {analysis_type} with 'Risk'"]
     D --> E["Final: 'Analyze Global Equity Fund for Risk'"]
 
-    style A fill:#e1f5fe
-    style C fill:#fff3e0
-    style D fill:#fff3e0
-    style E fill:#e8f5e8
+    style A fill:#e1f5fe,color:#1f2328
+    style C fill:#fff3e0,color:#1f2328
+    style D fill:#fff3e0,color:#1f2328
+    style E fill:#e8f5e8,color:#1f2328
 ```
 
 ### Block Replacement Tags
@@ -357,8 +357,8 @@ flowchart LR
     D --> E[Custom Converter<br/>Preserves Casing]
     E --> F[API Response<br/>Original Casing]
 
-    style A fill:#e1f5fe
-    style F fill:#e8f5e8
+    style A fill:#e1f5fe,color:#1f2328
+    style F fill:#e8f5e8,color:#1f2328
 ```
 
 ## Best Practices

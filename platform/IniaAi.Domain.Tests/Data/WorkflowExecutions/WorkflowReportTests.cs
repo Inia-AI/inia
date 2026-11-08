@@ -6,11 +6,10 @@ namespace IniaAi.Domain.Tests.Data.WorkflowExecutions;
 public class WorkflowReportTests
 {
     [Fact]
-    public void Ctor_Default_HasUndefinedStateAndEmptySections()
+    public void Ctor_Default_HasAnIdAndEmptySections()
     {
         var report = new WorkflowReport();
 
-        Assert.Equal(WorkflowState.Undefined, report.WorkflowState);
         Assert.Empty(report.Sections);
         Assert.False(string.IsNullOrEmpty(report.Id));
     }

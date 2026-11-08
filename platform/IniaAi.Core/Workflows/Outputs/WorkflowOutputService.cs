@@ -106,7 +106,6 @@ public class WorkflowOutputService : IWorkflowOutputService
             AnalystName = workflow.User?.UserName,
             ReviewDate = reviewDate,
             Title = workflow.Title,
-            WorkflowState = workflowState ?? WorkflowState.Undefined,
         };
 
         if (context is not null)

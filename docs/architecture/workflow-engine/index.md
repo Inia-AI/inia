@@ -43,18 +43,18 @@ graph TD
     D --> D2[Block 7]
     D --> D3[Block 8]
 
-    style A fill:#e1f5fe
-    style B fill:#fff3e0
-    style C fill:#fff3e0
-    style D fill:#fff3e0
-    style B1 fill:#e8f5e8
-    style B2 fill:#e8f5e8
-    style B3 fill:#e8f5e8
-    style C1 fill:#e8f5e8
-    style C2 fill:#e8f5e8
-    style D1 fill:#e8f5e8
-    style D2 fill:#e8f5e8
-    style D3 fill:#e8f5e8
+    style A fill:#e1f5fe,color:#1f2328
+    style B fill:#fff3e0,color:#1f2328
+    style C fill:#fff3e0,color:#1f2328
+    style D fill:#fff3e0,color:#1f2328
+    style B1 fill:#e8f5e8,color:#1f2328
+    style B2 fill:#e8f5e8,color:#1f2328
+    style B3 fill:#e8f5e8,color:#1f2328
+    style C1 fill:#e8f5e8,color:#1f2328
+    style C2 fill:#e8f5e8,color:#1f2328
+    style D1 fill:#e8f5e8,color:#1f2328
+    style D2 fill:#e8f5e8,color:#1f2328
+    style D3 fill:#e8f5e8,color:#1f2328
 ```
 
 **Hierarchy Constraints:**

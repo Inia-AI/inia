@@ -63,6 +63,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
     private readonly ICaseFreezeSources _caseFreezeSources;
     private readonly IWorkflowActivityScriptEnsurer? _activityScriptEnsurer;
     private readonly IRunAdmission _runAdmission;
+    private readonly RunIntake _runIntake;
     private readonly AgentRuntimeSettings _agentRuntime;
     private readonly ModelRoutingSettings? _modelRouting;
     private readonly bool _anonymises;
@@ -82,7 +83,8 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         IWorkflowActivityScriptEnsurer? activityScriptEnsurer = null,
         IOptions<PlatformSettings>? platformSettings = null,
         IServiceProviderIsService? registrations = null,
-        IRunAdmission? runAdmission = null)
+        IRunAdmission? runAdmission = null,
+        RunIntake? runIntake = null)
     {
         _logger = logger;
         _jobsService = jobsService;
@@ -99,6 +101,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         _modelRouting = platformSettings?.Value.ModelRouting;
         _anonymises = registrations?.IsService(typeof(IConfidentialDocumentAnonymiser)) == true;
         _runAdmission = runAdmission ?? new AdmitEveryRun();
+        _runIntake = runIntake ?? new RunIntake();
     }
 
     /// <inheritdoc />
@@ -145,6 +148,12 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
                     existing.Id);
                 return WorkflowExecutionProjections.DtoOf(existing);
             }
+        }
+
+        if (_runIntake.IsPaused)
+        {
+            _logger.LogInformation("Refused a run of {WorkflowTypeId} for {OrganizationId}: run intake is paused for a deploy", workflow.WorkflowTypeId, organizationId);
+            return RunIntake.Refusal();
         }
 
         // A confidential run that nothing anonymises would read the original documents.

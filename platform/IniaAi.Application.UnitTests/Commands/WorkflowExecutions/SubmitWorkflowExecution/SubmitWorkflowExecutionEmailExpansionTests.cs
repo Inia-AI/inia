@@ -97,6 +97,22 @@ public sealed class SubmitWorkflowExecutionEmailExpansionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task WhileADeployPausesRuns_ASubmissionThatExpandsAnEmail_IsLeftToTheRunsOwnCheck()
+    {
+        SkipUnlessTheBuildReadsEmail();
+
+        ExpandInto(CreateExpansionResult());
+        _harness.Intake.Pause(TimeSpan.FromMinutes(30));
+
+        ErrorOr<WorkflowExecutionDto> result = await _harness.SubmitAsync(
+            [CreateEmlFile()],
+            [new SubmitFileMetadata { DocumentClass = BODY_CLASS, ExpandEmail = true, AttachmentsDocumentClass = ATTACHMENT_CLASS }]);
+
+        Assert.False(result.IsError, result.IsError ? result.FirstError.Description : string.Empty);
+        Assert.NotEmpty(_harness.SubmittedFiles());
+    }
+
+    [Fact]
     public async Task Handle_ExpandEmail_ABodyShowingAPastedTable_GoesThroughOcr()
     {
         SkipUnlessTheBuildReadsEmail();

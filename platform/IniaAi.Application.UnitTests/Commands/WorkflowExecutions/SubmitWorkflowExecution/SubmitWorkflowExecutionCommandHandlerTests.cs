@@ -45,6 +45,31 @@ public sealed class SubmitWorkflowExecutionCommandHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task WhileADeployPausesRuns_ASubmissionIsRefusedBeforeItsFilesAreStored()
+    {
+        await _harness.SeedWorkflowAsync(Harness.WorkflowWith());
+        _harness.Intake.Pause(TimeSpan.FromMinutes(30));
+
+        ErrorOr<WorkflowExecutionDto> result = await _harness.SubmitAsync([Harness.Pdf(TEST_FILE)]);
+
+        Assert.Equal(RunIntake.PAUSED_CODE, Assert.Single(result.Errors).Code);
+        Assert.Empty(await _harness.StoredFileNamesAsync());
+        Assert.Empty(_harness.Orchestrator.ReceivedCalls());
+    }
+
+    [Fact]
+    public async Task WhileADeployPausesRuns_ARetryWithItsIdempotencyKey_IsLeftToTheRunsOwnCheck()
+    {
+        await _harness.SeedWorkflowAsync(Harness.WorkflowWith());
+        _harness.Intake.Pause(TimeSpan.FromMinutes(30));
+
+        ErrorOr<WorkflowExecutionDto> result = await _harness.SubmitAsync([Harness.Pdf(TEST_FILE)], idempotencyKey: "retry-me");
+
+        Assert.False(result.IsError);
+        Assert.Equal("retry-me", _harness.SubmittedIdempotencyKey());
+    }
+
+    [Fact]
     public async Task Handle_WhenTheOrganizationHasNoAccessToTheType_AnswersAsForAnUnknownWorkflow_AndStartsNothing()
     {
         await _harness.SeedWorkflowWithoutAccessAsync(Harness.WorkflowWith());

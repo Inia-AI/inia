@@ -1,3 +1,4 @@
+@using IniaAi.Application.Commands.WorkflowExecutions.Shared
 @using IniaAi.Application.Common.Interfaces.Services
 @using IniaAi.Application.Common.Workflows
 @using IniaAi.Core.Services.AgentRuntime
@@ -24,6 +25,7 @@
 @inject IOptions<PlatformSettings> PlatformSettingsOptions
 @inject IOptions<IniaAi.Configuration.Platform.AgentRuntimeSettings> AgentRuntimeSettingsOptions
 @inject IniaAi.AiConnection.Common.TenantModelFamilyResolver TenantModelFamilyResolver
+@inject RunIntake Intake
 
 <MudCard Outlined="true">
     <MudCardContent>
@@ -63,6 +65,11 @@
 
     private async Task ExecuteJob()
     {
+        if (RefusedForDeploy())
+        {
+            return;
+        }
+
         // The same pre-spend gate the shared orchestrator applies: this button enqueues the
         // in-memory editor workflow, which a file upload can fill without a save, so the
         // save-time gate alone does not bound what reaches here.
@@ -89,6 +96,12 @@
             {
                 return; // User cancelled
             }
+        }
+
+        // The dialog can stay open for as long as the user likes, and a deploy can pause runs meanwhile.
+        if (RefusedForDeploy())
+        {
+            return;
         }
 
         if (string.IsNullOrEmpty(AppState.CurrentOrganizationId))
@@ -156,6 +169,17 @@
         StateHasChanged();
     }
 
+
+    private bool RefusedForDeploy()
+    {
+        if (!Intake.IsPaused)
+        {
+            return false;
+        }
+
+        AppState.Notify(RunIntake.PAUSED_MESSAGE, Severity.Warning);
+        return true;
+    }
 
     private async Task<bool> ShowPreviewWarningDialog(int blockCount)
     {

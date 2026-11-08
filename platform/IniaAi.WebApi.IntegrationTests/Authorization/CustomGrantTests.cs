@@ -1,7 +1,9 @@
 using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Domain.Entities.UserManagement;
+using IniaAi.WebApi.Controllers.v1;
 using IniaAi.WebApi.IntegrationTests.Builders;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -40,6 +42,26 @@ public class CustomGrantTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(Errors.InvalidGrant, await TestAccount.ReadTokenAsync(response, Parameters.Error));
+    }
+
+    [Fact]
+    public async Task ALockedAccount_TheHandlerSignsIn_IsRefusedWithTheReason()
+    {
+        var api = new ClientBuilder(services => services.AddCustomGrant<SignsInTheNamedAddress>(GRANT_TYPE));
+        await using TestAccount account = await TestAccount.CreateAsync(api);
+        (IServiceScope scope, UserManager<User> userManager) = api.GetNewScope<UserManager<User>>();
+        using (scope)
+        {
+            User user = (await userManager.FindByIdAsync(account.User.Id))!;
+            _ = await userManager.SetLockoutEnabledAsync(user, true);
+            _ = await userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(1));
+        }
+
+        HttpResponseMessage response = await RequestTokenAsync(api, account.User.Email!);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(AuthenticationController.ACCOUNT_LOCKED_OUT, await TestAccount.ReadTokenAsync(response, Parameters.Error));
+        Assert.Equal(AuthenticationController.ACCOUNT_LOCKED_MESSAGE, await TestAccount.ReadTokenAsync(response, Parameters.ErrorDescription));
     }
 
     [Fact]

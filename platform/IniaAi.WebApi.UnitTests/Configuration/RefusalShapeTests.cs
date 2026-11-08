@@ -3,7 +3,10 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using ErrorOr;
+using IniaAi.Application.Commands.WorkflowExecutions.Shared;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Errors;
+using IniaAi.Common.Interfaces.Services.AgentRuntime;
 using IniaAi.WebApi.Controllers.v1.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -82,6 +85,27 @@ public sealed class RefusalShapeTests : IClassFixture<ApiPipelineHost>
         Assert.Equal("General.NotFound", (await ReadBodyAsync(response)).GetProperty("code").GetString());
     }
 
+    [Fact]
+    public async Task APausedRunIntake_Answers503WithItsMessage_AndTheWaitOnlyInRetryAfter()
+    {
+        HttpResponseMessage response = await _client.GetAsync($"{PROBE_ROUTE}/paused", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(RunIntake.RetryAfter, response.Headers.RetryAfter?.Delta);
+        JsonElement body = await ReadBodyAsync(response);
+        Assert.Equal((RunIntake.PAUSED_MESSAGE, RunIntake.PAUSED_CODE), (body.GetProperty("title").GetString(), body.GetProperty("code").GetString()));
+        Assert.False(body.TryGetProperty(AgentRunAdmissionErrors.RETRY_AFTER_METADATA_KEY, out _));
+    }
+
+    [Fact]
+    public async Task AnOutsideServiceThatDidNotAnswer_Answers503_WithNoRetryAfter()
+    {
+        HttpResponseMessage response = await _client.GetAsync($"{PROBE_ROUTE}/unavailable", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Null(response.Headers.RetryAfter);
+    }
+
     [Theory]
     [InlineData("POST", "body")]
     [InlineData("GET", "variable")]
@@ -141,5 +165,17 @@ public class RefusalProbeController : ApiController
     public IActionResult Missing()
     {
         return Problem([Error.NotFound()]);
+    }
+
+    [HttpGet("paused")]
+    public IActionResult Paused()
+    {
+        return Problem([RunIntake.Refusal()]);
+    }
+
+    [HttpGet("unavailable")]
+    public IActionResult Unavailable()
+    {
+        return Problem([ServiceUnavailableError.Of("Search.Unavailable", "The search service did not answer.")]);
     }
 }

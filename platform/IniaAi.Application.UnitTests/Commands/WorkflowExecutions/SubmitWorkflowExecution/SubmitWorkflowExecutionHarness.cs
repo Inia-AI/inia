@@ -84,6 +84,8 @@ internal sealed class SubmitWorkflowExecutionHarness : IDisposable
 
     public IEmailExpansionService EmailExpansion { get; } = Substitute.For<IEmailExpansionService>();
 
+    public RunIntake Intake => _provider.GetRequiredService<RunIntake>();
+
     public static IFormFile File(string fileName, byte[] content)
     {
         return FormFileTestHelper.CreateFromBytes(content, fileName);

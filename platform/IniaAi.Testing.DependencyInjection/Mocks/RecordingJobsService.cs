@@ -51,7 +51,7 @@ public sealed class RecordingJobsService : IJobsService
 
     public Task<IEnumerable<Job>> GetJobsAsync()
     {
-        throw new NotImplementedException();
+        return Task.FromResult<IEnumerable<Job>>([.. ExecutedJobs]);
     }
 
     public BackgroundJob? GetJob(string jobId)

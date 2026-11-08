@@ -45,6 +45,7 @@ public class SubmitWorkflowExecutionCommandHandler
     private readonly IEmailExpansionService _emailExpansionService;
     private readonly ICaseFreezeSources _caseFreezeSources;
     private readonly DocumentIntakeGate _intakeGate;
+    private readonly RunIntake _runIntake;
 
     public SubmitWorkflowExecutionCommandHandler(
         ILogger<SubmitWorkflowExecutionCommandHandler> logger,
@@ -54,7 +55,8 @@ public class SubmitWorkflowExecutionCommandHandler
         IWorkflowExecutionOrchestrator orchestrator,
         IEmailExpansionService emailExpansionService,
         ICaseFreezeSources caseFreezeSources,
-        DocumentIntakeGate intakeGate)
+        DocumentIntakeGate intakeGate,
+        RunIntake runIntake)
     {
         _logger = logger;
         _coreUnitOfWork = coreUnitOfWork;
@@ -64,12 +66,20 @@ public class SubmitWorkflowExecutionCommandHandler
         _emailExpansionService = emailExpansionService;
         _caseFreezeSources = caseFreezeSources;
         _intakeGate = intakeGate;
+        _runIntake = runIntake;
     }
 
     public async Task<ErrorOr<WorkflowExecutionDto>> Handle(
         SubmitWorkflowExecutionCommand request,
         CancellationToken cancellationToken)
     {
+        // A retry is answered with the run it already has. Its key comes from the header or from the
+        // emails it expands, so only a request with neither can be refused before its files are stored.
+        if (_runIntake.IsPaused && request.IdempotencyKey is null && request.Metadata.Files?.Any(file => file.ExpandEmail) != true)
+        {
+            return RunIntake.Refusal();
+        }
+
         // 1. Fetch workflow
         ErrorOr<Workflow> runnable = await RunnableWorkflowGuard.RunnableAsync(
             await GetWorkflowAsync(request.Metadata.WorkflowTypeId), request.OrganizationId, _coreUnitOfWork, _logger, cancellationToken);

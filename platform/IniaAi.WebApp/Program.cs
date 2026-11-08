@@ -1,6 +1,7 @@
 using IniaAi.Application;
 using IniaAi.Configuration.Extensions;
 using IniaAi.Infrastructure;
+using IniaAi.Infrastructure.Hosting;
 using IniaAi.Infrastructure.Persistence.Setup;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.WebApp;
@@ -14,6 +15,7 @@ CultureBootstrap.PinInvariantCulture();
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 await builder.Configuration.SetupConfigurationAsync();
+builder.AddRunIntakeControl();
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger);
 

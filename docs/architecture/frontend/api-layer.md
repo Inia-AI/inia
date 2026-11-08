@@ -256,6 +256,7 @@ async getFile(fileId: string, disposition: 'preview' | 'download' = 'download') 
 
 See [Documents API](../../reference/api/documents.md) for the backend contract behind these calls.
 
+
 ## Module inventory
 
 The shared `API` object (`src/api/index.ts`) registers **28 service modules**, one per folder under `src/api/` except `base/`, which holds the abstraction itself, and `dynamicChart/`, which is the chart option builder and calls no endpoint ([Charts](charts.md)). The path column is the relative path passed to `getApiPath(...)`, i.e. the call resolves to `api/v1/<path>`. There is no `aiProofreading` module: proofreading was removed with the WebScraper feature family.

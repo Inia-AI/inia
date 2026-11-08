@@ -97,6 +97,7 @@ public static class DependencyInjection
         services.TryAddSingleton<IDeletedRecordRetention, DefaultDeletedRecordRetention>();
         services.TryAddSingleton<IReportNotice, NoReportNotice>();
         services.TryAddTransient<IRunAdmission, AdmitEveryRun>();
+        services.TryAddSingleton<RunIntake>();
         services.TryAddTransient<IRunSettlement, NoRunSettlement>();
         services.TryAddTransient<IExternalSignUp, NoExternalSignUp>();
         services.TryAddSingleton<ISessionLifetimePolicy, NoSessionLimit>();

@@ -80,7 +80,7 @@ over the answer with no other model call. `platform/samples/block-showcase/workf
      writes the company name in capitals.
    - **Data**: the JSON that Merge JSON combined, as the data output `figures_and_ratios`. It is
      what the API returns to another system for this run.
-3. To see the settings of each block, open the WebApp at `http://localhost:8081` and select
+3. To see the settings of each block, open the admin app at `http://localhost:8081` and select
    **Workflow Editors**, then **Sample: block showcase**. Select **Open** on a section to see its
    blocks and their settings.
 

@@ -65,10 +65,10 @@ graph TD
     B -->|Workflow Executions API| D[Lifecycle ops + execution logs]
     C -->|Workflow Reports API| E[Formatted report + output elements]
 
-    style B fill:#e1f5fe
-    style C fill:#fff3e0
-    style D fill:#e8f5e9
-    style E fill:#fce4ec
+    style B fill:#e1f5fe,color:#1f2328
+    style C fill:#fff3e0,color:#1f2328
+    style D fill:#e8f5e9,color:#1f2328
+    style E fill:#fce4ec,color:#1f2328
 ```
 
 The Workflow Executions API owns lifecycle operations (start, submit, state transitions) and execution logs. The rendered output of an execution — the report tree and its output elements — is read through the [Workflow Reports API](reports.md) (`GET /api/v{version}/workflow-reports/{id}`).
@@ -143,6 +143,10 @@ Starts a new workflow execution from a template with optional file references an
 
 `workflowId` must name a workflow whose type the caller's organization has access to (`WorkflowTypeOrganizationAccess`). A workflow of a type the organization cannot reach answers `404` with `Workflow not found.`, the same answer as an unknown id, and no execution starts. Every run start goes through this check in `WorkflowExecutionOrchestrator`: this endpoint and the [submit endpoint](submit-workflow-execution.md#system-user-requirements).
 
+
+#### While a deploy replaces the server
+
+A deploy pauses new runs for a few minutes before it replaces the server, so the reports already running get time to finish. A start in that time answers `503` with the code `RunIntake.Paused`, the header `Retry-After: 120`, and `The platform is being updated. New reports can start again in a few minutes.` Nothing starts. Start the run again after the time the header gives. A start that repeats an earlier one's idempotency key still gets the run it already has.
 
 #### Unresolvable input documents
 

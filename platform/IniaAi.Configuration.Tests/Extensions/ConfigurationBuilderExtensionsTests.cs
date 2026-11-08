@@ -118,13 +118,16 @@ public class ConfigurationBuilderExtensionsTests
         }
     }
 
-    [Fact]
-    public async Task SetupConfigurationAsync_WithASettingsFileEndingInANewline_ReadsTheValueWithoutIt()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public async Task SetupConfigurationAsync_WithASettingsFileEndingInANewline_ReadsTheValueWithoutIt(string newline)
     {
         // Arrange
         string directory = Directory.CreateTempSubdirectory().FullName;
-        await File.WriteAllTextAsync(Path.Combine(directory, "PlatformSettings__IniaAi__WithValue"), "Value\n", TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(directory, "PlatformSettings__IniaAi__Unset"), "\n", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(directory, "PlatformSettings__IniaAi__WithValue"), "Value" + newline, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(directory, "PlatformSettings__IniaAi__Unset"), newline, TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(directory, "PlatformSettings__IniaAi__TwoLines"), "First" + newline + "Second" + newline, TestContext.Current.CancellationToken);
         Environment.SetEnvironmentVariable(ConfigurationBuilderExtensions.SETTINGS_DIRECTORIES, directory);
         var builder = new ConfigurationBuilder();
 
@@ -136,6 +139,7 @@ public class ConfigurationBuilderExtensionsTests
             // Assert
             Assert.Equal("Value", configuration["PlatformSettings:IniaAi:WithValue"]);
             Assert.Equal(string.Empty, configuration["PlatformSettings:IniaAi:Unset"]);
+            Assert.Equal("First" + newline + "Second", configuration["PlatformSettings:IniaAi:TwoLines"]);
         }
         finally
         {

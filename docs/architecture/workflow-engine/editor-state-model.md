@@ -63,10 +63,10 @@ graph TD
     SI2 --> BAM2[BlockActionsMenu]
     SI2 --> BI2[BlockInteraction]
 
-    style WE fill:#e1f5fe
-    style CL fill:#e1f5fe
-    style SI1 fill:#fff3e0
-    style SI2 fill:#fff3e0
+    style WE fill:#e1f5fe,color:#1f2328
+    style CL fill:#e1f5fe,color:#1f2328
+    style SI1 fill:#fff3e0,color:#1f2328
+    style SI2 fill:#fff3e0,color:#1f2328
 ```
 
 ## The two hosts

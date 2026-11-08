@@ -59,6 +59,10 @@ docker buildx build --platform linux/amd64 -f docker/Dockerfile --target webapp 
 Every .NET service runs with `ASPNETCORE_ENVIRONMENT=Production` and `FORCE_AWS_MODE=false`. The
 stack seeds one organization, so the first start creates one account: `superadmin@example.com`, or the address in `INIA_ADMIN_EMAIL`.
 
+The apps show the release number in `INIA_VERSION`: compose builds it into the platform images
+and the Vue app. Each release of this repository fills it in `.env.example`. A stack built from
+the platform source leaves it unset, and its apps show `0.0.0.0`.
+
 ### How the secrets reach the services
 
 No secret reaches a service as an environment variable, so `docker inspect` shows none.

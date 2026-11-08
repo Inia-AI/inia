@@ -12,6 +12,10 @@ x-platform: &platform
   build: &platform-build
     context: ./platform
     dockerfile: docker/Dockerfile
+    args:
+      VERSION: ${INIA_VERSION:-0.0.0}
+      ASSEMBLY_VERSION: ${INIA_VERSION:-0.0.0}
+      INFORMATIONAL_VERSION: ${INIA_VERSION:-0.0.0}
   restart: unless-stopped
   depends_on:
     postgres:

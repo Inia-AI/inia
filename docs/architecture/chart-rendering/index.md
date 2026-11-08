@@ -47,9 +47,9 @@ graph TB
     Paragraph -->|chartConfig| Vue
     Paragraph -->|chartConfig| Writer
 
-    style Frontend fill:#e1f5fe
-    style Backend fill:#fff3e0
-    style Engine fill:#e8f5e8
+    style Frontend fill:#e1f5fe,color:#1f2328
+    style Backend fill:#fff3e0,color:#1f2328
+    style Engine fill:#e8f5e8,color:#1f2328
 ```
 
 ## Components

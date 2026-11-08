@@ -5020,9 +5020,6 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.Property<string>("WorkflowId")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("WorkflowState")
-                        .HasColumnType("int");
-
                     b.Property<string>("WorkflowTypeId")
                         .HasColumnType("nvarchar(max)");
 

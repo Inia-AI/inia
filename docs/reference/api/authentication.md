@@ -333,6 +333,8 @@ Authentication failed due to invalid credentials, locked account, or other authe
 
 A locked-out account answers exactly like a wrong password, so a lockout does not reveal which accounts exist.
 
+A grant type a module registered is the exception: its handler has already proved who the caller is, so a locked account answers `401` with `{ "error": "account_locked_out", "error_description": "This account is locked, so it can't sign in. Contact support to unlock it." }`, and a system user with `{ "error": "account_not_allowed", "error_description": "This email address can't be used to sign in. Use your own email address." }` (`CustomGrantTests.ALockedAccount_TheHandlerSignsIn_IsRefusedWithTheReason`).
+
 #### Common Failure Scenarios
 
 1. **Invalid Credentials**: Wrong username/password combination

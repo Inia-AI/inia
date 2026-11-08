@@ -81,6 +81,7 @@ public sealed class WorkflowExecutionsController : ApiController
     /// <response code="403">User is forbidden to execute this workflow.</response>
     /// <response code="404">Workflow or user not found.</response>
     /// <response code="500">Server error while processing the workflow.</response>
+    /// <response code="503">A deploy is replacing the server; <c>Retry-After</c> says when to start the run again.</response>
     [HttpPost]
     [RequiresCapability(OrganizationCapabilities.RUN)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(WorkflowExecutionDto))]
@@ -89,6 +90,7 @@ public sealed class WorkflowExecutionsController : ApiController
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(List<Error>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(List<Error>))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     [SwaggerRequestExample(typeof(StartWorkflowExecutionRequest), typeof(StartWorkflowExecutionRequestExample))]
     [SwaggerResponseExample(StatusCodes.Status201Created, typeof(BackgroundJobResponseExample))]
     public async Task<IActionResult> StartWorkflowExecution(
@@ -127,6 +129,7 @@ public sealed class WorkflowExecutionsController : ApiController
     /// <response code="400">Invalid input, missing metadata, or a file the platform cannot accept: the <c>errors</c> map names each failed file under <c>files[index]</c> with the reason, and every document the request created is deleted again.</response>
     /// <response code="401">Unauthorized access.</response>
     /// <response code="404">Workflow not found.</response>
+    /// <response code="503">A deploy is replacing the server; <c>Retry-After</c> says when to submit again.</response>
     [HttpPost("submit")]
     [RequiresCapability(OrganizationCapabilities.RUN)]
     [RequestSizeLimit(LARGE_PAYLOAD_LIMIT_BYTES)]
@@ -135,6 +138,7 @@ public sealed class WorkflowExecutionsController : ApiController
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Submit(
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
     {

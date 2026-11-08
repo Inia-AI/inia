@@ -112,7 +112,8 @@ public class WorkflowOutputServiceReportTreeTests : IDisposable
         Assert.Equal("org-9", report.OrganizationId);
         Assert.Equal("cp-9", report.CounterpartyId);
         Assert.Equal("job-9", report.JobId);
-        Assert.Equal(WorkflowState.Running, report.WorkflowState);
+        Assert.Equal(WorkflowState.Running, execution.WorkflowState);
+        Assert.Null(typeof(WorkflowReport).GetProperty(nameof(WorkflowExecution.WorkflowState)));
         Assert.Equal(new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc), report.ReviewDate);
     }
 
@@ -146,21 +147,6 @@ public class WorkflowOutputServiceReportTreeTests : IDisposable
 
         Assert.NotNull(report);
         Assert.Equal("cp-link", report.CounterpartyId);
-    }
-
-    [Fact]
-    public async Task CreateExecutionFromWorkflowAsync_DefaultsWorkflowReportStateToUndefined()
-    {
-        var workflow = new Workflow();
-
-        WorkflowExecution execution = await _sut.CreateExecutionFromWorkflowAsync(
-            workflow, null, _uow);
-
-        WorkflowReport? report = await _uow.Repository<WorkflowReport>()
-            .GetByIdAsync(execution.Id, TestContext.Current.CancellationToken);
-
-        Assert.NotNull(report);
-        Assert.Equal(WorkflowState.Undefined, report.WorkflowState);
     }
 
     [Fact]
