@@ -1064,6 +1064,12 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.Property<string>("Class")
                         .HasColumnType("text");
 
+                    b.Property<int?>("CountedAttachmentPages")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CountedPages")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1078,6 +1084,9 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasColumnType("character varying(1000)");
 
                     b.Property<string>("DocumentCategoryId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmailIdentifier")
                         .HasColumnType("text");
 
                     b.Property<string>("FileMetadataId")

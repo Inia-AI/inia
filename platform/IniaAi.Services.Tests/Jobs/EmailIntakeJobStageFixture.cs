@@ -96,6 +96,7 @@ internal sealed class EmailIntakeJobStageFixture
             FileStorageManager,
             WorkflowOutputService,
             intakeGate,
+            FileFormatsUnderTest.PageCounter,
             NullLogger<EmailIntakeJobStage>.Instance);
     }
 

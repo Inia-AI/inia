@@ -15,6 +15,7 @@ using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Enums;
 using IniaAi.FileFormats;
 using IniaAi.Services.Documents;
+using IniaAi.Services.Email;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.Documents;
 using IniaAi.WebApi.Contracts.Dto;
@@ -43,6 +44,7 @@ public class DocumentReadTests : ReadPathTests
         _ = services.AddSingleton(Options.Create(new PlatformSettings { IniaAi = new IniaAiSettings { MaxFileSizeMb = 10 } }));
         _ = services.AddFileFormatsUnderTest();
         _ = services.AddSingleton<DocumentIntakeGate>();
+        _ = services.AddTransient<IEmailExpansionService, EmailExpansionService>();
     }
 
     [Fact]

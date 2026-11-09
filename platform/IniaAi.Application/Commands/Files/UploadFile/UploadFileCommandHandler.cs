@@ -1,9 +1,12 @@
 ﻿using ErrorOr;
 using IniaAi.Application.Commands.Signatures;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.UploadLimits;
 using IniaAi.Application.Documents;
 using IniaAi.Common.Enums;
+using IniaAi.Common.Extensions;
+using IniaAi.Common.Interfaces;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.UserData.Interfaces;
@@ -34,6 +37,8 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
     private readonly IFileStorageManager _fileStorageManager;
     private readonly DocumentIntakeGate _intakeGate;
     private readonly IUploadLimits _uploadLimits;
+    private readonly IDocumentPageCounter _pageCounter;
+    private readonly IEmailExpansionService _emailExpansion;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UploadFileCommandHandler"/> class.
@@ -43,18 +48,24 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
     /// <param name="fileStorageManager">File storage manager for handling file persistence.</param>
     /// <param name="intakeGate">The gate every upload passes before its bytes are stored.</param>
     /// <param name="uploadLimits">The organization's storage quota and upload rate.</param>
+    /// <param name="pageCounter">Counts the pages of the stored file.</param>
+    /// <param name="emailExpansion">Counts the pages of an email's body and of its attachments, apart.</param>
     public UploadFileCommandHandler(
         IUserDataUnitOfWork unitOfWork,
         ILogger<UploadFileCommandHandler> logger,
         IFileStorageManager fileStorageManager,
         DocumentIntakeGate intakeGate,
-        IUploadLimits uploadLimits)
+        IUploadLimits uploadLimits,
+        IDocumentPageCounter pageCounter,
+        IEmailExpansionService emailExpansion)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _fileStorageManager = fileStorageManager;
         _intakeGate = intakeGate;
         _uploadLimits = uploadLimits;
+        _pageCounter = pageCounter;
+        _emailExpansion = emailExpansion;
     }
 
     /// <inheritdoc/>
@@ -109,6 +120,9 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
         try
         {
             document = await _unitOfWork.Documents.FindExistingDocumentAsync(storageFileName, fileBytes.Length, request.OrganizationId);
+            UploadCount count = document is { CountedPages: not null }
+                ? new UploadCount(document.CountedPages, document.CountedAttachmentPages, document.EmailIdentifier)
+                : await CountAsync(fileBytes, screening.MediaType, storageFileName, cancellationToken);
             string? storagePath = null;
 
             async Task PersistAsync(CancellationToken ct)
@@ -130,6 +144,11 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
                     document.Sources = ["User Upload"];
                 }
 
+                if (request.SourceEmailIdentifier is { } email && !document.Sources.Contains(email))
+                {
+                    document.Sources = [.. document.Sources, email];
+                }
+
                 if (!string.IsNullOrWhiteSpace(request.DocumentCategoryId))
                 {
                     document.DocumentCategoryId = request.DocumentCategoryId;
@@ -139,6 +158,10 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
                 {
                     document.HasMacros = true;
                 }
+
+                document.CountedPages = count.Pages;
+                document.CountedAttachmentPages = count.AttachmentPages;
+                document.EmailIdentifier = count.EmailIdentifier;
 
                 if (unlockResult is { WasPasswordProtected: true })
                 {
@@ -351,6 +374,25 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
         }
     }
 
+    private async Task<UploadCount> CountAsync(byte[] bytes, MediaType mediaType, string fileName, CancellationToken cancellationToken)
+    {
+        if (!mediaType.IsEmail())
+        {
+            return new UploadCount(_pageCounter.Count(bytes, mediaType, fileName), null, null);
+        }
+
+        try
+        {
+            EmailPageCount email = await _emailExpansion.CountPagesAsync(bytes, cancellationToken);
+            return new UploadCount(email.BodyPages, email.AttachmentPages, email.Identifier);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
+        {
+            _logger.LogWarning(ex, "An uploaded email (file name of {FileNameLength} characters) could not be read, so its pages were not counted.", fileName.Length);
+            return new UploadCount(null, null, null);
+        }
+    }
+
     /// <summary>
     /// Calculates the MD5 hash of the uploaded file bytes.
     /// </summary>
@@ -361,4 +403,6 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
         byte[] hash = MD5.HashData(bytes);
         return Convert.ToHexString(hash);
     }
+
+    private sealed record UploadCount(int? Pages, int? AttachmentPages, string? EmailIdentifier);
 }

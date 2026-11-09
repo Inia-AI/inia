@@ -8,6 +8,7 @@ using IniaAi.Configuration.Platform;
 using IniaAi.Domain.Enums;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
+using IniaAi.Services.Email;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.Documents;
 using IniaAi.WebApi.Contracts.Dto;
@@ -55,7 +56,13 @@ internal sealed class UploadFileHandlerHarness : IDisposable
             NullLogger<UploadFileCommandHandler>.Instance,
             FileStorageManager,
             intakeGate,
-            new NoUploadLimits());
+            new NoUploadLimits(),
+            FileFormatsUnderTest.PageCounter,
+            new EmailExpansionService(
+                Options.Create(new PlatformSettings()),
+                FileFormatsUnderTest.Unlocker,
+                FileFormatsUnderTest.PageCounter,
+                NullLogger<EmailExpansionService>.Instance));
     }
 
     public UserDataDbContext Context { get; }

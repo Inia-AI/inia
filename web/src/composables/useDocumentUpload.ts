@@ -44,6 +44,8 @@ export interface UploadableDocument {
   error: UploadErrorCode | undefined
   errorDetail: string | undefined
   warnings: string[] | undefined
+  countedPages: number | null | undefined
+  countedAttachmentPages: number | null | undefined
 }
 
 export interface UploadError {
@@ -150,6 +152,8 @@ export function useDocumentUpload() {
       error: undefined,
       errorDetail: undefined,
       warnings: undefined,
+      countedPages: undefined,
+      countedAttachmentPages: undefined,
     }))
 
     // Add to documents list
@@ -201,6 +205,8 @@ export function useDocumentUpload() {
         targetDoc.progress = 100
         targetDoc.isUploading = false
         targetDoc.warnings = response?.warnings
+        targetDoc.countedPages = response?.countedPages
+        targetDoc.countedAttachmentPages = response?.countedAttachmentPages
       }
     } catch (err) {
       const { code: errorCode, detail } = toUploadError(err, t)
@@ -298,6 +304,8 @@ export function useDocumentUpload() {
       error: undefined,
       errorDetail: undefined,
       warnings: doc.warnings,
+      countedPages: doc.countedPages,
+      countedAttachmentPages: doc.countedAttachmentPages,
     }))
   }
 
@@ -313,6 +321,8 @@ export function useDocumentUpload() {
       name: doc.name,
       progress: doc.progress,
       warnings: doc.warnings,
+      countedPages: doc.countedPages,
+      countedAttachmentPages: doc.countedAttachmentPages,
       onProcessChange: () => {}, // Not used when upload is handled internally
     }))
   }

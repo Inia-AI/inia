@@ -35,22 +35,34 @@ public static class WordFixtures
     /// <summary>A .docx with one paragraph for each text.</summary>
     public static byte[] Document(params string[] paragraphs)
     {
-        return Write(_ => Body(paragraphs.Select(text => text == PAGE_BREAK ? new Paragraph(new Run(new Break { Type = BreakValues.Page })) : TextParagraph(text))));
+        return Write(_ => Body(paragraphs.Select(text => text == PAGE_BREAK ? PageBreak() : TextParagraph(text))));
     }
 
     /// <summary>A .docx with the paragraph, then the PNG picture in a paragraph of its own.</summary>
     public static byte[] DocumentWithPicture(string paragraph, byte[] png)
     {
+        return Write(main => Body([TextParagraph(paragraph), AddPicture(main, png)()]));
+    }
+
+    /// <summary>A .docx with one picture stored once and shown on each of <paramref name="pages"/> pages, as a logo repeated in a body is.</summary>
+    public static byte[] DocumentRepeatingOnePicture(byte[] png, int pages)
+    {
         return Write(main =>
         {
-            ImagePart image = main.AddImagePart(ImagePartType.Png);
-            using (var source = new MemoryStream(png))
+            Func<Paragraph> picture = AddPicture(main, png);
+            List<Paragraph> paragraphs = [];
+            for (int page = 1; page <= pages; page++)
             {
-                image.FeedData(source);
+                if (page > 1)
+                {
+                    paragraphs.Add(PageBreak());
+                }
+
+                paragraphs.Add(TextParagraph($"Section {page} narrative."));
+                paragraphs.Add(picture());
             }
 
-            PictureSize size = Pictures.ReadSize(png) ?? throw new ArgumentException("The bytes hold no PNG picture.", nameof(png));
-            return Body([TextParagraph(paragraph), new Paragraph(new Run(Picture(main.GetIdOfPart(image), size)))]);
+            return Body(paragraphs);
         });
     }
 
@@ -108,6 +120,25 @@ public static class WordFixtures
         }
 
         return stream.ToArray();
+    }
+
+    /// <summary>Stores the PNG in the document once, and gives a new paragraph that shows it each time it is called.</summary>
+    private static Func<Paragraph> AddPicture(MainDocumentPart main, byte[] png)
+    {
+        ImagePart image = main.AddImagePart(ImagePartType.Png);
+        using (var source = new MemoryStream(png))
+        {
+            image.FeedData(source);
+        }
+
+        PictureSize size = Pictures.ReadSize(png) ?? throw new ArgumentException("The bytes hold no PNG picture.", nameof(png));
+        string relationshipId = main.GetIdOfPart(image);
+        return () => new Paragraph(new Run(Picture(relationshipId, size)));
+    }
+
+    private static Paragraph PageBreak()
+    {
+        return new Paragraph(new Run(new Break { Type = BreakValues.Page }));
     }
 
     private static Document Body(IEnumerable<Paragraph> paragraphs)

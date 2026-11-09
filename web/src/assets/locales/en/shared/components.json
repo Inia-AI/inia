@@ -121,6 +121,8 @@
     "uploading": "Uploading",
     "uploadingFile": "Uploading {name}",
     "classOf": "Document class of {name}",
+    "pages": "{n} page | {n} pages",
+    "pagesWithAttachments": "{n} page, {m} more in attachments | {n} pages, {m} more in attachments",
     "removeFile": "Remove {name}",
     "uploadFiles": "Upload files",
     "dragOrBrowse": "Drag & drop files here, or",

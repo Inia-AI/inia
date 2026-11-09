@@ -1,3 +1,4 @@
+using IniaAi.WebApi.UnitTests.Common;
 using System.Net;
 using System.Reflection;
 using IniaAi.WebApi.Configuration;
@@ -171,8 +172,7 @@ public class ClientEdgeTests
 
     private static async Task<WebApplication> StartAsync(Dictionary<string, string?> settings)
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        _ = builder.WebHost.UseTestServer();
+        WebApplicationBuilder builder = TestWebApplication.CreateBuilder();
         builder.Configuration.Sources.Clear();
         _ = builder.Configuration.AddInMemoryCollection(settings);
         _ = builder.Services.AddControllers().AddApplicationPart(typeof(ClientEdgeTests).Assembly);

@@ -170,7 +170,7 @@ sequenceDiagram
 
 1. Resolve the keyed `IWorkflowHandler` for the workflow type (falling back to the generic one) and create the run's root output.
 2. `None` → `Preparing`; in `Preparing`, set the workflow state to `ProcessingDocuments` and anonymise a confidential job (`Anonymizing`).
-3. `Processing`: run the email-intake stage (`EmailIntakeJobStage`), load the run's documents and pass them through the run-input stage (`IRunInputStage`), process them (`DocumentProcessingService`), load their pages into the workflow, record each page the model refused to read in the execution log, then execute the workflow.
+3. `Processing`: run the email-intake stage (`EmailIntakeJobStage`), load the run's documents and pass them through the run-input stage (`IRunInputStage`), process them (`DocumentProcessingService`), load their pages into the workflow, record each page the model refused to read in the execution log, pass the processed documents through the content check (`IRunContentCheck`), then execute the workflow.
 4. Set the workflow state to `Draft` and the job to `Done`.
 
 A rerun (`Job.IsRerun`) runs inside `RerunWrites.Scope`, so it saves no change to live data.

@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.CreditCosts;
+using IniaAi.Application.Common.RunLimits;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Workflows;
 using IniaAi.Domain.Core.Interfaces;
@@ -21,15 +22,18 @@ public class ListWorkflowCategorySummariesQueryHandler
     private readonly ICoreUnitOfWork _coreUnitOfWork;
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly IWorkflowCreditCost _creditCost;
+    private readonly IWorkflowPageLimit _pageLimit;
 
     public ListWorkflowCategorySummariesQueryHandler(
         ICoreUnitOfWork coreUnitOfWork,
         IUserDataUnitOfWork userDataUnitOfWork,
-        IWorkflowCreditCost creditCost)
+        IWorkflowCreditCost creditCost,
+        IWorkflowPageLimit pageLimit)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
         _userDataUnitOfWork = userDataUnitOfWork ?? throw new ArgumentNullException(nameof(userDataUnitOfWork));
         _creditCost = creditCost ?? throw new ArgumentNullException(nameof(creditCost));
+        _pageLimit = pageLimit ?? throw new ArgumentNullException(nameof(pageLimit));
     }
 
     public async Task<ErrorOr<List<WorkflowCategorySummaryDto>>> Handle(
@@ -73,7 +77,7 @@ public class ListWorkflowCategorySummariesQueryHandler
             Name = row.Name,
             Description = row.Description,
             DisplayOrder = row.DisplayOrder,
-            Workflows = [.. row.Workflows.Select(workflow => WorkflowSummaryProjections.ToSummaryDto(workflow, _creditCost))],
+            Workflows = [.. row.Workflows.Select(workflow => WorkflowSummaryProjections.ToSummaryDto(workflow, _creditCost, _pageLimit))],
         })];
 
         return result;

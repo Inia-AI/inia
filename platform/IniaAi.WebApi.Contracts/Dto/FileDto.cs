@@ -39,4 +39,17 @@ public sealed class FileDto
     /// which is stored as a file only and refused by the process endpoint.
     /// </summary>
     public bool ProducesPages { get; set; }
+
+    /// <summary>
+    /// The pages the platform counted for this file at upload, with no model call: a PDF's pages, and the text of other
+    /// formats at 4,000 characters a page. For an email, the pages of its body. Null when the file could not be read or
+    /// makes no pages.
+    /// </summary>
+    public int? CountedPages { get; set; }
+
+    /// <summary>
+    /// For an email, the counted pages of the files a run can extract from it. A run that extracts them reads these
+    /// pages as well as the body's. Null for any other file, and when the email could not be read.
+    /// </summary>
+    public int? CountedAttachmentPages { get; set; }
 }

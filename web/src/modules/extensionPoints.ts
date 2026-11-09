@@ -39,9 +39,18 @@ export interface ReportsListExtension {
 
 export type UseReportsListExtension = () => ReportsListExtension
 
+/** An uploaded file with the pages the platform counted for it. */
+export interface CountedFile {
+  name: string
+  countedPages?: number | null
+  countedAttachmentPages?: number | null
+}
+
 export interface UploadFormats {
   extensions: string[]
   panel: Component | null
+  /** The pages a run reads from a file of these formats, given the form's request fields; undefined for any other file. */
+  pagesRead?: (file: CountedFile, requestFields: Record<string, unknown>) => number | null | undefined
 }
 
 /**
@@ -75,7 +84,7 @@ export const extensionPoints = {
   capabilitiesVary: [] as (() => boolean)[],
   /** Pieces under a report type's name in the new report flow; each gets the type as `workflow`. */
   reportTypeDetails: [] as Component[],
-  /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow`, and may emit `holds` with a reason that keeps Submit off, or null to release it. */
+  /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow` and the uploaded files as `documents`, each with `countedPages` as the pages the run reads from it, and may emit `holds` with a reason that keeps Submit off, or null to release it. */
   reviewDetails: [] as Component[],
 }
 

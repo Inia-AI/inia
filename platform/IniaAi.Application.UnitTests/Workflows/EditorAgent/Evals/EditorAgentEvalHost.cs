@@ -12,6 +12,7 @@ using IniaAi.Common.Interfaces.Services.AgentRuntime.Activity;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Platform;
 using IniaAi.Configuration.Storage;
+using IniaAi.Core.Documents;
 using IniaAi.Domain.Entities.AgentRuntime;
 using IniaAi.Domain.Entities.Counterparties;
 using IniaAi.Domain.Entities.UserManagement;
@@ -130,7 +131,8 @@ internal sealed class EditorAgentEvalHost : IAsyncDisposable
             documentProcessing: null!,
             workflowOutputService: null!,
             emailIntakeJobStage: null!,
-            runInputStage: null!));
+            runInputStage: null!,
+            runContentCheck: new PassRunContentCheck()));
         _ = services.AddSingleton<IJobsService>(provider => new JobsService(
             provider, NullLogger<JobsService>.Instance, Options.Create(new PlatformSettings())));
         _provider = services.BuildServiceProvider();

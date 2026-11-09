@@ -66,5 +66,6 @@
   "supportsPeerCompanies": false,
   "classifiesDocuments": false,
   "classesToChoose": [],
-  "creditCost": null
+  "creditCost": null,
+  "maxPages": null
 }

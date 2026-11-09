@@ -10,6 +10,15 @@
     "RejectedAtIntake": {
       "label": "The report could not use your documents"
     },
+    "NoReadableDocuments": {
+      "label": "The report found nothing to read"
+    },
+    "InputTooLarge": {
+      "label": "The documents hold too much text for this report"
+    },
+    "DocumentsNotRead": {
+      "label": "Your documents could not be read just now"
+    },
     "ScreeningUnavailable": {
       "label": "Your documents could not be checked",
       "hint": "The report did not start, because our document check is not working right now. This is a problem on our side, not with your documents. Try again in a few minutes."

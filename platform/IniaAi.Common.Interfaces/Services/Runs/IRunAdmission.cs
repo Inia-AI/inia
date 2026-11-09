@@ -21,9 +21,14 @@ public interface IRunAdmission
 
 /// <param name="ExecutionId">The run's execution row, inserted but not yet committed.</param>
 /// <param name="DocumentIds">The input documents the submission names.</param>
+/// <param name="EmailIntakeMode">
+/// How the run reads its emails (an <c>EmailIntakeModes</c> value), or null when the run has no email stage and reads
+/// nothing from an email.
+/// </param>
 public sealed record RunAdmissionRequest(
     string ExecutionId,
     string OrganizationId,
     string UserId,
     Workflow Workflow,
-    IReadOnlyList<string> DocumentIds);
+    IReadOnlyList<string> DocumentIds,
+    string? EmailIntakeMode);

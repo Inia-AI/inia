@@ -41,7 +41,8 @@ The `WorkflowHandler` class (`platform/IniaAi.Core/Workflows/WorkflowHandler.cs`
 3. **Email intake.** `EmailIntakeJobStage` expands the run's email files into their body and attachments.
 4. **The run input.** `LoadRunInputAsync` loads every document linked to the job or to its workflow type and hands them to the run-input stage, `IRunInputStage`, then keeps only the documents still in the run. The platform's own stage, `PassThroughRunInputStage`, keeps every document; a closed module can register its own stage.
 5. **Document processing.** `ProcessDocumentsAsync` pages, transcribes, overviews and embeds the run input, and `LoadContextToWorkflowAsync` loads the pages into the workflow. A document the stage dropped reaches neither. `RecordRefusedPagesAsync` then appends a log row for every page the model refused to read.
-6. **The handler.** The execution shows `Running`, `ExecuteWorkflowAsync` runs the phases below, and the job concludes the execution as `Draft`.
+6. **The content check.** `IRunContentCheck` reads the processed run input before any block runs. A refusal throws `RunContentRefusedException`, and the run fails with the refusal's failure kind and detail. The platform's own check, `PassRunContentCheck`, passes every run; a closed module can register its own.
+7. **The handler.** The execution shows `Running`, `ExecuteWorkflowAsync` runs the phases below, and the job concludes the execution as `Draft`.
 
 
 

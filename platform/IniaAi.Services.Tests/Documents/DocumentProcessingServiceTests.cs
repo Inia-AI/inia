@@ -20,6 +20,8 @@ using IniaAi.Domain.Entities.Workflows.Enums;
 using IniaAi.Domain.Enums;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.FileFormats.Pdf;
+using IniaAi.FileFormats.Excel;
+using IniaAi.FileFormats.Pages;
 using IniaAi.FileFormats.Pdf.Pdfium;
 using IniaAi.FileFormats.Word;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
@@ -41,6 +43,7 @@ namespace IniaAi.Services.Tests.Documents;
 
 public class DocumentProcessingServiceTests : IClassFixture<DocumentsFixture>
 {
+    private const string PICTURE_TEXT = "Picture text.";
     private static readonly TimeSpan _stallLimit = TimeSpan.FromMinutes(1);
     private readonly DocumentProcessingService _documentProcessing;
     private readonly IWorkflowHandler _workflowHandler;
@@ -192,6 +195,160 @@ public class DocumentProcessingServiceTests : IClassFixture<DocumentsFixture>
         Assert.Equal(text, page.RawText);
         Assert.Equal(PageStatus.ProcessedSuccessfully, page.Status);
         Assert.NotNull(document.ProcessedAt);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_Csv_MakesPagesOfFiftyRows_EachUnderTheHeader_AsCompactAsTheFileAsync()
+    {
+        string csv = "Date,Account,Amount\n" + string.Join("\n", Enumerable.Range(1, 120).Select(row => $"2026-01-{row % 28 + 1:00},Account {row},{row * 10}"));
+
+        Document document = await ProcessAsync(csv, "ledger.csv", MediaType.TextCsv);
+
+        Assert.Equal([1, 2, 3], document.Pages.OrderBy(page => page.PageNumber).Select(page => page.PageNumber));
+        Assert.All(document.Pages, page => Assert.StartsWith("|Date|Account|Amount|\n|---|---|---|\n", page.Text));
+        Assert.Equal([50, 50, 20], document.Pages.OrderBy(page => page.PageNumber).Select(page => page.Text!.Split('\n').Length - 2));
+        Assert.Contains("|2026-01-02|Account 1|10|", document[1]!.Text);
+        Assert.Contains("|2026-01-09|Account 120|1200|", document[3]!.Text);
+        Assert.True(document.Pages.Sum(page => page.Text!.Length) < csv.Length * 1.3, "A CSV page holds its rows as a table, not a line per cell.");
+        Assert.All(document.Pages, page => Assert.Equal(PageStatus.ProcessedSuccessfully, page.Status));
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_CsvRowWiderThanItsHeader_ReadsTheExtraFieldUnderANumberedColumnAsync()
+    {
+        const string csv = "Name,Amount\nAcme,100\nBeta,200,unexpected note\n";
+
+        Document document = await ProcessAsync(csv, "wide-row.csv", MediaType.TextCsv);
+
+        Page page = Assert.Single(document.Pages);
+        Assert.StartsWith("|Name|Amount|Column 3|\n|---|---|---|\n", page.Text);
+        Assert.Contains("|Acme|100| |", page.Text);
+        Assert.Contains("|Beta|200|unexpected note|", page.Text);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_CsvRowOfThousandsOfFields_ReadsTheColumnsAWorkbookPageReadsAsync()
+    {
+        string csv = "Name,Amount\n" + string.Join(',', Enumerable.Range(1, 5_000)) + "\n";
+
+        Document document = await ProcessAsync(csv, "wide.csv", MediaType.TextCsv);
+
+        string header = Assert.Single(document.Pages).Text!.Split('\n')[0];
+        Assert.Equal(ExcelUtils.MAX_COLUMNS, header.Count(character => character == '|') - 1);
+        Assert.EndsWith($"|Column {ExcelUtils.MAX_COLUMNS}|", header);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_CsvWithSemicolons_ReadsItsColumns_AndKeepsAPipeInACellAsync()
+    {
+        const string csv = "Name;Amount\nAcme | Holdings;1.234,50\n";
+
+        Document document = await ProcessAsync(csv, "semicolons.csv", MediaType.TextCsv);
+
+        Page page = Assert.Single(document.Pages);
+        Assert.Equal("|Name|Amount|\n|---|---|\n|Acme \\| Holdings|1.234,50|", page.Text);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_LongTextFile_MakesPagesOfAtMostAPage_ClosedAtParagraphs_HoldingEveryWordInOrderAsync()
+    {
+        string[] paragraphs = [.. Enumerable.Range(1, 60).Select(number => $"Paragraph {number} says the revenue of segment {number} grew by {number} percent over the year, as the board reported in its letter to shareholders.")];
+        string text = string.Join("\n\n", paragraphs);
+
+        Document document = await ProcessAsync(text, "letter.txt", MediaType.TextPlain);
+
+        Assert.True(document.Pages.Count > 1);
+        Assert.All(document.Pages, page => Assert.InRange(page.Text!.Length, 1, TextPages.PAGE_CHARACTERS));
+        Assert.All(document.Pages, page => Assert.EndsWith("shareholders.", page.Text));
+        Assert.Equal(Words(text), document.Pages.OrderBy(page => page.PageNumber).SelectMany(page => Words(page.Text!)));
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_MarkdownHeading_StartsANewPage_OnceThePageIsHalfFullAsync()
+    {
+        string section = string.Join("\n\n", Enumerable.Range(1, 30).Select(number => $"Line {number} of the section explains one part of the credit view in plain words."));
+        string markdown = $"# Overview\n\n{section}\n\n## Risks\n\n{section}";
+
+        Document document = await ProcessAsync(markdown, "memo.md", MediaType.TextMarkdown);
+
+        Assert.Equal(2, document.Pages.Count);
+        Assert.StartsWith("# Overview", document[1]!.Text);
+        Assert.StartsWith("## Risks", document[2]!.Text);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_TextParagraphLongerThanAPage_SplitsBetweenWordsAsync()
+    {
+        string text = string.Join(' ', Enumerable.Range(1, 1_500).Select(number => $"word{number}"));
+
+        Document document = await ProcessAsync(text, "one-paragraph.txt", MediaType.TextPlain);
+
+        Assert.True(document.Pages.Count > 1);
+        Assert.All(document.Pages, page => Assert.InRange(page.Text!.Length, 1, TextPages.PAGE_CHARACTERS));
+        Assert.Equal(Words(text), document.Pages.OrderBy(page => page.PageNumber).SelectMany(page => Words(page.Text!)));
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_WordDocumentRepeatingOnePicture_ReadsThePictureOnceAsync()
+    {
+        byte[] png = _fixture.ImageSample1.BinaryData.ToArray();
+        ScriptedChatConnector once = ScriptedChatConnector.Answering("<answer>Picture text.</answer>");
+        ScriptedChatConnector repeated = ScriptedChatConnector.Answering("<answer>Picture text.</answer>");
+
+        Document single = await ProcessAsync(WordFixtures.DocumentRepeatingOnePicture(png, pages: 1), "one-logo.docx", MediaType.ApplicationVndOpenXmlFormatsOfficedocumentWordprocessingmlDocument, CreateDocumentProcessing(once));
+        Document three = await ProcessAsync(WordFixtures.DocumentRepeatingOnePicture(png, pages: 3), "three-logos.docx", MediaType.ApplicationVndOpenXmlFormatsOfficedocumentWordprocessingmlDocument, CreateDocumentProcessing(repeated));
+
+        Assert.NotEmpty(once.Calls);
+        Assert.Equal(once.Calls.Count, repeated.Calls.Count);
+        Assert.Contains(PICTURE_TEXT, single[1]!.Text, StringComparison.Ordinal);
+        Assert.Equal(3, three.Pages.Sum(page => Occurrences(page.Text, PICTURE_TEXT)));
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_WordPictureWhoseFirstReadFails_IsReadAgainOnTheNextPageAsync()
+    {
+        byte[] png = _fixture.ImageSample1.BinaryData.ToArray();
+        ScriptedChatConnector readOnce = ScriptedChatConnector.Answering("<answer>Picture text.</answer>");
+        int calls = 0;
+        var failsOnce = new ScriptedChatConnector(_ => Interlocked.Increment(ref calls) == 1
+            ? throw new HttpRequestException("The model service is unavailable.")
+            : "<answer>Picture text.</answer>");
+
+        _ = await ProcessAsync(WordFixtures.DocumentRepeatingOnePicture(png, pages: 1), "one-logo.docx", MediaType.ApplicationVndOpenXmlFormatsOfficedocumentWordprocessingmlDocument, CreateDocumentProcessing(readOnce));
+        Document document = await ProcessAsync(WordFixtures.DocumentRepeatingOnePicture(png, pages: 3), "three-logos.docx", MediaType.ApplicationVndOpenXmlFormatsOfficedocumentWordprocessingmlDocument, CreateDocumentProcessing(failsOnce));
+
+        Assert.Equal(1 + readOnce.Calls.Count, calls);
+        Assert.Equal(PageStatus.OCRFailed, document[1]!.Status);
+        Assert.All(document.Pages.Where(page => page.PageNumber > 1), page => Assert.Contains(PICTURE_TEXT, page.Text, StringComparison.Ordinal));
+    }
+
+    private Task<Document> ProcessAsync(string content, string fileName, MediaType mediaType)
+    {
+        return ProcessAsync(Encoding.UTF8.GetBytes(content), fileName, mediaType, _documentProcessing);
+    }
+
+    private async Task<Document> ProcessAsync(byte[] bytes, string fileName, MediaType mediaType, DocumentProcessingService processing)
+    {
+        FileMetadata file = new("IniaAi", fileName, bytes);
+        Document document = new(file, mediaType) { FileMetadata = file };
+
+        await processing.ProcessDocumentsAsync(
+            [new DocumentInfo(document.Id) { Document = document }],
+            userDataUnitOfWork,
+            workflow: null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        return document;
+    }
+
+    private static string[] Words(string text)
+    {
+        return text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    private static int Occurrences(string? text, string value)
+    {
+        return text is null ? 0 : (text.Length - text.Replace(value, string.Empty, StringComparison.Ordinal).Length) / value.Length;
     }
 
     [Fact]

@@ -187,6 +187,23 @@ public class EmailIntakeJobStageTests
     }
 
     [Fact]
+    public async Task ProcessAsync_MintedDocuments_AreCountedAsTheyAreMade()
+    {
+        Job job = EmailIntakeJobStageFixture.CreateJob(EmailIntakeModes.EXTRACT_ATTACHMENTS, attachmentsClass: "Attachment");
+        DocumentInfo emailInfo = _fixture.CreateEmailDocumentInfo(job.Id);
+        _fixture.SetupJobDocuments(job, emailInfo);
+        _ = _fixture.EmailExpansionService.ExpandAsync(EmailIntakeJobStageFixture.EmailBytes, Arg.Any<CancellationToken>())
+            .Returns(EmailIntakeJobStageFixture.CreateExpansionResult(
+                new ExpandedEmailPart("email_body.pdf", PdfFixtures.Pages("Body"), "application/pdf"),
+                new ExpandedEmailPart("statement.pdf", PdfFixtures.Pages("One", "Two"), "application/pdf"),
+                new ExpandedEmailPart("nav-data.csv", Encoding.ASCII.GetBytes("fund,nav\nAlpha,101.2"), "text/csv")));
+
+        await _stage.ProcessAsync(job, EXECUTION_ID, _fixture.UnitOfWork, TestContext.Current.CancellationToken);
+
+        Assert.Equal([1, 2, 1], _fixture.AddedDocumentInfos.Select(info => info.Document!.CountedPages));
+    }
+
+    [Fact]
     public async Task ProcessAsync_MintedDocuments_CarryTriggerIdentifierSource()
     {
         Job job = EmailIntakeJobStageFixture.CreateJob(EmailIntakeModes.PDF_ONLY);

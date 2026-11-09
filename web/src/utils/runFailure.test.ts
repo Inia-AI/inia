@@ -15,6 +15,24 @@ describe('describeRunFailure', () => {
     })
   })
 
+  it('shows the reason the platform wrote for documents with nothing to read or too much text, and offers other documents', () => {
+    const nothingToRead = 'The report stopped because the platform found no text to read in its documents. Check that each file opens and is not blank, then start the report again.'
+    const tooMuchText = 'The report stopped because its documents hold more text than this report reads. Start it again with fewer or shorter documents.'
+
+    expect(describeRunFailure(t, 'NoReadableDocuments', nothingToRead)).toEqual({
+      label: 'The report found nothing to read',
+      body: nothingToRead,
+      detail: null,
+      action: 'changeDocuments',
+    })
+    expect(describeRunFailure(t, 'InputTooLarge', tooMuchText)).toEqual({
+      label: 'The documents hold too much text for this report',
+      body: tooMuchText,
+      detail: null,
+      action: 'changeDocuments',
+    })
+  })
+
   it('tells an outage apart in plain words and keeps the technical detail secondary', () => {
     expect(describeRunFailure(t, 'ScreeningUnavailable', "The screening judge failed while judging 'statement.pdf': Model ID is not supported")).toEqual({
       label: 'Your documents could not be checked',
@@ -25,7 +43,7 @@ describe('describeRunFailure', () => {
   })
 
   it('gives every failure kind the platform writes a label of its own', () => {
-    const labels = ['CriticalBlockFailure', 'ResultsLost', 'LifetimeExceeded', 'HostLost', 'VerificationGroupShape', 'VerificationUnsatisfiable', 'RejectedAtIntake', 'ScreeningUnavailable']
+    const labels = ['CriticalBlockFailure', 'ResultsLost', 'LifetimeExceeded', 'HostLost', 'VerificationGroupShape', 'VerificationUnsatisfiable', 'RejectedAtIntake', 'ScreeningUnavailable', 'NoReadableDocuments', 'InputTooLarge', 'DocumentsNotRead']
       .map(kind => describeRunFailure(t, kind, 'detail')?.label)
 
     expect(new Set(labels).size).toBe(labels.length)
@@ -47,8 +65,8 @@ describe('describeRunFailure', () => {
   it('offers another run for every kind a second run can fix, and nothing where only the report type can change', () => {
     const actionOf = (kind: string) => describeRunFailure(t, kind, 'detail')?.action
 
-    expect(['CriticalBlockFailure', 'ResultsLost', 'LifetimeExceeded', 'HostLost', 'ScreeningUnavailable'].map(actionOf))
-      .toEqual(['runAgain', 'runAgain', 'runAgain', 'runAgain', 'runAgain'])
+    expect(['CriticalBlockFailure', 'ResultsLost', 'LifetimeExceeded', 'HostLost', 'ScreeningUnavailable', 'DocumentsNotRead'].map(actionOf))
+      .toEqual(['runAgain', 'runAgain', 'runAgain', 'runAgain', 'runAgain', 'runAgain'])
     expect(actionOf('VerificationGroupShape')).toBeNull()
     expect(actionOf('VerificationUnsatisfiable')).toBeNull()
   })

@@ -78,7 +78,8 @@
         "supportsPeerCompanies": false,
         "classifiesDocuments": false,
         "classesToChoose": [],
-        "creditCost": null
+        "creditCost": null,
+        "maxPages": null
       },
       {
         "id": "workflow-category-second",
@@ -148,7 +149,8 @@
         "supportsPeerCompanies": false,
         "classifiesDocuments": false,
         "classesToChoose": [],
-        "creditCost": null
+        "creditCost": null,
+        "maxPages": null
       }
     ]
   }

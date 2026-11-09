@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.CreditCosts;
+using IniaAi.Application.Common.RunLimits;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Common.Constants;
 using IniaAi.Domain.Core.Interfaces;
@@ -33,11 +34,13 @@ public class GetWorkflowSummaryByTypeQueryHandler
 
     private readonly ICoreUnitOfWork _coreUnitOfWork;
     private readonly IWorkflowCreditCost _creditCost;
+    private readonly IWorkflowPageLimit _pageLimit;
 
-    public GetWorkflowSummaryByTypeQueryHandler(ICoreUnitOfWork coreUnitOfWork, IWorkflowCreditCost creditCost)
+    public GetWorkflowSummaryByTypeQueryHandler(ICoreUnitOfWork coreUnitOfWork, IWorkflowCreditCost creditCost, IWorkflowPageLimit pageLimit)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
         _creditCost = creditCost ?? throw new ArgumentNullException(nameof(creditCost));
+        _pageLimit = pageLimit ?? throw new ArgumentNullException(nameof(pageLimit));
     }
 
     public async Task<ErrorOr<WorkflowDto>> Handle(
@@ -61,7 +64,7 @@ public class GetWorkflowSummaryByTypeQueryHandler
             return Error.NotFound("Workflow.NotFound", $"Workflow for type '{request.WorkflowTypeId}' was not found or is not accessible.");
         }
 
-        WorkflowDto result = WorkflowSummaryProjections.ToDto(workflow, _creditCost);
+        WorkflowDto result = WorkflowSummaryProjections.ToDto(workflow, _creditCost, _pageLimit);
 
         // Check if any block in this workflow or its sections uses a Counterparty placeholder.
         // Checks the Properties JSON column (via double-cast trick for value-converted jsonb/nvarchar)

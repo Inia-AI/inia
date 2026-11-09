@@ -1,5 +1,6 @@
 ﻿using ErrorOr;
 using IniaAi.Application.Common.CreditCosts;
+using IniaAi.Application.Common.RunLimits;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Workflows;
@@ -16,19 +17,23 @@ public class ListWorkflowCategoriesQueryHandler
 {
     private readonly ICoreUnitOfWork _coreUnitOfWork;
     private readonly IWorkflowCreditCost _creditCost;
+    private readonly IWorkflowPageLimit _pageLimit;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ListWorkflowCategoriesQueryHandler"/> class.
     /// </summary>
     /// <param name="coreUnitOfWork">The unit of work for core repository access.</param>
     /// <param name="creditCost">Reads the credit cost of each workflow type.</param>
+    /// <param name="pageLimit">Reads the page limit of each workflow type.</param>
     /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
     public ListWorkflowCategoriesQueryHandler(
         ICoreUnitOfWork coreUnitOfWork,
-        IWorkflowCreditCost creditCost)
+        IWorkflowCreditCost creditCost,
+        IWorkflowPageLimit pageLimit)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
         _creditCost = creditCost ?? throw new ArgumentNullException(nameof(creditCost));
+        _pageLimit = pageLimit ?? throw new ArgumentNullException(nameof(pageLimit));
     }
 
     /// <summary>
@@ -78,7 +83,7 @@ public class ListWorkflowCategoriesQueryHandler
             Id = category.Id,
             Name = category.Name,
             Description = category.Description,
-            Workflows = category.Workflows.Count == 0 ? null : [.. category.Workflows.Select(workflow => WorkflowSummaryProjections.ToDto(workflow, _creditCost))],
+            Workflows = category.Workflows.Count == 0 ? null : [.. category.Workflows.Select(workflow => WorkflowSummaryProjections.ToDto(workflow, _creditCost, _pageLimit))],
         };
     }
 

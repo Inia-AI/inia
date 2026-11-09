@@ -15,6 +15,8 @@ public static class FileDtoMapper
             Filename = document.Name,
             MediaType = Enum.Parse<ContractMediaType>(document.MediaType.ToString()),
             ProducesPages = document.MediaType.ProducesPages(),
+            CountedPages = document.CountedPages,
+            CountedAttachmentPages = document.CountedAttachmentPages,
         };
     }
 }

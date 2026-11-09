@@ -20,7 +20,7 @@ public class ExcelSheetAnalysisService : ITokenAccumulator
     private readonly ILogger<ExcelSheetAnalysisService> _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly TenantModelFamilyResolver _tenantModelFamilyResolver;
-    private const int DEFAULT_CHUNK_SIZE = 50;
+    private const int DEFAULT_CHUNK_SIZE = ExcelUtils.ROWS_PER_PAGE;
 
     // Token accumulation for tracking (thread-safe for parallel calls)
     private int _accumulatedInputTokens;

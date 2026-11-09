@@ -23,6 +23,20 @@ public static class EmailIntakeModes
     }
 
     /// <summary>
+    /// The pages a run reads from an email it has not read before: none when the run has no email stage (no mode),
+    /// its body, and its attachments as well when the run extracts them. Null when a count it needs is unknown.
+    /// </summary>
+    public static int? PagesRead(string? mode, int? bodyPages, int? attachmentPages)
+    {
+        return mode switch
+        {
+            null => 0,
+            EXTRACT_ATTACHMENTS => bodyPages + attachmentPages,
+            _ => bodyPages,
+        };
+    }
+
+    /// <summary>
     /// The one encoding of the intake choice as job inputs, shared by every path that starts a
     /// job (orchestrator and editor): the mode is always written, the attachments class only
     /// when supplied.

@@ -1065,6 +1065,12 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.Property<string>("Class")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("CountedAttachmentPages")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CountedPages")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1079,6 +1085,9 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("DocumentCategoryId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmailIdentifier")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FileMetadataId")

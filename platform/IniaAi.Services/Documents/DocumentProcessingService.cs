@@ -1,5 +1,4 @@
-﻿using CsvHelper;
-using IniaAi.AiConnection.Abstractions;
+﻿using IniaAi.AiConnection.Abstractions;
 using IniaAi.AiConnection.AwsBedrock;
 using IniaAi.AiConnection.Common;
 using IniaAi.Common.Content;
@@ -21,12 +20,12 @@ using IniaAi.Domain.Enums;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.FileFormats.Excel;
 using IniaAi.FileFormats.Pdf;
+using IniaAi.FileFormats.Pages;
 using IniaAi.FileFormats.Word;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
-using System.Globalization;
-using System.Text;
+using System.Security.Cryptography;
 using static IniaAi.Core.Services.OcrTranscriptionService;
 using TokenExecutionContext = IniaAi.Domain.Entities.TokenUsage.Enums.ExecutionContext;
 
@@ -1048,6 +1047,8 @@ public class DocumentProcessingService : IDocumentProcessingService
             document.OrganizationId,
             FunctionType.DocumentProcessing);
 
+        Dictionary<string, OcrProcessingResult> readPictures = [];
+
         for (int i = 0; i < pageContents.Count; i++)
         {
             int pageNumber = i + 1;
@@ -1064,12 +1065,22 @@ public class DocumentProcessingService : IDocumentProcessingService
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                regionResults.Add(await _ocrTranscriptionService.ProcessImageAsync(
-                    imageRegion,
-                    modelFamily,
-                    tokenRecordingContext,
-                    pageNumber,
-                    cancellationToken));
+                string picture = Convert.ToHexString(SHA256.HashData(imageRegion.BinaryData.ToMemory().Span));
+                if (!readPictures.TryGetValue(picture, out OcrProcessingResult? result))
+                {
+                    result = await _ocrTranscriptionService.ProcessImageAsync(
+                        imageRegion,
+                        modelFamily,
+                        tokenRecordingContext,
+                        pageNumber,
+                        cancellationToken);
+                    if (result.Succeeded || result.NeedsReview || result.EmptyTranscription)
+                    {
+                        readPictures[picture] = result;
+                    }
+                }
+
+                regionResults.Add(result);
             }
 
             int declinedRegionCount = regionResults.Count(result => result.NeedsReview);
@@ -1131,57 +1142,8 @@ public class DocumentProcessingService : IDocumentProcessingService
         }
 
         byte[] fileBytes = await GetFileBytesAsync(document.FileMetadata);
-        using var ms = new MemoryStream(fileBytes);
-
-        Page page = document[1]
-            ?? new(document, 1, 1);
-        page.RawText = Encoding.UTF8.GetString(ms.ToArray());
-
-        var stringBuilder = new StringBuilder(page.RawText.Length * 2);
-        using var reader = new StreamReader(ms);
-        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-
-        string[] headerRecord = [];
-
-        if (await csv.ReadAsync())
-        {
-            if (csv.HeaderRecord is not null)
-            {
-                headerRecord = csv.HeaderRecord;
-            }
-            else
-            {
-                headerRecord = new string[csv.ColumnCount];
-
-                for (int i = 0; i < csv.ColumnCount; i++)
-                {
-                    headerRecord[i] = csv.GetField(i) ?? string.Empty;
-                }
-            }
-        }
-
-        while (await csv.ReadAsync())
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            for (int i = 0; i < csv.ColumnCount; i++)
-            {
-                string? value = csv.GetField(i)?.Trim();
-
-                if (!string.IsNullOrEmpty(value))
-                {
-                    _ = stringBuilder.Append(headerRecord[i]);
-                    _ = stringBuilder.Append(": ");
-                    _ = stringBuilder.Append(csv.GetField(i));
-                    _ = stringBuilder.AppendLine();
-                }
-            }
-
-            _ = stringBuilder.AppendLine();
-        }
-
-        page.Text = stringBuilder.ToString();
-        page.Status = PageStatus.ProcessedSuccessfully;
+        using var reader = new StreamReader(new MemoryStream(fileBytes));
+        WriteTextPages(document, [.. CsvPages.Read(reader)]);
 
         if (onDocumentProcessed is not null)
         {
@@ -1204,10 +1166,19 @@ public class DocumentProcessingService : IDocumentProcessingService
         using StreamReader reader = new(new MemoryStream(fileBytes));
         string text = await reader.ReadToEndAsync(cancellationToken);
 
-        Page page = document[1] ?? new(document, 1, 1);
-        page.RawText = text;
-        page.Text = text;
-        page.Status = PageStatus.ProcessedSuccessfully;
+        WriteTextPages(document, TextPages.Split(text, markdown: document.MediaType is MediaType.TextMarkdown));
+    }
+
+    private static void WriteTextPages(Document document, IReadOnlyList<string> pageTexts)
+    {
+        for (int index = 0; index < pageTexts.Count; index++)
+        {
+            int pageNumber = index + 1;
+            Page page = document[pageNumber] ?? new(document, pageNumber, pageNumber);
+            page.RawText = pageTexts[index];
+            page.Text = pageTexts[index];
+            page.Status = PageStatus.ProcessedSuccessfully;
+        }
     }
 
     private async Task CreateMediaPagesAsync(

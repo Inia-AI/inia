@@ -59,7 +59,8 @@ curl -X GET "$BASE_URL/api/v1/workflow-categories/summaries" \
           "workflowTypeId": "CorporatesCreditReport",
           "workflowTypeName": "Corporates Credit Report",
           "isAvailable": true,
-          "creditCost": null
+          "creditCost": null,
+          "maxPages": null
         }
       ]
     }
@@ -103,6 +104,7 @@ curl -X GET "$BASE_URL/api/v1/workflow-templates/CorporatesCreditReport/summary"
   "classifiesDocuments": false,
   "classesToChoose": [],
   "creditCost": null,
+  "maxPages": null,
   "documentClassKeys": ["AnnualReport", "FinancialStatements"],
   "counterpartyTypeMappings": ["Corporation"],
   "documentClasses": [
@@ -159,7 +161,7 @@ Two flags are derived from the template, never configured:
 
 - `classifiesDocuments` is `true` when the platform reads each document a run is sent and decides its class. Then a file may come without a class, and `classesToChoose` lists the required classes the platform cannot recognise on its own, which a submit must still choose. `classesToChoose` is empty when `classifiesDocuments` is `false`.
 
-- `creditCost` is always `null` in the open build, where `IWorkflowCreditCost` keeps its default. `WorkflowDto` (this summary and `/workflow-categories?includeWorkflows=true`) and `WorkflowSummaryDto` (`/workflow-categories/summaries`) both carry it.
+- `creditCost` and `maxPages` are always `null` in the open build, where `IWorkflowCreditCost` and `IWorkflowPageLimit` keep their defaults. `WorkflowDto` (this summary and `/workflow-categories?includeWorkflows=true`) and `WorkflowSummaryDto` (`/workflow-categories/summaries`) both carry them.
 
 
 A `404` with `code: "Workflow.NotFound"` and `title: "Workflow for type '{workflowTypeId}' was not found or is not accessible."` means the workflow type does not exist, the tenant has no access to it, or it is one of the internal types `Generic` and `TestWorkflowType`.

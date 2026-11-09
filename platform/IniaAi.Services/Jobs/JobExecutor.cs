@@ -43,6 +43,7 @@ public class JobExecutor : IJobExecutor
     private readonly IWorkflowOutputService _workflowOutputService;
     private readonly EmailIntakeJobStage _emailIntakeJobStage;
     private readonly IRunInputStage _runInputStage;
+    private readonly IRunContentCheck _runContentCheck;
     private readonly IConfidentialDocumentAnonymiser? _anonymiser;
 
     private IWorkflowHandler _workflowHandler = default!;
@@ -58,6 +59,7 @@ public class JobExecutor : IJobExecutor
         IWorkflowOutputService workflowOutputService,
         EmailIntakeJobStage emailIntakeJobStage,
         IRunInputStage runInputStage,
+        IRunContentCheck runContentCheck,
         IConfidentialDocumentAnonymiser? anonymiser = null)
     {
         _logger = logger;
@@ -66,6 +68,7 @@ public class JobExecutor : IJobExecutor
         _workflowOutputService = workflowOutputService;
         _emailIntakeJobStage = emailIntakeJobStage;
         _runInputStage = runInputStage;
+        _runContentCheck = runContentCheck;
         _anonymiser = anonymiser;
     }
 
@@ -353,10 +356,15 @@ public class JobExecutor : IJobExecutor
         IUserDataUnitOfWork userDataUnitOfWork,
         CancellationToken cancellationToken)
     {
-        await ProcessAndLoadDocumentsAsync(job, userDataUnitOfWork, cancellationToken);
+        IReadOnlyList<DocumentInfo> documentInfos = await ProcessAndLoadDocumentsAsync(job, userDataUnitOfWork, cancellationToken);
 
         try
         {
+            if (await _runContentCheck.CheckAsync(job, documentInfos, cancellationToken) is { } refusal)
+            {
+                throw new RunContentRefusedException(refusal);
+            }
+
             await ExecuteWorkflowAndSetOutputAsync(job, userDataUnitOfWork, cancellationToken);
         }
         catch (OperationCanceledException)
@@ -484,7 +492,7 @@ public class JobExecutor : IJobExecutor
         return job.WorkflowExecutionId ?? _workflowHandler?.WorkflowExecutionId;
     }
 
-    private async Task ProcessAndLoadDocumentsAsync(
+    private async Task<IReadOnlyList<DocumentInfo>> ProcessAndLoadDocumentsAsync(
         Job job,
         IUserDataUnitOfWork userDataUnitOfWork,
         CancellationToken cancellationToken)
@@ -527,6 +535,7 @@ public class JobExecutor : IJobExecutor
         await RecordRefusedPagesAsync(ResolveExecutionId(job), documentInfos);
 
         _ = await userDataUnitOfWork.CompleteAsync(cancellationToken);
+        return documentInfos;
     }
 
     /// <summary>

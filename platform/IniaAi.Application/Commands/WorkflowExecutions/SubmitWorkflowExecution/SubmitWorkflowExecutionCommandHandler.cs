@@ -325,6 +325,7 @@ public class SubmitWorkflowExecutionCommandHandler
             expansion.BodyPdf,
             fileMetadata.DocumentClass ?? string.Empty,
             shouldUseOcr: expansion.BodyShowsContentImage,
+            sourceEmailIdentifier: expansion.TriggerEmailIdentifier,
             uploads,
             cancellationToken);
 
@@ -339,6 +340,7 @@ public class SubmitWorkflowExecutionCommandHandler
             expansion.RawEmail,
             attachmentsDocumentClass,
             shouldUseOcr: false,
+            sourceEmailIdentifier: null,
             uploads,
             cancellationToken);
 
@@ -354,6 +356,7 @@ public class SubmitWorkflowExecutionCommandHandler
                 part,
                 attachmentsDocumentClass,
                 shouldUseOcr: false,
+                sourceEmailIdentifier: expansion.TriggerEmailIdentifier,
                 uploads,
                 cancellationToken);
 
@@ -414,6 +417,7 @@ public class SubmitWorkflowExecutionCommandHandler
         ExpandedEmailPart part,
         string documentClass,
         bool shouldUseOcr,
+        string? sourceEmailIdentifier,
         SubmissionUploads uploads,
         CancellationToken cancellationToken)
     {
@@ -438,7 +442,8 @@ public class SubmitWorkflowExecutionCommandHandler
             formFile,
             request.OrganizationId,
             request.UserId,
-            Uploader: request.Submitter);
+            Uploader: request.Submitter,
+            SourceEmailIdentifier: sourceEmailIdentifier);
 
         ErrorOr<FileDto> uploadResult = await _sender.Send(uploadCommand, cancellationToken);
 

@@ -87,4 +87,10 @@ public sealed class WorkflowDto
     /// always the case where the deployment charges no credits.
     /// </summary>
     public int? CreditCost { get; set; }
+
+    /// <summary>
+    /// The pages a run of this workflow type may read, as the platform counts them at upload; null
+    /// when a run of it has no page limit, which is always the case where the deployment sets none.
+    /// </summary>
+    public int? MaxPages { get; set; }
 }

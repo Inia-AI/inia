@@ -6,7 +6,9 @@ namespace IniaAi.FileFormats.Excel;
 
 public static class ExcelUtils
 {
-    private const int MAX_COLUMNS = 400;
+    public const int ROWS_PER_PAGE = 50;
+
+    public const int MAX_COLUMNS = 400;
 
     // Renders a sheet's used range as a clean markdown table — no row-number column,
     // no cell-coordinate header, no row cap. Treats the first row as the table header

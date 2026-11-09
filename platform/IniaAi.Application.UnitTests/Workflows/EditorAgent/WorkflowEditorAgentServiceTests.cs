@@ -16,6 +16,7 @@ using IniaAi.Configuration;
 using IniaAi.Configuration.Enums.Anthropic;
 using IniaAi.Configuration.Platform;
 using IniaAi.Configuration.Storage;
+using IniaAi.Core.Documents;
 using IniaAi.Domain.Entities.AgentRuntime;
 using IniaAi.Domain.Entities.TokenUsage;
 using IniaAi.Domain.Entities.TokenUsage.Enums;
@@ -134,7 +135,8 @@ public sealed partial class WorkflowEditorAgentServiceTests : IAsyncDisposable
             documentProcessing: null!,
             workflowOutputService: null!,
             emailIntakeJobStage: null!,
-            runInputStage: null!));
+            runInputStage: null!,
+            runContentCheck: new PassRunContentCheck()));
         _ = services.AddSingleton<IJobsService>(provider => new JobsService(
             provider, NullLogger<JobsService>.Instance, Options.Create(new PlatformSettings())));
         _provider = services.BuildServiceProvider();

@@ -97,6 +97,23 @@ public sealed class SubmitWorkflowExecutionEmailExpansionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Handle_ExpandEmail_MarksTheBodyAndPartsAsMadeFromTheEmail_AndNotTheEmailItself()
+    {
+        SkipUnlessTheBuildReadsEmail();
+
+        ExpandInto(CreateExpansionResult());
+
+        ErrorOr<WorkflowExecutionDto> result = await _harness.SubmitAsync(
+            [CreateEmlFile()],
+            [new SubmitFileMetadata { DocumentClass = BODY_CLASS, ExpandEmail = true, AttachmentsDocumentClass = ATTACHMENT_CLASS }]);
+
+        Assert.False(result.IsError);
+        List<string> ids = [.. _harness.SubmittedFiles().Select(file => file.FileId)];
+        Assert.Equal([BODY, RAW, PART], await _harness.FileNamesOfAsync(ids));
+        Assert.Equal([true, false, true], (await _harness.SourcesOfAsync(ids)).Select(sources => sources.Contains(IDENTIFIER)));
+    }
+
+    [Fact]
     public async Task WhileADeployPausesRuns_ASubmissionThatExpandsAnEmail_IsLeftToTheRunsOwnCheck()
     {
         SkipUnlessTheBuildReadsEmail();

@@ -104,7 +104,8 @@ The hosts register the open implementations with `AddOpenFileFormats()`. The Web
 
 
 - To replace every format, write your own registration method, such as `AddMyFileFormats()`. Call it in place of
-  the hosts' registration in both hosts.
+  the hosts' registration in both hosts. It also registers an `IDocumentPageCounter`, which both upload handlers
+  need: the open `DocumentPageCounter` works on any `IPdfFormat` and `IWorkbookFormat`.
 - To replace one format, register your implementation after the hosts' registration. Each interface except
   `IReportFileWriter` is one service, and the registration made last wins.
 - A build can register several report writers. The report export uses the writer registered last for each format, so

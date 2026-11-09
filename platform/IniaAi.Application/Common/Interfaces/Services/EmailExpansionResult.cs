@@ -15,7 +15,11 @@ public sealed record ExpandedEmailPart(
     string FileName,
     byte[] Content,
     string? ContentType,
-    FileUnlockResult? Unlock = null);
+    FileUnlockResult? Unlock = null)
+{
+    /// <summary>The bytes to store and read: the decrypted copy when the unlock gate stripped protection.</summary>
+    public byte[] UnlockedContent => Unlock?.DecryptedBytes ?? Content;
+}
 
 /// <summary>
 /// A part of the email that was not turned into a file, with the operator-facing reason.
@@ -23,6 +27,16 @@ public sealed record ExpandedEmailPart(
 /// <param name="FileName">The part's file name, or another identifying label such as a URL.</param>
 /// <param name="Reason">Why the part was skipped.</param>
 public sealed record SkippedEmailPart(string FileName, string Reason);
+
+/// <summary>
+/// The pages a run can read from one email, counted with no rendering and no model call.
+/// </summary>
+/// <param name="Identifier">"{sanitized subject}_{sent date}", which the documents a run makes from the email carry.</param>
+/// <param name="BodyPages">The body's text at the page counter's characters a page, at least 1, and 1 more for each
+/// picture the body shows large enough to carry content.</param>
+/// <param name="AttachmentPages">The counted pages of every file a run can extract from the email; null when one of
+/// them cannot be counted.</param>
+public sealed record EmailPageCount(string Identifier, int BodyPages, int? AttachmentPages);
 
 /// <summary>
 /// The outcome of rendering one email's body without touching its attachments.

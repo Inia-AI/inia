@@ -410,6 +410,13 @@ const fileIcon = (fileName: string | undefined) => {
               {{ $t('page.createWorkflow.form.labels.file.name') }}
             </FormLabel>
             <p class="file-name">{{ file.name }}</p>
+            <span v-if="typeof file.countedPages === 'number'" class="file-pages">
+              {{
+                file.countedAttachmentPages
+                  ? $t('shared.components.fileControl.pagesWithAttachments', { n: file.countedPages, m: file.countedAttachmentPages }, file.countedPages)
+                  : $t('shared.components.fileControl.pages', { n: file.countedPages }, file.countedPages)
+              }}
+            </span>
           </div>
 
           <ul v-if="file.warnings?.length" class="file-warnings">
@@ -695,6 +702,13 @@ const fileIcon = (fileName: string | undefined) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-pages {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .file-warnings {

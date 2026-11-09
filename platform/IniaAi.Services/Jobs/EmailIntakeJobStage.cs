@@ -2,6 +2,7 @@ using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Documents;
 using IniaAi.Common.Constants;
 using IniaAi.Common.Extensions;
+using IniaAi.Common.Interfaces;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Configuration.Storage;
 using IniaAi.Core.Workflows;
@@ -26,7 +27,8 @@ namespace IniaAi.Services.Jobs;
 /// products do not expand the same email twice. Two further nets close the gaps that marker
 /// cannot see: a minted product that resolves to a document the job already references is not
 /// linked a second time, and the identifier is appended to a re-minted document's existing
-/// sources — so products created before the marker existed heal on their first re-run.
+/// sources — so products created before the marker existed heal on their first re-run. Each
+/// minted document is counted as it is made, so a later run that sends it is held to its pages.
 /// Every minted part passes <see cref="DocumentIntakeGate"/> before its bytes are stored: a refused
 /// attachment is skipped with its reason and its refusal record joins the run's trail, and a refused
 /// body stops the email like a failed render would.
@@ -37,6 +39,7 @@ public class EmailIntakeJobStage
     private readonly IFileStorageManager _fileStorageManager;
     private readonly IWorkflowOutputService _workflowOutputService;
     private readonly DocumentIntakeGate _intakeGate;
+    private readonly IDocumentPageCounter _pageCounter;
     private readonly ILogger<EmailIntakeJobStage> _logger;
 
     public EmailIntakeJobStage(
@@ -44,12 +47,14 @@ public class EmailIntakeJobStage
         IFileStorageManager fileStorageManager,
         IWorkflowOutputService workflowOutputService,
         DocumentIntakeGate intakeGate,
+        IDocumentPageCounter pageCounter,
         ILogger<EmailIntakeJobStage> logger)
     {
         _emailExpansionService = emailExpansionService;
         _fileStorageManager = fileStorageManager;
         _workflowOutputService = workflowOutputService;
         _intakeGate = intakeGate;
+        _pageCounter = pageCounter;
         _logger = logger;
     }
 
@@ -318,7 +323,7 @@ public class EmailIntakeJobStage
         EmailIntakeOutcome outcome,
         CancellationToken cancellationToken)
     {
-        byte[] unlockedContent = part.Unlock?.DecryptedBytes ?? part.Content;
+        byte[] unlockedContent = part.UnlockedContent;
         IntakeScreening screening = await _intakeGate.ScreenAsync(
             unlockedContent, part.FileName, password: null, mouth, cancellationToken);
 
@@ -343,6 +348,8 @@ public class EmailIntakeJobStage
         {
             document.Sources = [.. document.Sources, triggerEmailIdentifier];
         }
+
+        document.CountedPages ??= _pageCounter.Count(content, screening.MediaType, part.FileName);
 
         if (!jobDocumentIds.Add(document.Id))
         {

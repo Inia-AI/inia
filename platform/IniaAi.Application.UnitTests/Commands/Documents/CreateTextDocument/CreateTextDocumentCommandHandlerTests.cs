@@ -8,6 +8,7 @@ using IniaAi.Common.Enums;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Enums;
+using IniaAi.Testing.Documents;
 using IniaAi.WebApi.Contracts.Responses.Documents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -39,7 +40,7 @@ public class CreateTextDocumentCommandHandlerTests : DocumentTestHost
 
     private CreateTextDocumentCommandHandler Handler()
     {
-        return new CreateTextDocumentCommandHandler(NullLogger<CreateTextDocumentCommandHandler>.Instance, _userData, _storage, _queue, new NoUploadLimits());
+        return new CreateTextDocumentCommandHandler(NullLogger<CreateTextDocumentCommandHandler>.Instance, _userData, _storage, _queue, new NoUploadLimits(), FileFormatsUnderTest.PageCounter);
     }
 
     [Theory]
@@ -69,6 +70,16 @@ public class CreateTextDocumentCommandHandlerTests : DocumentTestHost
         Assert.Equal(TEXT, Encoding.UTF8.GetString(bytes));
         Assert.Equal(expectedContentType, contentType);
         Assert.Equal(new DocumentProcessingRequest(ORG_ID, stored.Id, USER_ID), Assert.Single(_queue.DrainPending()));
+    }
+
+    [Fact]
+    public async Task Handle_StoresThePagesOfThePastedText()
+    {
+        string text = string.Join("\n\n", Enumerable.Repeat(new string('t', 2_100), 3));
+
+        ErrorOr<DocumentSummaryDto> result = await Handler().Handle(new CreateTextDocumentCommand(ORG_ID, USER_ID, "notes", text, TextDocumentFormat.PlainText), TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, _context.Documents.Single(d => d.Id == result.Value.Id).CountedPages);
     }
 
     [Fact]

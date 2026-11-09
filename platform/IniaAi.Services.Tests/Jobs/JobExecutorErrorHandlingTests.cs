@@ -59,7 +59,8 @@ public sealed class JobExecutorErrorHandlingTests : IDisposable
                 scopeFactory,
                 NullLogger<WorkflowOutputService>.Instance),
             emailIntakeJobStage: null!,
-            runInputStage: new PassThroughRunInputStage());
+            runInputStage: new PassThroughRunInputStage(),
+            runContentCheck: new PassRunContentCheck());
     }
 
     private sealed record LogEntry(LogLevel Level, string Message);

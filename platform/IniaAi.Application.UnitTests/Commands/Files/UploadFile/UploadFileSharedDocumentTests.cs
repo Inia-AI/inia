@@ -11,6 +11,7 @@ using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Domain.Enums;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
+using IniaAi.Services.Email;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.Documents;
 using IniaAi.WebApi.Contracts.Dto;
@@ -155,7 +156,13 @@ public sealed class UploadFileSharedDocumentTests : IDisposable
                 FileFormatsUnderTest.Unlocker,
                 FileFormatsUnderTest.ReadableFormats,
                 Options.Create(new PlatformSettings { IniaAi = new IniaAiSettings { MaxFileSizeMb = 1 } })),
-            new NoUploadLimits());
+            new NoUploadLimits(),
+            FileFormatsUnderTest.PageCounter,
+            new EmailExpansionService(
+                Options.Create(new PlatformSettings()),
+                FileFormatsUnderTest.Unlocker,
+                FileFormatsUnderTest.PageCounter,
+                NullLogger<EmailExpansionService>.Instance));
         var file = new FormFile(new MemoryStream(content), 0, content.Length, "file", FILE_NAME)
         {
             Headers = new HeaderDictionary(),

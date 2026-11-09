@@ -40,4 +40,15 @@ public interface IEmailExpansionService
     Task<string> DeriveTriggerEmailIdentifierAsync(
         byte[] emailBytes,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Counts the pages of the email's body and of the files a run can extract from it, apart, by parsing the email
+    /// only: no rendering, no download of a linked file. Throws <c>EmailConversionException</c> when the bytes are
+    /// not an email or cannot be parsed.
+    /// </summary>
+    /// <param name="emailBytes">The raw email file content.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<EmailPageCount> CountPagesAsync(
+        byte[] emailBytes,
+        CancellationToken cancellationToken = default);
 }

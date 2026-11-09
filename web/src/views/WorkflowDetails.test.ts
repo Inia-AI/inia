@@ -682,6 +682,19 @@ describe('WorkflowDetails report the server will not show', () => {
     expect(wrapper.text()).not.toContain('page.workflowDetails.loadErrorHint')
   })
 
+  it('shows why a failed run stopped beside the reason the server gives for hiding it', async () => {
+    const detail = 'The report stopped because the platform found no text to read in its documents. Check that each file opens and is not blank, then start the report again.'
+    setExecution({ workflowState: WorkflowState.Failed, failureKind: 'NoReadableDocuments', failureDetail: detail })
+    failWith(403, { title: 'Report not available', status: 403, detail: 'This report did not finish, so it has nothing to show. Its credits were returned, so you can run it again.' })
+
+    const wrapper = factory({ stubs: { RouterLink: true } })
+    await flushPromises()
+
+    const notice = wrapper.get('.error-container .run-failure-notice')
+    expect(notice.text()).toContain(detail)
+    expect(wrapper.get('[data-testid="report-content-refusal"]').exists()).toBe(true)
+  })
+
   it('keeps the not-found message for a report that cannot be read', async () => {
     failWith(404, { title: 'Not Found', status: 404 })
 

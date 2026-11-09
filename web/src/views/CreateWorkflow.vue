@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
 import { fullFileName } from '@/lib/fileName'
+import { withPagesRead } from '@/lib/pagesRead'
 import { isDocumentProblem, submitValidationMessages } from '@/lib/workflowSubmitErrors'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -115,6 +116,7 @@ const formData = ref<WorkflowFormData>({
 })
 
 const uploadRequestFields = ref<Record<string, unknown>>({})
+const documentsAsRead = computed(() => withPagesRead(formData.value.documents ?? [], uploadRequestFields.value))
 
 // "Edit inputs first" hand-off from a re-run on WorkflowDetails. Consumed
 // synchronously in setup so it's already populated before the categorySummaries
@@ -1343,6 +1345,7 @@ const reviewVariables = computed(() => {
                     v-for="(piece, index) in extensionPoints.reviewDetails"
                     :key="index"
                     :workflow="selectedWorkflow"
+                    :documents="documentsAsRead"
                     @holds="(reason: string | null) => holdSubmit(index, reason)"
                   />
                 </dl>

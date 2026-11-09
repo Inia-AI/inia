@@ -1,4 +1,5 @@
 using IniaAi.Application.Common.CreditCosts;
+using IniaAi.Application.Common.RunLimits;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.WebApi.Contracts.Dto;
 using IniaAi.WebApi.Models.Dto;
@@ -47,7 +48,7 @@ public static class WorkflowSummaryProjections
         Configuration = workflow.Configuration,
     };
 
-    public static WorkflowSummaryDto ToSummaryDto(WorkflowListRow workflow, IWorkflowCreditCost creditCost)
+    public static WorkflowSummaryDto ToSummaryDto(WorkflowListRow workflow, IWorkflowCreditCost creditCost, IWorkflowPageLimit pageLimit)
     {
         return new WorkflowSummaryDto
         {
@@ -56,10 +57,11 @@ public static class WorkflowSummaryProjections
             WorkflowTypeName = workflow.WorkflowTypeName,
             IsAvailable = true,
             CreditCost = creditCost.Of(workflow.Configuration),
+            MaxPages = pageLimit.Of(workflow.Configuration),
         };
     }
 
-    public static WorkflowDto ToDto(WorkflowParts workflow, IWorkflowCreditCost creditCost)
+    public static WorkflowDto ToDto(WorkflowParts workflow, IWorkflowCreditCost creditCost, IWorkflowPageLimit pageLimit)
     {
         return new WorkflowDto
         {
@@ -72,6 +74,7 @@ public static class WorkflowSummaryProjections
             DocumentClasses = [.. workflow.DocumentClasses.Select(ToDocumentClassDto)],
             CounterpartyTypeMappings = workflow.CounterpartyTypeIds,
             CreditCost = creditCost.Of(workflow.Configuration),
+            MaxPages = pageLimit.Of(workflow.Configuration),
         };
     }
 

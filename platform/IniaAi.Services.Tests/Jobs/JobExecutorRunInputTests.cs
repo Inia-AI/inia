@@ -72,7 +72,8 @@ public sealed class JobExecutorRunInputTests : IDisposable
             documentProcessing: null!,
             workflowOutputService: null!,
             emailIntakeJobStage: null!,
-            runInputStage: runInputStage);
+            runInputStage: runInputStage,
+            runContentCheck: new PassRunContentCheck());
     }
 
     private static Job CreateJob()

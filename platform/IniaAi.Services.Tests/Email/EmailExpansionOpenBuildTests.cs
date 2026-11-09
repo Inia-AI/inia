@@ -16,6 +16,7 @@ public class EmailExpansionOpenBuildTests
         var expansion = new EmailExpansionService(
             Options.Create(new PlatformSettings()),
             FileFormatsUnderTest.Unlocker,
+            FileFormatsUnderTest.PageCounter,
             NullLogger<EmailExpansionService>.Instance);
         byte[] email = Encoding.ASCII.GetBytes("From: ops@fundco.example\r\nTo: intake@inia.example\r\nSubject: Statement\r\n\r\nBody text\r\n");
 

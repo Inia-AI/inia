@@ -58,8 +58,7 @@ public sealed class DailyAllowanceHost : IAsyncDisposable
 
     public static async Task<DailyAllowanceHost> StartAsync(Action<IServiceCollection> configure)
     {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        _ = builder.WebHost.UseTestServer();
+        WebApplicationBuilder builder = TestWebApplication.CreateBuilder();
         builder.Configuration.Sources.Clear();
         _ = builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { [$"{CorsConfiguration.ALLOWED_ORIGINS_KEY}:0"] = LISTED_ORIGIN });
         _ = builder.Services.AddControllers().AddApplicationPart(typeof(DailyAllowanceHost).Assembly);

@@ -1,3 +1,5 @@
+using IniaAi.Common.Enums;
+using IniaAi.Common.Interfaces;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Platform;
 using IniaAi.Domain.Enums;
@@ -67,6 +69,26 @@ public class OpenFileFormatsServicesTests
         open.Dispose();
 
         Assert.Equal(FileProtectionStatus.Decrypted, (await unlocking.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken)).Status);
+    }
+
+    [Fact]
+    public async Task AddOpenFileFormats_CountsAnUploadsPdf_WhileReportsHoldEveryReader()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using ServiceProvider provider = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton(Options.Create(new PlatformSettings { PdfReader = new PdfReaderSettings { MaxWorkers = 1 } }))
+            .AddOpenFileFormats()
+            .BuildServiceProvider();
+        using IPdfDocument heldByAReport = provider.GetRequiredService<IPdfFormat>().Open(
+            ContractFixture.Stream(ContractFixture.THREE_PAGES_PDF), ContractFixture.NameOf(ContractFixture.THREE_PAGES_PDF));
+
+        Task<int?> counting = Task.Run(
+            () => provider.GetRequiredService<IDocumentPageCounter>().Count(
+                ContractFixture.Bytes(ContractFixture.THREE_PAGES_PDF), MediaType.ApplicationPdf, "upload.pdf"),
+            cancellationToken);
+
+        Assert.Equal(3, await counting.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken));
     }
 
     [Fact]

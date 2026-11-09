@@ -1,5 +1,6 @@
 using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Configuration;
+using IniaAi.Core.Documents;
 using IniaAi.Services.Jobs;
 using IniaAi.Services.Models.Jobs;
 using IniaAi.Testing;
@@ -31,7 +32,8 @@ public sealed class JobQueueShutdownDelegatedJobTests : IDisposable
             documentProcessing: null!,
             workflowOutputService: null!,
             emailIntakeJobStage: null!,
-            runInputStage: null!));
+            runInputStage: null!,
+            runContentCheck: new PassRunContentCheck()));
         _provider = services.BuildServiceProvider();
         _jobs = new JobsService(_provider, NullLogger<JobsService>.Instance, Options.Create(new PlatformSettings()));
     }

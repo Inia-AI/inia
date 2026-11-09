@@ -153,6 +153,7 @@ public static class InfrastructureServiceRegistration
         services.TryAddTransient<IAuthenticationAuditLog, LoggingAuthenticationAuditLog>();
         _ = services.AddTransient<DocumentIntakeGate>();
         services.TryAddTransient<IRunInputStage, PassThroughRunInputStage>();
+        services.TryAddTransient<IRunContentCheck, PassRunContentCheck>();
 
         // Add platform version provider (stamps regression runs with the executing build)
         _ = services.AddSingleton<IPlatformVersionProvider, PlatformVersionProvider>();

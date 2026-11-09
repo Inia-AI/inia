@@ -4,6 +4,8 @@ using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.UploadLimits;
 using IniaAi.Application.Documents;
 using IniaAi.Application.Queries.Documents;
+using IniaAi.Common.Enums;
+using IniaAi.Common.Interfaces;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.UserData.Interfaces;
@@ -22,39 +24,46 @@ public class CreateTextDocumentCommandHandler : IRequestHandler<CreateTextDocume
     private readonly IFileStorageManager _storage;
     private readonly IWorkQueue<DocumentProcessingRequest> _queue;
     private readonly IUploadLimits _uploadLimits;
+    private readonly IDocumentPageCounter _pageCounter;
 
     public CreateTextDocumentCommandHandler(
         ILogger<CreateTextDocumentCommandHandler> logger,
         IUserDataUnitOfWork userData,
         IFileStorageManager storage,
         IWorkQueue<DocumentProcessingRequest> queue,
-        IUploadLimits uploadLimits)
+        IUploadLimits uploadLimits,
+        IDocumentPageCounter pageCounter)
     {
         _logger = logger;
         _userData = userData;
         _storage = storage;
         _queue = queue;
         _uploadLimits = uploadLimits;
+        _pageCounter = pageCounter;
     }
 
     public async Task<ErrorOr<DocumentSummaryDto>> Handle(CreateTextDocumentCommand request, CancellationToken cancellationToken)
     {
         string fileName = TextDocuments.FileNameOf(request.Name, request.Format);
 
+        byte[] bytes = Encoding.UTF8.GetBytes(request.Text);
+        MediaType mediaType = TextDocuments.MediaTypeOf(request.Format);
+        int? countedPages = _pageCounter.Count(bytes, mediaType, fileName);
+
         Document? document = null;
         UploadRefusal? refusal = await _uploadLimits.StoreWithinLimitsAsync(
-            new UploadLimitsRequest(request.OrganizationId, request.Uploader, Encoding.UTF8.GetByteCount(request.Text)),
+            new UploadLimitsRequest(request.OrganizationId, request.Uploader, bytes.Length),
             async ct =>
             {
-                byte[] bytes = Encoding.UTF8.GetBytes(request.Text);
                 document = await _userData.Documents.UploadNewFileCreateNewDocumentAsync(
                     bytes,
                     request.OrganizationId,
                     request.UserId,
                     fileName,
                     _storage.GetProviderForTenant(request.OrganizationId),
-                    TextDocuments.MediaTypeOf(request.Format));
+                    mediaType);
                 document.Sources = [PASTED_TEXT_SOURCE];
+                document.CountedPages = countedPages;
                 _ = await DocumentStorage.StoreBytesAsync(_storage, document, bytes);
                 _ = await _userData.CompleteAsync(ct);
             },

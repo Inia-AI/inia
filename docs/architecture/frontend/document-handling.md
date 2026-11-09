@@ -66,7 +66,7 @@ The Documents list and `DocumentDetails` name the downloaded file `${doc.name}${
 
 `src/composables/useDocumentUpload.ts` owns the upload state of a run's files. It is consumed by `src/components/organisms/WorkflowFileUploader/WorkflowFileUploader.vue`, the file step of a new run. The Documents library has its own dialog, described under [Upload documents dialog](#upload-documents-dialog), which reuses only the composable's `describeUploadError`.
 
-The composable manages an array of `UploadableDocument` (id, `ref` uuid, class, `File`, name, `progress`, `isUploading`, `error`, `errorDetail`, `warnings`) and exposes:
+The composable manages an array of `UploadableDocument` (id, `ref` uuid, class, `File`, name, `progress`, `isUploading`, `error`, `errorDetail`, `warnings`, and the upload reply's `countedPages` and `countedAttachmentPages`) and exposes:
 
 | Member | Role |
 |---|---|

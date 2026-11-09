@@ -17,6 +17,8 @@ internal sealed record TextBlock(string Markdown, IReadOnlyList<WordPicture> Pic
 /// <summary>A picture of the document, read from its part only when a page shows it to a model.</summary>
 internal sealed class WordPicture(ImagePart part)
 {
+    public Uri PartUri => part.Uri;
+
     public string ContentType => part.ContentType;
 
     public byte[] ReadBytes()
@@ -31,7 +33,8 @@ internal sealed class WordPicture(ImagePart part)
 /// <summary>
 /// Splits a document into pages by word count, the way the open build pages a Word upload. A page closes after the
 /// block that takes it to the words of a page. A paragraph longer than a page is split between words; a table stays
-/// whole. The header and footer lines of a section close the page that holds the section's first block.
+/// whole. The header and footer lines of a section close the page that holds the section's first block. A picture the
+/// document shows more than once is read once, and every page that shows it holds the same image region.
 /// </summary>
 internal static class WordCountPages
 {
@@ -46,7 +49,19 @@ internal static class WordCountPages
         var text = new List<string>();
         var images = new List<BinaryContent>();
         var trailer = new List<string>();
+        var regions = new Dictionary<Uri, BinaryContent?>();
         int words = 0;
+
+        BinaryContent? RegionOf(WordPicture picture, VisionTier tier)
+        {
+            if (!regions.TryGetValue(picture.PartUri, out BinaryContent? region))
+            {
+                region = ImageRegion(picture, tier);
+                regions[picture.PartUri] = region;
+            }
+
+            return region;
+        }
 
         void ClosePage()
         {
@@ -78,7 +93,7 @@ internal static class WordCountPages
 
             if (visionTier is VisionTier tier)
             {
-                images.AddRange(blocks[i].Pictures.Select(picture => ImageRegion(picture, tier)).OfType<BinaryContent>());
+                images.AddRange(blocks[i].Pictures.Select(picture => RegionOf(picture, tier)).OfType<BinaryContent>());
             }
 
             foreach (string piece in SplitLongParagraph(blocks[i].Markdown, wordsPerPage))

@@ -355,7 +355,8 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
                         organizationId,
                         userId,
                         workflow,
-                        [.. files?.Select(file => file.FileId) ?? []]),
+                        [.. files?.Select(file => file.FileId) ?? []],
+                        emailIntakeMode),
                     token);
 
                 return admission.IsError ? admission.Errors : (job, workflowExecution);

@@ -1,4 +1,5 @@
 using IniaAi.Common.Enums;
+using IniaAi.Common.Interfaces;
 using IniaAi.FileFormats.Excel;
 using IniaAi.FileFormats.Inspection;
 using IniaAi.FileFormats.Pdf;
@@ -34,6 +35,8 @@ public static class FileFormatsUnderTest
     public static IReadableFormats ReadableFormats { get; } = _services.GetRequiredService<IReadableFormats>();
 
     public static IWordPageReader WordPages { get; } = _services.GetRequiredService<IWordPageReader>();
+
+    public static IDocumentPageCounter PageCounter { get; } = _services.GetRequiredService<IDocumentPageCounter>();
 
     public static IReadOnlyList<IReportFileWriter> ReportWriters { get; } = [.. _services.GetServices<IReportFileWriter>()];
 

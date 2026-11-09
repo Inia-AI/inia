@@ -6,6 +6,10 @@ export interface FileDto {
   mediaType: string
   created: boolean
   producesPages: boolean
+  /** The pages the platform counts for the file at upload, an email's body for an email; null when it could not read the file or the file makes no pages. */
+  countedPages?: number | null
+  /** For an email, the counted pages of the files a run can extract from it; null for any other file. */
+  countedAttachmentPages?: number | null
   warnings?: string[]
 }
 

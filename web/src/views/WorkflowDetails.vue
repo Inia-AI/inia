@@ -454,6 +454,8 @@ const isError = computed(
 
 const contentRefusal = computed(() => refusalDetail(outputError.value))
 
+const runFailed = computed(() => executionData.value?.workflowState === WorkflowState.Failed)
+
 const gridStyles = computed(() => gridContainerClass(activeSection.value?.layout))
 
 const isGridLayout = computed(() => !!gridStyles.value)
@@ -605,6 +607,15 @@ const onReRun = async () => {
         <template v-if="contentRefusal">
           <h1>{{ $t('page.workflowDetails.contentRefused') }}</h1>
           <p data-testid="report-content-refusal">{{ contentRefusal }}</p>
+          <RunFailureNotice
+            v-if="runFailed"
+            class="refused-run-failure"
+            :failure-kind="executionData?.failureKind"
+            :failure-detail="executionData?.failureDetail"
+            :can-act="canReRun"
+            @change-documents="onChangeDocuments"
+            @run-again="onReRunClick"
+          />
         </template>
         <template v-else>
           <h1>{{ $t('page.workflowDetails.loadError') }}</h1>
@@ -769,10 +780,10 @@ const onReRun = async () => {
             :key="index"
           />
           <RunFailureNotice
-            v-if="executionData?.workflowState === WorkflowState.Failed"
+            v-if="runFailed"
             class="run-failure"
-            :failure-kind="executionData.failureKind"
-            :failure-detail="executionData.failureDetail"
+            :failure-kind="executionData?.failureKind"
+            :failure-detail="executionData?.failureDetail"
             :can-act="canReRun"
             @change-documents="onChangeDocuments"
             @run-again="onReRunClick"
@@ -1092,6 +1103,16 @@ const onReRun = async () => {
 .run-failure {
   margin-top: 0.75rem;
   max-width: 48rem;
+}
+
+.refused-run-failure {
+  max-width: 40rem;
+  margin: 0 auto var(--spacing-md);
+  text-align: left;
+}
+
+.refused-run-failure :deep(p) {
+  margin-bottom: 0;
 }
 
 .model-refusal {

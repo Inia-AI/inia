@@ -61,6 +61,19 @@ describe('WorkflowFileUploader upload outcomes', () => {
     expect(wrapper.find('.file-card').classes()).not.toContain('has-error')
   })
 
+  it('shows the pages the platform counted beside the file name, and nothing when it could not count them', async () => {
+    uploadMutateMock
+      .mockResolvedValueOnce({ id: 'doc-1', filename: 'ledger', mediaType: 'TextCsv', countedPages: 12 })
+      .mockResolvedValueOnce({ id: 'doc-2', filename: 'broken', mediaType: 'ApplicationPdf', countedPages: null })
+    const wrapper = mountUploader()
+
+    await selectFiles(wrapper, ['ledger.csv', 'broken.pdf'])
+
+    const pages = wrapper.findAll('.file-pages')
+    expect(pages).toHaveLength(1)
+    expect(pages[0].text()).toBe('shared.components.fileControl.pages:{"n":12}')
+  })
+
   it('shows the intake gate\'s reason when the server refuses the file', async () => {
     const reason = 'The content is application/vnd.microsoft.portable-executable; the platform reads no such document.'
     uploadMutateMock.mockRejectedValueOnce(

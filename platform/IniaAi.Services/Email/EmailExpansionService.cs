@@ -2,17 +2,21 @@ using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Common.Constants;
 using IniaAi.Common.Enums;
 using IniaAi.Common.Extensions;
+using IniaAi.Common.Interfaces;
 using IniaAi.Configuration;
 using IniaAi.FileFormats.Email;
+using IniaAi.FileFormats.Images;
 using IniaAi.FileFormats.Inspection;
 using IniaAi.FileFormats.Unlock;
 using IniaAi.Services.FileDownload;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using MimeKit.Text;
 using System.Globalization;
 using System.IO.Compression;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 
@@ -41,24 +45,32 @@ public partial class EmailExpansionService : IEmailExpansionService
     private const string NESTED_EMAIL_FALLBACK_FILE_NAME = "nested_email.eml";
     private const string DOWNLOAD_FOLDER_PREFIX = "inia-email-expansion-";
     private const int MAX_FILE_NAME_BASE_LENGTH = 100;
+    private const string BODY_TEXT_FILE_NAME = "body.txt";
+    private const string CONTENT_ID_LINK = "cid:";
+
+    // A picture the body gives no size to shows at its own size, a CSS pixel to 3/4 of a point.
+    private const double CSS_PIXELS_PER_POINT = 96d / 72d;
     private const string EMAIL_NOT_READ =
         $"The platform does not read email files. Save the email as a PDF, then upload it with its attachments. {ProductEditions.FULL_EDITION} reads email files directly and extracts their attachments.";
 
     private readonly PlatformSettings _platformSettings;
     private readonly FileInspectionLimits _limits;
     private readonly IDocumentUnlocker _unlocker;
+    private readonly IDocumentPageCounter _pageCounter;
     private readonly ILogger<EmailExpansionService> _logger;
     private readonly IEmailToPdfConverter? _emailToPdfConverter;
 
     public EmailExpansionService(
         IOptions<PlatformSettings> options,
         IDocumentUnlocker unlocker,
+        IDocumentPageCounter pageCounter,
         ILogger<EmailExpansionService> logger,
         IEmailToPdfConverter? emailToPdfConverter = null)
     {
         _platformSettings = options.Value;
         _limits = FileInspectionLimits.FromSettings(_platformSettings.IniaAi);
         _unlocker = unlocker;
+        _pageCounter = pageCounter;
         _logger = logger;
         _emailToPdfConverter = emailToPdfConverter;
     }
@@ -100,12 +112,7 @@ public partial class EmailExpansionService : IEmailExpansionService
                 ? MediaType.ApplicationVndMsOutlook.GetEnumMember()
                 : MediaType.MessageRfc822.GetEnumMember());
 
-        foreach (MimeEntity entity in GetCandidateEntities(parsed.Message))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await ProcessEntityAsync(entity, state, cancellationToken);
-        }
-
+        await CollectPartsAsync(parsed.Message, state, cancellationToken);
         await DownloadUrlPartsAsync(parsed.Message, state, cancellationToken);
 
         _logger.LogInformation(
@@ -144,6 +151,103 @@ public partial class EmailExpansionService : IEmailExpansionService
         ParsedEmail parsed = await ParseAsync(emailBytes, cancellationToken);
 
         return parsed.Identifier;
+    }
+
+    public async Task<EmailPageCount> CountPagesAsync(
+        byte[] emailBytes,
+        CancellationToken cancellationToken = default)
+    {
+        (MimeMessage message, string identifier) = await ParseForCountAsync(emailBytes, cancellationToken);
+
+        var state = new ExpansionState(PagesOf);
+        await CollectPartsAsync(message, state, cancellationToken);
+
+        int bodyPages = await BodyPagesAsync(message, cancellationToken);
+        return new EmailPageCount(identifier, bodyPages, state.CountedPages);
+    }
+
+    private async Task<(MimeMessage Message, string Identifier)> ParseForCountAsync(byte[] emailBytes, CancellationToken cancellationToken)
+    {
+        ParsedEmail parsed = await ParseAsync(emailBytes, cancellationToken);
+        return (parsed.Message, parsed.Identifier);
+    }
+
+    private async Task CollectPartsAsync(MimeMessage message, ExpansionState state, CancellationToken cancellationToken)
+    {
+        foreach (MimeEntity entity in GetCandidateEntities(message))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await ProcessEntityAsync(entity, state, cancellationToken);
+        }
+    }
+
+    private int? PagesOf(ExpandedEmailPart part)
+    {
+        byte[] content = part.UnlockedContent;
+        return Inspect(content, part.FileName).MediaType is { } mediaType
+            ? _pageCounter.Count(content, mediaType, part.FileName)
+            : 0;
+    }
+
+    private async Task<int> BodyPagesAsync(MimeMessage message, CancellationToken cancellationToken)
+    {
+        string? html = message.HtmlBody;
+        string text = html is null ? message.TextBody ?? string.Empty : TextOf(html);
+        int textPages = _pageCounter.Count(Encoding.UTF8.GetBytes(text), MediaType.TextPlain, BODY_TEXT_FILE_NAME) ?? 0;
+
+        int contentPictures = 0;
+        foreach (MimePart picture in message.BodyParts.OfType<MimePart>().Where(part => IsShownBy(part, html)))
+        {
+            if (picture.Content is not null
+                && Pictures.ReadSize(await DecodeAsync(picture.Content, cancellationToken)) is { } size
+                && size.Width >= EmailPdf.MIN_CONTENT_IMAGE_WIDTH_PT * CSS_PIXELS_PER_POINT
+                && size.Height >= EmailPdf.MIN_CONTENT_IMAGE_HEIGHT_PT * CSS_PIXELS_PER_POINT)
+            {
+                contentPictures++;
+            }
+        }
+
+        return Math.Max(1, textPages) + contentPictures;
+    }
+
+    private static bool IsShownBy(MimePart part, string? html)
+    {
+        return html is not null
+            && part.ContentType.IsMimeType("image", "*")
+            && part.ContentId is { Length: > 0 } contentId
+            && Regex.IsMatch(html, $@"{CONTENT_ID_LINK}{Regex.Escape(contentId)}(?![\w.@-])", RegexOptions.IgnoreCase);
+    }
+
+    private static string TextOf(string html)
+    {
+        var text = new StringBuilder();
+        var tokenizer = new HtmlTokenizer(new StringReader(html)) { DecodeCharacterReferences = true };
+        bool hidden = false;
+        while (tokenizer.ReadNextToken(out HtmlToken? token))
+        {
+            if (token is HtmlTagToken tag)
+            {
+                if (tag.Id is HtmlTagId.Script or HtmlTagId.Style or HtmlTagId.Title)
+                {
+                    hidden = !tag.IsEndTag;
+                }
+                else if (tag.Id is HtmlTagId.Br)
+                {
+                    _ = text.Append('\n');
+                }
+                else if (tag.IsEndTag && tag.Id is HtmlTagId.P or HtmlTagId.Div or HtmlTagId.LI or HtmlTagId.TR or HtmlTagId.Table
+                    or HtmlTagId.H1 or HtmlTagId.H2 or HtmlTagId.H3 or HtmlTagId.H4 or HtmlTagId.H5 or HtmlTagId.H6)
+                {
+                    _ = text.Append("\n\n");
+                }
+            }
+            else if (token is HtmlDataToken data && !hidden)
+            {
+                _ = text.Append(WhitespaceRunRegex().Replace(data.Data, " "));
+            }
+        }
+
+        return text.ToString();
     }
 
     private static string BuildBodyPdfFileName(string identifier)
@@ -374,7 +478,7 @@ public partial class EmailExpansionService : IEmailExpansionService
             return;
         }
 
-        state.Parts.Add(new ExpandedEmailPart(state.ClaimFileName(fileName), content, contentType, unlock));
+        state.Admit(new ExpandedEmailPart(state.ClaimFileName(fileName), content, contentType, unlock));
     }
 
     private async Task ExpandZipAsync(byte[] zipBytes, string zipLabel, ExpansionState state, CancellationToken cancellationToken)
@@ -520,7 +624,7 @@ public partial class EmailExpansionService : IEmailExpansionService
                     continue;
                 }
 
-                state.Parts.Add(new ExpandedEmailPart(
+                state.Admit(new ExpandedEmailPart(
                     state.ClaimFileName(fileName),
                     content,
                     MediaType.ApplicationPdf.GetEnumMember(),
@@ -758,18 +862,38 @@ public partial class EmailExpansionService : IEmailExpansionService
     [GeneratedRegex(@"[^a-zA-Z0-9\-_]")]
     private static partial Regex InvalidFileNameCharactersRegex();
 
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRunRegex();
+
     [GeneratedRegex(@"_{2,}")]
     private static partial Regex CollapseUnderscoresRegex();
 
-    private sealed class ExpansionState
+    /// <summary>
+    /// The parts of one email as they are admitted. Given a page count, the state counts each part as it comes and
+    /// keeps none, so a count never holds every attachment at once.
+    /// </summary>
+    private sealed class ExpansionState(Func<ExpandedEmailPart, int?>? countPages = null)
     {
         private readonly HashSet<string> _claimedFileNames = new(StringComparer.OrdinalIgnoreCase);
 
         public List<ExpandedEmailPart> Parts { get; } = [];
 
+        public int? CountedPages { get; private set; } = 0;
+
         public List<SkippedEmailPart> SkippedParts { get; } = [];
 
         public int UnnamedAttachmentCount { get; set; }
+
+        public void Admit(ExpandedEmailPart part)
+        {
+            if (countPages is null)
+            {
+                Parts.Add(part);
+                return;
+            }
+
+            CountedPages += countPages(part);
+        }
 
         public string ClaimFileName(string fileName)
         {

@@ -6,6 +6,8 @@ export interface DocumentInfo {
   name: string
   progress: number
   warnings?: string[]
+  countedPages?: number | null
+  countedAttachmentPages?: number | null
   onProcessChange: (progress: number) => void
 }
 

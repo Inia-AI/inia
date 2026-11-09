@@ -114,7 +114,9 @@ download endpoint resolves files by document id, not by `fileMetadataId`). The
   "mediaType": "ApplicationPdf",
   "warnings": null,
   "created": true,
-  "producesPages": true
+  "producesPages": true,
+  "countedPages": 12,
+  "countedAttachmentPages": null
 }
 ```
 
@@ -126,6 +128,8 @@ download endpoint resolves files by document id, not by `fileMetadataId`). The
 | `warnings`  | `string[] \| null` | Non-fatal upload warnings; `null`/absent when there are none (see below).              |
 | `created`   | `boolean`          | `true` when this upload created the document; `false` when the organization already held a document of the same name and size and the upload reused it (see [Deduplication](#deduplication)). |
 | `producesPages` | `boolean`      | `true` when [processing](documents.md) reads this file into pages. `false` for an email or a legacy binary Word file, which is stored as a file only: `POST /documents/{id}/process` refuses it with `400` `Document.NotProcessable`. |
+| `countedPages` | `integer \| null` | The pages the platform counts for this file, read from its bytes at upload with no model call ([how each format counts](../../architecture/document-processing/index.md#counted-pages)). For an email, the pages of its body. `null` when the file could not be read, or for a legacy binary Word file. A reused document that had no count gets one on this upload. |
+| `countedAttachmentPages` | `integer \| null` | For an email, the counted pages of the files a run can extract from it. A run that extracts the attachments reads these pages as well as the body's. `null` for any other file, and when the email or one of those files could not be read. |
 
 **`warnings` is populated when:**
 

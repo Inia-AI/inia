@@ -4,5 +4,7 @@
   "mediaType": "ApplicationPdf",
   "warnings": null,
   "created": true,
-  "producesPages": true
+  "producesPages": true,
+  "countedPages": 1,
+  "countedAttachmentPages": null
 }

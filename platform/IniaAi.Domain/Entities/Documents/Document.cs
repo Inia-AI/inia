@@ -83,6 +83,27 @@ public class Document : Entity<Document>
     public bool HasMacros { get; set; }
 
     /// <summary>
+    /// The pages the platform counts for the file, read from its bytes at upload with no model call, by the rule of the
+    /// page counter (<c>DocumentPageCounter</c>), or as the email intake makes it. For an email, the pages of its body.
+    /// Null when the file could not be read or makes no pages, and on documents stored before the count existed until
+    /// they are uploaded again.
+    /// </summary>
+    public int? CountedPages { get; set; }
+
+    /// <summary>
+    /// For an email, the pages of the files a run can extract from it, counted at upload by the same rule.
+    /// <see cref="CountedPages"/> then holds the pages of its body. Null for any other file, and when the email could
+    /// not be read.
+    /// </summary>
+    public int? CountedAttachmentPages { get; set; }
+
+    /// <summary>
+    /// For an email, the identifier that the documents a run makes from it carry in <see cref="Sources"/>, read at
+    /// upload. A run that holds those documents reads them, not the email again.
+    /// </summary>
+    public string? EmailIdentifier { get; set; }
+
+    /// <summary>
     /// When standalone processing was last requested for this document; null when pages
     /// only ever came from a workflow execution. Set by <see cref="RequestProcessing"/>, and
     /// the concurrency token of the standalone path: two requests racing to stamp it, or a

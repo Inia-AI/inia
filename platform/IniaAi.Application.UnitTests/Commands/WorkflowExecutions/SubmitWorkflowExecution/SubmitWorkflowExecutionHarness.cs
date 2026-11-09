@@ -76,6 +76,8 @@ internal sealed class SubmitWorkflowExecutionHarness : IDisposable
 
         _ = Orchestrator.ExecuteWorkflowAsync(default!, default, default, default!, default!, default, default, default, default)
             .ReturnsForAnyArgs(new WorkflowExecutionDto { Id = "exec-1" });
+        _ = EmailExpansion.CountPagesAsync(default!, default)
+            .ReturnsForAnyArgs(new EmailPageCount("Submitted_email_2026-05-04_09-30-15", BodyPages: 1, AttachmentPages: 0));
     }
 
     public static byte[] NotAPdf { get; } = Encoding.ASCII.GetBytes("This text is not a PDF document.");
@@ -210,6 +212,18 @@ internal sealed class SubmitWorkflowExecutionHarness : IDisposable
         }
 
         return names;
+    }
+
+    public async Task<List<List<string>>> SourcesOfAsync(IEnumerable<string> documentIds)
+    {
+        List<List<string>> sources = [];
+        foreach (string documentId in documentIds)
+        {
+            Document document = await Documents().SingleAsync(d => d.Id == documentId, TestContext.Current.CancellationToken);
+            sources.Add(document.Sources);
+        }
+
+        return sources;
     }
 
     public async Task<List<string>> StoredFileNamesAsync()

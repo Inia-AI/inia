@@ -8,6 +8,7 @@ using IniaAi.Common.Interfaces.Services.AgentRuntime.Activity;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Platform;
 using IniaAi.Configuration.Storage;
+using IniaAi.Core.Documents;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Infrastructure;
 using IniaAi.Infrastructure.Persistence.Core.Contexts;
@@ -93,7 +94,8 @@ public abstract class EditorAgentRenderTest : SignedInRenderTest
             documentProcessing: null!,
             workflowOutputService: null!,
             emailIntakeJobStage: null!,
-            runInputStage: null!));
+            runInputStage: null!,
+            runContentCheck: new PassRunContentCheck()));
         _ = Services.AddSingleton<IJobsService>(provider => new JobsService(
             provider, NullLogger<JobsService>.Instance, Options.Create(new PlatformSettings())));
     }

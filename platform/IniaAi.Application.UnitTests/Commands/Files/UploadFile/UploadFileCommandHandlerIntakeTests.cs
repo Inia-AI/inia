@@ -9,6 +9,7 @@ using IniaAi.Testing.Fixtures;
 using IniaAi.WebApi.Contracts.Dto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using MimeKit;
 using NSubstitute;
 using System.Diagnostics;
 using System.Text;
@@ -34,6 +35,66 @@ public class UploadFileCommandHandlerIntakeTests : IDisposable
     {
         _harness.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [Fact]
+    public async Task APdf_IsStoredWithItsCountedPages_AndTheReplySaysHowMany()
+    {
+        ErrorOr<FileDto> result = await _harness.HandleAsync(PdfFixtures.Pages("One", "Two", "Three"), "report.pdf");
+
+        Assert.False(result.IsError, string.Join("; ", result.ErrorsOrEmptyList.Select(error => error.Description)));
+        Assert.Equal(3, result.Value.CountedPages);
+        Document document = Assert.Single(await _harness.Context.Documents.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(3, document.CountedPages);
+    }
+
+    [Fact]
+    public async Task AnEmail_IsStoredWithItsBodyAndAttachmentPagesApart_AndItsIdentifier()
+    {
+        SkipUnlessTheBuildReadsEmail();
+        var message = new MimeMessage { Subject = "Quarterly update", Date = new DateTimeOffset(2026, 11, 1, 10, 0, 0, TimeSpan.Zero) };
+        message.From.Add(new MailboxAddress("Fund Ops", "ops@fundco.example"));
+        message.To.Add(new MailboxAddress("Intake", "intake@inia.example"));
+        var body = new BodyBuilder { TextBody = "Results attached." };
+        _ = body.Attachments.Add("results.pdf", PdfFixtures.Pages("One", "Two", "Three"), ContentType.Parse("application/pdf"));
+        message.Body = body.ToMessageBody();
+        using var email = new MemoryStream();
+        message.WriteTo(email, TestContext.Current.CancellationToken);
+
+        ErrorOr<FileDto> result = await _harness.HandleAsync(email.ToArray(), "update.eml");
+
+        Assert.False(result.IsError, string.Join("; ", result.ErrorsOrEmptyList.Select(error => error.Description)));
+        Assert.Equal((1, 3), (result.Value.CountedPages, result.Value.CountedAttachmentPages));
+        Document stored = Assert.Single(await _harness.Context.Documents.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal((1, 3, "Quarterly_update_2026-11-01_10-00-00"), (stored.CountedPages, stored.CountedAttachmentPages, stored.EmailIdentifier));
+    }
+
+    [Fact]
+    public async Task AnEmailThePlatformCannotCount_IsStillStored_WithNoCount()
+    {
+        SkipUnlessTheBuildReadsEmail();
+
+        // The harness's email service has no Outlook converter, so it cannot open a .msg to count it.
+        ErrorOr<FileDto> result = await _harness.HandleAsync(ContractFixture.Bytes(ContractFixture.OUTLOOK_MESSAGE), "newsletter.msg");
+
+        Assert.False(result.IsError, string.Join("; ", result.ErrorsOrEmptyList.Select(error => error.Description)));
+        Document stored = Assert.Single(await _harness.Context.Documents.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal((null, null, null), (stored.CountedPages, stored.CountedAttachmentPages, stored.EmailIdentifier));
+    }
+
+    [Fact]
+    public async Task AReusedDocumentWithoutACount_IsCountedWhenUploadedAgain()
+    {
+        byte[] pdf = PdfFixtures.Pages("One", "Two");
+        _ = await _harness.HandleAsync(pdf, "report.pdf");
+        Document stored = Assert.Single(await _harness.Context.Documents.ToListAsync(TestContext.Current.CancellationToken));
+        stored.CountedPages = null;
+        _ = await _harness.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        ErrorOr<FileDto> again = await _harness.HandleAsync(pdf, "report.pdf");
+
+        Assert.False(again.Value.Created);
+        Assert.Equal(2, again.Value.CountedPages);
     }
 
     [Fact]

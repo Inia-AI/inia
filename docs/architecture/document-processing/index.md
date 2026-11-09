@@ -1,12 +1,12 @@
 ---
 type: explanation
 status: current
-description: "The file-format interface the platform reads and writes documents through, its free implementation in the open build, the PDFium worker process, the format handlers (PDF, Word, Excel, plain text, images, email), the page-image DPI budget, and the password unlock gate. Read when you change how a document format is read or written, or debug a document that fails to page, render or unlock."
+description: "The file-format interface the platform reads and writes documents through, its free implementation in the open build, the PDFium worker process, the format handlers (PDF, Word, Excel, CSV, plain text, images, email), the counted pages of an upload, the page-image DPI budget, and the password unlock gate. Read when you change how a document format is read or written, or debug a document that fails to page, render or unlock."
 ---
 
 # Document processing: the file-format interface
 
-**On this page:** Library map · Fonts: the metric twins · The file-format interface · Format handlers · Email: `.msg` and `.eml` · Password-protected files: the unlock gate · Related pages
+**On this page:** Library map · Fonts: the metric twins · The file-format interface · Format handlers · Counted pages · Email: `.msg` and `.eml` · Password-protected files: the unlock gate · Related pages
 
 The platform reads and writes documents through the file-format interface in `IniaAi.FileFormats`. The open build's implementation is free: **PDFium** for PDF files, in a worker process, **ClosedXML** for workbooks, **Open XML SDK** for Word files, and our own code on top. **SkiaSharp** does the platform's own picture work: reading an image's size, and scaling and compressing page images.
 
@@ -62,6 +62,7 @@ Open code reads and writes documents through these interfaces in `IniaAi.FileFor
 | `IReportFileWriter` | Writes a run's report as a file in one export format; a build exports the formats it registers a writer for, and a writer registered later replaces an earlier one of the same format | `MarkdownReportWriter` (`.md`), `OpenXmlWordReportWriter` (`.docx`) |
 | `IEmailToPdfConverter` | Converts an email to a PDF of its body, and an Outlook message to an RFC 822 one | none |
 | `IReadableFormats` | Names the formats the build reads; intake refuses the others | `OpenBuildFormats`: refuses `.eml`, `.msg` and `.xls` |
+| `IDocumentPageCounter` | Counts an upload's pages from its bytes, with no model call ([Counted pages](#counted-pages)); it opens a PDF and an `.xls` through `IPdfFormat` and `IWorkbookFormat`, so a build that replaces those formats counts with its own | `DocumentPageCounter` |
 
 `AddOpenFileFormats()` (`IniaAi.FileFormats`) registers the free implementation. The WebApi and WebApp hosts and the test service provider call it. Every open caller gets its instance from dependency injection. The callers are document processing, OCR, page images, the report export, the intake gate and email expansion.
 
@@ -119,6 +120,8 @@ In the open project (`platform/IniaAi.FileFormats/Word/OpenXml/`), `OpenXmlWordR
 
 **Embedded image regions OCR like scanned pages.** `CreateWordPagesAsync` sends each image region the page reader returns through the same one-shot model transcription scanned PDF pages use (`OcrTranscriptionService.ProcessImageAsync`) and appends the transcriptions after the page's native text — `Page.Text` carries the merged result, `RawText` keeps the native text alone, and the page becomes `OCRSuccessful` when at least one transcription merges. A failed region transcription marks the page `OCRFailed` with its text dropped, so the next processing run re-extracts and retries just that page. A region whose transcription comes back empty is an image with nothing to transcribe — not a failure — and a region the OCR pass declines (the model's content filter today, the fidelity judge when re-enabled) is skipped with a warning; in both cases the page keeps its native text and stays `ProcessedSuccessfully` when no other region merged (Word pages are never routed by image — unlike PDF pages, there is no downstream re-render path for them). A region that cannot be materialized at all logs a warning and is dropped.
 
+**A picture is read once per document.** A logo repeated in the body of every page is one picture that the document refers to on each page. The open reader reads such a picture once: every page that shows it holds the same image region (`WordCountPages`). `CreateWordPagesAsync` then keys each image region by the SHA-256 of its bytes and reuses the first transcription for every later region with the same bytes in the same processing run, which covers both readers, so a picture that repeats costs one model call, not one per reference.
+
 One current limit: legacy binary `.doc` stays produce-only — upload validation accepts `.docx` only.
 
 ### Excel: `platform/IniaAi.FileFormats/Excel/`
@@ -127,15 +130,47 @@ Open code reads a workbook through `IWorkbookFormat`: `ExcelUtils` and `ExcelRan
 
 
 
-### Plain text and markdown: no handler
+### Plain text and Markdown: pages of 4,000 characters
 
-`.txt`, `.md` and `.markdown` need no format library: `DocumentProcessingService.CreateTextPagesAsync` reads the stored bytes as UTF-8 and makes the whole text page 1 as written (`Text` and `RawText` alike, `ProcessedSuccessfully`); overview generation and embeddings then run on it like any other page. This is the shape a pasted baseline takes when it arrives through [`POST /documents/text`](../../reference/api/documents.md#create-text-document) — clean text becomes pages directly, with nothing extracted, converted or rasterized in between. `MediaType.TextMarkdown` (`text/markdown`) was added for `.md` and `.markdown`; `.txt` reads as `TextPlain`.
+`.txt`, `.md` and `.markdown` need no format library: `DocumentProcessingService.CreateTextPagesAsync` reads the stored bytes as UTF-8 and splits the text with `TextPages` (`platform/IniaAi.FileFormats/Pages/TextPages.cs`), which reads it line by line. Each page holds at most `TextPages.PAGE_CHARACTERS` (4,000) characters, about what a page of an annual report holds, and closes at a paragraph break. A paragraph longer than a page splits at its last line break that fits, else at its last space, else at the page's length. In a Markdown file a heading opens a new page once the page is half full, and a code block fenced with ``` or ~~~ stays whole at its blank lines until the same fence closes it. A file of 4,000 characters or fewer stays one page, exactly as written. Each page is `Text` and `RawText` alike and `ProcessedSuccessfully`; overview generation and embeddings then run on the pages like on any other.
+
+This is the shape a pasted baseline takes when it arrives through [`POST /documents/text`](../../reference/api/documents.md#create-text-document): clean text becomes pages directly, with nothing extracted, converted or rasterized in between. `MediaType.TextMarkdown` (`text/markdown`) was added for `.md` and `.markdown`; `.txt` reads as `TextPlain`. Until November 2026 the whole file became page 1, so one overview call read the whole file.
+
+### CSV: pages of 50 rows, like a workbook sheet
+
+`DocumentProcessingService.CreateCsvPagesAsync` reads a `.csv` through `CsvPages.Read` (`platform/IniaAi.FileFormats/Pages/CsvPages.cs`), on CsvHelper's parser. The first row that is not empty is the header. Every 50 rows after it (`ExcelUtils.ROWS_PER_PAGE`, the rows of a workbook page) make one page: a Markdown table under the header, the form a workbook sheet's page takes, so the two tabular formats read alike.
+
+- The parser detects the delimiter, such as a comma, a semicolon or a tab.
+- A row with more fields than the header adds a numbered column, `Column N`, and reads with no error. A short row leaves its last cells empty.
+- A pipe in a cell is escaped as `\|`, and a line break in a cell becomes a space.
+- Empty rows are skipped. A file with only its header gives one page that holds the header, and a file with no rows at all gives one empty page.
+
+Until November 2026 the whole CSV became page 1, with every cell written as a "header: value" line, which made the text about twice the file's size.
 
 ### Images: `platform/IniaAi.FileFormats/Images/`
 
 `Pictures` holds the platform's picture work on **SkiaSharp** (not Aspose): it reads an image's size from its header without decoding pixels (the upload check and screening use this), and scales a picture to a PNG within the model's edge limit (image document pages use this). `ImageCompressor` uses the same helpers to resize and JPEG-compress images toward a target byte size, keeping page images within the size limits the model/transport layers expect.
 
 SkiaSharp reads PNG, JPEG, GIF, WebP and BMP. It does not read TIFF, so a stored TIFF document gets no page picture. Uploads admit only JPEG and PNG images, so no new TIFF can arrive. The platform used SixLabors.ImageSharp until October 2026: its 3.x line stopped getting security fixes, and 4.x needs a Six Labors license key at build time, which an open-source build cannot carry.
+
+## Counted pages
+
+Each upload stores the pages the platform counts for the file in `Documents.CountedPages`. `DocumentPageCounter` (`platform/IniaAi.FileFormats/Pages/`, behind `IDocumentPageCounter` in `IniaAi.Common.Interfaces`, registered by `AddOpenFileFormats()`) reads the count from the file's bytes, with no model call and before any processing, so a limit on a run's pages can hold at submission. It streams the file: text and CSV go through the pagers processing uses, one page at a time and none kept.
+
+| Format | Counted pages |
+|---|---|
+| PDF | Its pages, through `IPdfFormat` |
+| JPEG, PNG | 1 |
+| Text, Markdown | The pages processing makes |
+| CSV | The larger of the 50-row pages processing makes and its page text in pages of 4,000 characters |
+| `.xlsx`, `.xlsm` | The larger of the 50-row pages of its visible sheets and their cell text in pages of 4,000 characters |
+| `.xls` | The same rule, through `IWorkbookFormat` |
+| Word | Its text in pages of 4,000 characters, plus one page for each distinct picture, which processing reads as a scanned page |
+| Email (`.eml`, `.msg`, full edition) | Its body and its attachments apart: the body's text in pages of 4,000 characters, at least 1, plus one page for each picture the body shows that is large enough to carry content; the attachments as the counted pages of every file a run can extract |
+
+The larger of the two numbers keeps a page from hiding more text than a page holds: a 50-row page of long notes counts by its text. The Word and workbook counts read the package's XML directly (`OfficePackageText`): a workbook counts each shared string where a cell shows it, so a long text repeated in many cells counts every time. Both workbook formats measure a sheet the same way (`SheetMeasure`): a blank cell adds nothing, and the row pages start at the first row with text. A file the counter cannot read gets no count (`null`). The upload handler counts each new upload and a reused document that has no count yet, before it takes the organization's upload lock, and `POST /documents/text` counts the text it stores. A document stored before the count existed has `null` until it is uploaded again. The [Files API](../../reference/api/files.md#upload-file) returns the count as `countedPages`.
+
+An email is counted by `EmailExpansionService.CountPagesAsync` (`platform/IniaAi.Services/Email/`), which parses it and renders nothing: an Outlook message goes through `IEmailToPdfConverter` to RFC 822 first, as for expansion. The attachments are the parts expansion would extract, archive entries included, each through `IDocumentPageCounter` as it is found, so the count never holds every attachment at once; a part the counter cannot read leaves the attachments without a count, and a linked file is not downloaded, so it adds no pages. A picture counts in the body when the HTML shows it (`cid:`) and its own size is at least the content-image size of the body render (`EmailPdf.MIN_CONTENT_IMAGE_WIDTH_PT` by `MIN_CONTENT_IMAGE_HEIGHT_PT`, at a CSS pixel to 3/4 of a point), so a signature logo adds nothing. The upload stores the body's pages in `CountedPages`, the attachments' pages in `CountedAttachmentPages`, and the email's identifier, which the documents a run makes from it carry in `Sources`, in `EmailIdentifier`. An email that does not parse, or whose count fails, still uploads with no count. The email intake stage (`EmailIntakeJobStage`) counts each document it makes from an email as it makes it, so a later run that sends those documents is held to their own pages.
 
 
 ## Email: `.msg` and `.eml`

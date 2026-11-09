@@ -5,6 +5,7 @@ using IniaAi.Application.Commands.Workflows.SaveWorkflow;
 using IniaAi.Application.Common.Capabilities;
 using IniaAi.Application.Common.Reports;
 using IniaAi.Application.Common.CreditCosts;
+using IniaAi.Application.Common.RunLimits;
 using IniaAi.Application.Common.DailyAllowances;
 using IniaAi.Application.Common.DataManagement;
 using IniaAi.Application.Common.Dispatching;
@@ -94,6 +95,7 @@ public static class DependencyInjection
         services.TryAddSingleton<IDailyAllowance, NoDailyLimit>();
         services.TryAddSingleton<IUploadLimits, NoUploadLimits>();
         services.TryAddSingleton<IWorkflowCreditCost, NoCreditCost>();
+        services.TryAddSingleton<IWorkflowPageLimit, NoPageLimit>();
         services.TryAddSingleton<IDeletedRecordRetention, DefaultDeletedRecordRetention>();
         services.TryAddSingleton<IReportNotice, NoReportNotice>();
         services.TryAddTransient<IRunAdmission, AdmitEveryRun>();

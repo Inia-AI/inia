@@ -312,6 +312,7 @@ The open build reads each open PDF file in a worker process of its own ([documen
 
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
+| `PlatformSettings:PdfReader:MaxCountingWorkers` | `2` | How many PDF reader processes counting the pages of uploads runs at once, apart from `MaxWorkers`, so an upload never waits for a report to close a file. The paid build counts with its own PDF reader, in the app process, and does not read this setting. |
 | `PlatformSettings:PdfReader:MaxWorkers` | `8` | How many PDF reader processes one app process runs at once. A document past the limit waits until an open one closes. Each process holds its whole file and PDFium's memory for it. No run has measured the default yet. |
 
 ### Email expansion
