@@ -43,7 +43,7 @@ public abstract class PromptsLoader<TPrompts> where TPrompts : class
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to read the {PromptSet}; the code defaults are in use", typeof(TPrompts).Name);
+            _logger.LogError(ex, "Failed to read the {PromptSetName}; the code defaults are in use", typeof(TPrompts).Name);
             return Defaults();
         }
     }

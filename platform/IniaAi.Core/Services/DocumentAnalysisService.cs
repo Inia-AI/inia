@@ -390,17 +390,17 @@ public partial class DocumentAnalysisService : ITokenAccumulator
                     page.Overview = content;
 
                     _logger.LogInformation(
-                        "Parsed overview for page {PageNumber}: '{Content}' Took {Ms} ms",
+                        "Parsed overview for page {PageNumber}: {Length} characters. Took {Ms} ms",
                         page.PageNumber,
-                        content,
+                        content.Length,
                         pageStopwatch.ElapsedMilliseconds);
                 }
                 else
                 {
                     _logger.LogWarning(
-                        "Could not parse valid answer for page {PageNumber}. Raw response: {Response}",
+                        "Could not parse valid answer for page {PageNumber}. Raw response: {Length} characters",
                         page.PageNumber,
-                        response);
+                        response.Length);
                 }
             });
 
@@ -539,10 +539,6 @@ public partial class DocumentAnalysisService : ITokenAccumulator
         string? systemPrompt = prompts.TopicsAnalysisSystemPrompt;
         string? userPromptTemplate = prompts.TopicsAnalysisUserPrompt;
 
-        _logger.LogTrace(
-            "User prompt for segments: {segmentsUserPrompt}",
-            userPromptTemplate);
-
         int maxRetries = _settings.IniaAi.MaxRetriesForTopicsGeneration;
 
         string? topicsAnswer = null;
@@ -566,9 +562,9 @@ public partial class DocumentAnalysisService : ITokenAccumulator
             string? topicsResponse = responseContent.GetPlainText() ?? string.Empty;
 
             _logger.LogInformation(
-                "Topics based on page overviews generation attempt {Attempt}: {TopicsResponse}",
+                "Topics based on page overviews generation attempt {Attempt}: {Length} characters",
                 attempt,
-                topicsResponse);
+                topicsResponse.Length);
 
             topicsAnswer = Utils.GetStringFromTag(topicsResponse, "answer");
 
@@ -608,12 +604,6 @@ public partial class DocumentAnalysisService : ITokenAccumulator
                 ?? throw new InvalidOperationException("User prompt template for topic grouping is null."),
             topics);
 
-        _logger.LogTrace(
-            "Prompt for topic grouping: {topicGroupingPrompt}",
-            topicGroupingPrompt);
-
-        _logger.LogTrace("Overviews:\n\n{overviews}", overviews);
-
         int maxRetries = _settings.IniaAi.MaxRetriesForTopicsGeneration;
 
         string? topicGroupingAnswer = null;
@@ -637,9 +627,9 @@ public partial class DocumentAnalysisService : ITokenAccumulator
             string? topicGroupingResponse = responseContent.GetPlainText() ?? string.Empty;
 
             _logger.LogInformation(
-                    "Topic grouping based on page overviews generation attempt {Attempt}: {TopicGroupingResponse}",
+                    "Topic grouping based on page overviews generation attempt {Attempt}: {Length} characters",
                     attempt,
-                topicGroupingResponse);
+                topicGroupingResponse.Length);
 
             topicGroupingAnswer =
             Utils.GetStringFromTag(topicGroupingResponse, "answer");

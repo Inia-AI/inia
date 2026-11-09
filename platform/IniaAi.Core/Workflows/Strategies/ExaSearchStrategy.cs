@@ -76,16 +76,16 @@ public class ExaSearchStrategy : IBlockStrategy
             };
 
             context.Logger.LogTrace(
-                "{block} response:\\n{response}",
+                "{block} response: {Length} characters",
                 block,
-                block.BlockResponse.RawResponse);
+                block.BlockResponse.RawResponse?.Length ?? 0);
         }
         catch (Exception ex)
         {
             context.Logger.LogError(ex,
-                "{block} Error executing Exa search for term: {searchTerm}",
+                "{block} Error executing Exa search for a term of {Length} characters",
                 block,
-                searchTerm);
+                searchTerm.Length);
 
             block.BlockResponse = new BlockResponse(block)
             {

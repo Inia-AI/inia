@@ -72,7 +72,6 @@ public class ContentRefinementService : IContentRefinementService, ITokenAccumul
         """;
 
     private const string OUT_OF_SCOPE_TAG = "out_of_scope";
-    private const int MAX_DIAGNOSTIC_EXCERPT_LENGTH = 500;
 
     private readonly ILogger<ContentRefinementService> _logger;
     private readonly IChatConnector _chatConnector;
@@ -187,12 +186,9 @@ public class ContentRefinementService : IContentRefinementService, ITokenAccumul
 
             if (string.IsNullOrWhiteSpace(refinedContent))
             {
-                string excerpt = response.Length > MAX_DIAGNOSTIC_EXCERPT_LENGTH
-                    ? response[..MAX_DIAGNOSTIC_EXCERPT_LENGTH] + "..."
-                    : response;
                 _logger.LogWarning(
-                    "Content refinement service returned empty result. Response excerpt: {Excerpt}",
-                    LogSanitizer.ForLog(excerpt));
+                    "Content refinement service returned empty result. Response: {Length} characters",
+                    response.Length);
                 return null;
             }
 

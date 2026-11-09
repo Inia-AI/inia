@@ -20,7 +20,7 @@ PAGES = [
         ("title", "Larkspur Freight Ltd"),
         ("heading", "Annual Report 2025"),
         ("text", ""),
-        ("text", "Larkspur Freight Ltd is a fictional company. Inia wrote this report"),
+        ("text", "Larkspur Freight Ltd is a fictional company. Inia AI wrote this report"),
         ("text", "as a sample document, and every name and figure in it is invented."),
         ("text", ""),
         ("text", "Contents"),

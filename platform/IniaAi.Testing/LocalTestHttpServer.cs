@@ -60,11 +60,14 @@ public sealed class LocalTestHttpServer : IDisposable
         _acceptLoop = Task.Run(AcceptLoopAsync);
     }
 
-    // The IP literal 127.0.0.1 is used for the reservation, the listener prefix, and the client URL
-    // so all three share one address family: "localhost" binds IPv6-only on macOS but resolves
-    // IPv4-first on Linux, which would leave the client connecting to an unbound family. Binding to a
-    // freed ephemeral port is racy (HttpListener cannot bind port 0), so a lost race is retried.
-    private static (HttpListener Listener, string BaseUrl) StartOnFreeLoopbackPort()
+    /// <summary>
+    /// A started listener on a free loopback port and its base URL. The IP literal 127.0.0.1 is used
+    /// for the reservation, the listener prefix and the client URL so all three share one address
+    /// family: "localhost" binds IPv6-only on macOS but resolves IPv4-first on Linux, which would
+    /// leave the client connecting to an unbound family. Binding to a freed ephemeral port is racy
+    /// (HttpListener cannot bind port 0), so a lost race is retried.
+    /// </summary>
+    public static (HttpListener Listener, string BaseUrl) StartOnFreeLoopbackPort()
     {
         const int MAX_ATTEMPTS = 5;
 

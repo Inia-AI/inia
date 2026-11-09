@@ -128,9 +128,9 @@ public class AiQueryStrategy : IBlockStrategy
         }
 
         context.Logger.LogDebug(
-            "{Block} response: {Response}",
+            "{Block} response: {Length} characters",
             block,
-            block.BlockResponse?.RawResponse);
+            block.BlockResponse?.RawResponse?.Length ?? 0);
 
         props.ExecutionState?.UserPrompt = AsksForCitations(props, context)
             ? props.ExecutionState?.UserPrompt + RequestContentSequenceHelper.CITATIONS_APPENDAGE
@@ -671,11 +671,10 @@ public class AiQueryStrategy : IBlockStrategy
             lastError = result.Error;
             lastFailedResponse = raw;
             context.Logger.LogWarning(
-                "{Block} Output format validation failed on attempt {Attempt}/{Max}: {Error}",
+                "{Block} Output format validation failed on attempt {Attempt}/{Max}",
                 block,
                 attempt,
-                MAX_OUTPUT_FORMAT_ATTEMPTS,
-                lastError);
+                MAX_OUTPUT_FORMAT_ATTEMPTS);
         }
 
         throw new OutputFormatExhaustedException(MAX_OUTPUT_FORMAT_ATTEMPTS, lastError, lastFailedResponse);
@@ -691,7 +690,7 @@ public class AiQueryStrategy : IBlockStrategy
         string? FailedResponse);
 
     /// <summary>Format-retry exhaustion, carrying the captures the UI renders from block props.</summary>
-    internal sealed class OutputFormatExhaustedException : InvalidOperationException
+    internal sealed class OutputFormatExhaustedException : BlockFailureException
     {
         public int AttemptCount { get; }
         public string? LastError { get; }
@@ -766,9 +765,9 @@ public class AiQueryStrategy : IBlockStrategy
             cancellationToken).ConfigureAwait(false);
 
         context.Logger.LogDebug(
-            "{Block} User Prompt: {UserPrompt}",
+            "{Block} User Prompt: {Length} characters",
             block,
-            props.ExecutionState?.UserPrompt);
+            props.ExecutionState?.UserPrompt?.Length ?? 0);
 
         if (responseContent is null)
         {
@@ -799,7 +798,7 @@ public class AiQueryStrategy : IBlockStrategy
             string errorResponse = responseContent.GetPlainText() ?? string.Empty;
 
             context.Logger.LogError(
-                "{Block} Error response from chat connector: {Response}",
+                "{Block} Error response from chat connector: {Error}",
                 block,
                 errorResponse);
             throw new InvalidOperationException("Error response from LLM: " + errorResponse);

@@ -14,10 +14,17 @@ namespace IniaAi.Core.Workflows;
 /// like verification's unsatisfiable. The kind survives the abort instead of being relabeled
 /// <see cref="WorkflowExecutionFailureKinds.CRITICAL_BLOCK_FAILURE"/>.
 /// </param>
+/// <param name="LoggedExplanation">
+/// The explanation without the run's content, for a log line; null when the explanation holds none.
+/// </param>
 public sealed record CriticalBlockFailure(
     string BlockName,
     string Explanation,
-    string? ClassifiedFailureKind = null);
+    string? ClassifiedFailureKind = null,
+    string? LoggedExplanation = null)
+{
+    public string ExplanationForLogs => LoggedExplanation ?? Explanation;
+}
 
 /// <summary>
 /// Thrown when a block whose failure must not be absorbed failed and aborted the run. Replaces the
@@ -31,8 +38,9 @@ public sealed class CriticalBlockFailureException : Exception, IWorkflowExecutio
         IReadOnlyList<string> recoveredSiblingResults,
         IReadOnlyList<string> lostSiblingResults,
         Exception? innerException = null)
-        : base(BuildMessage(failure, recoveredSiblingResults, lostSiblingResults), innerException)
+        : base(BuildMessage(failure.ExplanationForLogs, recoveredSiblingResults, lostSiblingResults), innerException)
     {
+        FailureDetail = BuildMessage(failure.Explanation, recoveredSiblingResults, lostSiblingResults);
         FailureKind = failure.ClassifiedFailureKind ?? WorkflowExecutionFailureKinds.CRITICAL_BLOCK_FAILURE;
         RecoveredSiblingResults = recoveredSiblingResults;
         LostSiblingResults = lostSiblingResults;
@@ -40,7 +48,7 @@ public sealed class CriticalBlockFailureException : Exception, IWorkflowExecutio
 
     public string FailureKind { get; }
 
-    public string FailureDetail => Message;
+    public string FailureDetail { get; }
 
     /// <summary>Sibling blocks whose in-flight persist the abort cancelled and the replay recovered.</summary>
     public IReadOnlyList<string> RecoveredSiblingResults { get; }
@@ -49,11 +57,11 @@ public sealed class CriticalBlockFailureException : Exception, IWorkflowExecutio
     public IReadOnlyList<string> LostSiblingResults { get; }
 
     private static string BuildMessage(
-        CriticalBlockFailure failure,
+        string explanation,
         IReadOnlyList<string> recoveredSiblingResults,
         IReadOnlyList<string> lostSiblingResults)
     {
-        List<string> parts = [failure.Explanation];
+        List<string> parts = [explanation];
 
         BlockNameCategory.AppendTo(parts, "lost to the abort", lostSiblingResults);
         BlockNameCategory.AppendTo(parts, "replayed after the abort", recoveredSiblingResults);

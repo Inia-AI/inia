@@ -273,7 +273,7 @@ internal class RagAgentRagStrategy : IRagStrategy
 
             // Store debug info on execution state for access by block strategies
             executionState.DebugInfo = debugInfoText;
-            context.Logger.LogDebug("RAG Agent debug info: {debugInfo}", debugInfoText);
+            context.Logger.LogDebug("RAG Agent debug info: {Length} characters", debugInfoText.Length);
 
             context.Logger.LogInformation(
                 "RAG Agent completed: {pageCount} pages selected after {rounds} rounds",
@@ -346,9 +346,9 @@ internal class RagAgentRagStrategy : IRagStrategy
         string answerText = ExtractXmlTag(response, "answer");
 
         context.Logger.LogDebug(
-            "RAG Agent Round {round} Page Selection Response: {response}",
+            "RAG Agent Round {round} Page Selection Response: {Length} characters",
             roundNumber,
-            response);
+            response.Length);
 
         List<int> parsedPages = Utils.ParseStringForNumbersList(answerText);
 
@@ -433,9 +433,9 @@ SUFFICIENT
         string? response = responseContent.GetPlainText() ?? string.Empty;
 
         context.Logger.LogDebug(
-            "RAG Agent Round {round} Sufficiency Evaluation Response: {response}",
+            "RAG Agent Round {round} Sufficiency Evaluation Response: {Length} characters",
             roundNumber,
-            response);
+            response.Length);
 
         string reasoning = ExtractXmlTag(response, "answer");
         string sufficiency = ExtractXmlTag(response, "sufficiency")?.Trim().ToUpperInvariant() ?? "INSUFFICIENT";

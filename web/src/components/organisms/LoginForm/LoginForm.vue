@@ -239,7 +239,7 @@ const handleSubmit = form.handleSubmit(async data => {
 <template>
   <div class="login-form-container">
     <div class="login-header">
-      <IniaWordmark label="Inia Logo" class="login-logo" />
+      <IniaWordmark label="Inia AI logo" class="login-logo" />
       <h1 class="login-title" :class="{ invisible: loadingProviders }">{{ $t(leadingMethod?.titleKey ?? 'page.login.form.title') }}</h1>
       <p class="login-subtitle" :class="{ invisible: loadingProviders }">{{ $t(leadingMethod?.subtitleKey ?? 'page.login.form.subtitle') }}</p>
     </div>

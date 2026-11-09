@@ -1,6 +1,6 @@
-# Inia Documentation
+# Inia AI Documentation
 
-> The documentation of Inia, the platform that turns a set of documents into a written report. Each link is a Markdown file, as a path from the root of this repository.
+> The documentation of Inia AI, the platform that turns a set of documents into a written report. Each link is a Markdown file, as a path from the root of this repository.
 
 Frontmatter on every page carries `type`, `status` and a `description` that says what the page holds and when to read it. Pages with `status: planned` describe designs, not behavior. Pages under Research document external systems, not the platform.
 
@@ -16,7 +16,7 @@ Frontmatter on every page carries `type`, `status` and a `description` that says
 - [The Docker Stack](docs/getting-started/docker-stack.md): Describes the Docker build of the open repository and its one-command stack: the images and their recipes, the services of compose.yaml, how the secrets reach each service, the agent runtime's sandbox settings, and the compose check. Read when you change the Docker build or the stack, a service of the stack does not start, or you need to know where a secret lives.
 
 ## Contributing
-- [C# Code Standards](docs/getting-started/csharp-code-standards.md): Reference of the C# house rules: naming, mandatory braces, layout, test rules, API contracts and DTO mapping, EF Core entity configuration, comments and validators. Read when you write or review platform C# code.
+- [C# Code Standards](docs/getting-started/csharp-code-standards.md): Reference of the C# house rules: naming, mandatory braces, layout, test rules, API contracts and DTO mapping, EF Core entity configuration, comments, logging and validators. Read when you write or review platform C# code.
 - [Writing Messages for Users](docs/getting-started/user-messages.md): The rules for a message that a person reads: an error, a refusal reason, a notice or a run log line. It names the readers, gives each rule with its published source, and shows messages before and after the rules. Read when you write or change any text that the apps or the API show to a user.
 - [Testing](docs/getting-started/testing.md): Describes the platform's CI test run, the test runner, the rules that keep tests fast, reading a red run, the opt-in for tests that call paid APIs, the local database-backed integration tests, and editor-app component tests with bUnit. Read when you write, run or debug a platform test, or a CI test run fails.
 - [Database Migrations](docs/getting-started/database-migrations.md): Walks through creating, cleaning up and applying EF Core migrations for the Core and UserData contexts on both providers with the migration script, how startup applies them, and how to squash them into one InitialCreate. Read when you change an entity and need a migration, a migration is empty, conflicting or missing on one provider, or you squash the migrations.

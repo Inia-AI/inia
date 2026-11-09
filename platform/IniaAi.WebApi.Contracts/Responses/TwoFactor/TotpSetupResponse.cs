@@ -12,7 +12,7 @@ public class TotpSetupResponse
 
     /// <summary>
     /// The otpauth:// URI for QR code generation.
-    /// Format: otpauth://totp/IniaAi:{email}?secret={key}&amp;issuer=IniaAi&amp;digits=6
+    /// Format: otpauth://totp/Inia%20AI:{email}?secret={key}&amp;issuer=Inia%20AI&amp;digits=6
     /// </summary>
     public string AuthenticatorUri { get; set; } = string.Empty;
 }

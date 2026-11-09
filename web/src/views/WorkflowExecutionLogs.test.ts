@@ -265,7 +265,7 @@ describe('WorkflowExecutionLogs header', () => {
 })
 
 describe('WorkflowExecutionLogs browser tab title', () => {
-  const ORIGINAL_TITLE = 'IniaAi Web'
+  const ORIGINAL_TITLE = 'Inia AI Web'
 
   beforeEach(() => {
     document.title = ORIGINAL_TITLE
@@ -274,7 +274,7 @@ describe('WorkflowExecutionLogs browser tab title', () => {
   it("names the report's logs", async () => {
     await openLogs()
 
-    expect(document.title).toBe('QA graded run · Execution Logs · IniaAi Web')
+    expect(document.title).toBe('QA graded run · Execution Logs · Inia AI Web')
   })
 
   it('reads Execution Logs until the report has loaded, then names the report', async () => {
@@ -282,12 +282,12 @@ describe('WorkflowExecutionLogs browser tab title', () => {
 
     await openLogs()
 
-    expect(document.title).toBe('Execution Logs · IniaAi Web')
+    expect(document.title).toBe('Execution Logs · Inia AI Web')
 
     setReport({ id: REPORT_ID, title: 'QA graded run' })
     await flushPromises()
 
-    expect(document.title).toBe('QA graded run · Execution Logs · IniaAi Web')
+    expect(document.title).toBe('QA graded run · Execution Logs · Inia AI Web')
   })
 
   it('gives the tab its title back on leaving the page', async () => {

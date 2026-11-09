@@ -429,7 +429,7 @@ public class JobExecutor : IJobExecutor
             job.SetState(JobState.Error);
         }
 
-        job.SetError(e.Message);
+        job.SetError(e is CriticalBlockFailureException critical ? critical.FailureDetail : BlockFailureException.ReasonOf(e));
 
         string? executionId = ResolveExecutionId(job);
 

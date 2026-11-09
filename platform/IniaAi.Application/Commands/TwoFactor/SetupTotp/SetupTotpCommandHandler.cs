@@ -74,7 +74,7 @@ public class SetupTotpCommandHandler : IRequestHandler<SetupTotpCommand, ErrorOr
     {
         return string.Format(
             AuthenticatorUriFormat,
-            _urlEncoder.Encode("IniaAi"),
+            _urlEncoder.Encode("Inia AI"),
             _urlEncoder.Encode(email),
             unformattedKey);
     }

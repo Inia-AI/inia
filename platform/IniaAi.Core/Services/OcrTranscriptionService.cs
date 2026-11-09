@@ -450,15 +450,15 @@ public class OcrTranscriptionService : ITokenAccumulator
                 {
                     _logger.LogWarning(
                         "Page {PageNumber}: transcription was blocked by the model's content filter; "
-                        + "the page will be routed by image instead of text. Response: {Response}",
+                        + "the page will be routed by image instead of text. Response: {Length} characters",
                         pageNumber,
-                        transcription);
+                        transcription.Length);
                     result.NeedsReview = true;
                 }
                 else
                 {
                     _logger.LogError(
-                        "Page {PageNumber}: transcription call returned an error. Response: {Response}",
+                        "Page {PageNumber}: transcription call returned an error. Response: {Error}",
                         pageNumber,
                         transcription);
                 }
@@ -536,9 +536,9 @@ public class OcrTranscriptionService : ITokenAccumulator
         string transcription = responseContent.GetPlainText() ?? string.Empty;
 
         _logger.LogDebug(
-            "PageNumber: {pageNumber} - LLM transcription response: {Answer}",
+            "PageNumber: {pageNumber} - LLM transcription response: {Length} characters",
             pageNumber,
-            transcription);
+            transcription.Length);
 
         if (responseContent.Refusal is ModelRefusal refusal)
         {
@@ -593,15 +593,15 @@ public class OcrTranscriptionService : ITokenAccumulator
             string judgeResponse = responseContent.GetPlainText() ?? string.Empty;
 
             _logger.LogDebug(
-                "PageNumber: {pageNumber} - LLM judge response: {Answer}",
+                "PageNumber: {pageNumber} - LLM judge response: {Length} characters",
                 pageNumber,
-                judgeResponse);
+                judgeResponse.Length);
 
             if (judgeResponse.StartsWith(IChatConnector.ERROR_PREFIX, StringComparison.Ordinal))
             {
                 _logger.LogWarning(
                     "PageNumber: {pageNumber} - fidelity judge call returned an error; "
-                    + "the fidelity check did not run for this page and the transcription is kept as-is. Response: {Response}",
+                    + "the fidelity check did not run for this page and the transcription is kept as-is. Response: {Error}",
                     pageNumber,
                     judgeResponse);
                 return false;

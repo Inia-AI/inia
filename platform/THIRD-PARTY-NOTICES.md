@@ -2,7 +2,7 @@
 
 IniaAi.Platform is licensed under the Apache License 2.0, in `LICENSE`. Some files in this repository, and every package that a build restores, come from other people and organizations. Each stays under its own licence, which this file names. The licence of this repository does not change them.
 
-## Files in this repository that Inia did not write
+## Files in this repository that Inia AI did not write
 
 ### Apache ECharts, ZRender and parts of d3, in the chart bundle
 

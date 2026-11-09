@@ -166,14 +166,14 @@ public class AnthropicChatConnector : BaseChatConnector, IChatConnector
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "Sending request to {ApiLabel} using caching: {ShouldUseCaching}, {RequestBody}",
+                "Sending request to {ApiLabel} using caching: {ShouldUseCaching}, {RequestShape}",
                 ApiLabel,
                 shouldUseCaching,
                 requestBody);
 
             string json = SerializeRequest(requestBody);
 
-            _logger.LogDebug("LLM Request body: {Json}", json);
+            _logger.LogDebug("LLM Request body: {Length} characters", json.Length);
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -213,7 +213,7 @@ public class AnthropicChatConnector : BaseChatConnector, IChatConnector
 
             string responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             LogResponseHeaders(response);
-            LogResponse(responseJson);
+            _logger.LogDebug("LLM Response: {Length} characters", responseJson.Length);
 
             _logger.LogTrace("LLM timings: Total={Total} ms | HTTP={Http} ms", stopwatch.ElapsedMilliseconds, httpStopwatch.ElapsedMilliseconds);
 
@@ -663,34 +663,6 @@ public class AnthropicChatConnector : BaseChatConnector, IChatConnector
             GatewayRequestBody gatewayRequest => ModelRequestShaper.ParseModelId(gatewayRequest.ModelOverride) ?? gatewayRequest.ModelId,
             _ => null
         };
-    }
-
-    private void LogResponse(string? responseJson)
-    {
-        if (string.IsNullOrWhiteSpace(responseJson))
-        {
-            _logger.LogDebug("LLM Response: null or empty");
-            return;
-        }
-
-        try
-        {
-            string prettyResponseJson = JsonConvert.SerializeObject(
-                JsonConvert.DeserializeObject(responseJson),
-                Formatting.Indented);
-
-            _logger.LogDebug(
-                "LLM Response: {ResponseJson}",
-                string.IsNullOrWhiteSpace(prettyResponseJson)
-                    ? responseJson
-                    : prettyResponseJson);
-        }
-        catch
-        {
-            _logger.LogDebug(
-                "LLM Response: {ResponseJson}",
-                responseJson);
-        }
     }
 
     /// <summary>The provider's request id header: Anthropic's own, or the gateway's on Foundry and APIM.</summary>

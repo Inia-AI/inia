@@ -23,9 +23,13 @@ public class SelfServeWorkflowSettings
     [JsonProperty(nameof(MaxTokens), NullValueHandling = NullValueHandling.Ignore)]
     public long? MaxTokens { get; set; }
 
+    /// <summary>Whether new runs of the type are refused while it stays offered, so customers learn it will come back.</summary>
+    [JsonProperty(nameof(Paused), DefaultValueHandling = DefaultValueHandling.Ignore)]
+    public bool Paused { get; set; }
+
     [JsonIgnore]
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsEmpty => !Enabled && CreditCost is null && MaxDocuments is null && MaxPages is null && MaxTokens is null;
+    public bool IsEmpty => !Enabled && !Paused && CreditCost is null && MaxDocuments is null && MaxPages is null && MaxTokens is null;
 
     public SelfServeWorkflowSettings Clone()
     {

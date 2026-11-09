@@ -122,7 +122,7 @@ Both clients are created **without** an explicit `RegionEndpoint`, so the SDK re
 
 ### 4. Enable model access in the customer's Bedrock console
 
-Bedrock model access is **off by default, per account and per region**. **Who does this:** the **customer's own AWS account administrator** — the person with Bedrock console access in the deployment account and region. It is not something Inia can enable remotely on a self-hosted deployment, and it is not granted by the IAM policy above (the IAM policy authorizes the call; console model-access grants the account the right to use the model at all). In the customer's AWS console, open the Bedrock model-access page for the deployment region and request access for each Claude model **and** the Cohere `embed-v4` model the deployment uses; wait until each reads **Access granted**. Without this, correctly-signed requests still fail with `AccessDenied`.
+Bedrock model access is **off by default, per account and per region**. **Who does this:** the **customer's own AWS account administrator** — the person with Bedrock console access in the deployment account and region. It is not something Inia AI can enable remotely on a self-hosted deployment, and it is not granted by the IAM policy above (the IAM policy authorizes the call; console model-access grants the account the right to use the model at all). In the customer's AWS console, open the Bedrock model-access page for the deployment region and request access for each Claude model **and** the Cohere `embed-v4` model the deployment uses; wait until each reads **Access granted**. Without this, correctly-signed requests still fail with `AccessDenied`.
 
 > [!WARNING]
 > **`AccessDenied` after the IAM policy is correct**

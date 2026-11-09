@@ -112,8 +112,6 @@ public class ReconciliationService : ITokenAccumulator
             identifiedName,
             string.Join("\n", potentialNames).Trim());
 
-        _logger.LogTrace("User prompt for matching: {UserPrompt}", userPrompt);
-
         ResponseContentSequence responseContent = await _chatConnector.GetResponseAsync(
             userPrompt,
             prompts.SystemPrompt,
@@ -125,8 +123,8 @@ public class ReconciliationService : ITokenAccumulator
         string response = responseContent.GetPlainText() ?? string.Empty;
 
         _logger.LogInformation(
-            "Matching response from the AI model: {Response}",
-            response);
+            "Matching response from the AI model: {Length} characters",
+            response.Length);
 
         string? answer =
             Utils.GetStringFromTag(response, "answer");
@@ -146,8 +144,6 @@ public class ReconciliationService : ITokenAccumulator
             string.Join("\n", listA).Trim(),
             string.Join("\n", listB).Trim());
 
-        _logger.LogTrace("User prompt for comparing lists: {UserPrompt}", userPrompt);
-
         ResponseContentSequence responseContent = await _chatConnector.GetResponseAsync(
             userPrompt,
             prompts.SystemPrompt,
@@ -159,8 +155,8 @@ public class ReconciliationService : ITokenAccumulator
         string response = responseContent.GetPlainText() ?? string.Empty;
 
         _logger.LogInformation(
-            "Comparing lists response from the AI model: {Response}",
-            response);
+            "Comparing lists response from the AI model: {Length} characters",
+            response.Length);
 
         string? answer = Utils.GetStringFromTag(response, "answer");
 

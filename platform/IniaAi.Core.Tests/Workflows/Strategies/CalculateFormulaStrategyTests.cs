@@ -180,9 +180,9 @@ public class CalculateFormulaStrategyTests : IClassFixture<WorkflowsFixture<Calc
         var strategy = new CalculateFormulaStrategy();
 
         // Act & Assert
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+        BlockFailureException exception = await Assert.ThrowsAsync<BlockFailureException>(
             () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
-        Assert.Contains("Unable to process the formula", exception.Message);
+        Assert.Contains("Unable to process the formula", exception.Reason);
     }
 
     [Theory]
@@ -265,7 +265,7 @@ public class CalculateFormulaStrategyTests : IClassFixture<WorkflowsFixture<Calc
         var strategy = new CalculateFormulaStrategy();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<BlockFailureException>(
             () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
     }
 }

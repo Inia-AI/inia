@@ -1199,7 +1199,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
 
             if (block.ExecutionState.Status is not ExecutionStatus.Failed)
             {
-                block.ExecutionState.MarkAsFailed(ex.Message);
+                block.ExecutionState.MarkAsFailed(BlockFailureException.ReasonOf(ex));
             }
 
             ModelRefusal? refusal = (ex as ModelRefusalException)?.Refusal;
@@ -1231,7 +1231,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
 
             if (RootOutput?.Id is not null && _executionFence is null)
             {
-                WorkflowExecutionLog? errorLog = BuildErrorLog(section, block, ex.Message);
+                WorkflowExecutionLog? errorLog = BuildErrorLog(section, block, BlockFailureException.ReasonOf(ex));
                 if (errorLog is not null)
                 {
                     errorLog.RefusalCategory = refusal?.Category;
@@ -2294,7 +2294,8 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
                 classified.FailureKind)
             : new CriticalBlockFailure(
                 blockName,
-                $"Block '{blockName}' is critical and failed, so the execution was aborted: {blockFailure.Message}");
+                $"Block '{blockName}' is critical and failed, so the execution was aborted: {BlockFailureException.ReasonOf(blockFailure)}",
+                LoggedExplanation: $"Block '{blockName}' is critical and failed, so the execution was aborted: {blockFailure.Message}");
 
         lock (_criticalAbortLock)
         {
@@ -2309,7 +2310,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
         Logger.LogError(
             "{Block} failure aborts the run instead of executing further blocks: {Reason}",
             blockName,
-            failure.Explanation);
+            failure.ExplanationForLogs);
 
         CancelRunToken();
     }
@@ -2685,7 +2686,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
             // fails rather than completing over it.
             if (execution?.Error is string strategyError)
             {
-                throw new InvalidOperationException(strategyError);
+                throw new BlockFailureException(strategyError);
             }
 
             await ProcessBlockStrategyOutput(
@@ -2698,7 +2699,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
         }
         catch (Exception ex)
         {
-            execution?.MarkAsFailed(ex.Message);
+            execution?.MarkAsFailed(BlockFailureException.ReasonOf(ex));
 
             // A refusal is not a fault: the unit shell logs it once, with the run's context.
             if (ex is not ModelRefusalException)

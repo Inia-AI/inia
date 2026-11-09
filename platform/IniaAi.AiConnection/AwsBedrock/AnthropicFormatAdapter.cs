@@ -254,8 +254,8 @@ internal class AnthropicFormatAdapter : IModelFormatAdapter
         string json = requestBody.ToJson(pretty: false);
 
         _logger.LogDebug(
-            "Anthropic Bedrock request body: {Json}",
-            json);
+            "Anthropic Bedrock request body: {Length} characters",
+            json.Length);
 
         return json;
     }
@@ -292,8 +292,8 @@ internal class AnthropicFormatAdapter : IModelFormatAdapter
         string json = requestBody.ToJson(pretty: false);
 
         _logger.LogDebug(
-            "Anthropic Bedrock thinking mode request body: {Json}",
-            json);
+            "Anthropic Bedrock thinking mode request body: {Length} characters",
+            json.Length);
 
         return json;
     }

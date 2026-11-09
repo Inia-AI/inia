@@ -199,8 +199,8 @@ public class ExchangeRateStrategy : IBlockStrategy
         _ = new BlockResponse(block) { RawResponse = rawResponse };
 
         context.Logger.LogInformation(
-            "{block} Converted {Value} {FromCurrency} to {Converted} {ToCurrency} (rate: {Rate})",
-            block, value, config.FromCurrency, converted, config.ToCurrency, rate);
+            "{block} Converted {FromCurrency} to {ToCurrency} (rate: {Rate})",
+            block, config.FromCurrency, config.ToCurrency, rate);
     }
 
     private static async Task ExecuteMultiTargetSingleValueConversionAsync(
@@ -237,8 +237,8 @@ public class ExchangeRateStrategy : IBlockStrategy
         };
 
         context.Logger.LogInformation(
-            "{block} Converted {Value} {FromCurrency} to {TargetCount} target currencies",
-            block, value, config.FromCurrency, config.TargetCurrencies.Count);
+            "{block} Converted {FromCurrency} to {TargetCount} target currencies",
+            block, config.FromCurrency, config.TargetCurrencies.Count);
     }
 
     private static async Task ExecuteJsonConversionAsync(

@@ -43,7 +43,7 @@ const startSetup = async () => {
 describe('TwoFactorSettings setup', () => {
   beforeEach(() => {
     toast.mockReset()
-    setupTotp.mockResolvedValue({ sharedKey: 'ABCD EFGH', authenticatorUri: 'otpauth://totp/Inia:jane?secret=ABCDEFGH' })
+    setupTotp.mockResolvedValue({ sharedKey: 'ABCD EFGH', authenticatorUri: 'otpauth://totp/Inia%20AI:jane?secret=ABCDEFGH' })
   })
 
   it('draws the code for the authenticator address beside the key to type', async () => {
@@ -51,7 +51,7 @@ describe('TwoFactorSettings setup', () => {
 
     const wrapper = await startSetup()
 
-    expect(qrCodeImageSource).toHaveBeenCalledWith('otpauth://totp/Inia:jane?secret=ABCDEFGH')
+    expect(qrCodeImageSource).toHaveBeenCalledWith('otpauth://totp/Inia%20AI:jane?secret=ABCDEFGH')
     expect(wrapper.find('.qr-code img').attributes('src')).toBe('data:image/svg+xml,qr')
     expect(wrapper.find('.key-display').text()).toBe('ABCD EFGH')
   })

@@ -1,6 +1,6 @@
-# IniaAI Web
+# Inia AI Web
 
-The browser app of the IniaAI platform. Analysts start workflow runs, read and edit the reports, and manage documents, counterparties and signatures. The app calls the platform's WebApi for all of its data.
+The browser app of the Inia AI platform. Analysts start workflow runs, read and edit the reports, and manage documents, counterparties and signatures. The app calls the platform's WebApi for all of its data.
 
 ## Stack
 

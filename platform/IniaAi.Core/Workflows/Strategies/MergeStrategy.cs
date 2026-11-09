@@ -37,9 +37,9 @@ public class MergeStrategy : IBlockStrategy
         };
 
         context.Logger.LogTrace(
-            "{block} Merged text:\n{mergedText}",
+            "{block} Merged text: {Length} characters",
             block,
-            block.BlockResponse?.RawResponse);
+            block.BlockResponse?.RawResponse?.Length ?? 0);
 
         await Task.CompletedTask;
 

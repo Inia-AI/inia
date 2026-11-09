@@ -5,7 +5,7 @@
  * and `SignaturePromptTestResultDto.cs` (camelCase).
  *
  * IP boundary: neither DTO carries `userPrompt` or `systemPrompt`. The
- * backend deliberately strips those from the response — they are Inia IP
+ * backend deliberately strips those from the response — they are Inia AI IP
  * and must never reach the client. Do NOT add fields here that would
  * expose them; every future addition must be checked against that rule.
  */

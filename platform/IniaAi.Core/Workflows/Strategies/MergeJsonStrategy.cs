@@ -90,8 +90,8 @@ public class MergeJsonStrategy : IBlockStrategy
         };
 
         context.Logger.LogTrace(
-            "{block} Merged JSON ({InputCount} inputs):\n{result}",
-            block, validTokens.Count, result);
+            "{block} Merged JSON ({InputCount} inputs): {Length} characters",
+            block, validTokens.Count, result.Length);
 
         return Task.FromResult(output);
     }
@@ -243,8 +243,8 @@ public class MergeJsonStrategy : IBlockStrategy
                         // User-supplied regex without a capture group will silently produce nothing
                         // unless we tell them — patterns like `\d+` (no parens) hit this path.
                         context.Logger.LogWarning(
-                            "{block} Pattern at input index {Index} has no capture group {ContentGroup}; "
-                            + "expected {ContentGroup} to wrap the JSON snippet (mode={Mode}, pattern={Pattern})",
+                            "{block} Pattern at input index {Index} has no capture group {ContentGroupName}; "
+                            + "expected {ContentGroupName} to wrap the JSON snippet (mode={Mode}, pattern={Pattern})",
                             block, inputIndex, contentGroup, contentGroup, config.Mode, config.Pattern);
                         warnedMissingGroup = true;
                     }

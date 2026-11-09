@@ -59,14 +59,15 @@ public class CalculateFormulaStrategy : IBlockStrategy
         catch (NCalcException ex)
         {
             context.Logger.LogError(
-                ex,
-                "{block} Error calculating formula '{formula}'",
+                "{block} Error calculating the formula: {ExceptionType}",
                 block,
-                formula);
+                ex.GetType().Name);
 
-            throw new InvalidOperationException(
-                $"Unable to process the formula '{formula}': {ex.Message}",
-                ex);
+            throw new BlockFailureException($"Unable to process the formula '{formula}': {ex.Message}");
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            throw new BlockFailureException(ex.Message);
         }
 
         string rawResult = FormatResult(evaluated, formula);
@@ -77,10 +78,9 @@ public class CalculateFormulaStrategy : IBlockStrategy
         };
 
         context.Logger.LogTrace(
-            "{block} Calculated the formula '{formula}' text:\n{result}",
+            "{block} Calculated the formula: {Length} characters",
             block,
-            formula,
-            rawResult);
+            rawResult.Length);
 
         await Task.CompletedTask;
 
@@ -91,8 +91,7 @@ public class CalculateFormulaStrategy : IBlockStrategy
     {
         return evaluated switch
         {
-            null => throw new InvalidOperationException(
-                $"Unable to process the formula '{formula}': evaluation returned null"),
+            null => throw new BlockFailureException($"Unable to process the formula '{formula}': evaluation returned null"),
             DateTime dt => dt.ToString(DATE_FORMAT, CultureInfo.InvariantCulture),
             IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
             _ => evaluated.ToString() ?? string.Empty,
@@ -148,8 +147,7 @@ public class CalculateFormulaStrategy : IBlockStrategy
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out DateTime parsed) => parsed,
-            _ => throw new InvalidOperationException(
-                $"Expected an ISO date ({DATE_FORMAT}) or DateTime value, got: '{value}'"),
+            _ => throw new BlockFailureException($"Expected an ISO date ({DATE_FORMAT}) or DateTime value, got: '{value}'"),
         };
     }
 

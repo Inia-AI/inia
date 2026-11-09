@@ -12,7 +12,7 @@ This is the only channel for vulnerability reports. Do not open a public issue, 
 
 ## What happens next
 
-Inia's maintainers read every report and answer in it. A confirmed vulnerability is fixed in a release.
+Inia AI's maintainers read every report and answer in it. A confirmed vulnerability is fixed in a release.
 
 ## Versions
 

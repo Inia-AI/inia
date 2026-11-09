@@ -302,8 +302,6 @@ public class AwsBedrockChatProvider : BaseChatConnector, IChatConnector
                 adapter.ModelFamily,
                 estimatedTokens);
 
-            _logger.LogDebug("LLM Request body: {Json}", requestJson);
-
             // Make AWS Bedrock call with resilience pipeline.
             // The pipeline wraps InvokeModelAsync to handle transient failures with retry.
             // Each retry creates a new InvokeModelRequest, ensuring a fresh SigV4 signature.
@@ -380,7 +378,7 @@ public class AwsBedrockChatProvider : BaseChatConnector, IChatConnector
             }
 
             LogResponseHeaders(response);
-            LogResponse(responseJson);
+            _logger.LogDebug("LLM Response: {Length} characters", responseJson.Length);
 
             _logger.LogTrace("LLM timings: Total={Total} ms | HTTP={Http} ms",
                 stopwatch.ElapsedMilliseconds, httpStopwatch.ElapsedMilliseconds);
@@ -639,18 +637,6 @@ public class AwsBedrockChatProvider : BaseChatConnector, IChatConnector
         {
             _logger.LogTrace(ex, "Failed to log response headers");
         }
-    }
-
-    private void LogResponse(string? responseJson)
-    {
-        if (string.IsNullOrWhiteSpace(responseJson))
-        {
-            _logger.LogDebug("LLM Response: null or empty");
-
-            return;
-        }
-
-        _logger.LogDebug("LLM Response: {ResponseJson}", responseJson);
     }
 
     private void CalculateEstimatedAgainstActualInputTokens(int estimatedTokens, int actualInputTokens)

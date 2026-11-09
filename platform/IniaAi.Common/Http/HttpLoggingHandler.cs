@@ -7,6 +7,7 @@ namespace IniaAi.Common.Http;
 /// Generic HTTP message handler that logs requests and responses with structured logging.
 /// Automatically redacts sensitive headers (API keys, tokens, etc.) from logs.
 /// Optimized for Application Insights queries with individual named properties.
+/// A body is logged by its size only: it can carry a customer's documents or what a model wrote about them.
 /// </summary>
 public class HttpLoggingHandler : DelegatingHandler
 {
@@ -38,12 +39,10 @@ public class HttpLoggingHandler : DelegatingHandler
         var stopwatch = Stopwatch.StartNew();
         string requestId = Guid.NewGuid().ToString("N")[..8]; // Short ID for correlation
 
-        string? requestBody = null;
-        Dictionary<string, string>? requestHeaders = null;
-
-        // Capture request data before sending (body can only be read once)
         if (_options.LogRequests)
         {
+            Dictionary<string, string>? requestHeaders = null;
+
             if (_options.LogHeaders)
             {
                 requestHeaders = GetRedactedHeaders(request.Headers);
@@ -58,16 +57,7 @@ public class HttpLoggingHandler : DelegatingHandler
                 }
             }
 
-            if (_options.LogRequestBody && request.Content is not null)
-            {
-                requestBody = await ReadAndTruncateBodyAsync(request.Content, _options.MaxBodyLogLength, cancellationToken);
-            }
-        }
-
-        // Log Request
-        if (_options.LogRequests)
-        {
-            LogRequest(requestId, request, requestHeaders, requestBody);
+            LogRequest(requestId, request, requestHeaders);
         }
 
         // Execute the request
@@ -94,7 +84,6 @@ public class HttpLoggingHandler : DelegatingHandler
         // Capture and log response
         if (_options.LogResponses)
         {
-            string? responseBody = null;
             Dictionary<string, string>? responseHeaders = null;
 
             if (_options.LogHeaders)
@@ -102,12 +91,7 @@ public class HttpLoggingHandler : DelegatingHandler
                 responseHeaders = GetResponseHeaders(response);
             }
 
-            if (_options.LogResponseBody && response.Content is not null)
-            {
-                responseBody = await ReadAndTruncateBodyAsync(response.Content, _options.MaxBodyLogLength, cancellationToken);
-            }
-
-            LogResponse(requestId, request, response, responseHeaders, responseBody, stopwatch.ElapsedMilliseconds);
+            LogResponse(requestId, request, response, responseHeaders, stopwatch.ElapsedMilliseconds);
         }
 
         return response;
@@ -116,18 +100,17 @@ public class HttpLoggingHandler : DelegatingHandler
     private void LogRequest(
         string requestId,
         HttpRequestMessage request,
-        Dictionary<string, string>? headers,
-        string? body)
+        Dictionary<string, string>? headers)
     {
         _logger.Log(
             _options.RequestLogLevel,
-            "[{ServiceName}-{RequestId}] HTTP Request | Method: {RequestMethod} | Uri: {RequestUri} | Headers: {@RequestHeaders} | Body: {RequestBody}",
+            "[{ServiceName}-{RequestId}] HTTP Request | Method: {RequestMethod} | Uri: {RequestUri} | Headers: {@RequestHeaders} | Body: {RequestBytes} bytes",
             _options.ServiceName,
             requestId,
             request.Method.ToString(),
             request.RequestUri?.ToString(),
             headers,
-            body);
+            request.Content?.Headers.ContentLength);
     }
 
     private void LogResponse(
@@ -135,7 +118,6 @@ public class HttpLoggingHandler : DelegatingHandler
         HttpRequestMessage request,
         HttpResponseMessage response,
         Dictionary<string, string>? headers,
-        string? body,
         long durationMs)
     {
         LogLevel logLevel = response.IsSuccessStatusCode
@@ -144,7 +126,7 @@ public class HttpLoggingHandler : DelegatingHandler
 
         _logger.Log(
             logLevel,
-            "[{ServiceName}-{RequestId}] HTTP Response | Method: {RequestMethod} | Uri: {RequestUri} | Status: {StatusCode} | Duration: {DurationMs}ms | Headers: {@ResponseHeaders} | Body: {ResponseBody}",
+            "[{ServiceName}-{RequestId}] HTTP Response | Method: {RequestMethod} | Uri: {RequestUri} | Status: {StatusCode} | Duration: {DurationMs}ms | Headers: {@ResponseHeaders} | Body: {ResponseBytes} bytes",
             _options.ServiceName,
             requestId,
             request.Method.ToString(),
@@ -152,7 +134,7 @@ public class HttpLoggingHandler : DelegatingHandler
             (int)response.StatusCode,
             durationMs,
             headers,
-            body);
+            response.Content.Headers.ContentLength);
     }
 
     private Dictionary<string, string> GetRedactedHeaders(System.Net.Http.Headers.HttpHeaders headers)
@@ -191,32 +173,6 @@ public class HttpLoggingHandler : DelegatingHandler
         }
 
         return result;
-    }
-
-    private static async Task<string?> ReadAndTruncateBodyAsync(
-        HttpContent content,
-        int maxLength,
-        CancellationToken cancellationToken)
-    {
-        // Buffering sits outside the catch: a transport failure here must surface as itself.
-        // Swallowed, it leaves the stream half-consumed and every later reader gets a
-        // misleading "stream was already consumed" instead of the real error.
-        await content.LoadIntoBufferAsync(cancellationToken);
-
-        try
-        {
-            string body = await content.ReadAsStringAsync(cancellationToken);
-
-            return string.IsNullOrWhiteSpace(body)
-                ? null
-                : body.Length > maxLength
-                ? body[..maxLength] + $"... [truncated, total: {body.Length} chars]"
-                : body;
-        }
-        catch
-        {
-            return "[Error reading body]";
-        }
     }
 
     private bool IsSensitiveHeader(string headerName)

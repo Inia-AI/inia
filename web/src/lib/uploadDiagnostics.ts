@@ -29,7 +29,7 @@ export function buildUploadDiagnostics(
   ctx: UploadDiagnosticsContext,
 ): string {
   return [
-    'INIA upload failure diagnostics',
+    'Inia AI upload failure diagnostics',
     `Time: ${ctx.timestamp}`,
     `Page: ${ctx.pageUrl}`,
     `Upload endpoint: ${ctx.uploadEndpoint}`,

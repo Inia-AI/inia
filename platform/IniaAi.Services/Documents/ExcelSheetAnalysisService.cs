@@ -723,9 +723,9 @@ public class ExcelSheetAnalysisService : ITokenAccumulator
         cancellationToken.ThrowIfCancellationRequested();
 
         _logger.LogInformation(
-            "Sending header identification prompt for sheet {SheetName}: {Prompt}",
+            "Sending header identification prompt for sheet {SheetName}: {Length} characters",
             sheet.Name,
-            headerPrompt);
+            headerPrompt.Length);
 
         ModelFamily family = _tenantModelFamilyResolver.GetModelFamilyForFunction(organizationId, FunctionType.SpreadsheetAnalysis);
         ResponseContentSequence responseContent = await _chatConnector
@@ -743,9 +743,9 @@ public class ExcelSheetAnalysisService : ITokenAccumulator
         string response = responseContent.GetPlainText() ?? string.Empty;
 
         _logger.LogInformation(
-            "Received header identification response for sheet {SheetName}: {Response}",
+            "Received header identification response for sheet {SheetName}: {Length} characters",
             sheet.Name,
-            response);
+            response.Length);
 
         SheetAnalysisResult headerResult = ParseSheetAnalysisResponse(
             response,
@@ -770,10 +770,10 @@ public class ExcelSheetAnalysisService : ITokenAccumulator
 
             string prompt = string.Format(userPromptTemplate, sample);
             _logger.LogDebug(
-                "Sending layout analysis prompt for {SheetName} [OperationId: {OperationId}] {Prompt}",
+                "Sending layout analysis prompt for {SheetName} [OperationId: {OperationId}]: {Length} characters",
                 sheet.Name,
                 operationId,
-                prompt);
+                prompt.Length);
 
             ModelFamily family = _tenantModelFamilyResolver.GetModelFamilyForFunction(organizationId, FunctionType.SpreadsheetAnalysis);
             ResponseContentSequence responseContent = await _chatConnector
@@ -790,9 +790,9 @@ public class ExcelSheetAnalysisService : ITokenAccumulator
             string response = responseContent.GetPlainText() ?? string.Empty;
 
             _logger.LogTrace(
-                "AI Response for {SheetName}: {Response} [OperationId: {OperationId}]",
+                "AI Response for {SheetName}: {Length} characters [OperationId: {OperationId}]",
                 sheet.Name,
-                response,
+                response.Length,
                 operationId);
 
             return ParseSheetAnalysisResponse(response, operationId);
@@ -843,8 +843,8 @@ public class ExcelSheetAnalysisService : ITokenAccumulator
         {
             _logger.LogError(
                 ex,
-                "Failed to parse analysis response: {Response} [OperationId: {OperationId}]",
-                response,
+                "Failed to parse analysis response: {Length} characters [OperationId: {OperationId}]",
+                response.Length,
                 operationId);
 
             return new SheetAnalysisResult();

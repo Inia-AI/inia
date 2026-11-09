@@ -1,12 +1,12 @@
 ---
 type: reference
 status: current
-description: "Reference of the C# house rules: naming, mandatory braces, layout, test rules, API contracts and DTO mapping, EF Core entity configuration, comments and validators. Read when you write or review platform C# code."
+description: "Reference of the C# house rules: naming, mandatory braces, layout, test rules, API contracts and DTO mapping, EF Core entity configuration, comments, logging and validators. Read when you write or review platform C# code."
 ---
 
 # C# Code Standards
 
-**On this page:** Naming Conventions · Mandatory Curly Braces · Layout and Members · Tests · API Contracts and DTOs · EF Core Entity Configuration · Comments · Validators · Related pages
+**On this page:** Naming Conventions · Mandatory Curly Braces · Layout and Members · Tests · API Contracts and DTOs · EF Core Entity Configuration · Comments · Logging · Validators · Related pages
 
 The house rules for C#/.NET code in the IniaAi Platform. These are enforced by `.editorconfig`; this page is the canonical reference for them. The aim is one consistent style across the whole solution so reviews focus on behaviour, not formatting.
 
@@ -134,6 +134,10 @@ When entity attributes change, regenerate migrations with the migration script r
 ## Comments
 
 Default to **zero comments** — convey intent through naming. Add a comment only when it captures a genuinely hidden constraint or a non-obvious *why* that a reader cannot infer from the code (for example, a hard upstream size limit, or a workaround for a specific bug). Never narrate what the code does, restate a name, or reference the ticket that prompted the change. If a comment is explaining *what*, rename the identifier or extract a well-named helper instead.
+
+## Logging
+
+A log line carries ids, counts, lengths, timings and outcomes. It never carries a prompt, a model reply, the text of a document or a page, or report content, at any level: the logs reach operators without the customer's permission, and the cloud settings write `IniaAi` at `Verbose`. Log the size instead, for example `{Block} response: {Length} characters`. A run's prompts and outputs are kept in its execution log, and a page's text and overview on the page, so the logs need neither. An exception message reaches the logs too: a block failure whose reason quotes the run's values, such as a formula with block outputs filled in, throws `BlockFailureException`, which hands its reason to the block's execution log and the run's failure detail and gives the logs a fixed message. `LogContentGuardTests` refuses a log placeholder named for content, such as `{Response}` or `{UserPrompt}`, unless its last word names a size or an identity, as `{Length}` and `{PageNumber}` do; a line that must log such a value says why in a `// Logs on purpose: <reason>` comment on the call's first line or the line above it. `ReportLogContentTests` runs a report through the engine with a scripted model and fails on any log line that holds the document's text, the prompt or the reply, and `ModelCallLogContentTests` does the same for the model connections.
 
 ## Validators
 

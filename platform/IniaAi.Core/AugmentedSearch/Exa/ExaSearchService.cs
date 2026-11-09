@@ -46,9 +46,6 @@ public class ExaSearchService : IExaSearchService
         var loggingHandler = new HttpLoggingHandler(logger, new HttpLoggingOptions
         {
             ServiceName = "Exa",
-            LogRequestBody = true,
-            LogResponseBody = true,
-            MaxBodyLogLength = 10000
         })
         {
             InnerHandler = _sharedHandler
@@ -74,7 +71,7 @@ public class ExaSearchService : IExaSearchService
     {
         try
         {
-            _logger.LogInformation("Performing Exa search for query: {Query}", request.Query);
+            _logger.LogInformation("Performing Exa search for a query of {Length} characters", request.Query.Length);
 
             ExaSearchRequest validatedRequest = request;
 

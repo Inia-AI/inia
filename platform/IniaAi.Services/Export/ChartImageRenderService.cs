@@ -112,13 +112,13 @@ public class ChartImageRenderService : IChartImageRenderService, IChartImageSess
     private byte[] DrawChart(ChromeDriver driver, object chartConfig, int width, int height, string? reportContext)
     {
         string? chartTitle = (chartConfig as ChartConfiguration)?.Title;
-        _logger.LogInformation("Chart rendering - Title: {Title}, Context: {Context}", chartTitle ?? "NULL", reportContext ?? "NULL");
+        _logger.LogInformation("Chart rendering - {Width}x{Height}", width, height);
 
         try
         {
             // Enum-as-string keeps options.stacking on the TS ChartConfig shape the bundle expects.
             string chartConfigJson = JsonSerializer.Serialize(chartConfig, _configJson);
-            _logger.LogDebug("Chart config JSON: {ConfigJson}", chartConfigJson);
+            _logger.LogDebug("Chart config JSON: {Length} characters", chartConfigJson.Length);
 
             if (_settings.DebugPreserveTempFiles)
             {

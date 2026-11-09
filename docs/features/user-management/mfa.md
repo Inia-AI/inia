@@ -100,7 +100,7 @@ public class MfaTokenPayload
 Enrollment generates a new authenticator key and answers with the key (`sharedKey`, formatted for typing) and an `otpauth://` URI for a QR code (`authenticatorUri`, `SetupTotpCommandHandler`). The URI format is:
 
 ```
-otpauth://totp/IniaAi:{email}?secret={key}&issuer=IniaAi&digits=6
+otpauth://totp/Inia%20AI:{email}?secret={key}&issuer=Inia%20AI&digits=6
 ```
 
 The URI holds the user's email and the key. The Blazor admin app (`EnableAuthenticator.razor.js`) and the Vue app's setup dialog (`src/lib/qrCode.ts`) both draw the QR code in the browser, so the URI never leaves the page.

@@ -26,8 +26,8 @@ internal class UseTableOfContentsStrategy : IRagStrategy
         if (toc is null)
         {
             context.Logger.LogError(
-                "Invalid Table of Contents input: {toc}",
-                executionState.TableOfContentsInput);
+                "Invalid Table of Contents input: {Length} characters",
+                executionState.TableOfContentsInput?.Length ?? 0);
 
             return [];
         }

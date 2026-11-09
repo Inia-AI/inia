@@ -53,7 +53,7 @@ public class ExchangeRateService : IExchangeRateService
 
         string? stringResponse = await _httpClient.GetStringAsync(requestUrl);
 
-        _logger.LogDebug("Received response: {Response}", stringResponse);
+        _logger.LogDebug("Received response: {Length} characters", stringResponse?.Length ?? 0);
 
         var response = ExchangeRateResponse.FromJson(stringResponse);
 

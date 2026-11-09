@@ -138,8 +138,8 @@ public class DynamicChartStrategy : IBlockStrategy
                 block, chartData.Count);
 
             context.Logger.LogTrace(
-                "{block} Chart configuration:\n{ChartConfig}",
-                block, result);
+                "{block} Chart configuration: {Length} characters",
+                block, result.Length);
         }
         catch (Exception ex)
         {
@@ -263,8 +263,8 @@ public class DynamicChartStrategy : IBlockStrategy
                 if (!isNumeric && dropsNonNumericValues)
                 {
                     context.Logger.LogWarning(
-                        "{block} Dropping the point at {X}: its Y value '{Y}' is not a number",
-                        block, xValue.ToString(), yValue.ToString());
+                        "{block} Dropping a point: its Y value is not a number",
+                        block);
                     continue;
                 }
 

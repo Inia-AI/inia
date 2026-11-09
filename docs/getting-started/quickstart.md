@@ -30,6 +30,10 @@ versions, the memory and the disk.
    - `INIA_ADMIN_PASSWORD`: the password of the first admin, `superadmin@example.com` unless you set `INIA_ADMIN_EMAIL`. It follows the
      [password rule](security.md#sign-in).
 
+   The other keys in `.env` are optional.
+   [Optional keys](../../platform/README.md#optional-keys)
+   says what each one adds, such as the Cohere key for the blocks that pick pages by meaning.
+
 4. Build and start the stack:
 
    ```bash

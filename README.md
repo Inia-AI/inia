@@ -1,6 +1,6 @@
-# Inia
+# Inia AI
 
-Inia turns a set of documents into a written report. An analyst designs the report once, as a
+Inia AI turns a set of documents into a written report. An analyst designs the report once, as a
 workflow. For each new case, a user uploads the documents, the platform runs the workflow on them,
 and the user gets a draft report whose figures link to the pages that state them.
 

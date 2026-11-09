@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { qrCodeImageSource } from './qrCode'
 
 const authenticatorUri = (secret: string) =>
-  `otpauth://totp/Inia:jane.doe%40example.com?secret=${secret}&issuer=Inia`
+  `otpauth://totp/Inia%20AI:jane.doe%40example.com?secret=${secret}&issuer=Inia%20AI`
 
 describe('qrCodeImageSource', () => {
   it('draws the code as an inline image, so the secret never leaves the page', async () => {

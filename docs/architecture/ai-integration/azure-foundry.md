@@ -8,12 +8,12 @@ description: "The Azure AI Foundry deployment mode: the two endpoints, the auth 
 
 **On this page:** Architecture · Deployment Modes · Configuration · Azure Resource Requirements · The agent path in Azure mode · Quick Links
 
-The IniaAI platform supports deployment on Microsoft Azure using [Azure AI Foundry](https://ai.azure.com/) for LLM and embeddings inference. This enables customers who require Azure-hosted AI services to run the full platform within their Azure environment.
+The Inia AI platform supports deployment on Microsoft Azure using [Azure AI Foundry](https://ai.azure.com/) for LLM and embeddings inference. This enables customers who require Azure-hosted AI services to run the full platform within their Azure environment.
 
 > [!NOTE]
 > **Deployment Model**
 >
-> IniaAI is deployed on-premise or in the customer's cloud. This documentation covers the platform-level Azure integration (code, configuration), not the infrastructure it runs on.
+> Inia AI is deployed on-premise or in the customer's cloud. This documentation covers the platform-level Azure integration (code, configuration), not the infrastructure it runs on.
 
 
 ## Architecture
@@ -22,7 +22,7 @@ Azure AI Foundry provides hosted access to Anthropic Claude models and Cohere em
 
 ```mermaid
 graph LR
-    subgraph "IniaAI Platform"
+    subgraph "Inia AI Platform"
         API[API Service]
         Admin[Admin Service]
     end

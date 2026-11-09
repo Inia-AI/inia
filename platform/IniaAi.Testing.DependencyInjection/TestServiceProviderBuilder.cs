@@ -97,7 +97,11 @@ public class TestServiceProviderBuilder
         _ = _services.AddSingleton<ILoggerFactory>(provider =>
         {
             var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(provider.GetRequiredService<ILoggerProvider>());
+            foreach (ILoggerProvider loggerProvider in provider.GetServices<ILoggerProvider>())
+            {
+                loggerFactory.AddProvider(loggerProvider);
+            }
+
             return loggerFactory;
         });
         _ = _services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));

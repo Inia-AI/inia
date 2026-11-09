@@ -29,22 +29,6 @@ public class HttpLoggingOptions
     public bool LogHeaders { get; set; } = true;
 
     /// <summary>
-    /// Whether to log request body content.
-    /// </summary>
-    public bool LogRequestBody { get; set; } = true;
-
-    /// <summary>
-    /// Whether to log response body content.
-    /// </summary>
-    public bool LogResponseBody { get; set; } = true;
-
-    /// <summary>
-    /// Maximum length of request/response body to log (prevents huge logs).
-    /// Default: 10,000 characters.
-    /// </summary>
-    public int MaxBodyLogLength { get; set; } = 10000;
-
-    /// <summary>
     /// Log level for successful requests.
     /// Default: Debug (only visible when Debug logging is enabled).
     /// </summary>

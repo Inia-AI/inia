@@ -147,9 +147,9 @@ public partial class WebApiCallStrategy : IBlockStrategy
             url);
 
         context.Logger.LogTrace(
-            "{block} Request payload: {payload}",
+            "{block} Request payload: {Length} characters",
             block,
-            payload ?? "(empty)");
+            payload?.Length ?? 0);
 
         context.Logger.LogTrace(
             "{block} Request headers: {headers}",
@@ -215,9 +215,9 @@ public partial class WebApiCallStrategy : IBlockStrategy
                 responseUrl = completionUrl;
 
                 context.Logger.LogTrace(
-                    "{block} Completion response: {response}",
+                    "{block} Completion response: {Length} characters",
                     block,
-                    response);
+                    response.Length);
             }
         }
         else
@@ -234,9 +234,9 @@ public partial class WebApiCallStrategy : IBlockStrategy
                 cancellationToken);
 
             context.Logger.LogTrace(
-                "{block} Response: {response}",
+                "{block} Response: {Length} characters",
                 block,
-                response);
+                response.Length);
 
             // Apply delay if configured (for async API experimentation)
             int delaySeconds = props.DelayAfterRequestSeconds ?? 0;

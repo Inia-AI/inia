@@ -5,7 +5,7 @@
  * The user has already picked a (block, field) in the editor; this dialog lets them
  * test a new value for that signature against a past workflow execution without
  * leaving the page. Captured prompt + resolved value come back from the BE; the
- * modified prompt stays server-side (Inia IP).
+ * modified prompt stays server-side (Inia AI IP).
  *
  * Two actions live here:
  *   - Run test  → fire the replay via the SignaturePlayground API, render the new

@@ -64,8 +64,7 @@ public static class WorkflowExecutionLogPromptResolver
         {
             logger.LogError(
                 ex,
-                "Error extracting placeholder values from template '{Template}' for log ID '{LogId}': {ExceptionMessage}",
-                template,
+                "Error extracting placeholder values from the template for log ID '{LogId}': {ExceptionMessage}",
                 logId,
                 ex.Message);
 
@@ -117,8 +116,7 @@ public static class WorkflowExecutionLogPromptResolver
         {
             logger.LogError(
                 ex,
-                "Error extracting placeholder values from template '{Template}' for log ID '{LogId}': {ExceptionMessage}",
-                template,
+                "Error extracting placeholder values from the template for log ID '{LogId}': {ExceptionMessage}",
                 logId,
                 ex.Message);
 

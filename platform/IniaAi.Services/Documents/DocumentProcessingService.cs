@@ -1523,12 +1523,10 @@ public class DocumentProcessingService : IDocumentProcessingService
 
         if (ratio > 0.1)
         {
-            string sample = text.Length > 40 ? text[..40] : text;
             _logger.LogInformation(
-                "Page {PageNumber} looks like gibberish (Control char ratio: {Ratio:P2}). Sample: \"{Sample}\"",
+                "Page {PageNumber} looks like gibberish (Control char ratio: {Ratio:P2})",
                 pageNumber,
-                ratio,
-                sample.Replace("\n", "\\n").Replace("\r", "\\r"));
+                ratio);
             return true;
         }
 

@@ -84,15 +84,15 @@ public class BuildTopicsForAllDocumentsStrategy : IBlockStrategy
         if (isForSpecificClass)
         {
             context.Logger.LogInformation(
-                "Built topics for {DocumentClass} documents: {Topics}",
+                "Built topics for {DocumentClass} documents: {Length} characters",
                 block.SupportedDocumentClasses,
-                topics);
+                topics?.Length ?? 0);
         }
         else
         {
             context.Logger.LogInformation(
-                "Built topics for all documents: {Topics}",
-                topics);
+                "Built topics for all documents: {Length} characters",
+                topics?.Length ?? 0);
         }
 
         return output;

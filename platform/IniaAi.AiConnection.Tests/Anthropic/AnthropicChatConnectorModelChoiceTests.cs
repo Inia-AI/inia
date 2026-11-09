@@ -1,13 +1,10 @@
 using IniaAi.AiConnection.Anthropic;
+using IniaAi.AiConnection.Tests.Common;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Enums.Anthropic;
 using IniaAi.Configuration.LLMProviders;
 using IniaAi.Testing;
 using IniaAi.Testing.Mocks;
-using Newtonsoft.Json.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 
 namespace IniaAi.AiConnection.Tests.Anthropic;
 
@@ -22,18 +19,12 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
     private const string MESSAGE_RESPONSE =
         """{"id":"msg_test","type":"message","role":"assistant","model":"m","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}""";
 
-    private readonly HttpListener _listener = new();
+    private readonly AnthropicApiStandIn _api = new(MESSAGE_RESPONSE);
     private readonly ITestOutputHelper _output;
-    private readonly string _apiUrl;
-    private readonly List<JObject> _requestBodies = [];
 
     public AnthropicChatConnectorModelChoiceTests(ITestOutputHelper output)
     {
         _output = output;
-        _apiUrl = $"http://127.0.0.1:{FreePort()}/v1/messages";
-        _listener.Prefixes.Add(_apiUrl[..(_apiUrl.LastIndexOf("/v1/", StringComparison.Ordinal) + 1)]);
-        _listener.Start();
-        _ = AnswerRequestsAsync();
     }
 
     [Fact]
@@ -44,7 +35,7 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
         await connector.GetResponseAsync(USER_INPUT, model: "us.anthropic.claude-opus-5",
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal("claude-opus-5", Assert.Single(_requestBodies)["model"]?.ToString());
+        Assert.Equal("claude-opus-5", Assert.Single(_api.RequestBodies)["model"]?.ToString());
     }
 
     [Fact]
@@ -55,7 +46,7 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
         await connector.GetResponseAsync(USER_INPUT, model: "claude-haiku-4-5-20251001",
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(SETTINGS_MODEL_ID_OVERRIDE, Assert.Single(_requestBodies)["model"]?.ToString());
+        Assert.Equal(SETTINGS_MODEL_ID_OVERRIDE, Assert.Single(_api.RequestBodies)["model"]?.ToString());
     }
 
     [Fact]
@@ -68,7 +59,7 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
                 cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains("claude-opus-9-9", exception.Message);
-        Assert.Empty(_requestBodies);
+        Assert.Empty(_api.RequestBodies);
     }
 
     [Theory]
@@ -83,7 +74,7 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
         await connector.GetResponseAsync(USER_INPUT, model: storedModel,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(storedModel, Assert.Single(_requestBodies)["model"]?.ToString());
+        Assert.Equal(storedModel, Assert.Single(_api.RequestBodies)["model"]?.ToString());
     }
 
     [Fact]
@@ -101,7 +92,7 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
 
     public void Dispose()
     {
-        _listener.Close();
+        _api.Dispose();
     }
 
     private AnthropicChatConnector CreateConnector(AiModel advancedModel, string? settingsModelIdOverride)
@@ -110,7 +101,7 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
         {
             Anthropic = new AnthropicSettings
             {
-                ApiUrl = _apiUrl,
+                ApiUrl = _api.ApiUrl,
                 ApiKey = "test-key",
                 AdvancedModel = advancedModel,
                 AdvancedModelIdOverride = settingsModelIdOverride,
@@ -121,46 +112,5 @@ public sealed class AnthropicChatConnectorModelChoiceTests : IDisposable
             settings,
             TestsLogger.CreateLogger<AnthropicChatConnector>(_output),
             new NoOpLimiter());
-    }
-
-    private async Task AnswerRequestsAsync()
-    {
-        while (_listener.IsListening)
-        {
-            HttpListenerContext context;
-            try
-            {
-                context = await _listener.GetContextAsync();
-            }
-            catch (HttpListenerException)
-            {
-                return;
-            }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
-
-            using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
-            {
-                _requestBodies.Add(JObject.Parse(await reader.ReadToEndAsync()));
-            }
-
-            byte[] response = Encoding.UTF8.GetBytes(MESSAGE_RESPONSE);
-            context.Response.ContentType = "application/json";
-            context.Response.ContentLength64 = response.Length;
-            await context.Response.OutputStream.WriteAsync(response);
-            context.Response.Close();
-        }
-    }
-
-    private static int FreePort()
-    {
-        var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        int port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-
-        return port;
     }
 }

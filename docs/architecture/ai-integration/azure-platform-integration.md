@@ -8,7 +8,7 @@ description: "How the platform code talks to Azure AI Foundry: the Azure branch 
 
 **On this page:** Connector Architecture · DI Wiring · Configuration Reference · Entra ID Authentication · Startup Validation · Fallback to Direct API
 
-How the IniaAI platform code integrates with Azure AI Foundry. Covers the connector architecture, DI wiring, configuration, and authentication.
+How the Inia AI platform code integrates with Azure AI Foundry. Covers the connector architecture, DI wiring, configuration, and authentication.
 
 > [!NOTE]
 > **Code Location**

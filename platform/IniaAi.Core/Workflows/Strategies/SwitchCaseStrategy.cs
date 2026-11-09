@@ -47,22 +47,22 @@ public class SwitchCaseStrategy : IBlockStrategy
             {
                 matchedValue = props.DefaultValue;
                 context.Logger.LogInformation(
-                    "{block} No case matched input '{Input}', using default value",
-                    block, input);
+                    "{block} No case matched the input, using default value",
+                    block);
             }
             else
             {
                 context.Logger.LogWarning(
-                    "{block} No case matched input '{Input}' and no default value configured",
-                    block, input);
+                    "{block} No case matched the input and no default value configured",
+                    block);
                 return Task.FromResult(output);
             }
         }
         else
         {
             context.Logger.LogInformation(
-                "{block} Matched input '{Input}' to case",
-                block, input);
+                "{block} Matched the input to a case",
+                block);
         }
 
         // Resolve {placeholder} references using the shared extension method

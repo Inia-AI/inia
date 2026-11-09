@@ -109,8 +109,8 @@ public class CohereEmbeddingsConnector : IEmbeddingsConnector
             || successResponse is null)
         {
             _logger.LogError(
-                "Error response from Cohere embeddings API. Status code: {statusCode}, Response: {response}",
-                response.StatusCode, responseJson);
+                "Error response from Cohere embeddings API. Status code: {statusCode}, Response: {error}",
+                response.StatusCode, response.IsSuccessStatusCode ? $"{responseJson.Length} characters" : responseJson);
 
             return [];
         }

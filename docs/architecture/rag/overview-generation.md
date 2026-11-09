@@ -109,7 +109,7 @@ public string? OverviewPromptHash { get; set; }
 
 The pipeline degrades gracefully rather than failing the document — which means a bad overview surfaces as poor retrieval, not an exception. Where to look:
 
-- **Logs.** `GenerateOverviewsSlidingWindowAsync` logs a per-page line on success (`Parsed overview for page {PageNumber}: '{Content}' Took {Ms} ms`) and a warning when the model's reply has no parseable `<answer>` (`Could not parse valid answer for page {PageNumber}. Raw response: …`). The per-document summary line reports how many pages were empty, already-valid, erroneous, or queued to summarize.
+- **Logs.** `GenerateOverviewsSlidingWindowAsync` logs a per-page line on success (`Parsed overview for page {PageNumber}: {Length} characters. Took {Ms} ms`) and a warning when the model's reply has no parseable `<answer>` (`Could not parse valid answer for page {PageNumber}. Raw response: {Length} characters`). The logs carry no overview text: read the overview itself on the page (`Page.Overview`). The per-document summary line reports how many pages were empty, already-valid, erroneous, or queued to summarize.
 - **An answer format that never closes its tag.** When a prompt ends its format with `<answer>` instead of `</answer>`, about a third of the replies copy it. Before the fallback above, those pages got no overview, so retrieval could not find them and every later processing pass asked for them again. The editor warning above now points at such a prompt; fix the prompt rather than relying on the fallback.
 
 

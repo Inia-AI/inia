@@ -14,12 +14,12 @@ describe('IniaWordmark', () => {
   })
 
   it('reads as an image named by its label', () => {
-    const svg = mount(IniaWordmark, { props: { label: 'Inia Logo' } }).get(
+    const svg = mount(IniaWordmark, { props: { label: 'Inia AI logo' } }).get(
       'svg',
     )
 
     expect(svg.attributes('role')).toBe('img')
-    expect(svg.attributes('aria-label')).toBe('Inia Logo')
+    expect(svg.attributes('aria-label')).toBe('Inia AI logo')
     expect(svg.attributes('aria-hidden')).toBeUndefined()
   })
 

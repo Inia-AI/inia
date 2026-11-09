@@ -149,7 +149,7 @@ public class AiQueryChunkParallelismTests
             AiQueryStrategy.ExecuteChunksInParallelAsync(
                 block, props, context, BuildChunks(), new StringBuilder(), TestContext.Current.CancellationToken));
 
-        Assert.Contains("Output format validation failed", ex.Message);
+        Assert.Contains("Output format validation failed", BlockFailureException.ReasonOf(ex));
         Assert.True(
             callCount.Value < CHUNK_COUNT * 2,
             $"expected sibling chunks to be cancelled, but {callCount.Value} LLM calls were made.");
@@ -168,7 +168,7 @@ public class AiQueryChunkParallelismTests
 
     private static void AssertExhaustionDiagnostics(InvalidOperationException ex, AiQueryProperties props)
     {
-        Assert.Contains("Output format validation failed", ex.Message);
+        Assert.Contains("Output format validation failed", BlockFailureException.ReasonOf(ex));
         Assert.Equal(2, props.OutputFormatAttemptCount);
         Assert.NotNull(props.OutputFormatLastError);
         Assert.NotEqual("stale-error", props.OutputFormatLastError);

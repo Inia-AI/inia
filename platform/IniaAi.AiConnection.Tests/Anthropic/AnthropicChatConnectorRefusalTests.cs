@@ -3,15 +3,13 @@ using IniaAi.AiConnection.Anthropic;
 using IniaAi.AiConnection.AwsBedrock;
 using IniaAi.AiConnection.Common;
 using IniaAi.AiConnection.Common.ChatConnector;
+using IniaAi.AiConnection.Tests.Common;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Enums.Anthropic;
 using IniaAi.Configuration.LLMProviders;
 using IniaAi.Testing;
 using IniaAi.Testing.Mocks;
 using Microsoft.Extensions.Logging;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 
 namespace IniaAi.AiConnection.Tests.Anthropic;
 
@@ -26,16 +24,7 @@ public sealed class AnthropicChatConnectorRefusalTests : IDisposable
     private const string REFUSAL_RESPONSE =
         """{"id":"msg_refused","type":"message","role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"<reasoning>Step one"}],"stop_reason":"refusal","stop_details":{"type":"refusal","category":"reasoning_extraction","explanation":null},"usage":{"input_tokens":500,"output_tokens":3}}""";
 
-    private readonly HttpListener _listener = new();
-    private readonly string _apiUrl;
-
-    public AnthropicChatConnectorRefusalTests()
-    {
-        _apiUrl = $"http://127.0.0.1:{FreePort()}/v1/messages";
-        _listener.Prefixes.Add(_apiUrl[..(_apiUrl.LastIndexOf("/v1/", StringComparison.Ordinal) + 1)]);
-        _listener.Start();
-        _ = AnswerRequestsAsync();
-    }
+    private readonly AnthropicApiStandIn _api = new(REFUSAL_RESPONSE, REQUEST_ID);
 
     [Fact]
     public async Task ARefusal_ComesBackAsARefusal_AndIsLoggedOnce()
@@ -73,7 +62,7 @@ public sealed class AnthropicChatConnectorRefusalTests : IDisposable
 
     public void Dispose()
     {
-        _listener.Close();
+        _api.Dispose();
     }
 
     private AnthropicChatConnector CreateConnector(ILogger<AnthropicChatConnector> logger)
@@ -82,49 +71,12 @@ public sealed class AnthropicChatConnectorRefusalTests : IDisposable
         {
             Anthropic = new AnthropicSettings
             {
-                ApiUrl = _apiUrl,
+                ApiUrl = _api.ApiUrl,
                 ApiKey = "test-key",
                 AdvancedModel = AiModel.PublicSonnet5_5,
             }
         };
 
         return new AnthropicChatConnector(settings, logger, new NoOpLimiter());
-    }
-
-    private async Task AnswerRequestsAsync()
-    {
-        while (_listener.IsListening)
-        {
-            HttpListenerContext context;
-            try
-            {
-                context = await _listener.GetContextAsync();
-            }
-            catch (HttpListenerException)
-            {
-                return;
-            }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
-
-            byte[] response = Encoding.UTF8.GetBytes(REFUSAL_RESPONSE);
-            context.Response.ContentType = "application/json";
-            context.Response.AddHeader("request-id", REQUEST_ID);
-            context.Response.ContentLength64 = response.Length;
-            await context.Response.OutputStream.WriteAsync(response);
-            context.Response.Close();
-        }
-    }
-
-    private static int FreePort()
-    {
-        var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        int port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-
-        return port;
     }
 }

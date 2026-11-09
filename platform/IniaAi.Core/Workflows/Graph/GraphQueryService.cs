@@ -428,8 +428,8 @@ public partial class GraphQueryService : IGraphQueryService, ITokenAccumulator
     {
         if (string.IsNullOrWhiteSpace(response) || response.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogError("LLM returned an error or empty response: {Preview}",
-                response?.Length > 500 ? response[..500] + "..." : response ?? "(empty)");
+            _logger.LogError("LLM returned an error or empty response: {Error}",
+                response.StartsWith(IChatConnector.ERROR_PREFIX, StringComparison.Ordinal) ? response : $"{response.Length} characters");
             return ("Unable to determine the answer. The AI service encountered an error. Please try again.", "answer");
         }
 
@@ -464,8 +464,8 @@ public partial class GraphQueryService : IGraphQueryService, ITokenAccumulator
         {
             _logger.LogError(
                 ex,
-                "Failed to parse LLM response. Response preview: {Preview}",
-                response.Length > 500 ? response[..500] + "..." : response
+                "Failed to parse LLM response: {Length} characters",
+                response.Length
             );
 
             return ("Unable to determine the answer. Please try again.", "answer");

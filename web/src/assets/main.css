@@ -125,7 +125,7 @@
    ======================================== */
 :root {
   /* Shadcn UI variables - Light Mode.
-     Inia brand palette. Every pair below is verified to WCAG 2.1 AA:
+     Inia AI brand palette. Every pair below is verified to WCAG 2.1 AA:
      4.5:1 for body text, 3.0:1 for large text and UI component boundaries.
      Ratios are noted where they matter; do not nudge a hex without recomputing. */
   --background: #f6f2ec; /* sand — the page ground, warmer than white */

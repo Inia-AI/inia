@@ -133,8 +133,8 @@ public class AzureCohereEmbeddingsConnector : IEmbeddingsConnector
             || EmbeddingsResponse.FromJson(responseJson) is not EmbeddingsResponse successResponse)
         {
             _logger.LogError(
-                "Error response from Azure AI Inference embeddings API. Status code: {statusCode}, Response: {response}",
-                response.StatusCode, responseJson);
+                "Error response from Azure AI Inference embeddings API. Status code: {statusCode}, Response: {error}",
+                response.StatusCode, response.IsSuccessStatusCode ? $"{responseJson.Length} characters" : responseJson);
 
             return [];
         }

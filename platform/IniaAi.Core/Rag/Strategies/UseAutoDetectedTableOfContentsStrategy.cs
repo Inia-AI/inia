@@ -29,8 +29,6 @@ internal class UseAutoDetectedTableOfContentsStrategy : IRagStrategy
             context.Topics,
             executionState.TopicsQuery);
 
-        context.Logger.LogTrace("Selecting sections prompt: {prompt}", prompt);
-
         ResponseContentSequence relevantSectionsIdentificationResponseContent =
             await context.ChatConnector.GetResponseAsync(
                 prompt,
@@ -44,8 +42,8 @@ internal class UseAutoDetectedTableOfContentsStrategy : IRagStrategy
             ?? string.Empty;
 
         context.Logger.LogTrace(
-            "Selecting topics response: {response}",
-            relevantSectionsIdentificationResponse);
+            "Selecting topics response: {Length} characters",
+            relevantSectionsIdentificationResponse.Length);
 
         var sectionSelection = SectionSelection.FromJson(relevantSectionsIdentificationResponse);
 
@@ -84,17 +82,13 @@ internal class UseAutoDetectedTableOfContentsStrategy : IRagStrategy
         }
 
         context.Logger.LogTrace(
-            "Pages from TOC: {pagesFromTopicsText}",
-            pagesFromTopicsText);
+            "Pages from TOC: {PageCount} pages",
+            pagesFromSelectedSections.Count);
 
         string selectedPagesAnalysisPrompt = string.Format(
             _prompts.RelevanceAssessmentPrompt,
             pagesFromTopicsText,
             executionState.TopicsQuery);
-
-        context.Logger.LogTrace(
-            "Selected pages analysis prompt: {selectedPagesAnalysisPrompt}",
-            selectedPagesAnalysisPrompt);
 
         ResponseContentSequence selectedPagesAnalysisResponseContent =
             await context.ChatConnector.GetResponseAsync(
@@ -109,16 +103,12 @@ internal class UseAutoDetectedTableOfContentsStrategy : IRagStrategy
             ?? string.Empty;
 
         context.Logger.LogTrace(
-            "Selected pages analysis response: {selectedPagesAnalysisResponse}",
-            selectedPagesAnalysisResponse);
+            "Selected pages analysis response: {Length} characters",
+            selectedPagesAnalysisResponse.Length);
 
         string exactPagesExtractionPrompt = string.Format(
             _prompts.PageSelectionPrompt,
             selectedPagesAnalysisResponse);
-
-        context.Logger.LogTrace(
-            "Exact pages extraction prompt: {exactPagesExtractionPrompt}",
-            exactPagesExtractionPrompt);
 
         ResponseContentSequence exactPagesExtractionResponseContent =
             await context.ChatConnector.GetResponseAsync(
@@ -133,8 +123,8 @@ internal class UseAutoDetectedTableOfContentsStrategy : IRagStrategy
             ?? string.Empty;
 
         context.Logger.LogTrace(
-            "Exact pages extraction response: {exactPagesExtractionResponse}",
-            exactPagesExtractionResponse);
+            "Exact pages extraction response: {Length} characters",
+            exactPagesExtractionResponse.Length);
 
         string? exactPages = Utils.GetStringFromTag(
                 exactPagesExtractionResponse,
@@ -180,8 +170,8 @@ internal class UseAutoDetectedTableOfContentsStrategy : IRagStrategy
         {
             logger.LogError(
                 ex,
-                "Failed to parse exact pages for numbers: {exactPages}",
-                exactPages);
+                "Failed to parse exact pages for numbers from {Length} characters",
+                exactPages.Length);
 
             return [];
         }
