@@ -9,6 +9,7 @@ using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.WebApi.Contracts.Dto.Citations;
 using IniaAi.WebApi.Contracts.Enums;
+using IniaAi.WebApi.Contracts.Responses.WorkflowOutput;
 using IniaAi.WebApi.Contracts.Responses.WorkflowReports;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -114,6 +115,40 @@ public class ListReportSectionsQueryHandlerTests : IDisposable
 
         Assert.False(result.IsError);
         Assert.Empty(result.Value);
+    }
+
+    [Fact]
+    public async Task Handle_AParagraphWhoseChartTheReportLeftOut_ReadsAtTheFullWidth()
+    {
+        var report = new WorkflowReport { WorkflowExecutionId = "exec-no-chart", OrganizationId = "org-no-chart", Title = "Report" };
+        var section = new ReportSection
+        {
+            WorkflowReportId = report.Id,
+            WorkflowReport = report,
+            Title = "Liquidity",
+            Layout = new GridLayoutOutput
+            {
+                Mode = "grid",
+                Columns = 5,
+                Elements =
+                [
+                    new GridElementPosition { BlockOrder = 0, Row = 1, Column = 1, RowSpan = 1, ColumnSpan = 3 },
+                    new GridElementPosition { BlockOrder = 1, Row = 1, Column = 4, RowSpan = 1, ColumnSpan = 2 },
+                ],
+            },
+        };
+        section.Paragraphs.Add(new ReportParagraph { SectionId = section.Id, Section = section, Kind = ReportParagraphKind.Paragraph, Order = 0, Content = "Liquidity is strong." });
+        report.Sections.Add(section);
+        _ = await _context.Set<WorkflowReport>().AddAsync(report, TestContext.Current.CancellationToken);
+        _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        ErrorOr<List<ReportSectionDto>> result = await _handler.Handle(
+            new ListReportSectionsQuery("exec-no-chart", "org-no-chart"),
+            TestContext.Current.CancellationToken);
+
+        GridElementPositionDto paragraph = Assert.Single(Assert.Single(result.Value).Layout!.Elements);
+        Assert.Equal((0, 1, 5), (paragraph.BlockOrder, paragraph.Column, paragraph.ColumnSpan));
     }
 
     [Fact]

@@ -6,6 +6,7 @@ namespace IniaAi.Domain.Entities.WorkflowExecutions;
 public class GridLayoutOutput : WorkflowOutputData
 {
     public const string GRID_MODE = "grid";
+    public const int DEFAULT_COLUMNS = 2;
 
     /// <summary>
     /// Identifies this as grid layout configuration data
@@ -20,7 +21,7 @@ public class GridLayoutOutput : WorkflowOutputData
     /// <summary>
     /// The number of columns in the grid
     /// </summary>
-    public int Columns { get; set; } = 2;
+    public int Columns { get; set; } = DEFAULT_COLUMNS;
 
     /// <summary>
     /// The positioning configuration for each child element

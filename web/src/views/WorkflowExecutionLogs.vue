@@ -169,7 +169,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useTitle } from '@vueuse/core'
+import { useItemTitle } from '@/composables/useDocumentTitle'
 import API from '@/api'
 import { WorkflowExecutionLogItem, DownloadExecutedWorkflowButton } from '@/components/molecules'
 import { IniaIcon } from '@/components/atoms'
@@ -246,15 +246,7 @@ const counterpartyName = computed(() => executionData.value?.counterpartyName ??
 
 const reportName = computed(() => (executionData.value ? reportTitle(executionData.value) : undefined))
 
-const appTitle = document.title
-
-useTitle(
-  () =>
-    reportName.value
-      ? $t('page.workflowExecutionLogs.documentTitle', { report: reportName.value })
-      : $t('page.workflowExecutionLogs.title'),
-  { titleTemplate: `%s · ${appTitle}` },
-)
+useItemTitle(reportName)
 
 const startedAtFormatted = computed(() => {
   const startedAt = executionData.value?.startedAt

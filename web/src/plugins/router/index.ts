@@ -17,6 +17,8 @@ declare module 'vue-router' {
     allowedRoles?: readonly string[]
     /** Without this capability the address explains that the account does not include it. */
     capability?: string
+    /** The i18n key of the page's name in the browser tab. */
+    title?: string
   }
 }
 
@@ -55,61 +57,62 @@ const router = createRouter({
       path: '/',
       name: 'Home',
       component: HomeView,
-      meta: {},
+      meta: { title: 'shared.menu.home' },
     },
     {
       path: '/workflow-reports',
       name: 'WorkflowReports',
       component: WorkflowReports,
-      meta: {},
+      meta: { title: 'page.financialAnalysis.title' },
     },
     {
       path: '/workflow-reports/:id/logs',
       name: 'ExecutionLogs',
       component: WorkflowExecutionLogs,
-      meta: { capability: CAPABILITIES.RUN_LOGS },
+      meta: { title: 'page.workflowExecutionLogs.title', capability: CAPABILITIES.RUN_LOGS },
     },
     {
       path: '/workflows/create',
       name: 'CreateWorkflow',
       component: CreateWorkflow,
-      meta: { capability: CAPABILITIES.RUN },
+      meta: { title: 'page.createWorkflow.title', capability: CAPABILITIES.RUN },
     },
     {
       path: '/workflow-reports/:id/:action',
       name: 'WorkflowDetails',
       component: WorkflowDetails,
-      meta: {},
+      meta: { title: 'page.workflowDetails.title' },
     },
     {
       path: '/login',
       name: 'Login',
       component: LoginView,
-      meta: { layout: 'blank', isPublic: true },
+      meta: { title: 'page.login.documentTitle', layout: 'blank', isPublic: true },
     },
     {
       path: '/forgot-password',
       name: 'ForgotPassword',
       component: ForgotPassword,
-      meta: { layout: 'blank', isPublic: true },
+      meta: { title: 'page.forgotPassword.title', layout: 'blank', isPublic: true },
     },
     {
       path: '/reset-password',
       name: 'ResetPassword',
       component: ResetPassword,
-      meta: { layout: 'blank', isPublic: true },
+      meta: { title: 'page.resetPassword.title', layout: 'blank', isPublic: true },
     },
     {
       path: '/2fa-verify',
       name: 'TwoFactorVerify',
       component: TwoFactorVerifyView,
-      meta: { layout: 'blank', isPublic: true },
+      meta: { title: 'page.twoFactor.title', layout: 'blank', isPublic: true },
     },
     {
       path: '/health',
       name: 'Health',
       component: Health,
       meta: {
+        title: 'page.health.title',
         layout: 'blank',
         isPublic: true,
       },
@@ -118,51 +121,56 @@ const router = createRouter({
       path: '/profile',
       name: 'Profile',
       component: ProfileView,
+      meta: { title: 'page.profile.title' },
     },
     {
       path: '/counterparty-management',
       name: 'CounterpartyManagement',
       component: CounterpartyManagement,
+      meta: { title: 'page.counterpartyManagement.title' },
     },
     {
       path: '/counterparty-types',
       name: 'CounterpartyTypeManagement',
       component: CounterpartyTypeManagement,
-      meta: { allowedRoles: EDITOR_ROLES },
+      meta: { title: 'page.counterpartyManagement.types.title', allowedRoles: EDITOR_ROLES },
     },
     {
       path: '/documents',
       name: 'Documents',
       component: Documents,
+      meta: { title: 'page.documents.title' },
     },
     {
       path: '/documents/:id',
       name: 'DocumentDetails',
       component: DocumentDetails,
+      meta: { title: 'page.documents.detail.title' },
     },
     {
       path: '/document-category-management',
       name: 'DocumentCategoryManagement',
       component: DocumentCategoryManagement,
-      meta: { allowedRoles: EDITOR_ROLES },
+      meta: { title: 'page.documentCategoryManagement.title', allowedRoles: EDITOR_ROLES },
     },
     {
       path: '/token-usage',
       name: 'TokenUsageAnalytics',
       component: TokenUsageAnalytics,
-      meta: { allowedRoles: ADMIN_AND_OPERATOR_ROLES },
+      meta: { title: 'shared.menu.tokenUsageAnalytics', allowedRoles: ADMIN_AND_OPERATOR_ROLES },
     },
     {
       path: '/model-pricing',
       name: 'ModelPricingManagement',
       component: ModelPricingManagement,
-      meta: { allowedRoles: OPERATOR_ROLES },
+      meta: { title: 'page.modelPricingManagement.title', allowedRoles: OPERATOR_ROLES },
     },
     {
       path: '/signatures',
       name: 'SignaturesPicker',
       component: SignatureSettings,
       meta: {
+        title: 'page.signatures.title',
         allowedRoles: [ROLES.SUPER_ADMIN, ROLES.SIGNATURE_CONTRIBUTOR],
         capability: CAPABILITIES.SIGNATURES,
       },
@@ -172,6 +180,7 @@ const router = createRouter({
       name: 'SignatureSettings',
       component: SignatureSettings,
       meta: {
+        title: 'page.signatures.title',
         allowedRoles: [ROLES.SUPER_ADMIN, ROLES.SIGNATURE_CONTRIBUTOR],
         capability: CAPABILITIES.SIGNATURES,
       },
@@ -180,18 +189,20 @@ const router = createRouter({
       path: '/no-organization',
       name: NO_ORGANIZATION,
       component: NoOrganizationView,
-      meta: { layout: 'blank' },
+      meta: { title: 'page.noOrganization.title', layout: 'blank' },
     },
     {
       path: '/:unknownAddress(.*)*',
       name: UNKNOWN_ADDRESS,
       component: NotFoundView,
+      meta: { title: 'page.notFound.title' },
     },
     // Reached only by name, so the address bar keeps the address the account does not include; the catch-all above wins every match by address.
     {
       path: '/:notIncludedAddress(.*)*',
       name: NOT_INCLUDED,
       component: NotIncludedView,
+      meta: { title: 'page.notIncluded.title' },
     },
   ],
 })

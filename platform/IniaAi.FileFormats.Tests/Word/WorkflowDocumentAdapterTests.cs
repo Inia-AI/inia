@@ -27,6 +27,34 @@ public class WorkflowDocumentAdapterTests
     }
 
     [Fact]
+    public void ToDocumentElement_AParagraphWhoseChartTheReportLeftOut_PrintsAtTheFullWidth()
+    {
+        var report = new WorkflowReport { Title = "Report" };
+        var section = new ReportSection
+        {
+            Title = "Liquidity",
+            Layout = new GridLayoutOutput
+            {
+                Mode = GridLayoutOutput.GRID_MODE,
+                Columns = 5,
+                Elements =
+                [
+                    new GridElementPosition { BlockOrder = 0, Row = 1, Column = 1, RowSpan = 1, ColumnSpan = 3 },
+                    new GridElementPosition { BlockOrder = 1, Row = 1, Column = 4, RowSpan = 1, ColumnSpan = 2 },
+                ],
+            },
+        };
+        report.Add(section);
+        section.Add(new ReportParagraph { Kind = ReportParagraphKind.Paragraph, Content = "Liquidity is strong." });
+
+        IDocumentElement sectionElement = Assert.Single(WorkflowDocumentAdapter.ToDocumentElement(report).Children);
+
+        GridLayoutOutput layout = Assert.IsType<GridLayoutOutput>(Assert.Single(sectionElement.OutputData));
+        GridElementPosition paragraph = Assert.Single(layout.Elements);
+        Assert.Equal((0, 1, 5), (paragraph.BlockOrder, paragraph.Column, paragraph.ColumnSpan));
+    }
+
+    [Fact]
     public void ToDocumentElement_SectionWithParagraphs_BuildsSectionWithParagraphChildren()
     {
         var report = new WorkflowReport { Title = "Report" };
@@ -143,7 +171,8 @@ public class WorkflowDocumentAdapterTests
         var root = WorkflowDocumentAdapter.ToDocumentElement(report);
 
         IDocumentElement sectionElement = Assert.Single(root.Children);
-        Assert.Same(layout, Assert.Single(sectionElement.OutputData));
+        GridLayoutOutput routed = Assert.IsType<GridLayoutOutput>(Assert.Single(sectionElement.OutputData));
+        Assert.Equal((layout.Mode, layout.Columns), (routed.Mode, routed.Columns));
     }
 
     [Fact]

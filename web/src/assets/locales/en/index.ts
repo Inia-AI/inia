@@ -19,6 +19,7 @@ import {
   notFound,
   noOrganization,
   notIncluded,
+  health,
 } from './page'
 import {
   layout,
@@ -79,6 +80,7 @@ export const EN = {
     notFound,
     noOrganization,
     notIncluded,
+    health,
   },
   shared: {
     layout,

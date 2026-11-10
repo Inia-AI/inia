@@ -10,8 +10,10 @@ namespace IniaAi.Domain.Entities.UserManagement;
 /// </summary>
 public class Organization : Entity<Organization>
 {
+    public const int NAME_MAX_LENGTH = 250;
+
     [Required]
-    [StringLength(250)]
+    [StringLength(NAME_MAX_LENGTH)]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>

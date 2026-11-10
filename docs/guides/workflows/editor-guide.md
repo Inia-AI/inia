@@ -82,6 +82,7 @@ These controls sit above the template, top to bottom:
 - **Grid Layout**:
   - Number of columns for block display
   - Gap size between blocks
+  - When a block puts nothing in the report, such as a chart block that produced no chart, the report leaves it out. A paragraph or chart with nothing beside it in its rows takes the full width of the section, in the app and in the Word export. This holds for a block you place alone in its row too.
 - **Custom Properties**: Section-specific configuration values
 - **Leave out of exports** (section **⋮** menu): the section still shows in the report in the app, but the Word and Markdown exports leave it out: no heading, no paragraphs, no table-of-contents entry. Use it for debug and transparency content that the analyst reads in the app but does not want in the exported document. While it is on, the section header shows **Not in exports**, and the analyst sees the same label on the section in the report. The menu item reads **Include in exports** to switch it back.
   - It takes effect for runs that start after you save the workflow. Each report keeps the setting it was built with, so switching it later does not change the export of an earlier run.

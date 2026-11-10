@@ -1,4 +1,5 @@
 {
+  "documentTitle": "Sign in",
   "errors": {
     "loginFailed": "It seems like the email or password you entered is incorrect. Please check your credentials and try again.",
     "googleFailed": "Google sign-in failed. Please try again.",

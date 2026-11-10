@@ -1,6 +1,5 @@
 {
   "title": "Execution Logs",
-  "documentTitle": "{report} · Execution Logs",
   "backToReport": "Back to report",
   "clickToJump": "Click any failed block below to view its details",
   "failedBlocks": "Failed Blocks",

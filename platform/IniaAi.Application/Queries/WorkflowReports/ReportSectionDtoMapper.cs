@@ -19,7 +19,7 @@ public static class ReportSectionDtoMapper
             Id = section.Id,
             Order = section.Order,
             Title = section.Title,
-            Layout = section.Layout is null ? null : ToDto(section.Layout),
+            Layout = section.ShownLayout() is { } layout ? ToDto(layout) : null,
             ExcludeFromWordExport = section.ExcludeFromWordExport,
             Paragraphs = [.. section.Paragraphs.OrderBy(paragraph => paragraph.Order).Select(ToDto)],
         };

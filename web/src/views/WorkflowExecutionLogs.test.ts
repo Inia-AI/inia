@@ -54,6 +54,7 @@ vi.mock('@/composables/useDownloadExecutedWorkflow', async () => {
 import API from '@/api'
 import { WorkflowState } from '@/enums'
 import WorkflowExecutionLogs from './WorkflowExecutionLogs.vue'
+import { withDocumentTitle } from '@/test/helpers/documentTitle'
 
 const REPORT_ID = 'exec-1'
 const LOGS_PATH = `/workflow-reports/${REPORT_ID}/logs`
@@ -92,7 +93,7 @@ const openLogs = async (history: string[] = [LOGS_PATH], { realLogItems = false 
     history: createMemoryHistory(),
     routes: [
       { path: '/workflow-reports', name: 'WorkflowReports', component: { template: '<div/>' } },
-      { path: '/workflow-reports/:id/logs', name: 'ExecutionLogs', component: WorkflowExecutionLogs },
+      { path: '/workflow-reports/:id/logs', name: 'ExecutionLogs', component: WorkflowExecutionLogs, meta: { title: 'page.workflowExecutionLogs.title' } },
       { path: '/workflow-reports/:id/:action', name: 'WorkflowDetails', component: { template: '<div/>' } },
     ],
   })
@@ -100,7 +101,7 @@ const openLogs = async (history: string[] = [LOGS_PATH], { realLogItems = false 
     await router.push(path)
   }
   await router.isReady()
-  wrapper = mount(WorkflowExecutionLogs, {
+  wrapper = mount(withDocumentTitle(WorkflowExecutionLogs), {
     global: {
       plugins: [router, i18n],
       stubs: {
@@ -265,38 +266,17 @@ describe('WorkflowExecutionLogs header', () => {
 })
 
 describe('WorkflowExecutionLogs browser tab title', () => {
-  const ORIGINAL_TITLE = 'Inia AI Web'
-
-  beforeEach(() => {
-    document.title = ORIGINAL_TITLE
-  })
-
-  it("names the report's logs", async () => {
-    await openLogs()
-
-    expect(document.title).toBe('QA graded run · Execution Logs · Inia AI Web')
-  })
-
   it('reads Execution Logs until the report has loaded, then names the report', async () => {
     setReport(undefined)
 
     await openLogs()
 
-    expect(document.title).toBe('Execution Logs · Inia AI Web')
+    expect(document.title).toBe('Execution Logs · Inia AI')
 
     setReport({ id: REPORT_ID, title: 'QA graded run' })
     await flushPromises()
 
-    expect(document.title).toBe('QA graded run · Execution Logs · Inia AI Web')
-  })
-
-  it('gives the tab its title back on leaving the page', async () => {
-    const page = await openLogs()
-
-    page.unmount()
-    wrapper = null
-
-    expect(document.title).toBe(ORIGINAL_TITLE)
+    expect(document.title).toBe('QA graded run · Execution Logs · Inia AI')
   })
 })
 

@@ -63,6 +63,7 @@ vi.mock('vue-i18n', async importOriginal => ({
 }))
 
 import SignatureSettings from './SignatureSettings.vue'
+import { withDocumentTitle } from '@/test/helpers/documentTitle'
 
 const block = (blockId: string, blockName: string) => ({
   blockId,
@@ -94,12 +95,19 @@ const mountAt = async (path: string) => {
   })
   router.push(path)
   await router.isReady()
-  const wrapper = mount(SignatureSettings, { global: { plugins: [router], mocks: { $t: (key: string) => key }, stubs: { SignatureTestDialog: true, SignatureHistoryTab: true } } })
+  const wrapper = mount(withDocumentTitle(SignatureSettings), { global: { plugins: [router], mocks: { $t: (key: string) => key }, stubs: { SignatureTestDialog: true, SignatureHistoryTab: true } } })
   await flushPromises()
   return { wrapper, router }
 }
 
 describe('SignatureSettings keyboard access', () => {
+  it('names the workflow in the browser tab', async () => {
+    ;(signaturesRef.value as { value: unknown }).value = SIGNATURES
+    await mountAt('/signatures/CreditMemo')
+
+    expect(document.title).toBe('Credit Memo · Inia AI')
+  })
+
   it('opens a workflow from the picker through a native button', async () => {
     ;(categoriesRef.value as { value: unknown }).value = [
       { id: 'c1', name: 'Corporate', workflows: [{ workflowTypeId: 'CreditMemo', workflowTypeName: 'Credit Memo' }] },

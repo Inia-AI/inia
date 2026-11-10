@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useItemTitle } from '@/composables/useDocumentTitle'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import API from '@/api'
@@ -31,6 +32,8 @@ const {
   isError,
   error,
 } = API.Documents.useGetDocumentById(documentId)
+
+useItemTitle(() => documentData.value?.name)
 
 const notFound = computed(() => {
   if (!isError.value) return false

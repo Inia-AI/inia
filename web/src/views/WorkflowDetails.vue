@@ -59,6 +59,7 @@ import { focusFirstConnected } from '@/utils/focus'
 import { OPEN_REPORT_FEEDBACK_KEY } from '@/components/organisms/ReportFeedback/injectionKeys'
 import { useCanReviewSignatures, useCapabilities } from '@/composables/useCapabilities'
 import { CAPABILITIES } from '@/constants/capabilities'
+import { useItemTitle } from '@/composables/useDocumentTitle'
 
 const router = useRouter()
 const { t: $t } = useI18n()
@@ -395,6 +396,8 @@ const workflowOutput = computed(() => {
   if (!executionData.value) return null
   return { ...executionData.value, title: reportTitle(executionData.value) }
 })
+
+useItemTitle(() => workflowOutput.value?.title)
 
 const dataOutputs = computed(() => dataOutputData.value ?? [])
 

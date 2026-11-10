@@ -47,9 +47,9 @@ public static class WorkflowDocumentAdapter
             Order = section.Order
         };
 
-        if (section.Layout is not null)
+        if (section.ShownLayout() is { } layout)
         {
-            doc.OutputData.Add(section.Layout);
+            doc.OutputData.Add(layout);
         }
 
         doc.Metadata["Order"] = section.Order.ToString();

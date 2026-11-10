@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <h1 class="text-xl mb-4">System Health Status</h1>
+    <h1 class="text-xl mb-4">{{ $t('page.health.title') }}</h1>
     <div v-if="isLoading" class="text-muted-foreground">
       <span class="animate-pulse">Checking system health...</span>
     </div>

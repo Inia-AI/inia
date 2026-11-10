@@ -267,11 +267,11 @@ public class ExternalLoginUserResolverTests : IDisposable
     public async Task ResolveAsync_ARefusedSignUp_FailsWithTheSignUpsOwnError()
     {
         ExternalLoginUserResolution resolution = await ResolverWith(new RefusesEverySignUp())
-            .ResolveAsync(PROVIDER, "someone@gmail.com", emailVerified: true, []);
+            .ResolveAsync(PROVIDER, "someone@mailinator.com", emailVerified: true, []);
 
         Assert.Equal(ExternalLoginFailure.SignUpRefused, resolution.Failure);
-        Assert.Equal("work_email_required", resolution.SignUpRefusal?.Error);
-        Assert.Equal("Use your work email address.", resolution.SignUpRefusal?.ErrorDescription);
+        Assert.Equal("disposable_email", resolution.SignUpRefusal?.Error);
+        Assert.Equal("Use an address you'll keep.", resolution.SignUpRefusal?.ErrorDescription);
     }
 
     [Fact]
@@ -309,7 +309,7 @@ public class ExternalLoginUserResolverTests : IDisposable
     {
         public Task<ExternalSignUpResult> SignUpAsync(string provider, string email, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(ExternalSignUpResult.Refused("work_email_required", "Use your work email address."));
+            return Task.FromResult(ExternalSignUpResult.Refused("disposable_email", "Use an address you'll keep."));
         }
     }
 }

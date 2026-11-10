@@ -40,6 +40,8 @@ declare module 'vue-router' {
     layout?: 'blank'
     isPublic?: boolean
     allowedRoles?: readonly string[]
+    capability?: string
+    title?: string
   }
 }
 ```
@@ -47,6 +49,12 @@ declare module 'vue-router' {
 - `layout: 'blank'` selects a chrome-less layout (used by login, forgot-password, reset-password, 2FA, health).
 - `isPublic` bypasses the auth guard entirely.
 - `allowedRoles` drives role gating (see [Auth model](#authorization-roles-and-route-gating)).
+- `capability` names what the organization must be allowed to use (see [Capabilities](#capabilities-what-the-organization-may-use)).
+- `title` is the i18n key of the page's name in the browser tab.
+
+### Browser tab title
+
+The browser tab reads `<item> · <page> · Inia AI`. `useDocumentTitle` (`src/composables/useDocumentTitle.ts`), called once in `App.vue`, writes it from the route's `meta.title` in the current language. A page that shows one item, such as a report or a document, calls `useItemTitle` with the item's name: the name goes first once it has loaded, because a browser cuts a long tab title from the end and the name is what tells two tabs apart. The name leaves the tab when the page closes, unless the next page has already set its own: Vue closes the old page after it opens the new one, so only the page that set the name last clears it. A page with no `meta.title` shows `Inia AI` alone. A router test (`src/plugins/router/routeTitles.test.ts`) fails when a page of the app or of a paid module has no title key, or a key with no English text.
 
 ### Public routes
 

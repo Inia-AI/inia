@@ -822,6 +822,8 @@ A section's optional `layout` arranges its paragraphs in a CSS-grid or sequentia
 }
 ```
 
+`blockOrder` matches a paragraph's `order`. `elements` holds the positions of the paragraphs the section shows, so a position whose block put nothing in the report, or whose paragraph an analyst deleted, is not there. A paragraph or chart that shares no row with another shown element gets column 1 and the full width, also when the workflow placed it alone. Two elements share a row when their rows overlap, counting `rowSpan`. The Word export places the section by the same layout, and the stored layout keeps the positions the workflow defined.
+
 ## Export Format
 
 Both exports read the same element tree, `WorkflowDocumentAdapter.ToDocumentElement`, so they carry the same sections in the same order, and both remove citation markup with `FactTags.Strip` and keep the cited figures.

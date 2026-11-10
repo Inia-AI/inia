@@ -33,6 +33,7 @@ import { useColorMode } from '@vueuse/core'
 import { useRefreshToken } from '@/composables/refreshToken'
 import { withCapability } from '@/components/capabilities/withCapability'
 import { CAPABILITIES } from '@/constants/capabilities'
+import { useDocumentTitle } from '@/composables/useDocumentTitle'
 
 const AgentActivityRailIfIncluded = withCapability(CAPABILITIES.RUN_LOGS, AgentActivityRail)
 
@@ -47,6 +48,7 @@ const layout = ref<string>('')
 
 const router = useRouter()
 const route = useRoute()
+useDocumentTitle()
 const { setRefreshTokenTimer } = useRefreshToken()
 
 router.isReady().then(() => {

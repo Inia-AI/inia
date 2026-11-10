@@ -18,6 +18,7 @@
  * was renamed or deleted by a concurrent staff edit; the client flips into an
  * "outdated" state and invites a refresh.
  */
+import { useItemTitle } from '@/composables/useDocumentTitle'
 import axios from 'axios'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -378,6 +379,8 @@ const flatWorkflows = computed<FlatWorkflow[]>(() => {
 // ─── Editor state (shown when /signatures/:workflowTypeId) ──────────
 const { data, isLoading, isError, error, refetch } =
   API.Signatures.useGetWorkflowSignatures(workflowTypeId)
+
+useItemTitle(() => data.value?.workflowName)
 
 const selectedSectionId = ref<string | null>(null)
 const selectedBlockId = ref<string | null>(null)

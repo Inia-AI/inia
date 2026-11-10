@@ -8,6 +8,7 @@ using DocumentFormat.OpenXml.Validation;
 using IniaAi.Common.Content;
 using IniaAi.Common.Interfaces;
 using IniaAi.Domain.Entities.WorkflowExecutions;
+using IniaAi.Domain.Enums;
 using IniaAi.FileFormats.ContractTests.Reports;
 using IniaAi.FileFormats.Markdown;
 using IniaAi.FileFormats.Word;
@@ -286,6 +287,18 @@ public abstract partial class WordReportWriterContract : ReportFileWriterContrac
         WordFile file = await ReadAsync(NEWS_GRID);
 
         AssertFullWidth(file.ParagraphsWith("Consent Order").First());
+    }
+
+    [Fact]
+    public async Task WriteAsync_InAGrid_GivesTheWholePageToABlockWhoseChartTheReportLeftOut()
+    {
+        WorkflowReport report = NewsMarketDataFixture.Build();
+        ReportSection section = Assert.Single(report.Sections);
+        _ = section.Paragraphs.Remove(section.Paragraphs.Single(paragraph => paragraph.Kind is ReportParagraphKind.DynamicChart));
+
+        WordFile file = await WriteAsync(report);
+
+        AssertFullWidth(file.ParagraphsWith("Harrowgate Aerostructures plc").First(paragraph => !WordFile.TextOf(paragraph).Contains("Consent Order", StringComparison.Ordinal)));
     }
 
     [Fact]
