@@ -50,7 +50,7 @@ public class CreditPack
     /// <summary>Credits taken back by refunds so far, so a repeated refund event never reverses twice.</summary>
     public int Reversed { get; set; }
 
-    /// <summary>Credits of this pack that paid the account's debt when it was granted.</summary>
+    /// <summary>Credits of this pack that paid the account's debt: when it was granted, or when a run or a dispute gave them back.</summary>
     public int DebtRepaid { get; set; }
 
     [StringLength(450)]

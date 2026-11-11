@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations;
 namespace IniaAi.Domain.Entities.SelfServe;
 
 /// <summary>
-/// One consent a user gave at checkout, kept as evidence for the confirmation email and for a
-/// dispute.
+/// One consent a user gave at checkout, for a plan or a top-up, kept as evidence for the
+/// confirmation email and for a dispute.
 /// </summary>
 [Index(nameof(OrganizationId))]
 [Index(nameof(UserId))]
@@ -44,6 +44,14 @@ public class Consent
 
     [StringLength(CreditPack.PROVIDER_ID_MAX_LENGTH)]
     public string? ProviderSubscriptionId { get; set; }
+
+    /// <summary>The price of the top-up the checkout sold; empty for a plan's checkout.</summary>
+    [StringLength(CreditPack.PROVIDER_ID_MAX_LENGTH)]
+    public string? TopUpPriceId { get; set; }
+
+    /// <summary>The invoice that paid the top-up, once its checkout completes.</summary>
+    [StringLength(CreditPack.PROVIDER_ID_MAX_LENGTH)]
+    public string? ProviderInvoiceId { get; set; }
 
     public DateTime? ConfirmationSentAt { get; set; }
 

@@ -29,5 +29,11 @@ public class CreditAccount
 
     public DateTime? SuspendedAt { get; set; }
 
+    /// <summary>
+    /// Since when an early fraud warning holds back the grants that payments make, until an operator
+    /// releases them; empty while they go through. Runs and the credits already granted are not affected.
+    /// </summary>
+    public DateTime? PaidGrantsHeldAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -1,3 +1,4 @@
+using IniaAi.Configuration.Platform;
 using IniaAi.Core.Workflows;
 using IniaAi.Core.Workflows.Strategies;
 using IniaAi.Domain.Core.Interfaces;
@@ -19,9 +20,13 @@ public class WebApiCallStrategyStoredKeyTests
 {
     private const string ORGANIZATION_ID = "org-stored-keys";
     private const string OTHER_ORGANIZATION_ID = "org-without-keys";
+    private const string UNREADABLE_KEY_ORGANIZATION_ID = "org-unreadable-key";
     private const string KEY_NAME = "ParallelAi";
     private const string KEY_VALUE = "fake test value";
     private const string FORMER_TENANT_KEY_VALUE = "fake former tenant value";
+    private const string DEPLOYMENT_KEY_NAME = "PerplexityApiKey";
+    private const string DEPLOYMENT_KEY_VALUE = "fake deployment value";
+    private const string ORGANIZATION_KEY_VALUE = "fake organization value";
 
     private static readonly string _keyToken = StoredKeyPlaceholders.Token(KEY_NAME);
 
@@ -34,6 +39,7 @@ public class WebApiCallStrategyStoredKeyTests
         ITestOutputHelper outputHelper)
     {
         fixture.PlatformSettings.OutboundAccess.AllowedInternalHosts = ["127.0.0.1"];
+        fixture.PlatformSettings.StoredKeys.DeploymentKeys[DEPLOYMENT_KEY_NAME] = DEPLOYMENT_KEY_VALUE;
         _testServiceProvider = fixture.BuildTestServiceProvider(outputHelper);
         _server = server;
     }
@@ -98,6 +104,37 @@ public class WebApiCallStrategyStoredKeyTests
     }
 
     [Fact]
+    public async Task ExecuteBlockAsync_AFormerTenantKeyTheOrganizationDoesNotHave_SendsTheDeploymentValue()
+    {
+        (Block block, BlockExecutionContext context) = Arrange(
+            OTHER_ORGANIZATION_ID,
+            "/headers",
+            new() { ["Authorization"] = $"Bearer {{Organization.{DEPLOYMENT_KEY_NAME}}}" });
+
+        _ = await new WebApiCallStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(block.BlockResponse?.RawResponse);
+        Assert.Contains($"Bearer {DEPLOYMENT_KEY_VALUE}", block.BlockResponse.RawResponse);
+        Assert.DoesNotContain(DEPLOYMENT_KEY_VALUE, JsonConvert.SerializeObject(block.Properties));
+    }
+
+    [Fact]
+    public async Task ExecuteBlockAsync_AnOrganizationWithItsOwnKey_SendsItsOwnValueOverTheDeploymentValue()
+    {
+        await StoreKeyAsync(ORGANIZATION_ID, DEPLOYMENT_KEY_NAME, ORGANIZATION_KEY_VALUE);
+        (Block block, BlockExecutionContext context) = Arrange(
+            ORGANIZATION_ID,
+            "/headers",
+            new() { ["Authorization"] = $"Bearer {StoredKeyPlaceholders.Token(DEPLOYMENT_KEY_NAME)}" });
+
+        _ = await new WebApiCallStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(block.BlockResponse?.RawResponse);
+        Assert.Contains($"Bearer {ORGANIZATION_KEY_VALUE}", block.BlockResponse.RawResponse);
+        Assert.DoesNotContain(DEPLOYMENT_KEY_VALUE, block.BlockResponse.RawResponse);
+    }
+
+    [Fact]
     public async Task ExecuteBlockAsync_AStoredKeyTheKeyRingCannotDecrypt_FailsNamingItAndSendsNothing()
     {
         await StoreProtectedValueAsync(ORGANIZATION_ID, KEY_NAME, "not-a-data-protection-payload");
@@ -111,6 +148,34 @@ public class WebApiCallStrategyStoredKeyTests
 
         Assert.Contains($"The stored key '{KEY_NAME}' cannot be decrypted", failure.Message);
         Assert.Equal(0, _server.PathHits("/never-reached-unreadable-key"));
+    }
+
+    [Fact]
+    public async Task ExecuteBlockAsync_AnOrganizationKeyTheKeyRingCannotDecrypt_FailsAlthoughTheDeploymentHasThatName()
+    {
+        await StoreProtectedValueAsync(UNREADABLE_KEY_ORGANIZATION_ID, DEPLOYMENT_KEY_NAME, "not-a-data-protection-payload");
+        (Block block, BlockExecutionContext context) = Arrange(
+            UNREADABLE_KEY_ORGANIZATION_ID,
+            "/never-reached-unreadable-deployment-name",
+            new() { ["Authorization"] = $"Bearer {StoredKeyPlaceholders.Token(DEPLOYMENT_KEY_NAME)}" });
+
+        InvalidOperationException failure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new WebApiCallStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
+
+        Assert.Contains($"The stored key '{DEPLOYMENT_KEY_NAME}' cannot be decrypted", failure.Message);
+        Assert.Equal(0, _server.PathHits("/never-reached-unreadable-deployment-name"));
+    }
+
+    [Fact]
+    public void DeploymentValue_MatchesANameWrittenInAnyCase()
+    {
+        var settings = new StoredKeySettings();
+        settings.DeploymentKeys["perplexityapikey"] = DEPLOYMENT_KEY_VALUE;
+        settings.DeploymentKeys["ParallelApiKey"] = "";
+
+        Assert.Equal(DEPLOYMENT_KEY_VALUE, settings.DeploymentValue(DEPLOYMENT_KEY_NAME));
+        Assert.Null(settings.DeploymentValue("ParallelApiKey"));
+        Assert.Null(settings.DeploymentValue("FmpApiKey"));
     }
 
     [Fact]

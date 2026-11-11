@@ -11,6 +11,7 @@ namespace IniaAi.Domain.Entities.SelfServe;
 [Index(nameof(OrganizationId))]
 [Index(nameof(PaymentProvider), nameof(ProviderSubscriptionId), IsUnique = true)]
 [Index(nameof(PaymentProvider), nameof(LiveOrganizationId), IsUnique = true)]
+[Index(nameof(EndNoticeSentAt), nameof(CanceledAt))]
 public class Subscription
 {
     [Key]
@@ -44,6 +45,26 @@ public class Subscription
     public DateTime? CurrentPeriodEnd { get; set; }
 
     public bool CancelAtPeriodEnd { get; set; }
+
+    /// <summary>
+    /// When the customer last asked to end the subscription, as the provider records it: a new time
+    /// for each cancel, and empty again after a resume. The end-of-contract email goes once for each.
+    /// </summary>
+    public DateTime? CanceledAt { get; set; }
+
+    /// <summary>When the subscription ends or ended; empty while it renews.</summary>
+    public DateTime? EndsAt { get; set; }
+
+    public DateTime? EndNoticeSentAt { get; set; }
+
+    /// <summary>How many times the end-of-contract email for <see cref="CanceledAt"/> was tried.</summary>
+    public int EndNoticeAttempts { get; set; }
+
+    public DateTime? EndNoticeLastAttemptAt { get; set; }
+
+    /// <summary>Why the last try failed, while the email has not gone.</summary>
+    [StringLength(Consent.CONFIRMATION_ERROR_MAX_LENGTH)]
+    public string? EndNoticeLastError { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

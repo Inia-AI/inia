@@ -34,6 +34,7 @@ using IniaAi.Services.Documents;
 using IniaAi.Testing.DependencyInjection.Mocks;
 using IniaAi.Testing.Documents;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -110,6 +111,7 @@ public class TestServiceProviderBuilder
     private void ConfigurePlatformSettings()
     {
         _ = _services.AddSingleton(Options.Create(_platformSettings));
+        _ = _services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
 
         // Configure file storage settings for tests
         var fileStorageSettings = new FileStorageSettings

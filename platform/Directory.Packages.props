@@ -118,6 +118,10 @@
         <PackageVersion Include="SkiaSharp.NativeAssets.macOS" Version="4.153.1" />
         <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.153.1" />
         <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.2" />
+        <!-- No project references it: AWSSDK.CloudWatch brings 9.0.5 through AWSSDK.Extensions.CborProtocol, which
+             carries the November 2026 .NET denial-of-service advisory (GHSA-vmv3-wvjp-wqpj). Transitive pinning
+             lifts it. Drop the pin once AWSSDK.Extensions.CborProtocol depends on a patched build. -->
+        <PackageVersion Include="System.Formats.Cbor" Version="10.0.15" />
         <!-- One version with Microsoft.IdentityModel.Protocols.OpenIdConnect: see the comment there. -->
         <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
         <PackageVersion Include="System.IO.Packaging" Version="10.0.13" />

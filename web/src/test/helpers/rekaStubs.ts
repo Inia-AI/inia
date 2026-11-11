@@ -89,3 +89,18 @@ export const lucideModule = (names: readonly string[]): Record<string, unknown> 
   }
   return out
 }
+
+export const checkboxStub = defineComponent({
+  name: 'CheckboxStub',
+  props: { modelValue: Boolean, id: String },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    return () =>
+      h('input', {
+        type: 'checkbox',
+        id: props.id,
+        checked: props.modelValue,
+        onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLInputElement).checked),
+      })
+  },
+})

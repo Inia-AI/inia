@@ -70,10 +70,6 @@
             </MudTd>
             <MudTd DataLabel="Name">
                 @context.Name
-                @if (context.IsSelfServe)
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-1">Self-serve</MudChip>
-                }
             </MudTd>
             <MudTd DataLabel="Status">
                 <span class="admin-status @(context.IsActive ? "admin-status--ok" : "admin-status--off")">

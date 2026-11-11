@@ -1,7 +1,10 @@
+using IniaAi.Configuration;
+using IniaAi.Configuration.Platform;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.StoredKeys;
 using IniaAi.Domain.StoredKeys;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Security.Cryptography;
 
@@ -14,11 +17,13 @@ public sealed class StoredKeyResolver : IStoredKeyResolver
 
     private readonly ICoreUnitOfWork _coreUnitOfWork;
     private readonly IStoredKeyCipher _cipher;
+    private readonly StoredKeySettings _storedKeySettings;
 
-    public StoredKeyResolver(ICoreUnitOfWork coreUnitOfWork, IStoredKeyCipher cipher)
+    public StoredKeyResolver(ICoreUnitOfWork coreUnitOfWork, IStoredKeyCipher cipher, IOptions<PlatformSettings> platformSettings)
     {
         _coreUnitOfWork = coreUnitOfWork;
         _cipher = cipher;
+        _storedKeySettings = platformSettings.Value.StoredKeys;
     }
 
     public async Task<string?> ResolveAsync(string organizationId, string name, CancellationToken cancellationToken)
@@ -32,7 +37,7 @@ public sealed class StoredKeyResolver : IStoredKeyResolver
 
         if (protectedValue is null)
         {
-            return null;
+            return _storedKeySettings.DeploymentValue(name);
         }
 
         try

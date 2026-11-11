@@ -47,10 +47,12 @@ The fields left the tenant dialog. At startup, the platform moves each tenant's 
 
 The block reads the key of the organization that the run belongs to. Templates are shared across organizations, so a workflow that names `{StoredKey.ParallelApiKey}` uses the `ParallelApiKey` key of each organization that runs it.
 
+When the organization has no key by that name, the block uses the deployment's own value for it, `PlatformSettings:StoredKeys:DeploymentKeys:<name>`, when the deployment sets one. A deployment whose customers bring no keys of their own sets one value per provider. The organization's own key always wins, and a key the key ring cannot decrypt still fails. The deployment's values are secrets: set them as secret settings, never in a committed file ([Application Configuration](../../operations/application-configuration.md#storedkeys)). A workflow editor of any organization on the deployment can send a deployment value to any host a WebApiCall block names, so set one only where every workflow editor may see it. Every organization that uses a deployment value also shares one request limit per host, because the limit counts requests per host and key.
+
 - The run leaves stored-key placeholders in the block, so its execution state and **Header Value After Execution** show `{StoredKey.ParallelApiKey}`, never the value.
 - The value goes only into the outgoing request, including each poll and the completion URL. The request-header trace log masks every header value.
 - Only header values take stored keys. A stored-key placeholder in a URL, a payload or a prompt stays as written.
-- When the organization has no key by that name, the block fails before it sends a request: `This organization has no stored key named 'ParallelApiKey'. An admin adds it under Administration, Stored keys.`
+- When neither the organization nor the deployment has a key by that name, the block fails before it sends a request: `This organization has no stored key named 'ParallelApiKey'. An admin adds it under Administration, Stored keys.`
 - When the key ring cannot decrypt the value, the block fails before it sends a request: `The stored key 'ParallelApiKey' cannot be decrypted with this deployment's key ring. An admin sets its value again under Administration, Stored keys.`
 
 ## Storage and encryption

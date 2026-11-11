@@ -39,6 +39,8 @@ public class PlatformSettings : ICloneable
 
     public OutboundAccessSettings OutboundAccess { get; set; } = new OutboundAccessSettings();
 
+    public StoredKeySettings StoredKeys { get; set; } = new StoredKeySettings();
+
     public OcrSettings OcrSettings { get; set; } = new OcrSettings();
 
     public ChartRenderingSettings ChartRendering { get; set; } = new ChartRenderingSettings();

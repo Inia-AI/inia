@@ -7,6 +7,8 @@ using IniaAi.Domain.Entities.Workflows.Blocks.Properties;
 using IniaAi.Domain.Entities.Workflows.Enums;
 using IniaAi.Domain.Entities.Workflows.Responses;
 using IniaAi.Domain.Graph;
+using IniaAi.Domain.Persistence.Core.Repositories;
+using IniaAi.Domain.Tools.GraphRag;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Testing;
 using IniaAi.Testing.DependencyInjection;
@@ -902,6 +904,17 @@ public class GraphQueryServiceTests : IClassFixture<GraphQueryServiceFixture>
         Assert.DoesNotContain(ChainLabel(MAX_GRAPH_TRAVERSAL_DEPTH + 1), calls[^1].Text, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task QueryAsync_SendsTheStoredSystemPrompt_AsItIsStored()
+    {
+        var model = ScriptedChatConnector.Answering(ModelReply("answer", "From the annual report."));
+        (IGraphQueryService service, string runId) = await SeedChainAsync(model, chainLength: 1, new GraphRagPrompts { SystemPrompt = "Answer briefly." });
+
+        _ = await service.QueryAsync(runId, CHAIN_TARGET_TAG, EXPAND_QUESTION, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("Answer briefly.", Assert.Single(model.Calls).SystemPrompt);
+    }
+
     private static string ModelReply(string action, string answer)
     {
         return $$"""<answer>{"action": "{{action}}", "answer": "{{answer}}"}</answer>""";
@@ -916,7 +929,7 @@ public class GraphQueryServiceTests : IClassFixture<GraphQueryServiceFixture>
     /// A straight chain where block N reads block N + 1, so block 0 (the target) is N hops
     /// downstream of block N and every extra depth adds exactly one block to the provenance.
     /// </summary>
-    private async Task<(IGraphQueryService Service, string RunId)> SeedChainAsync(IChatConnector model, int chainLength)
+    private async Task<(IGraphQueryService Service, string RunId)> SeedChainAsync(IChatConnector model, int chainLength, GraphRagPrompts? storedPrompts = null)
     {
         IServiceProvider provider = _fixture.BuildTestServiceProvider(_testOutputHelper, model);
         IServiceScope scope = provider.GetRequiredService<IServiceScopeFactory>().CreateScope();
@@ -971,6 +984,10 @@ public class GraphQueryServiceTests : IClassFixture<GraphQueryServiceFixture>
             Title = "Chain Execution",
         });
         _ = await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        if (storedPrompts is not null)
+        {
+            _ = await scope.ServiceProvider.GetRequiredService<IToolsSettingsRepository>().CreateGraphRagPromptsAsync(storedPrompts);
+        }
 
         return (scope.ServiceProvider.GetRequiredService<IGraphQueryService>(), runId);
     }

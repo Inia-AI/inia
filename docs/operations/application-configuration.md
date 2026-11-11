@@ -215,6 +215,14 @@ a deployment sets lower caps.
 | `PlatformSettings:ContentRefinement:MaxContentLength` | `100000` | The longest paragraph a request may ask to refine. |
 | `PlatformSettings:ContentRefinement:MaxCombinedLength` | `500000` | The longest paragraph, instruction and conversation history together. |
 
+### StoredKeys
+
+The deployment's own values for stored key names (`StoredKeySettings`). A WebApiCall header that names a stored key uses the run organization's key, and this value only when the organization has none ([Stored Keys](../features/user-management/stored-keys.md#at-run-time)). Read at process start. The values are secrets: set them as secret settings, such as SSM SecureString parameters, never in a committed file.
+
+| Key | Placeholder | Description |
+|-----|-------------|-------------|
+| `PlatformSettings:StoredKeys:DeploymentKeys:<name>` | (none) | The value for the stored key `<name>`, such as `PerplexityApiKey` or `ParallelApiKey`, for every organization that has none. Empty by default, so each organization uses only its own keys. |
+
 ### OutboundAccess
 
 > [!CAUTION]
@@ -562,7 +570,7 @@ These keys turn on outbound mail: the second-factor code by email, the password-
 | `Smtp:Username` | `<smtp-username>` | SMTP username. |
 | `Smtp:Password` | `<smtp-password>` | SMTP password. |
 | `FrontendBaseUrl` | `<https://app.your-domain>` | The analyst app's address. A reset mail links to its `/reset-password` page; without it no reset mail is sent and the API logs an error. |
-| `AdminBaseUrl` | `<https://admin.your-domain>` | Admin app only. Its public address, where every link it mails starts (password reset, email confirmation). The admin app never builds a mailed link from the request's host, which the sender chooses. Without an absolute `http` or `https` address it mails no link, and its **Forgot your password?** page says that reset by mail is off. |
+| `AdminBaseUrl` | `<https://admin.your-domain>` | The admin app's public address, where every link to it that the apps mail starts: the admin app's password reset and email confirmation, and the help request notices to the support inbox. Neither app builds a mailed link from the request's host, which the sender chooses. Without an absolute `http` or `https` address the admin app mails no link, and its **Forgot your password?** page says that reset by mail is off. |
 
 ## Data protection
 

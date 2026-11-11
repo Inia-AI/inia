@@ -2112,6 +2112,10 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
+                    b.Property<string>("ProviderInvoiceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("ProviderSubscriptionId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -2120,6 +2124,10 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TopUpPriceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -2156,6 +2164,9 @@ namespace IniaAi.Migrations.PostgreSql.UserData
 
                     b.Property<long>("LockVersion")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("PaidGrantsHeldAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Pending")
                         .HasColumnType("integer");
@@ -2514,10 +2525,29 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.Property<bool>("CancelAtPeriodEnd")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("CanceledAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("CurrentPeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EndNoticeAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndNoticeLastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EndNoticeLastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("EndNoticeSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EndsAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LiveOrganizationId")
@@ -2552,6 +2582,8 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.HasKey("Id");
 
                     b.HasIndex("OrganizationId");
+
+                    b.HasIndex("EndNoticeSentAt", "CanceledAt");
 
                     b.HasIndex("PaymentProvider", "LiveOrganizationId")
                         .IsUnique();

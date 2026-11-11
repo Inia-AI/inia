@@ -4,7 +4,7 @@ figure and the page it cites, the text of each block's part of the report, each 
 and each value of a data output.
 
 Usage:
-  python3 scripts/clean-machine/check.py [--url http://localhost:8080]
+  python3 scripts/clean-machine/check.py [--url http://localhost:8080] [--samples security-samples]
 
 It signs in as the first admin, the address in INIA_ADMIN_EMAIL (superadmin@example.com when unset, as
 the stack seeds it), with the password in INIA_ADMIN_PASSWORD. The --password option also takes it,
@@ -51,10 +51,10 @@ def normalized(text):
     return collapsed(text).lower()
 
 
-def samples(without=frozenset()):
-    """Each sample folder that holds an expected answer, with that answer, in name order. A sample
-    whose answer names a part in "needs" that the install runs without stays out."""
-    found = [(path.parent, json.loads(path.read_text(encoding="utf-8"))) for path in sorted(SAMPLES.glob(f"*/{EXPECTED_FILE}"))]
+def samples(root=SAMPLES, without=frozenset()):
+    """Each sample folder under root that holds an expected answer, with that answer, in name order.
+    A sample whose answer names a part in "needs" that the install runs without stays out."""
+    found = [(path.parent, json.loads(path.read_text(encoding="utf-8"))) for path in sorted(root.glob(f"*/{EXPECTED_FILE}"))]
     return [(folder, expected) for folder, expected in found if not set(expected.get("needs", [])) & set(without)]
 
 
@@ -251,17 +251,18 @@ def main(argv):
     parser.add_argument("--email", default=os.environ.get("INIA_ADMIN_EMAIL") or DEFAULT_ADMIN_EMAIL, help="the first admin's address (default: INIA_ADMIN_EMAIL, else %(default)s)")
     parser.add_argument("--password", default=os.environ.get("INIA_ADMIN_PASSWORD"), help="the first admin's password")
     parser.add_argument("--without", action="append", default=[], choices=sorted(PARTS), help="a part the install runs without; the samples that need it stay out")
+    parser.add_argument("--samples", type=pathlib.Path, default=SAMPLES, help="the folder of samples to run (default: samples/)")
     args = parser.parse_args(argv)
     if not args.password:
         print("Give the first admin's password with --password or INIA_ADMIN_PASSWORD.")
         return 2
 
-    for _, expected in samples():
+    for _, expected in samples(args.samples):
         for part in sorted(set(expected.get("needs", [])) & set(args.without)):
             print(f"SKIP {expected['workflowTypeId']}: it needs {PARTS[part]}, which this install runs without.")
-    found_samples = samples(args.without)
+    found_samples = samples(args.samples, args.without)
     if not found_samples:
-        print(f"No folder of samples/ holds an {EXPECTED_FILE}, so there is nothing to check.")
+        print(f"No folder of {os.path.relpath(args.samples, ROOT)}/ holds an {EXPECTED_FILE}, so there is nothing to check.")
         return 2
     try:
         install = Install(args.url, args.password, args.email)
@@ -290,7 +291,7 @@ def main(argv):
         if found:
             status = max(status, 1)
         else:
-            print(f"PASS {expected['workflowTypeId']} matches {(folder / EXPECTED_FILE).relative_to(ROOT)}.")
+            print(f"PASS {expected['workflowTypeId']} matches {os.path.relpath(folder / EXPECTED_FILE, ROOT)}.")
     return status
 
 

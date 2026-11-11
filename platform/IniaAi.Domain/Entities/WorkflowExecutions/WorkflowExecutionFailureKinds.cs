@@ -27,9 +27,6 @@ public static class WorkflowExecutionFailureKinds
     /// <summary>None of the run's documents gave any text or picture to read, so the run stopped before its blocks.</summary>
     public const string NO_READABLE_DOCUMENTS = "NoReadableDocuments";
 
-    /// <summary>The run's documents held more text than its type reads, so the run stopped before its blocks.</summary>
-    public const string INPUT_TOO_LARGE = "InputTooLarge";
-
     /// <summary>The model failed to read the run's documents, so the run stopped before its blocks: a problem on the platform's side, not with the documents.</summary>
     public const string DOCUMENTS_NOT_READ = "DocumentsNotRead";
 }

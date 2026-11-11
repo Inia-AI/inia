@@ -2113,6 +2113,10 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("ProviderInvoiceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("ProviderSubscriptionId")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -2121,6 +2125,10 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TopUpPriceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -2157,6 +2165,9 @@ namespace IniaAi.Migrations.Mssql.UserData
 
                     b.Property<long>("LockVersion")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("PaidGrantsHeldAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("Pending")
                         .HasColumnType("int");
@@ -2516,10 +2527,29 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.Property<bool>("CancelAtPeriodEnd")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("CanceledAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("CurrentPeriodEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EndNoticeAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndNoticeLastAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EndNoticeLastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("EndNoticeSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EndsAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("LiveOrganizationId")
@@ -2554,6 +2584,8 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.HasKey("Id");
 
                     b.HasIndex("OrganizationId");
+
+                    b.HasIndex("EndNoticeSentAt", "CanceledAt");
 
                     b.HasIndex("PaymentProvider", "LiveOrganizationId")
                         .IsUnique()

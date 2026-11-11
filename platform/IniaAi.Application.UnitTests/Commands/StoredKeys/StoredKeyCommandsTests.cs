@@ -172,7 +172,7 @@ public class StoredKeyCommandsTests : IDisposable
 
     private Task<string?> ResolveAsync(string organizationId, string name)
     {
-        return new StoredKeyResolver(_unitOfWork, _cipher)
+        return _serviceProvider.GetRequiredService<IStoredKeyResolver>()
             .ResolveAsync(organizationId, name, TestContext.Current.CancellationToken);
     }
 }

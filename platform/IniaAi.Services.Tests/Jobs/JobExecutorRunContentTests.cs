@@ -54,13 +54,13 @@ public sealed class JobExecutorRunContentTests : IDisposable
             TestContext.Current.CancellationToken);
         _ = await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _executor.HandleJobError(job, new RunContentRefusedException(new RunContentRefusal(WorkflowExecutionFailureKinds.INPUT_TOO_LARGE, DETAIL)));
+        await _executor.HandleJobError(job, new RunContentRefusedException(new RunContentRefusal(WorkflowExecutionFailureKinds.NO_READABLE_DOCUMENTS, DETAIL)));
 
         using IServiceScope scope = _provider.CreateScope();
         WorkflowExecution execution = await scope.ServiceProvider.GetRequiredService<UserDataDbContext>()
             .WorkflowExecutions.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowState.Failed, execution.WorkflowState);
-        Assert.Equal(WorkflowExecutionFailureKinds.INPUT_TOO_LARGE, execution.FailureKind);
+        Assert.Equal(WorkflowExecutionFailureKinds.NO_READABLE_DOCUMENTS, execution.FailureKind);
         Assert.Equal(DETAIL, execution.FailureDetail);
     }
 

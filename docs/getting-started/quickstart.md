@@ -109,7 +109,8 @@ data output holds its values. For the agent run, the answer says `Revenue growth
 it prints one `FAIL` line for each difference. Its exit code
 is 0 for a pass, 1 for a difference, and 2 when it cannot reach the install or a run fails. Without
 `--url`, it calls the install at `http://localhost:8080`. `--without agent-runtime` leaves out the
-samples that need the agent runtime, for an install that runs only the API.
+samples that need the agent runtime, for an install that runs only the API. `--samples <folder>` runs another folder
+of samples, such as `platform/security-samples`, whose workflows you load yourself ([Security](security.md#documents-that-carry-instructions)).
 
 ## Next
 

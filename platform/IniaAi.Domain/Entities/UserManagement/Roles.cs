@@ -24,6 +24,13 @@ public class Roles
     public const string ADMIN_ROLES = $"{ADMIN},{SUPER_ADMIN}";
 
     /// <summary>
+    /// Surfaces that change what every workflow of an organization uses, such as its report
+    /// templates, admit the editor roles and an admin. ASP.NET role checks have no hierarchy, so
+    /// gate those surfaces with this constant, never with a bare role constant.
+    /// </summary>
+    public const string EDITOR_AND_ADMIN_ROLES = $"{EDITOR_ROLES},{ADMIN}";
+
+    /// <summary>
     /// A signature contributor can view the Signatures page, propose overrides for review,
     /// and vote on others' proposals. Signature-review surfaces are gated to SuperAdmin or
     /// SignatureContributor — Admin alone cannot reach them.
