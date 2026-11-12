@@ -34,6 +34,7 @@ public sealed class LocalTestHttpServer : IDisposable
     private const string TO_QUERY = "to";
     private const string STATUS_QUERY = "status";
     private const string HTML_QUERY = "html";
+    private const string BODY_QUERY = "body";
     private const string SET_COOKIE_QUERY = "setCookie";
     private const string JSON_CONTENT_TYPE = "application/json";
     private const string HTML_CONTENT_TYPE = "text/html";
@@ -219,12 +220,12 @@ public sealed class LocalTestHttpServer : IDisposable
         return _statusHits.TryGetValue(key, out int hits) ? hits : 0;
     }
 
-    // /status/{code}?key=k&times=N&statuses=a,b,c&retryAfter=V&retryAfterDateSeconds=S
+    // /status/{code}?key=k&times=N&statuses=a,b,c&retryAfter=V&retryAfterDateSeconds=S&body=B
     // Returns {code} for the first N requests under key (every request when times is absent),
     // then 200. statuses overrides {code} per request in order (request n gets the nth entry,
     // 200 once the list is used up). retryAfter is sent verbatim as the Retry-After header;
     // retryAfterDateSeconds sends an RFC 1123 date that many seconds from now instead
-    // (negative for a past date).
+    // (negative for a past date). body is sent as the answer's body in place of {"status":code}.
     private async Task RespondScriptedStatusAsync(HttpListenerContext context, int statusCode)
     {
         string key = context.Request.QueryString[KEY_QUERY] ?? string.Empty;
@@ -258,7 +259,7 @@ public sealed class LocalTestHttpServer : IDisposable
                 DateTimeOffset.UtcNow.AddSeconds(dateSeconds).ToString("R", CultureInfo.InvariantCulture);
         }
 
-        await WriteAsync(context, statusCode, $$"""{"status":{{statusCode}}}""");
+        await WriteAsync(context, statusCode, context.Request.QueryString[BODY_QUERY] ?? $$"""{"status":{{statusCode}}}""");
     }
 
     // /redirect?to=URL&status=N answers N (302 when absent) with a Location header of URL.

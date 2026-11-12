@@ -21,6 +21,9 @@ public abstract class WordPageReaderContract
     private const int PICTURE_DOCUMENT_PARAGRAPHS = 2;
     private const int LONG_DOCUMENT_PARAGRAPHS = 150;
     private const int LEADING_PAGES = 1;
+    private const string DOCUMENT_PART = "word/document.xml";
+    private const string CONTENT_TYPES_PART = "[Content_Types].xml";
+    private const string CORE_PROPERTIES_PART = "docProps/core.xml";
 
     // A layout reader takes about a second over the long document, so the cases of one reader share one read of it.
     private static readonly ConcurrentDictionary<Type, Lazy<IReadOnlyList<WordPageContent>>> _longDocumentPages = new();
@@ -104,6 +107,72 @@ public abstract class WordPageReaderContract
             () => reader.ExtractPageTexts(Bytes(fixture), name, LEADING_PAGES));
 
         Assert.Equal(name, failure.DocumentName);
+    }
+
+    [Theory]
+    [InlineData(DOCUMENT_PART)]
+    [InlineData(CONTENT_TYPES_PART)]
+    [InlineData(CORE_PROPERTIES_PART)]
+    public async Task ExtractPages_NeverFetchesAnExternalDtdThatAPartNames(string part)
+    {
+        using var probe = new LoopbackProbe();
+
+        _ = await ReadOrRefusalAsync(EntityPackages.NamingAnExternalDtd(Bytes(TEN_PAGES_WORD_DOCUMENT), part, probe.Address));
+
+        Assert.Equal(0, probe.Connections);
+    }
+
+    [Fact]
+    public async Task ExtractPages_NeverReadsInALocalFileThatTheTextNames()
+    {
+        string marker = $"marker-{Guid.NewGuid():N}";
+        string file = Path.Combine(Path.GetTempPath(), $"entity-{Guid.NewGuid():N}.txt");
+        await File.WriteAllTextAsync(file, marker, TestContext.Current.CancellationToken);
+
+        try
+        {
+            string read = await ReadOrRefusalAsync(EntityPackages.ReadingInAFile(Bytes(TEN_PAGES_WORD_DOCUMENT), DOCUMENT_PART, file));
+
+            Assert.DoesNotContain(marker, read);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractPages_OfDeclaredEntities_RefusesTheDocument_OrLeavesThemUnexpanded()
+    {
+        string read = await ReadOrRefusalAsync(EntityPackages.WithNestedEntities(Bytes(TEN_PAGES_WORD_DOCUMENT), DOCUMENT_PART));
+
+        Assert.DoesNotContain(EntityPackages.EXPANDED_TEXT, read);
+    }
+
+    [Fact]
+    public async Task ExtractPages_FetchesNothingThatTheDocumentLinksTo()
+    {
+        using var probe = new LoopbackProbe();
+
+        _ = await ReadOrRefusalAsync(RemoteContent.WordDocumentLinkingTo(Bytes(TEN_PAGES_WORD_DOCUMENT), probe.Address));
+
+        Assert.True(probe.Connections == 0, $"Fetched: {string.Join("; ", probe.Requests)}");
+    }
+
+    private async Task<string> ReadOrRefusalAsync(byte[] document)
+    {
+        IWordPageReader reader = Reader;
+
+        try
+        {
+            IReadOnlyList<WordPageContent> pages = await Task.Run(() => reader.ExtractPages(document, NameOf(TEN_PAGES_WORD_DOCUMENT), VisionTier.Standard))
+                .WaitAsync(EntityPackages.ReadTimeLimit, TestContext.Current.CancellationToken);
+            return string.Join('\n', pages.Select(page => page.Text));
+        }
+        catch (Exception refusal) when (refusal is not TimeoutException)
+        {
+            return refusal.Message;
+        }
     }
 
     private static string WordsOf(IEnumerable<string> texts)

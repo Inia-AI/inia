@@ -93,6 +93,15 @@ public class SignInAttempts(UserManager<User> userManager, IAuthenticationAuditL
     }
 
     /// <summary>
+    /// Records a token issued by a grant that records nothing of its own, such as a refresh or a
+    /// service sign-in.
+    /// </summary>
+    public Task TokenIssuedAsync(User user, string method, string? clientAddress)
+    {
+        return RecordAsync(AuthenticationAuditKind.SignInSucceeded, user.Id, method, clientAddress);
+    }
+
+    /// <summary>
     /// Records an account that may not sign in, by the method that vouched for it.
     /// </summary>
     public Task AccountRefusedAsync(User user, string method, string? clientAddress)

@@ -1,6 +1,7 @@
 using IniaAi.WebApi.UnitTests.Common;
 using System.Net;
 using System.Reflection;
+using IniaAi.Testing;
 using IniaAi.WebApi.Configuration;
 using IniaAi.WebApi.Controllers.v1;
 using Microsoft.AspNetCore.Builder;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace IniaAi.WebApi.UnitTests.Configuration;
 
@@ -56,6 +58,23 @@ public class ClientEdgeTests
 
         Assert.Equal(2, statuses.Count(s => s == HttpStatusCode.OK));
         Assert.Contains(HttpStatusCode.TooManyRequests, statuses);
+    }
+
+    [Fact]
+    public async Task ARequestRefusedForTheLimit_LeavesAWarningNamingThePolicyAndTheClient()
+    {
+        var logs = new CapturingLoggerProvider();
+        await using WebApplication app = await StartAsync(new() { ["RateLimiting:SignIn:PermitLimit"] = "1" }, logs);
+        HttpClient client = app.GetTestClient();
+
+        Assert.Equal(HttpStatusCode.OK, await PostFromAsync(client, CLIENT));
+        Assert.DoesNotContain(logs.Entries, entry => entry.Level >= LogLevel.Warning);
+        Assert.Equal(HttpStatusCode.TooManyRequests, await PostFromAsync(client, CLIENT));
+
+        CapturedLogEntry refusal = Assert.Single(logs.Entries, entry => entry.Level >= LogLevel.Warning);
+        Assert.StartsWith("IniaAi.", refusal.Category, StringComparison.Ordinal);
+        Assert.Contains(RateLimitingConfiguration.SIGN_IN_POLICY, refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(CLIENT, refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -142,6 +161,36 @@ public class ClientEdgeTests
     }
 
     [Fact]
+    public async Task AnActualRequestFromAnUnlistedOrigin_GetsNoAllowOrigin()
+    {
+        await using WebApplication app = await StartAsync(new() { ["Cors:AllowedOrigins:0"] = LISTED_ORIGIN });
+        HttpClient client = app.GetTestClient();
+
+        using HttpResponseMessage listed = await PostWithOriginAsync(client, LISTED_ORIGIN);
+        using HttpResponseMessage unlisted = await PostWithOriginAsync(client, "https://unlisted.example");
+
+        Assert.Equal(LISTED_ORIGIN, Assert.Single(listed.Headers.GetValues("Access-Control-Allow-Origin")));
+        Assert.Equal(HttpStatusCode.OK, unlisted.StatusCode);
+        Assert.False(unlisted.Headers.Contains("Access-Control-Allow-Origin"));
+        Assert.False(unlisted.Headers.Contains("Access-Control-Allow-Credentials"));
+    }
+
+    [Fact]
+    public async Task AnOriginThatOnlyStartsLikeAListedOne_GetsNoAllowOrigin()
+    {
+        await using WebApplication app = await StartAsync(new() { ["Cors:AllowedOrigins:0"] = LISTED_ORIGIN });
+        HttpClient client = app.GetTestClient();
+
+        using HttpResponseMessage listed = await PostWithOriginAsync(client, LISTED_ORIGIN);
+        using HttpResponseMessage lookalike = await PostWithOriginAsync(client, $"{LISTED_ORIGIN}.evil.example");
+        using HttpResponseMessage preflight = await PreflightAsync(client, $"{LISTED_ORIGIN}.evil.example");
+
+        Assert.Equal(LISTED_ORIGIN, Assert.Single(listed.Headers.GetValues("Access-Control-Allow-Origin")));
+        Assert.False(lookalike.Headers.Contains("Access-Control-Allow-Origin"));
+        Assert.False(preflight.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [Fact]
     public async Task AnEmptyOriginList_AllowsNoOrigin()
     {
         await using WebApplication app = await StartAsync([]);
@@ -170,9 +219,14 @@ public class ClientEdgeTests
         Assert.Contains(key, refusal.Message);
     }
 
-    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> settings)
+    private static async Task<WebApplication> StartAsync(Dictionary<string, string?> settings, ILoggerProvider? logs = null)
     {
         WebApplicationBuilder builder = TestWebApplication.CreateBuilder();
+        if (logs is not null)
+        {
+            _ = builder.Logging.AddProvider(logs);
+        }
+
         builder.Configuration.Sources.Clear();
         _ = builder.Configuration.AddInMemoryCollection(settings);
         _ = builder.Services.AddControllers().AddApplicationPart(typeof(ClientEdgeTests).Assembly);
@@ -216,6 +270,14 @@ public class ClientEdgeTests
         request.Headers.Add("X-Forwarded-For", forwardedFor);
         using HttpResponseMessage response = await client.SendAsync(request, TestContext.Current.CancellationToken);
         return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<HttpResponseMessage> PostWithOriginAsync(HttpClient client, string origin)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "edge-probe");
+        request.Headers.Add(PEER_HEADER, CLIENT);
+        request.Headers.Add("Origin", origin);
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 
     private static async Task<HttpResponseMessage> PreflightAsync(HttpClient client, string origin)

@@ -82,7 +82,7 @@ public class SubmitWorkflowExecutionCommandHandler
 
         // 1. Fetch workflow
         ErrorOr<Workflow> runnable = await RunnableWorkflowGuard.RunnableAsync(
-            await GetWorkflowAsync(request.Metadata.WorkflowTypeId), request.OrganizationId, _coreUnitOfWork, _logger, cancellationToken);
+            await GetWorkflowAsync(request.Metadata.WorkflowTypeId, request.OrganizationId), request.OrganizationId, _coreUnitOfWork, _logger, cancellationToken);
         if (runnable.IsError)
         {
             return runnable.Errors;
@@ -485,11 +485,11 @@ public class SubmitWorkflowExecutionCommandHandler
         return effective;
     }
 
-    private async Task<Workflow?> GetWorkflowAsync(string workflowId)
+    private async Task<Workflow?> GetWorkflowAsync(string workflowId, string organizationId)
     {
         // Try by type ID first (the caller typically knows the workflow type, not the internal record ID)
         return await _coreUnitOfWork.Workflows.GetByTypeIdAsync(workflowId)
             ?? await _coreUnitOfWork.Workflows.GetByIdAsync(workflowId)
-            ?? await _userDataUnitOfWork.Workflows.GetByIdAsync(workflowId);
+            ?? RunnableWorkflowGuard.OwnCopy(await _userDataUnitOfWork.Workflows.GetByIdAsync(workflowId), organizationId);
     }
 }

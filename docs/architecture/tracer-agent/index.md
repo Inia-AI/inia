@@ -13,7 +13,7 @@ The Tracer Agent answers questions about a workflow execution's results. Given a
 > [!NOTE]
 > **No screen calls it today**
 >
-> The Tracer is reachable only through the API: `GET /api/v1/workflow-executions/{runId}/graph/validate/{targetTag}` checks that the run and the block can be queried, and `POST /api/v1/workflow-executions/{runId}/graph/query` asks the question (`WorkflowExecutionsGraphController`, [API reference](../../reference/api/index.md)). The Vue app has a client for it (`src/api/graphRag/service.ts`) and a `TracerDialog` component, but no view renders the dialog ([Source Chain, Citations & Tracer (UI)](../frontend/source-chain-and-citations.md#tracerdialog--provenance-qa)).
+> The Tracer is reachable only through the API: `GET /api/v1/workflow-executions/{runId}/graph/validate/{targetTag}` checks that the run and the block can be queried, and `POST /api/v1/workflow-executions/{runId}/graph/query` asks the question (`WorkflowExecutionsGraphController`, [API reference](../../reference/api/index.md)). A question over 5,000 characters is refused with 400 before any model call (`GraphQueryRequest.MAX_QUESTION_LENGTH`), and one question makes at most 6 model calls, one per depth. The Vue app has a client for it (`src/api/graphRag/service.ts`) and a `TracerDialog` component, but no view renders the dialog ([Source Chain, Citations & Tracer (UI)](../frontend/source-chain-and-citations.md#tracerdialog--provenance-qa)).
 
 ## Purpose
 

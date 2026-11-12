@@ -31,4 +31,30 @@ public class DownloadFileNameTests
 
         Assert.Equal(new string('a', 119) + ".txt", fileName);
     }
+
+    [Theory]
+    [InlineData("../../a")]
+    [InlineData("/etc/x")]
+    [InlineData("..")]
+    [InlineData(".")]
+    [InlineData("..\\..\\b")]
+    [InlineData("CON")]
+    [InlineData("a\u0007b\u0000c\r\nd")]
+    public void Build_OfAStrangersName_NeverNamesAFolderOrAControlCharacter(string name)
+    {
+        string built = DownloadFileName.Build(name, ID, "file", ".pdf");
+
+        Assert.DoesNotContain('/', built);
+        Assert.DoesNotContain('\\', built);
+        Assert.DoesNotContain(built, char.IsControl);
+        Assert.NotEqual(".", Path.GetFileNameWithoutExtension(built));
+        Assert.NotEqual("..", Path.GetFileNameWithoutExtension(built));
+        Assert.EndsWith(".pdf", built, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_OfANameOf300Characters_KeepsAtMost120OfThem()
+    {
+        Assert.Equal(120 + ".pdf".Length, DownloadFileName.Build(new string('a', 300), ID, "file", ".pdf").Length);
+    }
 }

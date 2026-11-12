@@ -7,6 +7,9 @@ namespace IniaAi.WebApi.Contracts.Requests.Graph;
 /// </summary>
 public class GraphQueryRequest
 {
+    /// <summary>The longest question the explore service takes; the Vue app sends no more.</summary>
+    public const int MAX_QUESTION_LENGTH = 5_000;
+
     /// <summary>
     /// Gets or sets the ReplacementTag of the target report block to explain.
     /// </summary>
@@ -18,6 +21,7 @@ public class GraphQueryRequest
     /// Example: "How did you calculate short-term debt?"
     /// </summary>
     [Required]
+    [StringLength(MAX_QUESTION_LENGTH, ErrorMessage = "Ask a question of at most {1:N0} characters, then send it again.")]
     public string Question { get; set; } = string.Empty;
 
     /// <summary>

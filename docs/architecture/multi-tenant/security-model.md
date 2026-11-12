@@ -161,7 +161,11 @@ Assert.True(result.IsError);
 Assert.Equal(ErrorType.NotFound, result.FirstError.Type);
 ```
 
-The tenant middleware is tested through the HTTP pipeline: `TenantContextTests` in `IniaAi.WebApi.IntegrationTests` signs in a real account and checks that a request naming another organization answers `403` with `Invalid tenant context`, one naming no organization or a closed one answers `403` with `Tenant context required`, and one naming the caller's own organization goes through.
+Every pull request runs these HTTP-level isolation tests against a real PostgreSQL in the **Organization isolation tests** job, with a time budget like every other test project. The tenant middleware is tested through the HTTP pipeline: `TenantContextTests` in `IniaAi.WebApi.IntegrationTests` signs in a real account and checks that a request naming another organization answers `403` with `Invalid tenant context`, one naming no organization or a closed one answers `403` with `Tenant context required`, and one naming the caller's own organization goes through.
+
+Every id an endpoint's route takes is classified. `EndpointIds` in `IniaAi.WebApi.UnitTests` names, for each route parameter of every API action, the kind of object it names and the check that keeps it to the caller's organization, ending with that check's `file:line`. `EndpointIdTests` fails on a route parameter that is not on the list, on an entry whose endpoint is gone, and on a rule that names no line, so a new id is classified before it ships.
+
+A workflow or a workflow type taken by id reaches an organization only through its `WorkflowTypeOrganizationAccess` row. `WorkflowTypeAccessReadTests` checks that the document check of `GET /workflow-categories/{id}/validate-documents` and the usage summary of `GET /token-usage/workflow-type/{workflowTypeId}` answer `NotFound` for a type the organization was not given, as for one that does not exist. The usage summary still names a type the organization has used, so its history stays readable after its access is taken away.
 
 ## Data Encryption
 

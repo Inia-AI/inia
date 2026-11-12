@@ -1,4 +1,5 @@
 using ErrorOr;
+using IniaAi.Application.Common.Reports;
 using IniaAi.Application.Queries.Files.GetFile;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Configuration.Storage;
@@ -50,7 +51,7 @@ public sealed class GetFileQueryHandlerTests : IDisposable
         await unitOfWork.Documents.AddAsync(document);
         _ = await unitOfWork.CompleteAsync(TestContext.Current.CancellationToken);
         _ = _fileStorageManager.RetrieveFileBytesAsync(Arg.Any<string>(), ORGANIZATION_ID, StorageCategories.Documents, STORAGE_KEY).Returns(pdf);
-        var handler = new GetFileQueryHandler(NullLogger<GetFileQueryHandler>.Instance, unitOfWork, _fileStorageManager);
+        var handler = new GetFileQueryHandler(NullLogger<GetFileQueryHandler>.Instance, unitOfWork, _fileStorageManager, new EveryReportContent());
 
         ErrorOr<FileResult> result = await handler.Handle(new GetFileQuery(ORGANIZATION_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
 
@@ -69,7 +70,7 @@ public sealed class GetFileQueryHandlerTests : IDisposable
         IUserDataUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
         await unitOfWork.Documents.AddAsync(document);
         _ = await unitOfWork.CompleteAsync(TestContext.Current.CancellationToken);
-        var handler = new GetFileQueryHandler(NullLogger<GetFileQueryHandler>.Instance, unitOfWork, _fileStorageManager);
+        var handler = new GetFileQueryHandler(NullLogger<GetFileQueryHandler>.Instance, unitOfWork, _fileStorageManager, new EveryReportContent());
 
         ErrorOr<FileResult> foreign = await handler.Handle(new GetFileQuery(ORGANIZATION_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
         ErrorOr<FileResult> missing = await handler.Handle(new GetFileQuery(ORGANIZATION_ID, USER_ID, "no-such-document"), TestContext.Current.CancellationToken);

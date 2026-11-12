@@ -83,7 +83,7 @@ Configure OIDC directly in the app settings:
 | `Enabled` | Yes | `true` to enable OIDC authentication |
 | `ClientId` | Yes | OAuth client ID from your identity provider |
 | `ClientSecret` | No | Admin app only: runs its server-side OIDC flow as a confidential client when set, as a public PKCE client when empty |
-| `Issuer` | Yes | OIDC issuer URL (must serve `/.well-known/openid-configuration`) |
+| `Issuer` | Yes | OIDC issuer URL (must serve `/.well-known/openid-configuration`). The `issuer` that document names must equal this value, a trailing slash aside, or every sign-in is refused |
 | `DisplayName` | No | Text shown on the login button (default: `"SSO"`, in the settings class) |
 | `AllowedDomains` | No | Restrict login to specific email domains (empty = allow all) |
 | `TrustUnverifiedEmail` | No | Trust the email of a provider that sends neither `email_verified` nor `xms_edov` (default `false`); see [Verified email](#verified-email) |

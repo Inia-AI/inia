@@ -1,8 +1,10 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Configuration.Security;
 using IniaAi.Domain.Entities.UserManagement;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace IniaAi.Application.Commands.UserManagement.ResetPassword;
 
@@ -10,8 +12,10 @@ namespace IniaAi.Application.Commands.UserManagement.ResetPassword;
 /// Sets the new password when the token is valid for the address. An unknown address and a wrong,
 /// expired or used token get one answer, so the reset page does not reveal which accounts exist.
 /// A password that breaks a rule gets that rule back. A new password ends the user's API sessions.
+/// While password sign-in is off every reset gets the bad-link answer, so no account gains a password
+/// that nothing accepts.
 /// </summary>
-public class ResetPasswordCommandHandler(UserManager<User> userManager, IUserSessionRevoker sessionRevoker) : IRequestHandler<ResetPasswordCommand, ErrorOr<Success>>
+public class ResetPasswordCommandHandler(UserManager<User> userManager, IUserSessionRevoker sessionRevoker, IOptions<PasswordAuthSettings> passwordSettings) : IRequestHandler<ResetPasswordCommand, ErrorOr<Success>>
 {
     public const string INVALID_LINK = "PasswordReset.InvalidLink";
 
@@ -19,6 +23,11 @@ public class ResetPasswordCommandHandler(UserManager<User> userManager, IUserSes
 
     public async Task<ErrorOr<Success>> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
+        if (!passwordSettings.Value.Enabled)
+        {
+            return _invalidLink;
+        }
+
         User? user = await userManager.FindByEmailAsync(request.Email);
         if (user is null)
         {

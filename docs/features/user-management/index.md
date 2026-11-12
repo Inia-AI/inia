@@ -63,7 +63,7 @@ One password rule applies wherever a password is set: a user's own change and se
 
 **By an admin.** An admin resets the password of a user they manage from the user list (`ResetUserPasswordDialog`, `UserAccountAdminService.ResetPasswordAsync`), which checks the password rule, replaces the hash, rotates the security stamp and revokes the user's API tokens; no mail is involved. An organization admin does not manage a user who holds `SuperAdmin`, `WorkflowEditor` or `Operator`, or who also belongs to another organization ([who manages whom](authorization.md#how-roles-are-created-and-assigned)).
 
-**By the user.** Self-service reset runs only when the deployment can mail: it needs a mail provider and `FrontendBaseUrl`, the analyst app's address (`SendPasswordResetEmailCommandHandler.CanSend`).
+**By the user.** Self-service reset runs only when the deployment can mail: it needs a mail provider and `FrontendBaseUrl`, the analyst app's address (`SendPasswordResetEmailCommandHandler.CanSend`). It also needs password sign-in on (`Authentication:Password:Enabled`): while it is off, forgot sends nothing and every reset answers as for a bad link, so no account gains a password that no sign-in accepts.
 
 1. `POST /api/v1/passwords/forgot` with `{ "email": "..." }` mails a link to the analyst app's `/reset-password` page. The mail and the link go to the address stored on the account the typed address found, never to the typed address: the lookup also matches Unicode lookalikes of the stored address (CVE-2026-70175). It always answers `200`, whether or not the address belongs to an account, the account is a system user, or the mail failed.
 2. The page sends the link's address, the token and the new password to `POST /api/v1/passwords/reset`. A wrong, spent or expired link and an unknown address all answer `400` with `PasswordReset.InvalidLink` (`This reset link is not valid any more. Ask for a new one.`), so the page reveals no accounts; a password that breaks `PasswordPolicy` answers `400` with ASP.NET Core Identity's own error codes.
@@ -97,7 +97,7 @@ User management feeds the [Authentication](../../reference/api/authentication.md
 
 ## What the platform records about accounts
 
-The platform records authentication events and nothing else about accounts. `LoggingAuthenticationAuditLog` writes one log line per sign-in success, refusal, lockout, second-factor prompt, and two-factor change (setup, enable, disable, authenticator reset, recovery-code regeneration, trusted-device removal), naming the user id, the method and the client address, never an email, a password or a code. There is no audit table: creating a user, changing a role or a membership, resetting a password and disabling a user leave no record beyond ordinary application log lines.
+The platform records authentication events and nothing else about accounts. `LoggingAuthenticationAuditLog` writes one log line per sign-in success (a token issued by a refresh or a service sign-in included, named by its grant), refusal, lockout, second-factor prompt, and two-factor change (setup, enable, disable, authenticator reset, recovery-code regeneration, trusted-device removal), naming the user id, the method and the client address, never an email, a password or a code. There is no audit table: creating a user, changing a role or a membership, resetting a password and disabling a user leave no record beyond ordinary application log lines.
 
 ## Related Documentation
 

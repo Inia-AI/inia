@@ -21,7 +21,7 @@ public sealed class TestAccount : IAsyncDisposable
 {
     public const string PASSWORD = "Account-Test-1a";
 
-    private const string TOKEN_PATH = "api/v1/connect/token";
+    public const string TOKEN_PATH = "api/v1/connect/token";
     private const string API_SCOPE = "api";
 
     private readonly ClientBuilder _api;

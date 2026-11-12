@@ -749,7 +749,7 @@ public partial class EmailExpansionService : IEmailExpansionService
             && string.IsNullOrEmpty(uri.Fragment);
     }
 
-    private static string BuildUrlDerivedFileName(Uri url)
+    internal static string BuildUrlDerivedFileName(Uri url)
     {
         char[] invalidChars = Path.GetInvalidFileNameChars();
         string fileName = string

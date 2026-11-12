@@ -1,4 +1,5 @@
 using IniaAi.Core.Documents;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using ErrorOr;
@@ -47,6 +48,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
     public const string AGENT_RUNTIME_DISABLED_CODE = "WorkflowExecution.AgentRuntimeDisabled";
     public const string AGENT_MODEL_NOT_ALLOWED_CODE = "WorkflowExecution.AgentModelNotAllowed";
     public const string UNRESOLVABLE_INPUT_DOCUMENTS_CODE = "WorkflowExecution.UnresolvableInputDocuments";
+    public const string UNRESOLVABLE_COUNTERPARTIES_CODE = "WorkflowExecution.UnresolvableCounterparties";
     public const string ANONYMISATION_UNAVAILABLE_CODE = "WorkflowExecution.AnonymisationUnavailable";
     public const string ANONYMISATION_UNAVAILABLE_MESSAGE =
         $"The platform cannot anonymise documents, so it cannot start a confidential run. Start the run with isConfidential set to false. {ProductEditions.FULL_EDITION} anonymises documents before any model reads them.";
@@ -186,6 +188,24 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         if (validationErrors.Count != 0)
         {
             return validationErrors;
+        }
+
+        List<string> unresolvableCounterpartyIds = await FindCounterpartiesOutsideTheOrganizationAsync(
+            organizationId, counterpartyId, peerCompanyIds, ct);
+
+        if (unresolvableCounterpartyIds.Count > 0)
+        {
+            _logger.LogWarning(
+                "Refused submission of workflow {WorkflowTypeId}: it names counterparties that do not exist in organization {OrganizationId}: {UnresolvableIds}",
+                workflow.WorkflowTypeId,
+                organizationId,
+                LogSanitizer.ForLog(string.Join(", ", unresolvableCounterpartyIds)));
+
+            return Error.Validation(
+                code: UNRESOLVABLE_COUNTERPARTIES_CODE,
+                description: $"The submission names {CounterpartyTerms.PLURAL_LOWER} that do not exist in this organization: "
+                    + string.Join(", ", unresolvableCounterpartyIds.Select(id => $"'{id}'"))
+                    + $". Choose the {CounterpartyTerms.SINGULAR_LOWER} and the peer {CounterpartyTerms.PLURAL_LOWER} from this organization's list, then resubmit.");
         }
 
         List<string> blocksMissingDocumentClass = FindOutputBlocksMissingDocumentClass(workflow);
@@ -385,6 +405,32 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         _jobsService.Execute(queued, shouldUseQueue: true);
 
         return WorkflowExecutionProjections.DtoOf(execution);
+    }
+
+    /// <summary>
+    /// The ids of the run's counterparty and peer companies that name no counterparty of the
+    /// organization. Another organization's counterparty counts as one that does not exist.
+    /// </summary>
+    private async Task<List<string>> FindCounterpartiesOutsideTheOrganizationAsync(
+        string organizationId,
+        string? counterpartyId,
+        List<string>? peerCompanyIds,
+        CancellationToken cancellationToken)
+    {
+        List<string> named = [.. (peerCompanyIds ?? []).Prepend(counterpartyId).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id!).Distinct(StringComparer.Ordinal)];
+        if (named.Count == 0)
+        {
+            return [];
+        }
+
+        List<string> owned = await _userDataUnitOfWork.Repository<Counterparty>()
+            .GetAll()
+            .AsNoTracking()
+            .Where(counterparty => counterparty.OrganizationId == organizationId && named.Contains(counterparty.Id))
+            .Select(counterparty => counterparty.Id)
+            .ToListAsync(cancellationToken);
+
+        return [.. named.Except(owned, StringComparer.Ordinal)];
     }
 
     private async Task<WorkflowExecution> CreateRootOutputAsync(

@@ -38,7 +38,7 @@ public sealed class AccountMailRecipientTests : SignedInRenderTest
         _ = Services.AddSingleton<IEmailSender<User>, IdentityMailSender>();
         _ = Services.AddSingleton<AccountLinks>();
         _ = Services.AddScoped<IdentityRedirectManager>();
-        _ = Services.AddSingleton<NavigationManager>(new StaticRenderNavigationManager());
+        _ = Services.AddSingleton<NavigationManager>(new StaticRenderNavigationManager(ADMIN_BASE_URL));
     }
 
     [Theory]
@@ -112,22 +112,5 @@ public sealed class AccountMailRecipientTests : SignedInRenderTest
         await page.Find("form").SubmitAsync();
 
         return page.Find("[role=alert]").TextContent;
-    }
-
-    /// <summary>
-    /// Navigation as the server does it while it renders an account page statically: a redirect ends
-    /// the render with a <see cref="NavigationException"/>, which the server turns into a redirect.
-    /// </summary>
-    private sealed class StaticRenderNavigationManager : NavigationManager
-    {
-        public StaticRenderNavigationManager()
-        {
-            Initialize($"{ADMIN_BASE_URL}/", $"{ADMIN_BASE_URL}/Account");
-        }
-
-        protected override void NavigateToCore(string uri, NavigationOptions options)
-        {
-            throw new NavigationException(ToAbsoluteUri(uri).AbsoluteUri);
-        }
     }
 }

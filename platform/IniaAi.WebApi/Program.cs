@@ -45,7 +45,6 @@ public class Program
 
         WebApplication app = builder.Build();
         ConfigureMiddleware(app);
-        ConfigureSecurityHeaders(app);
         ConfigureDatabase(app);
 
         await SystemUserSeeder.SeedForAllOrganizationsAsync(app.Services, app.Configuration);
@@ -57,6 +56,9 @@ public class Program
     {
         // First, so every later middleware and controller sees the client's address and scheme.
         _ = app.UseForwardedHeaders();
+
+        // Before every middleware that can answer by itself, so refusals, preflights and failures carry the headers.
+        _ = app.UseSecurityHeaders();
 
         _ = app.UseExceptionHandler();
 
@@ -101,27 +103,15 @@ public class Program
 
         _ = app.MapControllers();
 
-        _ = app.MapHealthChecks("/health");
+        _ = app.MapReadOnlyHealthChecks("/health");
 
         //HealthCheck Middleware
-        _ = app.MapHealthChecks("/readiness", new HealthCheckOptions()
+        _ = app.MapReadOnlyHealthChecks("/readiness", new HealthCheckOptions()
         {
             Predicate = _ => true,
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         });
     }
-    private static void ConfigureSecurityHeaders(WebApplication app)
-    {
-        _ = app.Use(async (context, next) =>
-        {
-            context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-            context.Response.Headers.Append("X-Frame-Options", "DENY");
-            context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
-            context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-            await next();
-        });
-    }
-
     private static void ConfigureDatabase(WebApplication app)
     {
         _ = app.InitializeDatabases();

@@ -46,16 +46,23 @@ public class ChromeDriverPoolOptionsTests
         Assert.DoesNotContain("profile.default_content_settings.popups", capabilities);
     }
 
-    [Fact]
-    public void Chrome_SendsEveryRequestThroughTheProxy()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Chrome_SendsEveryRequestThroughTheProxy(bool sandboxed)
     {
-        ChromeOptions options = ChromeDriverPool.BuildOptions("downloads", _proxy, sandboxed: true);
+        ChromeOptions options = ChromeDriverPool.BuildOptions("downloads", _proxy, sandboxed);
 
         Assert.Contains("--proxy-server=http://127.0.0.1:45678", options.Arguments);
         Assert.Contains("--proxy-bypass-list=<-loopback>", options.Arguments);
         Assert.Contains("--disable-quic", options.Arguments);
         Assert.Contains("disable_non_proxied_udp", JsonSerializer.Serialize(
             options.ToCapabilities().GetCapability(new ChromeOptions().CapabilityName)));
+        Assert.DoesNotContain(options.Arguments, argument =>
+            argument.StartsWith("--no-proxy-server", StringComparison.Ordinal)
+            || argument.StartsWith("--host-resolver-rules", StringComparison.Ordinal)
+            || argument.StartsWith("--proxy-pac-url", StringComparison.Ordinal)
+            || argument.StartsWith("--proxy-auto-detect", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using IniaAi.Application.Commands.TextProcessing.RefineContent.Models;
 using IniaAi.Common.Interfaces.Services;
 using IniaAi.Configuration;
 using IniaAi.Services.ContentRefinement;
+using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.DependencyInjection.Mocks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -32,6 +33,21 @@ public class RefineContentCommandHandlerTests
         Assert.Equal("refined", result.Value.RefinedContent);
         Assert.Equal("explanation", result.Value.Explanation);
         Assert.False(result.Value.IsOutOfScope);
+    }
+
+    [Fact]
+    public async Task Handle_SendsTheModelOnlyItsPrompt_TheContent_AndTheInstruction()
+    {
+        ScriptedChatConnector model = ScriptedChatConnector.Answering(REFINED);
+
+        _ = await NewHandler(model).Handle(new RefineContentCommand(ORG, USER, "QUOKKA-CONTENT-1", "QUOKKA-INSTRUCTION-2", []), TestContext.Current.CancellationToken);
+
+        ScriptedModelCall call = Assert.Single(model.Calls);
+        string sent = $"{call.SystemPrompt}\n{call.Text}";
+        Assert.Contains("QUOKKA-CONTENT-1", sent, StringComparison.Ordinal);
+        Assert.Contains("QUOKKA-INSTRUCTION-2", sent, StringComparison.Ordinal);
+        string[] carried = [.. MarkerWorkflow.Instructions.Where(marker => sent.Contains(marker, StringComparison.Ordinal))];
+        Assert.True(carried.Length == 0, $"The model was sent {string.Join(", ", carried)}");
     }
 
     [Fact]

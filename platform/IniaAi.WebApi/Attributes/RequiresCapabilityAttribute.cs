@@ -26,6 +26,7 @@ public sealed class RequiresCapabilityAttribute(string capability) : Attribute, 
             Capability,
             serviceProvider.GetRequiredService<IOrganizationCapabilities>(),
             serviceProvider.GetRequiredService<IRequestContext>(),
-            serviceProvider.GetRequiredService<ProblemDetailsFactory>());
+            serviceProvider.GetRequiredService<ProblemDetailsFactory>(),
+            serviceProvider.GetRequiredService<ILogger<CapabilityGateFilter>>());
     }
 }

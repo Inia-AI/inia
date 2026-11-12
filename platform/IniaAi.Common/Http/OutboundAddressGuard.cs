@@ -20,11 +20,13 @@ public sealed class OutboundAddressGuard
     private readonly HashSet<string> _allowedHostNames;
     private readonly IPNetwork[] _allowedNetworks;
     private readonly IWebProxy _proxy;
+    private readonly Func<string, CancellationToken, Task<IPAddress[]>> _resolve;
     private readonly Lazy<HttpMessageHandler> _sharedHandler;
 
-    private OutboundAddressGuard(IEnumerable<string> allowList, IWebProxy proxy)
+    private OutboundAddressGuard(IEnumerable<string> allowList, IWebProxy proxy, Func<string, CancellationToken, Task<IPAddress[]>> resolve)
     {
         _proxy = proxy;
+        _resolve = resolve;
         _allowedHostNames = new(StringComparer.OrdinalIgnoreCase);
         List<IPNetwork> networks = [];
 
@@ -73,7 +75,7 @@ public sealed class OutboundAddressGuard
 
         return _guards.GetOrAdd(
             string.Join('\n', entries),
-            static (_, list) => new OutboundAddressGuard(list, HttpClient.DefaultProxy),
+            static (_, list) => new OutboundAddressGuard(list, HttpClient.DefaultProxy, Dns.GetHostAddressesAsync),
             entries);
     }
 
@@ -83,7 +85,16 @@ public sealed class OutboundAddressGuard
     /// </summary>
     internal static OutboundAddressGuard For(IEnumerable<string> allowedInternalHosts, IWebProxy proxy)
     {
-        return new OutboundAddressGuard(allowedInternalHosts, proxy);
+        return For(allowedInternalHosts, proxy, Dns.GetHostAddressesAsync);
+    }
+
+    /// <summary>
+    /// A guard that looks a host name up with <paramref name="resolve"/> instead of the system
+    /// resolver. Not cached.
+    /// </summary>
+    internal static OutboundAddressGuard For(IEnumerable<string> allowedInternalHosts, IWebProxy proxy, Func<string, CancellationToken, Task<IPAddress[]>> resolve)
+    {
+        return new OutboundAddressGuard(allowedInternalHosts, proxy, resolve);
     }
 
     /// <summary>
@@ -127,7 +138,7 @@ public sealed class OutboundAddressGuard
 
         IPAddress[] addresses = IPAddress.TryParse(name, out IPAddress? literal)
             ? [literal]
-            : await Dns.GetHostAddressesAsync(name, cancellationToken);
+            : await _resolve(name, cancellationToken);
 
         List<IPAddress> allowed = [];
         OutboundAddressRefusedException? refusal = null;

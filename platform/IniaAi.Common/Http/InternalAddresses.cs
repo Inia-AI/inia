@@ -5,11 +5,11 @@ namespace IniaAi.Common.Http;
 
 /// <summary>
 /// The address ranges that reach a deployment's own network rather than the internet: the
-/// loopback, private, carrier-grade NAT, link-local, unique-local and unspecified ranges, in
-/// IPv4 and IPv6; the reserved, benchmarking, deprecated IPv4-compatible and local-use NAT64
-/// ranges, which no public server uses; and the Azure host platform's own address. An IPv6
-/// address that carries an IPv4 address (IPv4-mapped, or NAT64 under 64:ff9b::/96) is judged by
-/// the IPv4 address it carries.
+/// loopback, private, carrier-grade NAT, link-local, unique-local, multicast and unspecified
+/// ranges, in IPv4 and IPv6; the reserved, benchmarking, deprecated IPv4-compatible and
+/// local-use NAT64 ranges, which no public server uses; and the Azure host platform's own
+/// address. An IPv6 address that carries an IPv4 address (IPv4-mapped, or NAT64 under
+/// 64:ff9b::/96) is judged by the IPv4 address it carries.
 /// </summary>
 public static class InternalAddresses
 {
@@ -24,6 +24,7 @@ public static class InternalAddresses
     public const string IPV4_COMPATIBLE = "deprecated IPv4-compatible";
     public const string LOCAL_NAT64 = "local-use NAT64";
     public const string CLOUD_PLATFORM = "cloud platform";
+    public const string MULTICAST = "multicast";
 
     private static readonly (IPNetwork Network, string Rule)[] _ranges =
     [
@@ -36,6 +37,7 @@ public static class InternalAddresses
         (IPNetwork.Parse("192.168.0.0/16"), PRIVATE),
         (IPNetwork.Parse("192.0.0.0/24"), RESERVED),
         (IPNetwork.Parse("198.18.0.0/15"), BENCHMARKING),
+        (IPNetwork.Parse("224.0.0.0/4"), MULTICAST),
         (IPNetwork.Parse("240.0.0.0/4"), RESERVED),
         // Azure's WireServer: a public address that reaches the host platform from every VM.
         (IPNetwork.Parse("168.63.129.16/32"), CLOUD_PLATFORM),
@@ -45,6 +47,7 @@ public static class InternalAddresses
         (IPNetwork.Parse("64:ff9b:1::/48"), LOCAL_NAT64),
         (IPNetwork.Parse("fc00::/7"), UNIQUE_LOCAL),
         (IPNetwork.Parse("fe80::/10"), LINK_LOCAL),
+        (IPNetwork.Parse("ff00::/8"), MULTICAST),
     ];
 
     private static readonly IPNetwork _nat64 = IPNetwork.Parse("64:ff9b::/96");

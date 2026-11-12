@@ -84,7 +84,7 @@ public partial class AgentRuntimeClient : IAgentRuntimeClient
     private const string CONTENT_TYPE_JSON = "application/json";
     private const string CHARSET_UTF8 = "utf-8";
     private const int OUTPUT_SCHEMA_MAX_CHARS = 256 * 1024;
-    [GeneratedRegex(@"^[A-Za-z0-9._ -]{1,200}$")]
+    [GeneratedRegex(@"\A[A-Za-z0-9._ -]{1,200}\z")]
     private static partial Regex StagedInputNamePattern();
 
     private readonly HttpClient _httpClient;

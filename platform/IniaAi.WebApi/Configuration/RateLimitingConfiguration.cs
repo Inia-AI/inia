@@ -15,6 +15,8 @@ public static class RateLimitingConfiguration
     /// <summary>The policy every sign-in and password-mail endpoint names.</summary>
     public const string SIGN_IN_POLICY = SignInRateLimitSettings.POLICY_NAME;
 
+    private static readonly string _logCategory = typeof(RateLimitingConfiguration).FullName!;
+
     /// <summary>
     /// Adds the sign-in policy: a fixed window per client and endpoint, sized by
     /// <c>RateLimiting:SignIn</c>. One customer's users often share one address, and the token
@@ -33,6 +35,14 @@ public static class RateLimitingConfiguration
                     ? (int)Math.Ceiling(retryAfter.TotalSeconds)
                     : settings.WindowSeconds;
                 context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+
+                // The framework logs a refusal only at Debug, which no deployment keeps.
+                Endpoint? endpoint = context.HttpContext.GetEndpoint();
+                context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(_logCategory).LogWarning(
+                    "Request refused by the {Policy} rate limit: client {ClientAddress}, endpoint {EndpointName}",
+                    endpoint?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName,
+                    context.HttpContext.Connection.RemoteIpAddress,
+                    endpoint?.DisplayName);
                 return ValueTask.CompletedTask;
             };
 

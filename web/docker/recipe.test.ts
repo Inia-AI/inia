@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
+import http from 'node:http'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -23,6 +24,12 @@ describe('the web image recipe', () => {
 
   it('drops the entrypoint script that reaches the network before nginx binds', () => {
     expect(DOCKERFILE).toMatch(/rm -f \/docker-entrypoint\.d\/10-listen-on-ipv6-by-default\.sh/)
+  })
+
+  it('sends no X-XSS-Protection header and hides the nginx version', () => {
+    const config = fs.readFileSync(path.join(ROOT, 'docker', 'nginx.conf'), 'utf8')
+    expect(config).not.toMatch(/X-XSS-Protection/i)
+    expect(config).toMatch(/^\s*server_tokens off;$/m)
   })
 
   it('checks its health on a loopback address rather than a name with two answers', () => {
@@ -61,6 +68,18 @@ const answer = async (port: string, uri: string) => {
     return String(error)
   }
 }
+
+// fetch refuses the TRACE method, so this asks with node:http.
+const traceAnswer = (port: string) =>
+  new Promise<string>((resolve) => {
+    const request = http.request({ host: '127.0.0.1', port: Number(port), path: '/health', method: 'TRACE', headers: { 'X-Probe': 'trace-probe' } }, (response) => {
+      let body = ''
+      response.on('data', (chunk) => (body += chunk))
+      response.on('end', () => resolve(`${response.statusCode} ${body.includes('trace-probe') ? 'echoed' : 'not echoed'}`))
+    })
+    request.on('error', (error) => resolve(String(error)))
+    request.end()
+  })
 
 const eventually = async (read: () => Promise<string>, expected: string, timeoutMs: number) => {
   const deadline = Date.now() + timeoutMs
@@ -117,7 +136,7 @@ const CSP_SCRIPT = path.join(ROOT, 'docker', '41-content-security-policy.sh')
 const POLICY_BEFORE_CONNECT_SRC =
   "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src "
 const POLICY_AFTER_CONNECT_SRC =
-  "; frame-src 'self' blob: https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+  "; frame-src 'self' blob: https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 const DEFAULT_CONNECT_SRC = "'self' https:"
 const NARROW_CONNECT_SRC = "'self' https://accounts.google.com"
 const policyWith = (connectSrc: string) => `${POLICY_BEFORE_CONNECT_SRC}${connectSrc}${POLICY_AFTER_CONNECT_SRC}`
@@ -258,6 +277,8 @@ describe('the web image content security policy', () => {
         expect(run(name, [...env], true).status).toBe(0)
         await eventually(() => cspHeaders(portOf(`${id}-${name}`)), JSON.stringify(expected), 30_000)
       }
+      await eventually(() => traceAnswer(portOf(`${id}-default`)), '405 not echoed', 30_000)
+      expect((await fetch(`http://127.0.0.1:${portOf(`${id}-default`)}/health`)).headers.get('server')).toBe('nginx')
 
       const refused = run('refused', ['CSP_MODE=bogus'], false)
       expect(refused.status).not.toBe(0)

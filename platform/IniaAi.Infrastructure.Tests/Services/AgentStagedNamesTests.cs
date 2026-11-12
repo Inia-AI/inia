@@ -74,4 +74,31 @@ public class AgentStagedNamesTests
         Assert.Equal(AgentStagedNames.MAX_LENGTH, longDotfile.Length);
         Assert.StartsWith(".b", longDotfile);
     }
+
+    [Theory]
+    [InlineData("../../etc/passwd")]
+    [InlineData("/etc/passwd")]
+    [InlineData("..\\..\\windows\\system.ini")]
+    [InlineData("nul\0byte.pdf")]
+    [InlineData("line\nbreak.pdf")]
+    [InlineData("trailing-newline.pdf\n")]
+    public void Stage_ANameThatWouldChooseAPath_BecomesOneOrdinarySegment(string hostile)
+    {
+        string staged = AgentStagedNames.Stage(hostile, _usedNames);
+
+        Assert.All(staged, static c => Assert.True(char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or ' ' or '-', $"'{c}' is outside the admitted alphabet"));
+        Assert.InRange(staged.Length, 1, AgentStagedNames.MAX_LENGTH);
+        Assert.DoesNotContain(staged, new[] { ".", "..", "manifest.json" });
+    }
+
+    [Theory]
+    [InlineData("Report.pdf", "report.pdf")]
+    [InlineData("caf\u00e9.pdf", "cafe\u0301.pdf")]
+    public void Stage_NamesThatDifferOnlyByCaseOrUnicodeForm_StayApart(string first, string second)
+    {
+        string stagedFirst = AgentStagedNames.Stage(first, _usedNames);
+        string stagedSecond = AgentStagedNames.Stage(second, _usedNames);
+
+        Assert.NotEqual(stagedFirst, stagedSecond);
+    }
 }

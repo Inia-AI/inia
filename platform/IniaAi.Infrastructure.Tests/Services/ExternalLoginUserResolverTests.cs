@@ -201,6 +201,21 @@ public class ExternalLoginUserResolverTests : IDisposable
         _ = Assert.Single(firstLogins);
     }
 
+    [Fact(Skip = "security run SI-02: shows an open finding, see the ledger")]
+    public async Task ASecondGoogleAccountOnTheSameAddress_IsNotLinked()
+    {
+        User user = await _harness.CreateUserAsync(USER_EMAIL);
+        await _resolver.LinkLoginIfNeededAsync(user, ExternalLoginProviders.GOOGLE, "sub-1");
+        ExternalLoginUserResolution resolution = await _resolver.ResolveAsync(ExternalLoginProviders.GOOGLE, USER_EMAIL, emailVerified: true, []);
+        Assert.Equal(user.Id, resolution.User?.Id);
+        Assert.Equal(["sub-1"], (await _harness.UserManager.GetLoginsAsync(user)).Where(login => login.LoginProvider == ExternalLoginProviders.GOOGLE).Select(login => login.ProviderKey));
+
+        await _resolver.LinkLoginIfNeededAsync(user, ExternalLoginProviders.GOOGLE, "sub-2");
+
+        IEnumerable<string> keys = (await _harness.UserManager.GetLoginsAsync(user)).Where(login => login.LoginProvider == ExternalLoginProviders.GOOGLE).Select(login => login.ProviderKey);
+        Assert.Equal(["sub-1"], keys);
+    }
+
     [Theory]
     [InlineData(ExternalLoginProviders.GOOGLE)]
     [InlineData(ExternalLoginProviders.OIDC)]

@@ -254,7 +254,7 @@ There is **no** `/document-generation` or `/ai/proofreading` endpoint — both w
 | `DELETE` | `/document-categories/{id}` | Delete a document category (WorkflowEditor/SuperAdmin) |
 | `GET` | `/workflow-categories` | List workflow categories |
 | `GET` | `/workflow-categories/summaries` | Workflow category summaries |
-| `GET` | `/workflow-categories/{id}/validate-documents` | Validate documents against a category |
+| `GET` | `/workflow-categories/{id}/validate-documents` | Check documents against a workflow's document classes; `{id}` is a workflow of a type the organization may use |
 
 
 There is **no** `/block-templates` or `/template-categories` endpoint. Both were removed with the analyst app's Prompt Library, and the admin app's Prompt Library went later. Page overview prompts are part of a workflow template, so the template endpoints carry them.
@@ -310,7 +310,7 @@ There is **no** `/block-templates` or `/template-categories` endpoint. Both were
 | `GET` | `/meta/build` | Build metadata (anonymous) |
 | `GET` | `/meta/uptime` | Process uptime (anonymous) |
 
-Outside `/api/v1`, the API maps only `GET /health` and `GET /readiness` (health checks, anonymous), and the Swagger UI in development (see [OpenAPI/Swagger Documentation](#openapiswagger-documentation)). There is no SignalR hub: `POST /hubs/execution/negotiate` answers `404`, and run progress is read by polling ([Realtime and polling](../../architecture/frontend/realtime-and-polling.md)).
+Outside `/api/v1`, the API maps only `GET /health` and `GET /readiness` (health checks, anonymous; they also answer `HEAD` and refuse every other method with 405), and the Swagger UI in development (see [OpenAPI/Swagger Documentation](#openapiswagger-documentation)). There is no SignalR hub: `POST /hubs/execution/negotiate` answers `404`, and run progress is read by polling ([Realtime and polling](../../architecture/frontend/realtime-and-polling.md)).
 
 ## Error Handling
 
@@ -350,7 +350,7 @@ Every key of `errors` is written exactly as the server named it, whatever produc
 - an error code, such as `General.Validation` or `WorkflowVariable.Required`, in the same casing as the `code` member of a non-validation refusal such as `General.NotFound`;
 - a request property, such as `Name`;
 - the JSON path of a value in a request body that fails to parse, such as `$.count`. The body parameter's "field is required" error that the failed parse would otherwise add is dropped, because the body was sent;
-- an OData query option the parser rejects, `$filter`, `$orderby`, `$top`, `$skip` or `$count`, or `$search`, which no list supports (`$search is not supported. Narrow the list with $filter.`). A plain `search` parameter on an OData list is read as `$search` and refused the same way. Such a query answers 400, never 500 (`ODataQueryValidationFilter`).
+- an OData query option the parser rejects, `$filter`, `$orderby`, `$top`, `$skip` or `$count`, or `$search`, which no list supports (`$search is not supported. Narrow the list with $filter.`). A plain `search` parameter on an OData list is read as `$search` and refused the same way. So are a query option given in two spellings, such as `filter` and `$FILTER` (the error names the option, `$filter`), and an `$orderby` that orders by one property twice. Such a query answers 400, never 500 (`ODataQueryValidationFilter`).
 
 Every response of a versioned endpoint carries the `api-supported-versions` header, including the refusals that never reach the action: the tenant rejection, 401, 403 and the model-state 400 (`ApiVersionReportingMiddleware`).
 

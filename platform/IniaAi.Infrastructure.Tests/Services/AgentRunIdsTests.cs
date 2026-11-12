@@ -85,6 +85,7 @@ public class AgentRunIdsTests
     [InlineData("exec/1")]
     [InlineData("exec?x=1")]
     [InlineData("exec#1")]
+    [InlineData("exec-1\n")]
     [InlineData(null)]
     public void IsValid_RejectsAnythingElse(string? executionId)
     {

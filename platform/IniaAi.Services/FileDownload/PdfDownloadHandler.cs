@@ -1,4 +1,5 @@
-﻿using IniaAi.Common.Http;
+using IniaAi.Common.Http;
+using IniaAi.Common.Text;
 using IniaAi.FileFormats.Pdf;
 using Microsoft.Extensions.Logging;
 using OpenQA.Selenium;
@@ -55,7 +56,7 @@ internal class PdfDownloadHandler : DelegatingHandler
         Uri requestUrl,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("PDF file found at URL: {Url}", requestUrl);
+        _logger.LogDebug("PDF file found at URL: {Url}", LogSanitizer.ForLogUrl(requestUrl.OriginalString));
 
         HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
 
@@ -63,12 +64,12 @@ internal class PdfDownloadHandler : DelegatingHandler
 
         if (response.IsSuccessStatusCode)
         {
-            _logger.LogInformation("PDF file downloaded: {Url}", requestUrl);
+            _logger.LogInformation("PDF file downloaded: {Url}", LogSanitizer.ForLogUrl(requestUrl.OriginalString));
 
             return response;
         }
 
-        _logger.LogWarning("PDF file download failed: {Url} {StatusCode}", requestUrl, response.StatusCode);
+        _logger.LogWarning("PDF file download failed: {Url} {StatusCode}", LogSanitizer.ForLogUrl(requestUrl.OriginalString), response.StatusCode);
 
         return new HttpResponseMessage(response.StatusCode);
     }
@@ -78,7 +79,7 @@ internal class PdfDownloadHandler : DelegatingHandler
         Uri requestUrl,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("No PDF file found at URL: {Url}, trying HttpClient", requestUrl);
+        _logger.LogDebug("No PDF file found at URL: {Url}, trying HttpClient", LogSanitizer.ForLogUrl(requestUrl.OriginalString));
 
         HttpResponseMessage response = await base.SendAsync(request, cancellationToken);
         HeaderLogger.LogHeaders(requestUrl, response.Headers, _logger);
@@ -86,7 +87,7 @@ internal class PdfDownloadHandler : DelegatingHandler
         if (ContentTypeChecker.IsPdfContent(response.Content)
             || await ContentTypeChecker.StartsWithPdfSignatureAsync(response.Content, cancellationToken))
         {
-            _logger.LogInformation("PDF content found at URL: {Url}", requestUrl);
+            _logger.LogInformation("PDF content found at URL: {Url}", LogSanitizer.ForLogUrl(requestUrl.OriginalString));
 
             return response;
         }
@@ -98,7 +99,7 @@ internal class PdfDownloadHandler : DelegatingHandler
         Uri requestUrl,
         CancellationToken cancellationToken)
     {
-        _logger.LogWarning("No PDF content found at URL: {Url}, trying Chrome", requestUrl);
+        _logger.LogWarning("No PDF content found at URL: {Url}, trying Chrome", LogSanitizer.ForLogUrl(requestUrl.OriginalString));
 
         ChromeDriver chrome;
 
@@ -108,7 +109,7 @@ internal class PdfDownloadHandler : DelegatingHandler
         }
         catch (BrowserSandboxUnavailableException unavailable)
         {
-            _logger.LogWarning("Skipped the browser step for {Url}: {Reason}", requestUrl, unavailable.Message);
+            _logger.LogWarning("Skipped the browser step for {Url}: {Reason}", LogSanitizer.ForLogUrl(requestUrl.OriginalString), unavailable.Message);
             return new HttpResponseMessage(HttpStatusCode.NoContent);
         }
 
@@ -118,7 +119,7 @@ internal class PdfDownloadHandler : DelegatingHandler
         }
         catch (WebDriverTimeoutException)
         {
-            _logger.LogWarning("The page did not finish loading within {Timeout}: {Url}", ChromeDriverPool.PageLoadTimeout, requestUrl);
+            _logger.LogWarning("The page did not finish loading within {Timeout}: {Url}", ChromeDriverPool.PageLoadTimeout, LogSanitizer.ForLogUrl(requestUrl.OriginalString));
         }
 
         await Task.Delay(_pageLoadDelayMs, cancellationToken);
@@ -137,7 +138,7 @@ internal class PdfDownloadHandler : DelegatingHandler
     {
         public static void LogHeaders(Uri url, HttpHeaders headers, ILogger logger)
         {
-            logger.LogTrace("Headers for: {Url}", url);
+            logger.LogTrace("Headers for: {Url}", LogSanitizer.ForLogUrl(url.OriginalString));
             foreach ((string key, IEnumerable<string> value) in headers)
             {
                 logger.LogTrace("\t{HeaderKey} = {HeaderValue}", key, value);

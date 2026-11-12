@@ -215,6 +215,28 @@ public class UploadFileCommandHandlerIntakeTests : IDisposable
     }
 
     [Fact]
+    public async Task APdfFollowedByAZip_IsStoredAsThePdfTheGateSaw()
+    {
+        byte[] zip;
+        using (var stream = new MemoryStream())
+        {
+            using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            {
+                using Stream entry = archive.CreateEntry("hello.txt").Open();
+                entry.Write("hello"u8);
+            }
+
+            zip = stream.ToArray();
+        }
+
+        ErrorOr<FileDto> result = await _harness.HandleAsync([.. MakePdf(), .. zip], "statement.pdf");
+
+        Assert.False(result.IsError);
+        Document document = Assert.Single(await _harness.Context.Documents.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(MediaType.ApplicationPdf, document.MediaType);
+    }
+
+    [Fact]
     public async Task TheSameFileUploadedTwice_ReusesTheDocument_AndReportsTheReuse()
     {
         byte[] pdf = MakePdf();

@@ -108,6 +108,48 @@ public abstract class PdfFormatContract
     }
 
     [Fact]
+    public void RenderPng_OfTheLargestPageAPdfMayDeclare_AtTheDpiThePipelineResolves_FitsTheStandardTier()
+    {
+        const double PDF_MAXIMUM_PAGE_POINTS = 14_400;
+        using IPdfDocument pdf = Format.Open(new MemoryStream(OnePagePdf(PDF_MAXIMUM_PAGE_POINTS, PDF_MAXIMUM_PAGE_POINTS)), "poster.pdf");
+        int dpi = ModelImageLimits.ResolveRenderDpi(PDF_MAXIMUM_PAGE_POINTS, PDF_MAXIMUM_PAGE_POINTS, VisionTier.Standard);
+
+        PictureSize rendered = Pictures.ReadSize(pdf.RenderPng(1, dpi).BinaryData.ToArray())!;
+
+        Assert.InRange(rendered.Width, 1, VisionTier.Standard.LongEdgePx);
+        Assert.InRange(rendered.Height, 1, VisionTier.Standard.LongEdgePx);
+    }
+
+    /// <summary>A PDF of one empty page of <paramref name="widthPt"/> by <paramref name="heightPt"/> points, with a correct cross-reference table.</summary>
+    private static byte[] OnePagePdf(double widthPt, double heightPt)
+    {
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            FormattableString.Invariant($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {widthPt} {heightPt}] /Contents 4 0 R /Resources << >> >>"),
+            "<< /Length 0 >>\nstream\n\nendstream",
+        ];
+        var pdf = new System.Text.StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int>();
+        for (int index = 0; index < objects.Length; index++)
+        {
+            offsets.Add(pdf.Length);
+            _ = pdf.Append(FormattableString.Invariant($"{index + 1} 0 obj\n{objects[index]}\nendobj\n"));
+        }
+
+        int crossReference = pdf.Length;
+        _ = pdf.Append(FormattableString.Invariant($"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n"));
+        foreach (int offset in offsets)
+        {
+            _ = pdf.Append(FormattableString.Invariant($"{offset:D10} 00000 n \n"));
+        }
+
+        _ = pdf.Append(FormattableString.Invariant($"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{crossReference}\n%%EOF\n"));
+        return System.Text.Encoding.ASCII.GetBytes(pdf.ToString());
+    }
+
+    [Fact]
     public void RenderJpeg_IsAJpegOfThePageAtTheAskedResolution()
     {
         using IPdfDocument pdf = Open(THREE_PAGES_PDF);

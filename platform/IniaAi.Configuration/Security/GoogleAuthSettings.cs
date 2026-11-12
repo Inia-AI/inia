@@ -10,6 +10,12 @@ public class GoogleAuthSettings
     /// </summary>
     public const string SectionName = "Authentication:Google";
 
+    /// <summary>The configuration key of the client id, for a message that names it.</summary>
+    public const string CLIENT_ID_KEY = $"{SectionName}:{nameof(ClientId)}";
+
+    /// <summary>Why the API refuses to start with Google sign-in on and no client id.</summary>
+    public const string CLIENT_ID_REFUSAL = $"{CLIENT_ID_KEY} is required when Google sign-in is on: a Google token is accepted only when it was issued to this client id.";
+
     /// <summary>
     /// Gets or sets the Google OAuth Client ID.
     /// </summary>
@@ -31,4 +37,10 @@ public class GoogleAuthSettings
     /// Example: ["inia.ai", "company.com"]
     /// </summary>
     public List<string> AllowedDomains { get; set; } = [];
+
+    /// <summary>Whether Google sign-in is off, or on with a client id to check tokens against.</summary>
+    public static bool HasClientIdWhenEnabled(GoogleAuthSettings settings)
+    {
+        return !settings.Enabled || !string.IsNullOrWhiteSpace(settings.ClientId);
+    }
 }

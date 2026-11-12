@@ -42,6 +42,15 @@ public static class RunnableWorkflowGuard
         return workflow;
     }
 
+    /// <summary>
+    /// A stored copy that an earlier run made of its workflow belongs to that run's organization: another
+    /// organization's copy reads as unknown, like an id that does not exist.
+    /// </summary>
+    public static Workflow? OwnCopy(Workflow? copy, string organizationId)
+    {
+        return copy?.OrganizationId == organizationId ? copy : null;
+    }
+
     private static Error NotFound()
     {
         return Error.NotFound(description: NOT_FOUND_MESSAGE);

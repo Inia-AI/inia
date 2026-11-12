@@ -144,7 +144,7 @@ public partial class WebApiCallStrategy : IBlockStrategy
             "{block} Making {method} request to {url}",
             block,
             method,
-            url);
+            LogSanitizer.ForLogUrl(url));
 
         context.Logger.LogTrace(
             "{block} Request payload: {Length} characters",
@@ -199,7 +199,7 @@ public partial class WebApiCallStrategy : IBlockStrategy
                 context.Logger.LogDebug(
                     "{block} polling complete, fetching completion URL {url}",
                     block,
-                    completionUrl);
+                    LogSanitizer.ForLogUrl(completionUrl));
 
                 response = await ExecuteSingleRequestAsync(
                     completionUrl,
@@ -288,14 +288,14 @@ public partial class WebApiCallStrategy : IBlockStrategy
                 context.Logger.LogWarning(
                     "{block} URL {url} matches Perplexity but response did not contain extractable citations; falling back to raw response",
                     block,
-                    responseUrl);
+                    LogSanitizer.ForLogUrl(responseUrl));
             }
             else if (isParallelAi)
             {
                 context.Logger.LogWarning(
                     "{block} URL {url} matches Parallel.ai task result but response did not contain extractable citations; falling back to raw response",
                     block,
-                    responseUrl);
+                    LogSanitizer.ForLogUrl(responseUrl));
             }
 
             block.BlockResponse = new BlockResponse(block)
@@ -750,7 +750,7 @@ public partial class WebApiCallStrategy : IBlockStrategy
         if (!Uri.TryCreate(props.ExecutionState.Url, UriKind.Absolute, out Uri? uri)
             || (uri.Scheme != "http" && uri.Scheme != "https"))
         {
-            string errorMessage = $"Invalid URL format: {props.ExecutionState.Url}";
+            string errorMessage = $"Invalid URL format: {LogSanitizer.ForLogUrl(props.ExecutionState.Url)}";
             context.Logger.LogError("{block} {ErrorMessage}", block, errorMessage);
             throw new InvalidOperationException(errorMessage);
         }

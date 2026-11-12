@@ -36,6 +36,15 @@ public class CreateCounterpartyCommandHandler : IRequestHandler<CreateCounterpar
     {
         try
         {
+            if (!string.IsNullOrEmpty(request.ParentId)
+                && await _userDataDbContext.Repository<Counterparty>().SingleOrDefaultAsync(
+                    parent => parent.Id == request.ParentId && parent.OrganizationId == request.OrganizationId,
+                    asNoTracking: true,
+                    cancellationToken: cancellationToken) is null)
+            {
+                return CounterpartyErrorFactory.ParentNotFound(request.ParentId);
+            }
+
             if (!string.IsNullOrWhiteSpace(request.Id))
             {
                 var spec = new CounterpartyByIdIncludingDeletedSpec(request.Id);

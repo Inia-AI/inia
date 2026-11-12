@@ -32,16 +32,18 @@ public class GetWorkflowTypeUsageSummaryQueryHandler
         // Get workflow type name from CoreDbContext
         var workflowType = await _coreDbContext.WorkflowTypes
             .Where(wt => wt.Id == request.WorkflowTypeId)
-            .Select(wt => new { wt.Name })
+            .Select(wt => new { wt.Name, Granted = wt.OrganizationAccess.Any(access => access.OrganizationId == request.OrganizationId) })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (workflowType is null)
+        IQueryable<UsageDaySlice> slices = TokenUsageSlices.ByDay(_userDataDbContext, request.OrganizationId)
+            .Where(s => s.WorkflowTypeId == request.WorkflowTypeId);
+
+        // A type the organization lost access to keeps its history; one it never had stays unnamed
+        if (workflowType is null || (!workflowType.Granted && !await slices.AnyAsync(cancellationToken)))
         {
             return Error.NotFound("WorkflowType.NotFound", $"Workflow type {request.WorkflowTypeId} not found.");
         }
 
-        IQueryable<UsageDaySlice> slices = TokenUsageSlices.ByDay(_userDataDbContext, request.OrganizationId)
-            .Where(s => s.WorkflowTypeId == request.WorkflowTypeId);
         List<UsageDayTypeSums> byDayAndType = await UsageSummaries.ByDayAndTypeAsync(slices, cancellationToken);
         TokenUsageSummaryDto totals = UsageSummaries.Periods(byDayAndType, DateTime.UtcNow).AllTime;
         long embeddingTokens = byDayAndType.Where(d => d.IsEmbedding).Sum(d => d.EmbeddingTokens);

@@ -14,6 +14,7 @@ using OpenIddict.Server;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using System.Text;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -52,6 +53,9 @@ internal sealed class CustomGrantFlows(IEnumerable<CustomGrantType> grantTypes) 
 /// </summary>
 public static class AuthenticationConfiguration
 {
+    private const int TOKEN_ENCRYPTION_KEY_BYTES = 32;
+    private const string TOKEN_ENCRYPTION_KEY_PURPOSE = "IniaAi token encryption";
+
     /// <summary>
     /// Configures OpenIddict token server, JWT validation, and IdentityCore for user authentication.
     /// </summary>
@@ -111,7 +115,7 @@ public static class AuthenticationConfiguration
 
                 _ = options.AcceptAnonymousClients();
 
-                _ = options.AddEphemeralEncryptionKey();
+                _ = options.AddEncryptionKey(TokenEncryptionKey(jwtTokenSettings.SecretKey));
                 _ = options.AddEphemeralSigningKey();
                 _ = options.DisableAccessTokenEncryption();
 
@@ -175,5 +179,19 @@ public static class AuthenticationConfiguration
             .WithDistributedCacheStore(TimeSpan.FromMinutes(10)); // Cache tenant lookups for 10 minutes
 
         return services;
+    }
+
+    /// <summary>
+    /// The key that encrypts refresh tokens, derived from <c>Jwt:SecretKey</c> rather than made at
+    /// start, so a refresh token outlives a restart and every instance of the API can read it.
+    /// Rotating the secret ends every session.
+    /// </summary>
+    private static SymmetricSecurityKey TokenEncryptionKey(string secretKey)
+    {
+        return new SymmetricSecurityKey(HKDF.DeriveKey(
+            HashAlgorithmName.SHA256,
+            Encoding.UTF8.GetBytes(secretKey),
+            TOKEN_ENCRYPTION_KEY_BYTES,
+            info: Encoding.UTF8.GetBytes(TOKEN_ENCRYPTION_KEY_PURPOSE)));
     }
 }

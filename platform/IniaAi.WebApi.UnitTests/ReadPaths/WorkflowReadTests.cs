@@ -60,7 +60,7 @@ public class WorkflowReadTests : ReadPathTests
     public async Task ADocumentClassValidation_ReadsAsTheSameJson()
     {
         Workflow workflow = BuildWorkflow("workflow-validated", WORKFLOW_TYPE_ID);
-        _ = Core.WorkflowTypes.Add(new WorkflowType(WORKFLOW_TYPE_ID, "Corporate Read"));
+        _ = Core.WorkflowTypes.Add(BuildType(WORKFLOW_TYPE_ID, "Corporate Read", null, ORGANIZATION_ID));
         _ = Core.Workflows.Add(workflow);
         _ = await Core.SaveChangesAsync(TestContext.Current.CancellationToken);
         Core.ChangeTracker.Clear();

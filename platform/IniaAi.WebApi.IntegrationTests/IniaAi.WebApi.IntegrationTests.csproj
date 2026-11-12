@@ -23,6 +23,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="..\IniaAi.WebApi.UnitTests\Authorization\ApiEndpoints.cs" Link="Authorization\ApiEndpoints.cs" />
+        <Compile Include="..\IniaAi.WebApi.UnitTests\Authorization\EndpointIds.cs" Link="Authorization\EndpointIds.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Using Include="Xunit" />
     </ItemGroup>
 

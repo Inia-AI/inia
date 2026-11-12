@@ -118,6 +118,48 @@ public class WebApiCallStrategyInternalAddressTests
         Assert.Equal(InternalAddresses.LINK_LOCAL, refusal.Rule);
     }
 
+    // A previous block's output can fill the host of an address: the same rule refuses an internal one.
+    [Theory]
+    [InlineData("https://{host}/latest/meta-data/", "169.254.169.254", InternalAddresses.LINK_LOCAL)]
+    [InlineData("http://{host}/admin", "127.0.0.1", InternalAddresses.LOOPBACK)]
+    [InlineData("https://{host}/", "localhost", InternalAddresses.LOOPBACK)]
+    public async Task ExecuteBlockAsync_APlaceholderHostThatIsInternal_IsRefused(string template, string value, string rule)
+    {
+        (Block block, BlockExecutionContext context) = Arrange(
+            new WebApiCallProperties { UrlTemplate = template, HttpMethod = "GET" },
+            new Dictionary<string, string?> { ["host"] = value });
+        var strategy = new RetryRecordingStrategy();
+
+        OutboundAddressRefusedException refusal = await Assert.ThrowsAsync<OutboundAddressRefusedException>(
+            () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
+
+        Assert.Equal(rule, refusal.Rule);
+        Assert.Empty(strategy.RetryWaits);
+    }
+
+    // A value that fills part of an address is URL-encoded, so a user-info "@", a slash or a scheme in it cannot
+    // move the request to another host: the address stops being valid and the block fails before any request.
+    [Theory]
+    [InlineData("https://{part}/v3/quote", "example.invalid@127.0.0.1")]
+    [InlineData("https://api.example.invalid{part}", "@127.0.0.1/v3/quote")]
+    [InlineData("{part}://example.invalid/v3/quote", "http://127.0.0.1/#")]
+    public async Task ExecuteBlockAsync_APlaceholderThatWouldMoveTheHost_StaysEncoded_AndSendsNothing(string template, string value)
+    {
+        string path = $"/moved-{Guid.NewGuid():N}";
+        (Block block, BlockExecutionContext context) = Arrange(
+            new WebApiCallProperties { UrlTemplate = template, HttpMethod = "GET" },
+            new Dictionary<string, string?> { ["part"] = value.Replace("127.0.0.1", new Uri(_server.BaseUrl).Authority, StringComparison.Ordinal) + path });
+        var strategy = new RetryRecordingStrategy();
+
+        InvalidOperationException failure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
+
+        Assert.StartsWith("Invalid URL format: ", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("%", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(0, _server.PathHits(path));
+        Assert.Empty(strategy.RetryWaits);
+    }
+
     [Fact]
     public async Task ExecuteBlockAsync_AnInternalPollUrl_FailsAtOnceInsteadOfPollingToTheDeadline()
     {

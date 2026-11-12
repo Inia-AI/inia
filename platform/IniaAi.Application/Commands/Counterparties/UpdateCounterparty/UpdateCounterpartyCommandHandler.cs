@@ -43,6 +43,12 @@ public class UpdateCounterpartyCommandHandler : IRequestHandler<UpdateCounterpar
             return CounterpartyErrorFactory.NotFound(request.Id.ToString());
         }
 
+        if (!string.IsNullOrEmpty(request.ParentId)
+            && !await _context.Counterparties.AnyAsync(parent => parent.Id == request.ParentId && parent.OrganizationId == request.OrganizationId, cancellationToken))
+        {
+            return CounterpartyErrorFactory.ParentNotFound(request.ParentId);
+        }
+
         entity.ParentId = request.ParentId;
         CounterpartyFields.CopyText(request, entity);
 

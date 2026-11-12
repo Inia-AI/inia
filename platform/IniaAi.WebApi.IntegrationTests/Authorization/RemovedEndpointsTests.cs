@@ -34,4 +34,30 @@ public class RemovedEndpointsTests : IClassFixture<ApiTestFixture>
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Theory]
+    [InlineData("$metadata")]
+    [InlineData("odata")]
+    [InlineData("odata/$metadata")]
+    [InlineData("api/v1/$metadata")]
+    public async Task TheODataMetadataRoutes_AnswerNotFound_WhileTheHealthCheckAnswers(string path)
+    {
+        HttpResponseMessage health = await _api.Client.GetAsync("health", TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await _api.Client.GetAsync(path, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheReadinessCheck_NamesNoHostAndNoAccount()
+    {
+        HttpResponseMessage response = await _api.Client.GetAsync("readiness", TestContext.Current.CancellationToken);
+        string body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("Host=", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Password", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Username", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("   at ", body, StringComparison.Ordinal);
+    }
 }

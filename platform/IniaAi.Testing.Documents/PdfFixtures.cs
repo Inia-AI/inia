@@ -65,6 +65,12 @@ public static partial class PdfFixtures
         return Written([new PageContent($"{TextLines(visibleText)}\nBT /F1 1 Tf 1 1 1 rg 72 600 Td ({Escaped(hiddenText)}) Tj ET")]);
     }
 
+    /// <summary>One page of <paramref name="text"/> whose document properties hold a title, a subject and keywords.</summary>
+    public static byte[] WithProperties(string text, string title, string subject, string keywords)
+    {
+        return Written([new PageContent(TextLines(text))], $"<< /Title ({Escaped(title)}) /Subject ({Escaped(subject)}) /Keywords ({Escaped(keywords)}) >>");
+    }
+
     /// <summary>One page of <paramref name="widthPt"/> x <paramref name="heightPt"/> points with a line of text.</summary>
     public static byte[] SizedPage(double widthPt, double heightPt)
     {
@@ -128,7 +134,7 @@ public static partial class PdfFixtures
     /// Writes the objects and the cross-reference table by hand, so a page can be broken in a way no PDF writer
     /// produces. A null page leaves an object the page tree names out of the file.
     /// </summary>
-    private static byte[] Written(IReadOnlyList<PageContent?> pages)
+    private static byte[] Written(IReadOnlyList<PageContent?> pages, string? info = null)
     {
         int ObjectOfPage(int pageNumber) => FONT + (2 * pageNumber) - 1;
         bool hasImage = pages.Any(page => page?.HasImage == true);
@@ -162,6 +168,11 @@ public static partial class PdfFixtures
             objects.Add("<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 /Length 1 >>\nstream\n\0\nendstream");
         }
 
+        if (info is not null)
+        {
+            objects.Add(info);
+        }
+
         var file = new StringBuilder("%PDF-1.4\n");
         List<int> offsets = [];
         for (int index = 0; index < objects.Count; index++)
@@ -177,7 +188,8 @@ public static partial class PdfFixtures
             _ = file.Append($"{offset:D10} 00000 n \n");
         }
 
-        _ = file.Append($"trailer\n<< /Size {objects.Count + 1} /Root {CATALOG} 0 R >>\nstartxref\n{crossReferenceOffset}\n%%EOF\n");
+        string infoEntry = info is null ? string.Empty : $" /Info {objects.Count} 0 R";
+        _ = file.Append($"trailer\n<< /Size {objects.Count + 1} /Root {CATALOG} 0 R{infoEntry} >>\nstartxref\n{crossReferenceOffset}\n%%EOF\n");
         return Encoding.Latin1.GetBytes(file.ToString());
     }
 

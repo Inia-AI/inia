@@ -4,6 +4,7 @@ using IniaAi.Domain.Entities.UserManagement;
 using System.Security.Claims;
 using IniaAi.Application.Common.Capabilities;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Testing;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.WebApi.Attributes;
 using IniaAi.WebApi.Filters;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace IniaAi.WebApi.UnitTests.Filters;
 
@@ -24,6 +26,8 @@ namespace IniaAi.WebApi.UnitTests.Filters;
 public class CapabilityGateFilterTests
 {
     private const string ORGANIZATION_ID = "org-1";
+    private const string USER_ID = "user-1";
+    private const string QUERY_CANARY = "CANARY-QUERY";
 
     [Fact]
     public async Task AnEndpointBehindARemovedCapability_IsRefusedWith403_NamingTheCapability()
@@ -93,7 +97,7 @@ public class CapabilityGateFilterTests
     private static async Task<IActionResult?> StaffOrCapabilityAsync(IOrganizationCapabilities capabilities, string role)
     {
         var services = new ServiceCollection().AddSingleton(capabilities).AddSingleton<IRequestContext>(new RequestContext { OrganizationId = ORGANIZATION_ID });
-        _ = services.AddControllers();
+        _ = services.AddLogging().AddControllers();
         await using Microsoft.Extensions.DependencyInjection.ServiceProvider provider = services.BuildServiceProvider();
         var http = new DefaultHttpContext
         {
@@ -141,7 +145,7 @@ public class CapabilityGateFilterTests
     private static async Task<IActionResult?> ReportContentAsync(IReportContentRule rule, string? reportId)
     {
         var services = new ServiceCollection().AddSingleton(rule).AddSingleton<IRequestContext>(new RequestContext { OrganizationId = ORGANIZATION_ID });
-        _ = services.AddControllers();
+        _ = services.AddLogging().AddControllers();
         await using Microsoft.Extensions.DependencyInjection.ServiceProvider provider = services.BuildServiceProvider();
         var http = new DefaultHttpContext { RequestServices = provider };
         var routes = new RouteData();
@@ -173,10 +177,52 @@ public class CapabilityGateFilterTests
         }
     }
 
+    [Fact]
+    public async Task ARefusal_LeavesOneWarning_NamingTheUserTheOrganizationTheActionAndTheCapability_AndAnAllowedRequestLeavesNone()
+    {
+        var logs = new CapturingLoggerProvider();
+        var capabilities = new OrganizationCapabilitiesWithout(OrganizationCapabilities.USAGE_COST);
+
+        IActionResult? allowed = await GateAsync(capabilities, ORGANIZATION_ID, OrganizationCapabilities.RUN, logs);
+        Assert.Null(allowed);
+        Assert.DoesNotContain(logs.Entries, entry => entry.Level >= LogLevel.Warning);
+
+        IActionResult? refused = await GateAsync(capabilities, ORGANIZATION_ID, OrganizationCapabilities.USAGE_COST, logs);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(refused).StatusCode);
+        CapturedLogEntry warning = Assert.Single(logs.Entries, entry => entry.Level == LogLevel.Warning);
+        Dictionary<string, object?> values = warning.Values.ToDictionary(value => value.Key, value => value.Value, StringComparer.Ordinal);
+        Assert.Equal(USER_ID, values["UserId"]);
+        Assert.Equal(ORGANIZATION_ID, values["OrganizationId"]);
+        Assert.Equal("TokenUsage.GetMyUsageSummary", values["Action"]);
+        Assert.Equal(OrganizationCapabilities.USAGE_COST, values["Capability"]);
+        Assert.DoesNotContain(QUERY_CANARY, warning.Text, StringComparison.Ordinal);
+    }
+
+    private static async Task<IActionResult?> GateAsync(IOrganizationCapabilities capabilities, string organizationId, string capability, CapturingLoggerProvider logs)
+    {
+        var services = new ServiceCollection()
+            .AddSingleton(capabilities)
+            .AddSingleton<IRequestContext>(new RequestContext { OrganizationId = organizationId, UserId = USER_ID })
+            .AddLogging(logging => logging.AddProvider(logs));
+        _ = services.AddControllers();
+        await using Microsoft.Extensions.DependencyInjection.ServiceProvider provider = services.BuildServiceProvider();
+        var http = new DefaultHttpContext { RequestServices = provider };
+        http.Request.Path = "/api/v1/token-usage/me";
+        http.Request.QueryString = new QueryString("?search=" + QUERY_CANARY);
+        var action = new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor { ControllerName = "TokenUsage", ActionName = "GetMyUsageSummary" };
+        var context = new AuthorizationFilterContext(new ActionContext(http, new RouteData(), action), []);
+        var gate = (IAsyncAuthorizationFilter)new RequiresCapabilityAttribute(capability).CreateInstance(provider);
+
+        await gate.OnAuthorizationAsync(context);
+
+        return context.Result;
+    }
+
     private static async Task<IActionResult?> GateAsync(IOrganizationCapabilities capabilities, string? organizationId, string capability)
     {
         var services = new ServiceCollection().AddSingleton(capabilities).AddSingleton<IRequestContext>(new RequestContext { OrganizationId = organizationId });
-        _ = services.AddControllers();
+        _ = services.AddLogging().AddControllers();
         await using Microsoft.Extensions.DependencyInjection.ServiceProvider provider = services.BuildServiceProvider();
         var http = new DefaultHttpContext { RequestServices = provider };
         var context = new AuthorizationFilterContext(new ActionContext(http, new RouteData(), new ActionDescriptor()), []);

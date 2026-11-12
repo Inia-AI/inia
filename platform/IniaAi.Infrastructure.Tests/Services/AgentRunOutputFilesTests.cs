@@ -130,6 +130,15 @@ public class AgentRunOutputFilesTests
         Assert.True(Encoding.UTF8.GetByteCount(composed.Value) <= 64);
     }
 
+    [Theory]
+    [InlineData("out/report.json\n")]
+    [InlineData("out/../report.json")]
+    [InlineData("/out/report.json")]
+    public void APathThatIsNotAnOrdinaryJsonFileUnderOut_IsAPathProblem(string path)
+    {
+        Assert.NotNull(AgentRunOutputFiles.DescribeFirstPathProblem([path]));
+    }
+
     [Fact]
     public void StemCollision_IsAPathProblem()
     {

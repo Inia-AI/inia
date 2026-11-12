@@ -40,6 +40,33 @@ public sealed class CheckedRedirectHandlerTests : IDisposable
         Assert.Equal(["https://reports.example/secure"], network.Requests);
     }
 
+    [Fact]
+    public async Task ARedirectToAnInternalAddress_IsRefused()
+    {
+        using var client = new HttpClient(OutboundAddressGuard.For(["127.0.0.1"]).CreateHandler());
+
+        OutboundAddressRefusedException refusal = await Assert.ThrowsAsync<OutboundAddressRefusedException>(() => client.GetAsync(
+            $"{_site.BaseUrl}/redirect?to={Uri.EscapeDataString("http://127.0.0.2:9/report.pdf")}",
+            TestContext.Current.CancellationToken));
+
+        Assert.Equal(InternalAddresses.LOOPBACK, refusal.Rule);
+        Assert.Contains("127.0.0.2", refusal.Message);
+    }
+
+    [Theory]
+    [InlineData("ftp://127.0.0.1/report.pdf")]
+    [InlineData("file:///etc/hostname")]
+    public async Task ARedirectToAnotherScheme_IsNotFollowed(string location)
+    {
+        var network = new RedirectingNetwork(new Uri(location));
+        using var client = new HttpClient(new CheckedRedirectHandler(OutboundAddressGuard.For([], new WebProxy()), network));
+
+        using HttpResponseMessage response = await client.GetAsync("http://reports.example/start", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Found, response.StatusCode);
+        Assert.Equal(["http://reports.example/start"], network.Requests);
+    }
+
     /// <summary>
     /// The network: every request is answered with a redirect to one location. An HTTPS server
     /// is out of reach of a test, so the network stands in for it.

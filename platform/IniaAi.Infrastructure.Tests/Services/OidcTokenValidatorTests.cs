@@ -139,6 +139,31 @@ public class OidcTokenValidatorTests : IDisposable
     }
 
     [Fact]
+    public async Task MetadataNamingAnotherIssuer_ReturnsInvalid()
+    {
+        const string otherIssuer = "https://evil.example.com/oauth2/default";
+        var settings = new OidcAuthSettings { Enabled = true, Issuer = TestIssuer, ClientId = TestClientId };
+        var validator = new OidcTokenValidator(settings, OidcTestTokenHelper.CreateConfigManager(_signingKey, otherIssuer));
+        string token = OidcTestTokenHelper.CreateSignedToken(_signingKey, otherIssuer, TestClientId, TestSubject, TestEmail);
+
+        OidcTokenValidationResult result = await validator.ValidateTokenAsync(token, TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public async Task MetadataIssuerThatDiffersOnlyByATrailingSlash_IsAccepted()
+    {
+        var settings = new OidcAuthSettings { Enabled = true, Issuer = TestIssuer + "/", ClientId = TestClientId };
+        var validator = new OidcTokenValidator(settings, OidcTestTokenHelper.CreateConfigManager(_signingKey, TestIssuer));
+        string token = OidcTestTokenHelper.CreateSignedToken(_signingKey, TestIssuer, TestClientId, TestSubject, TestEmail);
+
+        OidcTokenValidationResult result = await validator.ValidateTokenAsync(token, TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsValid, result.Error);
+    }
+
+    [Fact]
     public async Task InvalidSignature_ReturnsInvalid()
     {
         using var differentRsa = RSA.Create(2048);

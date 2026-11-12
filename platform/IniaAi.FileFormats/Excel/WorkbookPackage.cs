@@ -93,7 +93,7 @@ internal static class WorkbookPackage
         }
 
         using Stream stream = entry.Open();
-        return XDocument.Load(stream);
+        return PackageXml.Load(stream);
     }
 
     private static bool IsFolder(ZipArchiveEntry entry)
@@ -134,7 +134,7 @@ internal static class WorkbookPackage
 
     private static void Rewrite(Stream input, Stream output, Action<XDocument> change)
     {
-        XDocument document = XDocument.Load(input);
+        XDocument document = PackageXml.Load(input);
         change(document);
         document.Save(output, SaveOptions.DisableFormatting);
     }

@@ -1,4 +1,5 @@
-﻿using IniaAi.WebApp.Components.Account;
+﻿using IniaAi.Infrastructure.Hosting;
+using IniaAi.WebApp.Components.Account;
 
 namespace IniaAi.WebApp;
 
@@ -41,7 +42,7 @@ public class AppConfigurator
 
         _ = app.MapAdditionalIdentityEndpoints();
 
-        _ = app.MapHealthChecks("/health");
+        _ = app.MapReadOnlyHealthChecks("/health");
 
         _logger.LogInformation("Blazor web app setup complete.");
     }

@@ -6,7 +6,7 @@ description: "The canonical role-gate matrix of the v1 API, the role catalog and
 
 # Authorization
 
-**On this page:** The role catalog · Roles are global; membership is per-organization · Capabilities · Checks inside handlers · Authorization in the Admin App (Blazor) · Authorization Patterns · What is not built · Related Documentation
+**On this page:** The role catalog · Roles are global; membership is per-organization · Capabilities · Checks inside handlers · Object ids per endpoint · Authorization in the Admin App (Blazor) · Authorization Patterns · What is not built · Related Documentation
 
 The IniaAi Platform authorizes a request in four layers, all enforced in code:
 
@@ -48,7 +48,7 @@ The platform defines **6 global roles** in `platform/IniaAi.Domain/Entities/User
 
 Roles are **not** scoped per organization. A user's roles are global ASP.NET Core Identity roles stored in `AspNetUserRoles`; what varies per organization is *membership* — a `UserOrganization` row (`UserId`, `OrganizationId`, `IsDefault`, `IsActive`, `JoinedAt`, `LeftAt`) with **no role column**.
 
-At sign-in, `AuthenticationController.AddRoleClaimsAsync` reads the user's global roles via `_userManager.GetRolesAsync(user)` and emits one `role` claim per role into the access token; tenant context travels in separate `tenant_ids` / `tenant_id` (preferred) / `organization_id` (legacy) claims ([Authentication → Multi-Tenant Token Claims](../../reference/api/authentication.md#multi-tenant-token-claims)). The API reads roles from the token alone, so a role granted or removed reaches the API only at the user's next sign-in: neither an existing access token nor a refresh picks it up ([Refresh Token Grant](../../reference/api/authentication.md#3-refresh-token-grant)).
+At sign-in, `AuthenticationController.AddRoleClaimsAsync` reads the user's global roles via `_userManager.GetRolesAsync(user)` and emits one `role` claim per role into the access token; tenant context travels in separate `tenant_ids` / `tenant_id` (preferred) / `organization_id` (legacy) claims ([Authentication → Multi-Tenant Token Claims](../../reference/api/authentication.md#multi-tenant-token-claims)). The API reads roles from the token alone, so an access token already issued keeps the roles it was issued with. A refresh builds the new access token from the roles the user holds at that moment, as a sign-in does, so a role granted reaches the API at the user's next refresh or sign-in ([Refresh Token Grant](../../reference/api/authentication.md#3-refresh-token-grant)). Removing a role revokes the user's sessions at once ([Revocation and Sign-Out](../../reference/api/authentication.md#revocation-and-sign-out)). Memberships travel in the token the same way. Removing one in the admin app's organization dialog revokes the user's sessions after the change is saved, and the API checks every access token against its stored entry, so a token issued before the removal is refused from then on. A membership row changed without that revoke keeps working for the life of the access token.
 
 ### How roles are created and assigned
 
@@ -82,7 +82,7 @@ A capability is a neutral name for something an organization may do (`Organizati
 | `standalone-processing` | `POST /documents/{id}/process`, `POST /documents/text`, which also need `upload`: they store or page a document, so an organization that cannot upload cannot use them either |
 | `team-view` | `GET /users` |
 | `signatures` | every `/workflow-types/{workflowTypeId}/signatures` endpoint, `GET /workflow-executions/{id}/blocks`, `POST /workflow-executions/{id}/test-signature-prompt` |
-| `admin-app` | No API endpoint: the Blazor admin app's sign-in. `AdminAppSignInManager.CanSignInAsync`, which every sign-in method asks first (password, second factor, recovery code, an outside provider), refuses a user whose organization lacks it, and `SignInWithClaimsAsync`, where every sign-in that issues the cookie ends, an outside provider's and a refresh included, issues none for that user. The outside-provider page also asks `CanSignInAsync` before it signs in, and sends the user back to sign-in with "This account cannot sign in to the admin app. Sign in to the Inia AI app instead, or ask an administrator if you need the admin app." |
+| `admin-app` | No API endpoint: the Blazor admin app's sign-in. `AdminAppSignInManager.CanSignInAsync`, which the password, second-factor and recovery-code sign-ins ask first, refuses a user whose organization lacks it; a refused recovery-code sign-in leaves the code unspent. `SignInWithClaimsAsync`, where every sign-in that issues the cookie ends, an outside provider's and a refresh included, issues none for that user. The outside-provider page asks `AdminAppSignInManager.AdmitsAsync` before it signs in, and sends the user back to sign-in with "This account cannot sign in to the admin app. Sign in to the Inia AI app instead, or ask an administrator if you need the admin app." |
 | `delete-own-documents` | `DELETE /documents/{id}` and `POST /documents/bulk-delete`: `Admin`, `Operator` and `SuperAdmin` delete any document of the organization; anyone else passes `[StaffOrCapability]` only with this capability, and deletes only the documents they uploaded (another user's answers as an unknown id). It is not in `OrganizationCapabilities.All`, so the platform grants it to no one; the self-serve module adds it |
 
 In the open build, `baselines`, `validation`, `report-templates` and `monitoring` gate no endpoint: the endpoints they gate belong to closed modules.
@@ -109,6 +109,147 @@ Some access rules live in the handler, not in a role attribute:
 Workflow templates are shared across organizations, and `WorkflowTypeOrganizationAccess` (`platform/IniaAi.Domain/Entities/Workflows/WorkflowTypeOrganizationAccess.cs`) says which organizations may use a type; `Workflow.OrganizationId` is a "who last saved" stamp, not an ownership key. The join is checked where a type is listed or described: the category listings, `GET /workflow-templates/{workflowTypeId}/summary`, the re-run check, the peer candidates and the signature reads (`WorkflowTypeAccessGuard.HasAccessAsync` or an equivalent query).
 
 **Starting a run does not check it.** `POST /workflow-executions` and `POST /workflow-executions/submit` start any workflow type whose workflow exists, even a type the organization's listings leave out ([Submit Workflow Execution](../../reference/api/submit-workflow-execution.md#system-user-requirements)). The template endpoints are deliberately not gated by it either: templates are authored deployment-wide by the editor roles.
+
+## Object ids per endpoint
+
+Every route parameter of the API. The list of record is `platform/IniaAi.WebApi.UnitTests/Authorization/EndpointIds.cs`: `EndpointIdTests` fails on a route parameter it does not list, on an entry whose endpoint is gone, and on a rule that names no line. The tables below are a copy of it from November 2026, which no check compares with the code, so read the file when they differ. *Kind* is the object the parameter names; *Rule* is the check that keeps another organization's object out, ending with the class it lives in. Kind `Other` is an object outside the list's kinds, such as a template version or a shared component; its rule was read like the others. A staff-only endpoint names its role gate: authoring reads every organization's templates by design.
+
+Rules for writes:
+
+- No action binds a domain entity. Each controller builds its command from the caller's organization and user, never from the request body.
+- No customer request type carries `OrganizationId`, `UserId`, `IsSystem`, `IsSelfServe`, `IsDeleted` or a role.
+
+| Endpoint | Parameter | Kind | Rule |
+|---|---|---|---|
+| `DELETE api/v1/ai/content-refinement/presets/{id}` | `id` | Preset | preset read by id and organization, then its owner, `DeleteRefinementPresetCommandHandler` |
+| `PUT api/v1/ai/content-refinement/presets/{id}` | `id` | Preset | preset read by id and organization, then its owner, `UpdateRefinementPresetCommandHandler` |
+| `DELETE api/v1/counterparties/{id}` | `id` | Counterparty | counterparty read by id and organization, `DeleteCounterpartyCommandHandler` |
+| `GET api/v1/counterparties/{id}` | `id` | Counterparty | counterparty read by id and organization, `GetCounterpartyQueryHandler` |
+| `PUT api/v1/counterparties/{id}` | `id` | Counterparty | counterparty read by id and organization, `UpdateCounterpartyCommandHandler` |
+| `DELETE api/v1/counterparty-types/{id}` | `id` | CounterpartyType | editor roles only, staff; types are shared by every organization, `CounterpartyTypesController` |
+| `PUT api/v1/counterparty-types/{id}` | `id` | CounterpartyType | editor roles only, staff; types are shared by every organization, `CounterpartyTypesController` |
+| `DELETE api/v1/document-categories/{id}` | `id` | Category | editor roles only, staff; categories are shared by every organization, `DocumentCategoriesController` |
+| `PUT api/v1/document-categories/{id}` | `id` | Category | editor roles only, staff; categories are shared by every organization, `DocumentCategoriesController` |
+| `DELETE api/v1/documents/{id}` | `id` | Document | document's organization compared with the caller's, `DeleteDocumentCommandHandler` |
+| `GET api/v1/documents/{id}/text` | `id` | Document | document's organization compared with the caller's, `GetDocumentTextQueryHandler` |
+| `GET api/v1/documents/{id}` | `id` | Document | document's organization compared with the caller's, `GetDocumentQueryHandler` |
+| `GET api/v1/documents/{id}/pages/{pageNumber:int}` | `id` | Document | document's organization compared with the caller's, `GetDocumentPageQueryHandler` |
+| `GET api/v1/documents/{id}/pages/{pageNumber:int}` | `pageNumber` | NotAnId | a page number inside the document already checked, `GetDocumentPageQueryHandler` |
+| `GET api/v1/documents/{id}/pages` | `id` | Document | document's organization compared with the caller's, `PaginatedResponseDocumentPagesQueryHandler` |
+| `POST api/v1/documents/{id}/process` | `id` | Document | document's organization compared with the caller's, `ProcessDocumentCommandHandler` |
+| `PATCH api/v1/documents/{id}` | `id` | Document | document's organization compared with the caller's, `UpdateDocumentCommandHandler` |
+| `GET api/v1/files/{id}` | `id` | File | the file's document's organization compared with the caller's, `GetFileQueryHandler` |
+| `GET api/v1/jobs/{id}` | `id` | Job | job's organization compared with the caller's, then its user, `GetJobQueryHandler` |
+| `DELETE api/v1/model-pricing/{id}` | `id` | Other | operator roles only, staff; prices are not organization data, `ModelPricingController` |
+| `GET api/v1/model-pricing/{id}` | `id` | Other | operator roles only, staff; prices are not organization data, `ModelPricingController` |
+| `PUT api/v1/model-pricing/{id}` | `id` | Other | operator roles only, staff; prices are not organization data, `ModelPricingController` |
+| `GET api/v1/pages/{pageId}/image` | `pageId` | Page | the page's document's organization compared with the caller's, `GetPageImageQueryHandler` |
+| `DELETE api/v1/shared-components/categories/{categoryId}` | `categoryId` | Category | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}/consumer-matrix` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}/consumers` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}/content` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}/versions/{versionId}/content` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}/versions/{versionId}/content` | `versionId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `GET api/v1/shared-components/{sharedComponentId}/versions` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `POST api/v1/shared-components/{sharedComponentId}/reconcile-preview` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `POST api/v1/shared-components/{sharedComponentId}/versions/{versionId}/restore` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `POST api/v1/shared-components/{sharedComponentId}/versions/{versionId}/restore` | `versionId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `POST api/v1/shared-components/{sharedComponentId}/retire` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `PUT api/v1/shared-components/categories/{categoryId}` | `categoryId` | Category | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `PUT api/v1/shared-components/{sharedComponentId}/content` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `PUT api/v1/shared-components/{sharedComponentId}/category` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `POST api/v1/shared-components/{sharedComponentId}/unretire` | `sharedComponentId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `SharedComponentsController` |
+| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/accept-suggestion` | `pendingOverrideId` | Other | pending override read by id and organization, `AcceptSuggestionCommandHandler` |
+| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/accept-suggestion` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `AcceptSuggestionCommandHandler` |
+| `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}` | `pendingOverrideId` | Other | pending override read by id and organization, `CancelPendingSignatureOverrideCommandHandler` |
+| `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `CancelPendingSignatureOverrideCommandHandler` |
+| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes` | `pendingOverrideId` | Other | pending override read by id and organization, `CastSignatureOverrideVoteCommandHandler` |
+| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `CastSignatureOverrideVoteCommandHandler` |
+| `GET api/v1/workflow-types/{workflowTypeId}/signatures/history` | `workflowTypeId` | WorkflowType | the organization's access row for the type is required, `GetSignatureHistoryQueryHandler` |
+| `GET api/v1/workflow-types/{workflowTypeId}/signatures` | `workflowTypeId` | WorkflowType | the organization's access row for the type is required, `GetWorkflowSignaturesQueryHandler` |
+| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending` | `workflowTypeId` | WorkflowType | the organization's access row for the type is required, `SubmitPendingSignatureOverrideCommandHandler` |
+| `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes/mine` | `pendingOverrideId` | Other | pending override read by id and organization, `WithdrawSignatureOverrideVoteCommandHandler` |
+| `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes/mine` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `WithdrawSignatureOverrideVoteCommandHandler` |
+| `DELETE api/v1/tenant-model-settings/{id}` | `id` | Other | operator roles only, staff; settings of every organization by design, `TenantModelSettingsController` |
+| `GET api/v1/tenant-model-settings/{id}` | `id` | Other | operator roles only, staff; settings of every organization by design, `TenantModelSettingsController` |
+| `PUT api/v1/tenant-model-settings/{id}` | `id` | Other | operator roles only, staff; settings of every organization by design, `TenantModelSettingsController` |
+| `GET api/v1/token-usage/workflow-type/{workflowTypeId}` | `workflowTypeId` | WorkflowType | the type is named only with the organization's access row or its own usage of it, `GetWorkflowTypeUsageSummaryQueryHandler` |
+| `DELETE api/v1/auth/2fa/trusted-devices/{deviceId}` | `deviceId` | Other | a trusted device read by id and the caller's user, `RemoveTrustedDeviceCommandHandler` |
+| `GET api/v1/workflow-categories/{id}/validate-documents` | `id` | WorkflowType | the workflow's type must have the organization's access row, `ValidateDocumentClassesQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/file` | `blockId` | Block | trace files filtered by organization and the run's workflow, `GetExecutionAgentRunFileQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/file` | `id` | Report | run resolved by id and organization, `RunEvidenceAccess` |
+| `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/trace` | `blockId` | Block | trace files filtered by organization and the run's workflow, `GetExecutionAgentRunFileQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/trace` | `id` | Report | run resolved by id and organization, `RunEvidenceAccess` |
+| `GET api/v1/workflow-executions/blocks/{blockId}/agent-activity` | `blockId` | Block | trace files read by block and organization, `AgentRunTraceFilesByBlockSpec` |
+| `GET api/v1/workflow-executions/{id}/blocks` | `id` | Report | execution read by id and organization, `GetExecutionBlocksQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/logs/{logId}` | `id` | Report | log read with its execution's organization, `GetWorkflowExecutionLogQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/logs/{logId}` | `logId` | Log | log read by id with its execution's organization, `GetWorkflowExecutionLogQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/logs/{logId}/placeholders` | `id` | Report | log read with its execution's organization, `GetWorkflowExecutionLogPlaceholdersQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/logs/{logId}/placeholders` | `logId` | Log | log read by id with its execution's organization, `GetWorkflowExecutionLogPlaceholdersQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/logs` | `id` | Report | logs filtered by their execution's organization, `ListWorkflowExecutionLogsQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/rerun-inputs` | `id` | Report | execution read by id and organization, `GetReRunInputsQueryHandler` |
+| `GET api/v1/workflow-executions/{id}/agent-runs` | `id` | Report | run resolved by id and organization, `RunEvidenceAccess` |
+| `POST api/v1/workflow-executions/{id}/test-signature-prompt` | `id` | Report | execution read by id and organization, `TestSignaturePromptCommandHandler` |
+| `PATCH api/v1/workflow-executions/{id}/state` | `id` | Report | execution read by id and organization, `WorkflowExecutionByIdTrackedSpec` |
+| `POST api/v1/workflow-executions/{runId}/graph/query` | `runId` | Report | run's organization compared with the caller's, `GraphQueryService` |
+| `GET api/v1/workflow-executions/{runId}/graph/validate/{targetTag}` | `runId` | Report | run's organization compared with the caller's, `GraphQueryService` |
+| `GET api/v1/workflow-executions/{runId}/graph/validate/{targetTag}` | `targetTag` | NotAnId | a block tag looked up inside the run already checked, `GraphQueryService` |
+| `POST api/v1/workflow-reports/{reportId}/feedback` | `reportId` | Report | execution read by id and organization before the feedback is written, `CreateReportFeedbackCommandHandler` |
+| `DELETE api/v1/workflow-reports/{id}` | `id` | Report | execution read by id and organization, `WorkflowExecutionByIdAndOrganizationSpec` |
+| `DELETE api/v1/workflow-reports/{reportId}/feedback/{feedbackId}` | `feedbackId` | Feedback | feedback read by id, execution and organization, `ReportFeedbackByIdTrackedSpec` |
+| `DELETE api/v1/workflow-reports/{reportId}/feedback/{feedbackId}` | `reportId` | Report | feedback read by id, execution and organization, `ReportFeedbackByIdTrackedSpec` |
+| `DELETE api/v1/workflow-reports/{id}/paragraphs/{paragraphId}` | `id` | Report | paragraph read through its report's organization, `ReportParagraphByIdSpec` |
+| `DELETE api/v1/workflow-reports/{id}/paragraphs/{paragraphId}` | `paragraphId` | Paragraph | paragraph read by id, report and the report's organization, `ReportParagraphByIdSpec` |
+| `DELETE api/v1/workflow-reports/{id}/sections/{sectionId}` | `id` | Report | section read through its report's organization, `ReportSectionByIdSpec` |
+| `DELETE api/v1/workflow-reports/{id}/sections/{sectionId}` | `sectionId` | Section | section read by id, report and the report's organization, `ReportSectionByIdSpec` |
+| `GET api/v1/workflow-reports/{id}/export/{format}` | `format` | NotAnId | an enum the model binder parses, `ExportWorkflowExecutionCommandHandler` |
+| `GET api/v1/workflow-reports/{id}/export/{format}` | `id` | Report | execution's organization compared with the caller's, `ExportWorkflowExecutionCommandHandler` |
+| `GET api/v1/workflow-reports/{id}` | `id` | Report | execution read by id and organization, `GetWorkflowExecutionQueryHandler` |
+| `GET api/v1/workflow-reports/{id}/cost` | `id` | Report | run resolved by id and organization, `RunEvidenceAccess` |
+| `GET api/v1/workflow-reports/{id}/data` | `id` | Report | report read by execution and organization, `WorkflowReportWithDataOutputsSpec` |
+| `GET api/v1/workflow-reports/{id}/elements` | `id` | Report | report read by execution and organization, `WorkflowReportWithDetailsSpec` |
+| `GET api/v1/workflow-reports/{reportId}/feedback` | `reportId` | Report | feedback rows filtered by execution and organization, the report itself is not read, `ReportFeedbackByExecutionSpec` |
+| `PATCH api/v1/workflow-reports/{reportId}/feedback/{feedbackId}/status` | `feedbackId` | Feedback | feedback read by id, execution and organization, `ReportFeedbackByIdTrackedSpec` |
+| `PATCH api/v1/workflow-reports/{reportId}/feedback/{feedbackId}/status` | `reportId` | Report | feedback read by id, execution and organization, `ReportFeedbackByIdTrackedSpec` |
+| `PUT api/v1/workflow-reports/{id}/paragraphs/{paragraphId}` | `id` | Report | paragraph read through its report's organization, `ReportParagraphByIdSpec` |
+| `PUT api/v1/workflow-reports/{id}/paragraphs/{paragraphId}` | `paragraphId` | Paragraph | paragraph read by id, report and the report's organization, `ReportParagraphByIdSpec` |
+| `PUT api/v1/workflow-reports/{id}/sections/{sectionId}` | `id` | Report | section read through its report's organization, `ReportSectionByIdSpec` |
+| `PUT api/v1/workflow-reports/{id}/sections/{sectionId}` | `sectionId` | Section | section read by id, report and the report's organization, `ReportSectionByIdSpec` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/shared-components/reconcile/apply` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/versions/compare` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/document-classes` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `DELETE api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `key` | NotAnId | a document class key inside the type; editor roles only, staff, `WorkflowTemplatesController` |
+| `DELETE api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `DELETE api/v1/workflow-templates/{workflowTypeId}` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/duplicate` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/export` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/content` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `key` | NotAnId | a document class key inside the type; editor roles only, staff, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/summary` | `workflowTypeId` | WorkflowType | type read only through the organization's access row, `GetWorkflowSummaryByTypeQueryHandler` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/changes` | `versionId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/changes` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/content` | `versionId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/content` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/versions` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/shared-components/reconcile` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/import-apply` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/import-preview` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/document-classes` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/shared-components/materialize` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/shared-components/promote` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}/rename` | `key` | NotAnId | a document class key inside the type; editor roles only, staff, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}/rename` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `PUT api/v1/workflow-templates/{workflowTypeId}/content` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `PATCH api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `key` | NotAnId | a document class key inside the type; editor roles only, staff, `WorkflowTemplatesController` |
+| `PATCH api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `POST api/v1/workflow-templates/{workflowTypeId}/content/validate` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
+| `GET api/v1/workflow-types/{workflowTypeId}/feedback` | `workflowTypeId` | WorkflowType | super admin only, staff; feedback of every organization by design, `WorkflowTypeFeedbackController` |
+
+
+
+
 
 ## Authorization in the Admin App (Blazor)
 
@@ -169,7 +310,7 @@ This table is transcribed from the `[Authorize]` attributes on the v1 controller
 
 `RoleGateMatrixTests` (`IniaAi.WebApi.UnitTests`) pins the document-category, counterparty-type, operations, token-usage, document-deletion and report-feedback gates. The endpoints that stay open are on the open list below. The anonymous endpoints are the token endpoints, `GET /auth/providers`, `POST /passwords/forgot`, `POST /passwords/reset`, and the three `/meta/*` routes.
 
-**No endpoint ships open by accident.** `EndpointGateTests` (`IniaAi.WebApi.UnitTests`) lists every action of every API controller and fails on one that has no role gate and is not on the open list, `OpenEndpoints`, which names each open endpoint, whether it is anonymous, and why it is open. A new endpoint therefore gets a role gate or an entry a reviewer reads. The failure names the route and both fixes. A second check fails on an entry whose endpoint is gone or has gained a gate, so the list stays exact. The list covers role gates only; the capability that keeps a self-serve organization out is named in an entry's reason where it applies ([Capabilities](#capabilities)). The health checks (`/health`, `/readiness`) are not controller actions and are outside the test.
+**No endpoint ships open by accident.** `EndpointGateTests` (`IniaAi.WebApi.UnitTests`) lists every action of every API controller, read once by the shared `ApiEndpoints` helper that the other endpoint tests use too, and fails on one that has no role gate and is not on the open list, `OpenEndpoints`, which names each open endpoint, whether it is anonymous, and why it is open. A new endpoint therefore gets a role gate or an entry a reviewer reads. The failure names the route and both fixes. A second check fails on an entry whose endpoint is gone or has gained a gate, so the list stays exact. The list covers role gates only; the capability that keeps a self-serve organization out is named in an entry's reason where it applies ([Capabilities](#capabilities)). The health checks (`/health`, `/readiness`) are not controller actions and are outside the test.
 
 **There is no strict role hierarchy.** Roles are independent flags: `SuperAdmin` appears in every gate, but `Admin` is deliberately excluded from workflow template authoring and signature review. "SuperAdmin > Admin > WorkflowEditor > User" is a fiction the codebase does not implement — do not design against it. ASP.NET role checks have no hierarchy either, so a gate spells out every role it admits: use the `*_ROLES` constants (`EDITOR_ROLES`, `ADMIN_ROLES`, `OPERATOR_ROLES`, `ADMIN_AND_OPERATOR_ROLES`, `EDITOR_AND_ADMIN_ROLES`), never a bare role constant.
 

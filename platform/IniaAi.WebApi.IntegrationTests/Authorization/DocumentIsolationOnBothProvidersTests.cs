@@ -1,4 +1,5 @@
 using ErrorOr;
+using IniaAi.Application;
 using IniaAi.Application.Commands.Documents.BulkDeleteDocuments;
 using IniaAi.Application.Commands.Documents.DeleteDocument;
 using IniaAi.Application.Commands.Documents.ProcessDocument;
@@ -126,6 +127,7 @@ public sealed class DocumentIsolationOnBothProvidersTests
         _ = services.AddLogging();
         _ = services.AddScoped(_ => new UserDataDbContext(options));
         _ = services.AddTestDatabaseServicesWithoutDbContext();
+        _ = services.AddSeamDefaults();
         _ = services.AddTestFileStorage();
         _ = services.AddSingleton<IWorkQueue<DocumentProcessingRequest>, DocumentProcessingQueue>();
         _ = services.AddSingleton(FileFormatsUnderTest.Pdf);

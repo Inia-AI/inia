@@ -398,6 +398,16 @@ public class AuthenticationController : ApiController
         return identity;
     }
 
+    private async Task<IActionResult> RecordIssuedAsync(IActionResult issued, User user, string method)
+    {
+        if (issued is Microsoft.AspNetCore.Mvc.SignInResult)
+        {
+            await _signInAttempts.TokenIssuedAsync(user, method, ClientAddress);
+        }
+
+        return issued;
+    }
+
     /// <summary>
     /// Generates the OpenIddict token response of a new sign-in, once the sign-in seam has heard it.
     /// </summary>
@@ -648,7 +658,7 @@ public class AuthenticationController : ApiController
 
         // Rebuilt from the user's current roles and memberships, so a refresh never re-signs what
         // the original sign-in granted.
-        return await GenerateSessionTokenAsync(user, result.Principal.GetScopes(), signedInAt);
+        return await RecordIssuedAsync(await GenerateSessionTokenAsync(user, result.Principal.GetScopes(), signedInAt), user, GrantTypes.RefreshToken);
     }
 
     /// <summary>
@@ -693,7 +703,10 @@ public class AuthenticationController : ApiController
         // Include client_id claim for client credentials flow
         Claim clientIdClaim = new Claim(Claims.ClientId, request.ClientId).SetDestinations(Destinations.AccessToken);
 
-        return await GenerateTokenAsync(systemUser, GrantTypes.ClientCredentials, request.GetScopes().Remove(Scopes.OfflineAccess), clientIdClaim);
+        return await RecordIssuedAsync(
+            await GenerateTokenAsync(systemUser, GrantTypes.ClientCredentials, request.GetScopes().Remove(Scopes.OfflineAccess), clientIdClaim),
+            systemUser,
+            GrantTypes.ClientCredentials);
     }
 
     /// <summary>

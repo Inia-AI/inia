@@ -4,6 +4,8 @@ using IniaAi.Configuration.Messaging;
 using IniaAi.Configuration.Platform;
 using IniaAi.Configuration.Security;
 
+using IniaAi.WebApi.Configuration;
+
 namespace IniaAi.WebApi.Extensions;
 
 /// <summary>
@@ -31,7 +33,7 @@ public static class IConfigurationExtensions
             .Configure<MessageProcessorSettings>(configuration.GetSection("PlatformSettings:MessageProcessor"))
             .Configure<ExchangeRateApiSettings>(configuration.GetSection("PlatformSettings:ExchangeRateApi"))
             .Configure<TwoFactorSettings>(configuration.GetSection(TwoFactorSettings.SectionName))
-            .Configure<GoogleAuthSettings>(configuration.GetSection(GoogleAuthSettings.SectionName))
+            .AddGoogleSignInSettings(configuration)
             .Configure<OidcAuthSettings>(configuration.GetSection(OidcAuthSettings.SectionName))
             .Configure<PasswordAuthSettings>(configuration.GetSection(PasswordAuthSettings.SectionName))
             .Configure<WorkflowVersionRetentionSettings>(configuration.GetSection(WorkflowVersionRetentionSettings.SECTION_NAME))

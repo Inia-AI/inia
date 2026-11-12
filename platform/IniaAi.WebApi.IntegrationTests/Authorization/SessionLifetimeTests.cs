@@ -66,6 +66,23 @@ public class SessionLifetimeTests
     }
 
     [Fact]
+    public async Task ACustomerSessionRefreshedEveryTwentyDays_EndsAtThirtyDays()
+    {
+        ClientBuilder api = Api(new SessionLimit { AbsoluteLimit = TimeSpan.FromDays(30), IdleLifetime = TimeSpan.FromDays(30) });
+        await using TestAccount account = await TestAccount.CreateAsync(api);
+        (_, string refreshToken) = await account.SignInAsync();
+
+        _clock.Now += TimeSpan.FromDays(20);
+        HttpResponseMessage twentyDays = await account.RefreshAsync(refreshToken);
+        Assert.Equal(HttpStatusCode.OK, twentyDays.StatusCode);
+        _clock.Now += TimeSpan.FromDays(11);
+        HttpResponseMessage thirtyOneDays = await account.RefreshAsync(await TestAccount.ReadTokenAsync(twentyDays, Parameters.RefreshToken));
+
+        Assert.Equal(HttpStatusCode.BadRequest, thirtyOneDays.StatusCode);
+        Assert.Equal(Errors.InvalidGrant, await TestAccount.ReadTokenAsync(thirtyOneDays, Parameters.Error));
+    }
+
+    [Fact]
     public async Task ASessionLeftUnusedPastTheIdleLifetime_Ends()
     {
         ClientBuilder api = Api(new SessionLimit { IdleLifetime = TimeSpan.FromMinutes(5) });

@@ -159,8 +159,8 @@ public class FileStorageMigrationService : BackgroundService
 
         if (string.IsNullOrEmpty(fileMetadata.ExternalStoragePath))
         {
-            _logger.LogWarning("FileMetadata {FileId} ({FileName}) has no ExternalStoragePath set, skipping migration",
-                fileMetadata.Id, fileMetadata.Name);
+            _logger.LogWarning("FileMetadata {FileId} (file name of {FileNameLength} characters) has no ExternalStoragePath set, skipping migration",
+                fileMetadata.Id, fileMetadata.Name.Length);
             return null;
         }
 
@@ -179,26 +179,26 @@ public class FileStorageMigrationService : BackgroundService
 
         if (string.IsNullOrEmpty(fileMetadata.ExternalStoragePath))
         {
-            throw new InvalidOperationException($"File {fileMetadata.Name} has no ExternalStoragePath to migrate");
+            throw new InvalidOperationException($"File {fileMetadata.Id} has no ExternalStoragePath to migrate");
         }
 
         // Load the corresponding file with bytes
         Domain.Entities.Documents.File? file = await unitOfWork.Files.GetByIdAsync(fileMetadata.ExternalStoragePath, cancellationToken)
-            ?? throw new InvalidOperationException($"File entity not found for FileMetadata {fileMetadata.Name} with path {fileMetadata.ExternalStoragePath}");
+            ?? throw new InvalidOperationException($"File entity not found for FileMetadata {fileMetadata.Id} with path {fileMetadata.ExternalStoragePath}");
 
         // Check if file has bytes to migrate
         if (file.Bytes.Length == 0)
         {
-            _logger.LogWarning("Skipping file {FileName} ({FileId}) - no bytes loaded or empty file",
-                fileMetadata.Name, fileMetadata.ExternalStoragePath);
+            _logger.LogWarning("Skipping file {FileId} (file name of {FileNameLength} characters) - no bytes loaded or empty file",
+                fileMetadata.ExternalStoragePath, fileMetadata.Name.Length);
             return;
         }
 
         try
         {
             double fileSizeMB = file.Bytes.Length / (1024.0 * 1024.0);
-            _logger.LogDebug("Processing file {FileName} ({FileId}) - Size: {FileSizeMB:F2} MB, Type: {ContentType}",
-                fileMetadata.Name, fileMetadata.ExternalStoragePath, fileSizeMB, fileMetadata.ContentType);
+            _logger.LogDebug("Processing file {FileId} (file name of {FileNameLength} characters) - Size: {FileSizeMB:F2} MB, Type: {ContentType}",
+                fileMetadata.ExternalStoragePath, fileMetadata.Name.Length, fileSizeMB, fileMetadata.ContentType);
 
             // Migrate file to new storage using IFileStorageManager
             string key = fileMetadata.ExternalStoragePath;
@@ -210,7 +210,7 @@ public class FileStorageMigrationService : BackgroundService
                 file.Bytes,
                 fileMetadata.ContentType);
 
-            _logger.LogDebug("Stored file {FileName} at new path: {NewPath}", fileMetadata.Name, newPath);
+            _logger.LogDebug("Stored file {FileId} at new path: {NewPath}", fileMetadata.Id, newPath);
 
             // Update FileMetadata to point to new storage
             StorageProvider oldProvider = fileMetadata.StorageProvider;
@@ -229,8 +229,8 @@ public class FileStorageMigrationService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Storage operation failed for file {FileName} ({FileId}): {ErrorMessage}",
-                fileMetadata.Name, fileMetadata.ExternalStoragePath, ex.Message);
+            _logger.LogError(ex, "Storage operation failed for file {FileId} (file name of {FileNameLength} characters): {ErrorMessage}",
+                fileMetadata.ExternalStoragePath, fileMetadata.Name.Length, ex.Message);
             throw; // Re-throw to be caught by the calling method
         }
     }

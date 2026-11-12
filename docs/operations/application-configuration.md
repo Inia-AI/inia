@@ -6,7 +6,7 @@ description: "Reference of the runtime configuration keys of the API and admin a
 
 # Application Configuration Reference
 
-**On this page:** How configuration is layered · Connection strings · PlatformSettings · Minimal Bedrock configuration · Authentication and SSO · JWT · File storage · Email · Data protection · Logging (Serilog) · CORS · Other keys · Related
+**On this page:** How configuration is layered · Connection strings · PlatformSettings · Minimal Bedrock configuration · Authentication and SSO · JWT · File storage · Email · Data protection · Logging (Serilog) · CORS · Response headers of the API · Other keys · Related
 
 This is the public reference for the runtime configuration the platform reads from `appsettings.json` (and its environment-specific overlays). It lists the keys that matter for a deployment, each with a **placeholder value** and a one-line description.
 
@@ -232,7 +232,8 @@ The deployment's own values for stored key names (`StoredKeySettings`). A WebApi
 
 Where the requests that a user, a model answer or an email can steer may go
 (`OutboundAccessSettings`): the WebApiCall block and the email link downloader. Both refuse every
-loopback, private, carrier-grade NAT (`100.64.0.0/10`), link-local, unique-local, unspecified,
+loopback, private, carrier-grade NAT (`100.64.0.0/10`), link-local, unique-local, multicast
+(`224.0.0.0/4`, `ff00::/8`), unspecified,
 reserved (`192.0.0.0/24`, `240.0.0.0/4`), benchmarking (`198.18.0.0/15`), local-use NAT64
 (`64:ff9b:1::/48`) and deprecated IPv4-compatible (`::/96`) address, and the Azure host platform
 address `168.63.129.16`, judged on the address each host name resolves to, unless this list
@@ -244,6 +245,12 @@ not a host name, an address or a range, or a list set as one value, stops startu
 egress proxy (`HTTP_PROXY`, `HTTPS_PROXY`) the proxy resolves the target: the platform still
 refuses a target that resolves, from where the platform runs, to an internal address, and leaves
 a name it cannot resolve itself to the proxy and its policy.
+
+Requests a user can steer, and the check each meets:
+
+- The WebApiCall block: the first request, every redirect hop (followed on purpose, up to 50, only to `http` or `https`, never from HTTPS down to HTTP), every poll and the completion URL. Each goes through this guard ([block reference](../guides/blocks/block-reference.md)).
+- Email links (`EmailExpansion:ShouldTryDownloadUrls`, off by default): the HTTP client through this guard, and the headless browser through a checked proxy that applies it to every request the page makes, its pictures and redirects included. A link is taken only when it starts with `http://` or `https://`.
+- Nothing else: the readers and converters load nothing a document names. A linked picture or field in a Word file, a remote picture or style sheet in a report, and an external DTD in an Office part are not fetched.
 
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
@@ -430,7 +437,7 @@ Each endpoint that takes a credential or sends a mail (`/connect/token`, `/conne
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
 | `Authentication:Google:Enabled` | `false` | Enable Google sign-in. |
-| `Authentication:Google:ClientId` | `<google-oauth-client-id>` | Google OAuth client ID. |
+| `Authentication:Google:ClientId` | `<google-oauth-client-id>` | Google OAuth client ID. A Google token is accepted only when it was issued to this id, so the API refuses to start with `Enabled` on and this empty, naming the key. |
 | `Authentication:Google:ClientSecret` | `<google-oauth-client-secret>` | Google OAuth client secret. |
 | `Authentication:Google:AllowedDomains` | `["<allowed-domain>"]` | Workspace domains permitted to sign in; empty allows all. |
 
@@ -523,7 +530,7 @@ No deploy configuration passes an OAuth client to the web container, so `OpenIdd
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
 | `Jwt:Issuer` | `<https://api.your-domain>` | Token issuer claim. Without one, the API issues and accepts `http://localhost`. Each deployment sets its own. |
-| `Jwt:SecretKey` | `<jwt-signing-secret>` | Symmetric key that signs session and run tokens. **Secret — supply per environment.** No settings file ships one, and the API stops at startup, naming the key, when it is missing or shorter than 32 bytes. Generate one with `openssl rand -base64 48`. |
+| `Jwt:SecretKey` | `<jwt-signing-secret>` | Symmetric key that signs session and run tokens; the key that encrypts refresh tokens is derived from it (HKDF), so sessions survive a restart and every API instance reads them, and changing it ends every session. **Secret — supply per environment.** No settings file ships one, and the API stops at startup, naming the key, when it is missing or shorter than 32 bytes. Generate one with `openssl rand -base64 48`. |
 | `Jwt:TokenValidityInMinutes` | `1000` | Access-token lifetime in minutes, and the refresh token's when `Jwt:RefreshTokenValidityInMinutes` is not set. |
 | `Jwt:RefreshTokenValidityInMinutes` | not set | Refresh-token lifetime in minutes: how long a session may sit unused before the user signs in again. Each refresh issues a new refresh token with this lifetime. Not set, it is `Jwt:TokenValidityInMinutes`. |
 
@@ -597,6 +604,20 @@ ASP.NET Data Protection keys can be stored in the database (default), Azure Key 
 | `Cors:AllowedOrigins` | `[]` | API only. Origins allowed to call the API from a browser, as [indexed keys](#how-configuration-is-layered). Empty (the default) allows no cross-origin call. A `*` entry stops startup with a message that names the key, and so does a list set as one value (`Cors__AllowedOrigins=...`), which would bind to an empty list. |
 
 The deployed analyst app calls the API on its own origin through its nginx, so a standard deployment lists no origin. The local launch profiles list the Vue dev server, `https://localhost:8080`. The admin app has no CORS policy: nothing calls it from another origin.
+
+## Response headers of the API
+
+The API sets these headers on every answer, including a refusal, a rate-limit answer, a preflight, a failure and an unknown path (`SecurityHeadersConfiguration`, registered first after the forwarded headers). No setting changes them.
+
+| Header | Value |
+|---|---|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`. An answer that sets its own policy keeps it: a file preview sends `sandbox`. The Swagger UI, served on a developer machine only, gets none. |
+| `Cache-Control` | `no-store`, unless the answer sets its own rule: a page image sends `private, max-age=3600`. |
+
+The API sends no `X-XSS-Protection` header: the OWASP HTTP Headers Cheat Sheet advises against it. Behind the web app's nginx, the API's answers also carry nginx's own policy; a browser applies both.
 
 ## Other keys
 

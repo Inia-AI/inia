@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Common.Text;
 using IniaAi.Core.Services.Abstraction;
 using IniaAi.Core.Services.DocumentClassValidation;
@@ -42,7 +43,8 @@ public sealed class ValidateDocumentClassesQueryHandler
         // Fetch workflow (note: GetByIdAsync should include Parent and DocumentClasses via configuration)
         Workflow? workflow = await _coreUnitOfWork.Workflows.GetByIdAsync(request.WorkflowId);
 
-        if (workflow is null)
+        if (workflow?.WorkflowTypeId is null
+            || !await WorkflowTypeAccessGuard.HasAccessAsync(_coreUnitOfWork, request.OrganizationId, workflow.WorkflowTypeId, cancellationToken))
         {
             _logger.LogWarning(
                 "Workflow {WorkflowId} not found for organization {OrganizationId}",

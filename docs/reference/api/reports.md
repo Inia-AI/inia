@@ -223,7 +223,7 @@ Retrieves the report tree for an execution: the ordered `ReportSection` nodes, e
 GET /api/v{version}/workflow-reports/{id}/elements
 ```
 
-This read, `.../data` and `.../export/{format}` read a report's content, so each answers `403` with the title `Report not available` when the deployment hides it (`IReportContentRule`). The platform's default, `EveryReportContent`, hides no report. The execution read above still answers with its state. The report page shows "Report not available" with the response's `detail`, not its not-found message.
+This read, `.../data` and `.../export/{format}` read a report's content, so each answers `403` with the title `Report not available` when the deployment hides it (`IReportContentRule`). A file the report produced is refused the same way by [`GET /api/v1/files/{id}`](files.md#download-errors). The platform's default, `EveryReportContent`, hides no report. The execution read above still answers with its state. The report page shows "Report not available" with the response's `detail`, not its not-found message.
 
 
 **Parameters**

@@ -81,12 +81,35 @@ const unwrapLegacyPWrapper = (raw: string): string => {
   return inner
 }
 
+// A style may lay out and colour a report, never load from another address: a page that shows
+// model output would fetch it with no click. A style that names a resource, even through CSS
+// escapes, is dropped whole, so every other style stays as written.
+const CSS_ESCAPE = /\\(?:([0-9a-f]{1,6})\s?|([\s\S]))/gi
+const RESOURCE_FUNCTION = /(?:url|image|image-set|cross-fade|element)\s*\(/i
+const HIGHEST_CODE_POINT = 0x10ffff
+
+const unescapeCss = (value: string): string =>
+  value.replace(CSS_ESCAPE, (_, hex: string | undefined, character: string | undefined) => {
+    if (hex === undefined) {
+      return character ?? ''
+    }
+    const codePoint = parseInt(hex, 16)
+    return codePoint === 0 || codePoint > HIGHEST_CODE_POINT ? '\uFFFD' : String.fromCodePoint(codePoint)
+  })
+
+const purifier = DOMPurify()
+purifier.addHook('uponSanitizeAttribute', (_, attribute) => {
+  if (attribute.attrName === 'style' && RESOURCE_FUNCTION.test(unescapeCss(attribute.attrValue))) {
+    attribute.keepAttr = false
+  }
+})
+
 export const sanitizeHtml = (html: string): string =>
-  DOMPurify.sanitize(html, {
+  purifier.sanitize(html, {
     ADD_TAGS: ['fact', 'fact_source', 'cited-text'],
     ADD_ATTR: ['label', 'type', 'page-id', 'block-id'],
     ALLOW_UNKNOWN_PROTOCOLS: false,
-    FORBID_TAGS: ['style', 'form', 'button', 'textarea', 'select'],
+    FORBID_TAGS: ['style', 'form', 'button', 'textarea', 'select', 'svg', 'math'],
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
   })
 

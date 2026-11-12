@@ -248,12 +248,36 @@ public class AgentRuntimeClientContentChannelTests : IDisposable
     [InlineData("manifest.json")]
     [InlineData(".")]
     [InlineData("..")]
+    [InlineData("/etc/passwd")]
+    [InlineData("nul\0byte.md")]
+    [InlineData("line\nbreak.md")]
     public async Task StartRunAsync_WithAnIllegalOrReservedName_FailsWithoutHttp(string name)
     {
         AgentRuntimeClient client = CreateClient();
         var request = new AgentRunStartRequest(EXECUTION_ID, PROMPT, RUN_TOKEN)
         {
             SkillFiles = [new AgentRunSkillFile(name, "content", "Named skill.")],
+        };
+
+        ErrorOr<AgentRunMonitor> result = await client.StartRunAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsError);
+        Assert.Equal("AgentRun.InvalidDocument", result.FirstError.Code);
+        Assert.Empty(_handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("../escape.pdf")]
+    [InlineData("/etc/passwd")]
+    [InlineData("nul\0byte.pdf")]
+    [InlineData("line\nbreak.pdf")]
+    [InlineData("trailing-newline.pdf\n")]
+    public async Task StartRunAsync_WithADocumentNameThatIsNotAnOrdinarySegment_FailsWithoutHttp(string name)
+    {
+        AgentRuntimeClient client = CreateClient();
+        var request = new AgentRunStartRequest(EXECUTION_ID, PROMPT, RUN_TOKEN)
+        {
+            Documents = [new AgentRunDocument(name, new byte[] { 1 })],
         };
 
         ErrorOr<AgentRunMonitor> result = await client.StartRunAsync(request, TestContext.Current.CancellationToken);

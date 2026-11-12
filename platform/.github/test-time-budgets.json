@@ -8,6 +8,7 @@
   "IniaAi.FileFormats.Tests": 260,
   "IniaAi.Infrastructure.Tests": 150,
   "IniaAi.Services.Tests": 120,
+  "IniaAi.WebApi.IntegrationTests": 200,
   "IniaAi.WebApi.UnitTests": 160,
   "IniaAi.WebApp.Tests": 270
 }

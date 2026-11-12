@@ -141,7 +141,7 @@ Starts a new workflow execution from a template with optional file references an
 
 #### Workflow access
 
-`workflowId` must name a workflow whose type the caller's organization has access to (`WorkflowTypeOrganizationAccess`). A workflow of a type the organization cannot reach answers `404` with `Workflow not found.`, the same answer as an unknown id, and no execution starts. Every run start goes through this check in `WorkflowExecutionOrchestrator`: this endpoint and the [submit endpoint](submit-workflow-execution.md#system-user-requirements).
+`workflowId` must name a workflow whose type the caller's organization has access to (`WorkflowTypeOrganizationAccess`). A workflow of a type the organization cannot reach answers `404` with `Workflow not found.`, the same answer as an unknown id, and no execution starts. The id may also name the stored copy an earlier run made of its workflow; another organization's copy answers the same `404` (`RunnableWorkflowGuard.OwnCopy`). Every run start goes through this check in `WorkflowExecutionOrchestrator`: this endpoint and the [submit endpoint](submit-workflow-execution.md#system-user-requirements).
 
 
 #### While a deploy replaces the server
@@ -156,6 +156,7 @@ Every `files[].fileId` must resolve to a live document of the caller's organizat
 |---|---|---|
 | 400 | `WorkflowExecution.AnonymisationUnavailable` | `isConfidential` is `true` and the build has no anonymiser (the open build). Submit the run without the flag, or run it on the paid build. |
 | 400 | `WorkflowExecution.UnresolvableInputDocuments` | The description names each unresolved id. Remove those entries from the submission, or upload the files again, then resubmit. |
+| 400 | `WorkflowExecution.UnresolvableCounterparties` | `counterpartyId` or an entry of `peerCompanyIds` names no counterparty of the caller's organization: it never existed or belongs to another organization. The description names each such id. Choose the counterparty and the peer companies from the organization's own list, then resubmit. |
 
 The check is uniform across every submitter — this endpoint, re-runs, and in the full edition regression replays and validation runs — so no execution ever consumes fewer input documents than its request declared. Before it existed, an unresolvable id of a non-required document class was dropped silently and the report read as if the input had never been part of the request.
 

@@ -41,7 +41,7 @@ public static partial class AgentRunIds
     /// <summary>What follows a conversation turn's first-pass run id in the ids of its later passes.</summary>
     public const string CONVERSATION_PASS_SEPARATOR = CONVERSATION_PASS_PREFIX;
 
-    [GeneratedRegex("^[A-Za-z0-9._-]{1,128}$")]
+    [GeneratedRegex(@"\A[A-Za-z0-9._-]{1,128}\z")]
     private static partial Regex ValidExecutionIdRegex();
 
     public static bool IsValid(string? executionId)

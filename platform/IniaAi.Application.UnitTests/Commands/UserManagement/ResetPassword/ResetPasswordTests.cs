@@ -1,6 +1,7 @@
 using ErrorOr;
 using IniaAi.Application.Commands.UserManagement.ResetPassword;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Configuration.Security;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using Microsoft.AspNetCore.Identity;
@@ -51,6 +52,21 @@ public sealed class ResetPasswordTests : IDisposable
         Assert.False(result.IsError);
         Assert.True(await _users.CheckPasswordAsync(user, NEW_PASSWORD));
         Assert.False(await _users.CheckPasswordAsync(user, OLD_PASSWORD));
+    }
+
+    [Fact]
+    public async Task AValidToken_WhilePasswordSignInIsOff_GetsTheBadLinkAnswer_AndChangesNothing()
+    {
+        using ServiceProvider services = IdentityTestDatabase.Build(services => services.Configure<PasswordAuthSettings>(settings => settings.Enabled = false));
+        using IServiceScope scope = services.CreateScope();
+        UserManager<User> users = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        User user = await users.CreateAccountAsync(EMAIL, OLD_PASSWORD);
+        string token = await users.GeneratePasswordResetTokenAsync(user);
+
+        ErrorOr<Success> result = await scope.ServiceProvider.GetRequiredService<ISender>().Send(new ResetPasswordCommand(EMAIL, token, NEW_PASSWORD), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ResetPasswordCommandHandler.INVALID_LINK, result.FirstError.Code);
+        Assert.True(await users.CheckPasswordAsync(user, OLD_PASSWORD));
     }
 
     [Fact]

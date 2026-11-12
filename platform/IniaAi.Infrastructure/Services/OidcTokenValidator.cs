@@ -16,6 +16,8 @@ namespace IniaAi.Infrastructure.Services;
 /// </summary>
 public class OidcTokenValidator : IOidcTokenValidator
 {
+    private const string OTHER_ISSUER = "The provider's metadata names an issuer other than the configured one.";
+
     private readonly OidcAuthSettings _settings;
     private readonly IConfigurationManager<OpenIdConnectConfiguration> _configurationManager;
     private readonly JwtSecurityTokenHandler _tokenHandler = new() { MapInboundClaims = false };
@@ -57,6 +59,10 @@ public class OidcTokenValidator : IOidcTokenValidator
         {
             OpenIdConnectConfiguration config =
                 await _configurationManager.GetConfigurationAsync(ct);
+            if (!IsConfiguredIssuer(config))
+            {
+                return new OidcTokenValidationResult(IsValid: false, Error: OTHER_ISSUER);
+            }
 
             var validationParameters = new TokenValidationParameters
             {
@@ -84,6 +90,10 @@ public class OidcTokenValidator : IOidcTokenValidator
             {
                 OpenIdConnectConfiguration refreshedConfig =
                     await _configurationManager.GetConfigurationAsync(ct);
+                if (!IsConfiguredIssuer(refreshedConfig))
+                {
+                    return new OidcTokenValidationResult(IsValid: false, Error: OTHER_ISSUER);
+                }
 
                 var retryParameters = new TokenValidationParameters
                 {
@@ -130,5 +140,14 @@ public class OidcTokenValidator : IOidcTokenValidator
 
         return new OidcTokenValidationResult(
             IsValid: true, Email: email, Subject: subject, Name: name, EmailVerified: emailVerified);
+    }
+
+    /// <summary>
+    /// The metadata comes from the configured issuer's address, but names its issuer itself; one that
+    /// names another issuer is refused. Only a trailing slash may differ, as providers write it either way.
+    /// </summary>
+    private bool IsConfiguredIssuer(OpenIdConnectConfiguration config)
+    {
+        return string.Equals(config.Issuer?.TrimEnd('/'), _settings.Issuer.TrimEnd('/'), StringComparison.Ordinal);
     }
 }

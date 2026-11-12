@@ -437,6 +437,33 @@ public class FileContentInspectorTests
         Assert.True(allocated < 4 * 1024 * 1024, $"refusing a 1.6-gigapixel image allocated {allocated} bytes");
     }
 
+    [Theory]
+    [InlineData("png")]
+    [InlineData("jpeg")]
+    public void EachAdmittedImageType_DeclaringMorePixelsThanTheLimit_IsRefused(string type)
+    {
+        byte[] image = type == "png" ? InspectionFixtures.PngClaimingSize(20_000, 20_000) : InspectionFixtures.JpegClaimingSize(20_000, 20_000);
+
+        FileInspection verdict = Inspect(image, $"huge.{type}");
+
+        Assert.Equal(FileInspectionOutcome.Refused, verdict.Outcome);
+        Assert.Equal(IntakeRefusalReasons.STRUCTURAL_LIMIT, verdict.ReasonCode);
+    }
+
+    [Fact]
+    public void APdfFollowedByAZip_IsOneType_AdmittedAsAPdf_AndRefusedUnderAWordName()
+    {
+        byte[] polyglot = [.. PdfFixtures.Minimal("x"), .. InspectionFixtures.PlainZip()];
+
+        FileInspection asPdf = Inspect(polyglot, "a.pdf");
+        FileInspection asWord = Inspect(polyglot, "a.docx");
+
+        Assert.Equal(FileInspectionOutcome.Accepted, asPdf.Outcome);
+        Assert.Equal(MediaType.ApplicationPdf, asPdf.MediaType);
+        Assert.Equal(FileInspectionOutcome.Refused, asWord.Outcome);
+        Assert.Equal(IntakeRefusalReasons.FILE_TYPE_MISMATCH, asWord.ReasonCode);
+    }
+
     [Fact]
     public void ACheckAppendedToTheSequence_RunsWithoutChangingTheVerdictType()
     {
@@ -482,6 +509,19 @@ public class FileContentInspectorTests
         Assert.False(PdfUtils.HasValidStructure(truncated));
         Assert.Equal(FileInspectionOutcome.Accepted, verdict.Outcome);
         Assert.Equal(MediaType.ApplicationPdf, verdict.MediaType);
+    }
+
+    [Theory]
+    [InlineData("[Content_Types].xml")]
+    [InlineData("word/document.xml")]
+    public void APackageWhosePartNamesAnExternalDtd_IsInspectedWithoutFetchingIt(string part)
+    {
+        using var probe = new LoopbackProbe();
+
+        FileInspection verdict = Inspect(EntityPackages.NamingAnExternalDtd(ContractFixture.Bytes(ContractFixture.TEN_PAGES_WORD_DOCUMENT), part, probe.Address), "entities.docx");
+
+        Assert.Equal(0, probe.Connections);
+        TestContext.Current.TestOutputHelper?.WriteLine($"{part}: {verdict.Outcome} {verdict.ReasonCode}");
     }
 
     private sealed class RefuseMarkdownCheck : IFileContentCheck

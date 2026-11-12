@@ -35,6 +35,21 @@ public abstract partial class EmailToPdfConverterContract
     }
 
     [Fact]
+    public async Task ConvertToPdf_FetchesNothingThatTheBodyNames()
+    {
+        using var probe = new LoopbackProbe();
+        string message = "From: sender@example.test\r\nTo: reader@example.test\r\nSubject: Remote content\r\nMIME-Version: 1.0\r\n"
+            + "Content-Type: text/html; charset=utf-8\r\n\r\n"
+            + $"<html><head>{RemoteContent.Head(probe.Address)}</head><body><p>{TEXT_ONLY_BODY}</p>{RemoteContent.Body(probe.Address)}</body></html>\r\n";
+        IEmailToPdfConverter converter = Converter;
+
+        _ = await Task.Run(() => converter.ConvertToPdf(Encoding.UTF8.GetBytes(message)))
+            .WaitAsync(EntityPackages.ReadTimeLimit, TestContext.Current.CancellationToken);
+
+        Assert.True(probe.Connections == 0, $"Fetched: {string.Join("; ", probe.Requests)}");
+    }
+
+    [Fact]
     public void ConvertMsgToEml_IsAnRfc822MessageWithTheSameHeadersAndBody()
     {
         IEmailToPdfConverter converter = Converter;

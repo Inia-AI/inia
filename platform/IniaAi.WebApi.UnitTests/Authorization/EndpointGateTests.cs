@@ -1,4 +1,6 @@
+using IniaAi.WebApi.Attributes;
 using IniaAi.WebApi.Controllers.v1.Base;
+using IniaAi.WebApi.Middleware;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -21,7 +23,7 @@ public class EndpointGateTests
         ILookup<string, OpenEndpoint> listed = OpenEndpoints.All.ToLookup(endpoint => endpoint.Action);
 
         List<string> problems = [];
-        foreach (Endpoint endpoint in Endpoint.All())
+        foreach (ApiEndpoint endpoint in ApiEndpoints.All())
         {
             if (endpoint.HasRoleGate)
             {
@@ -48,7 +50,7 @@ public class EndpointGateTests
     [Fact]
     public void EveryOpenListEntry_NamesAnOpenEndpoint()
     {
-        ILookup<string, Endpoint> endpoints = Endpoint.All().ToLookup(endpoint => endpoint.Action);
+        ILookup<string, ApiEndpoint> endpoints = ApiEndpoints.All().ToLookup(endpoint => endpoint.Action);
 
         List<string> stale = [.. OpenEndpoints.All
             .Where(entry => !endpoints[entry.Action].Any() || endpoints[entry.Action].Any(endpoint => endpoint.HasRoleGate))
@@ -64,60 +66,50 @@ public class EndpointGateTests
         Assert.Equal(OpenEndpoints.All.Count, OpenEndpoints.All.Select(entry => entry.Action).Distinct().Count());
     }
 
+    /// <summary>
+    /// A tenant-optional endpoint skips both tenant checks, so it may take nothing about an
+    /// organization or a user from the request. A new one is read for that before it joins this list.
+    /// </summary>
+    [Fact]
+    public void OnlyTheKnownEndpoints_AreTenantOptional()
+    {
+        IEnumerable<string> tenantOptional = typeof(ApiController).Assembly.GetTypes()
+            .Where(type => type is { IsAbstract: false, IsPublic: true } && typeof(ControllerBase).IsAssignableFrom(type))
+            .SelectMany(controller => controller
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(method => method.GetCustomAttributes<HttpMethodAttribute>().Any())
+                .Where(method => method.GetCustomAttribute<TenantOptionalAttribute>() is not null
+                    || controller.GetCustomAttribute<TenantOptionalAttribute>(inherit: true) is not null)
+                .Select(method => $"{controller.Name[..^CONTROLLER_SUFFIX.Length]}.{method.Name}"));
+
+        Assert.Equal(["Profile.ChangePasswordAsync", "Users.GetMyTenants"], tenantOptional.Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Both tenant checks skip every path that starts with a health or documentation prefix, so a
+    /// controller route under one of them would be served with no tenant check at all.
+    /// </summary>
+    [Fact]
+    public void NoControllerRoute_StartsWithAPathTheTenantChecksSkip()
+    {
+        Assert.True(MiddlewareConstants.ShouldSkipPath("/health"));
+
+        List<string> skipped = [.. ApiEndpoints.All()
+            .Where(endpoint => MiddlewareConstants.ShouldSkipPath("/" + endpoint.Path))
+            .Select(endpoint => endpoint.Route)];
+
+        Assert.True(skipped.Count == 0, "Served with no tenant check: " + string.Join(", ", skipped));
+    }
+
     [Fact]
     public void AnEndpointWithoutAGate_IsReportedWithItsRoute()
     {
-        Endpoint ungated = Endpoint.Of(typeof(UngatedController), nameof(UngatedController.Leak));
+        ApiEndpoint ungated = ApiEndpoints.Of(typeof(UngatedController), ControllerMethods.Get(typeof(UngatedController), nameof(UngatedController.Leak)));
 
         Assert.False(ungated.HasRoleGate);
         Assert.False(ungated.IsAnonymous);
         Assert.Equal("GET api/v1/ungated/leak", ungated.Route);
         Assert.Equal("Ungated.Leak", ungated.Action);
-    }
-
-    private sealed record Endpoint(string Action, string Route, bool HasRoleGate, bool IsAnonymous)
-    {
-        public static IEnumerable<Endpoint> All()
-        {
-            return typeof(ApiController).Assembly.GetTypes()
-                .Where(type => type is { IsAbstract: false, IsPublic: true } && typeof(ControllerBase).IsAssignableFrom(type))
-                .SelectMany(controller => controller
-                    .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                    .Where(method => method.GetCustomAttributes<HttpMethodAttribute>().Any())
-                    .Select(method => Of(controller, method)));
-        }
-
-        public static Endpoint Of(Type controller, string methodName)
-        {
-            return Of(controller, ControllerMethods.Get(controller, methodName));
-        }
-
-        private static Endpoint Of(Type controller, MethodInfo method)
-        {
-            IEnumerable<AuthorizeAttribute> authorizes = controller.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
-                .Concat(method.GetCustomAttributes<AuthorizeAttribute>());
-            bool anonymous = controller.GetCustomAttribute<AllowAnonymousAttribute>(inherit: true) is not null
-                || method.GetCustomAttribute<AllowAnonymousAttribute>() is not null;
-            HttpMethodAttribute http = method.GetCustomAttributes<HttpMethodAttribute>().First();
-
-            return new Endpoint(
-                $"{controller.Name[..^CONTROLLER_SUFFIX.Length]}.{method.Name}",
-                $"{http.HttpMethods.First()} {RouteOf(controller, http.Template)}",
-                !anonymous && authorizes.Any(authorize => !string.IsNullOrEmpty(authorize.Roles) || !string.IsNullOrEmpty(authorize.Policy)),
-                anonymous);
-        }
-
-        private static string RouteOf(Type controller, string? actionTemplate)
-        {
-            string controllerTemplate = controller.GetCustomAttribute<RouteAttribute>(inherit: true)?.Template ?? string.Empty;
-            string route = actionTemplate is not null && actionTemplate.StartsWith('/')
-                ? actionTemplate.TrimStart('/')
-                : string.Join('/', new[] { controllerTemplate, actionTemplate }.Where(part => !string.IsNullOrEmpty(part)));
-
-            return route
-                .Replace("v{version:apiVersion}", "v1", StringComparison.Ordinal)
-                .Replace("[controller]", controller.Name[..^CONTROLLER_SUFFIX.Length].ToLowerInvariant(), StringComparison.Ordinal);
-        }
     }
 
     [Authorize]

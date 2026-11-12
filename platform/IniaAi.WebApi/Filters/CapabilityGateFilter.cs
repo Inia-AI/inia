@@ -1,4 +1,5 @@
 using IniaAi.Application.Common.Capabilities;
+using IniaAi.Common.Text;
 using IniaAi.Application.Common.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -25,6 +26,7 @@ public sealed class CapabilityGateFilter : IAsyncAuthorizationFilter
     private readonly IOrganizationCapabilities _capabilities;
     private readonly IRequestContext _requestContext;
     private readonly ProblemDetailsFactory _problems;
+    private readonly ILogger<CapabilityGateFilter> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CapabilityGateFilter"/> class.
@@ -33,12 +35,14 @@ public sealed class CapabilityGateFilter : IAsyncAuthorizationFilter
         string capability,
         IOrganizationCapabilities capabilities,
         IRequestContext requestContext,
-        ProblemDetailsFactory problems)
+        ProblemDetailsFactory problems,
+        ILogger<CapabilityGateFilter> logger)
     {
         _capability = capability;
         _capabilities = capabilities;
         _requestContext = requestContext;
         _problems = problems;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -50,6 +54,13 @@ public sealed class CapabilityGateFilter : IAsyncAuthorizationFilter
         {
             return;
         }
+
+        _logger.LogWarning(
+            "Refused by a capability: user {UserId} of organization {OrganizationId} asked for {Action}, which needs {Capability}",
+            LogSanitizer.ForLog(_requestContext.UserId),
+            LogSanitizer.ForLog(organizationId),
+            ActionNames.Of(context.ActionDescriptor),
+            _capability);
 
         string? reason = organizationId is null ? null : await _capabilities.RefusalAsync(organizationId, _capability, cancellationToken);
         ProblemDetails problem = _problems.CreateProblemDetails(

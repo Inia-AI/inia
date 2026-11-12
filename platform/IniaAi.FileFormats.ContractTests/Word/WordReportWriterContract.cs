@@ -449,6 +449,17 @@ public abstract partial class WordReportWriterContract : ReportFileWriterContrac
         return _written.GetOrAdd((GetType(), reportName), _ => new Lazy<Task<byte[]>>(() => WriteBytesAsync(writer, _reports[reportName](), new ReportFileOptions()))).Value;
     }
 
+    [Fact]
+    public async Task WriteAsync_FetchesNothingThatTheReportContentNames()
+    {
+        using var probe = new LoopbackProbe();
+        string content = $"{RemoteContent.Head(probe.Address)}<p>Figures</p>{RemoteContent.Body(probe.Address)}\n\n![Logo]({probe.Address}logo.png)";
+
+        _ = await WriteAsync(SmallReportFixtures.OneParagraph(content)).WaitAsync(EntityPackages.ReadTimeLimit, TestContext.Current.CancellationToken);
+
+        Assert.True(probe.Connections == 0, $"Fetched: {string.Join("; ", probe.Requests)}");
+    }
+
     private async Task<WordFile> WriteAsync(WorkflowReport report, ReportFileOptions? options = null)
     {
         return new WordFile(await WriteBytesAsync(Writer, report, options ?? new ReportFileOptions()));

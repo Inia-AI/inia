@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text.Encodings.Web;
 using ErrorOr;
 using IniaAi.Application.Auditing;
@@ -141,39 +140,6 @@ public sealed class TwoFactorAuditTests : IDisposable
 
     private async Task<string> CurrentCodeAsync(User user)
     {
-        byte[] key = Base32Decode((await _users.GetAuthenticatorKeyAsync(user))!);
-        long step = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
-        byte[] counter = BitConverter.GetBytes(step);
-        if (BitConverter.IsLittleEndian)
-        {
-            Array.Reverse(counter);
-        }
-
-        byte[] hash = HMACSHA1.HashData(key, counter);
-        int offset = hash[^1] & 0x0F;
-        int binary = ((hash[offset] & 0x7F) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
-        return (binary % 1_000_000).ToString("D6");
-    }
-
-    private static byte[] Base32Decode(string text)
-    {
-        const string ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        List<byte> bytes = [];
-        int buffer = 0;
-        int bits = 0;
-
-        foreach (char letter in text.TrimEnd('=').ToUpperInvariant())
-        {
-            buffer = (buffer << 5) | ALPHABET.IndexOf(letter);
-            bits += 5;
-            if (bits >= 8)
-            {
-                bits -= 8;
-                bytes.Add((byte)(buffer >> bits));
-                buffer &= (1 << bits) - 1;
-            }
-        }
-
-        return [.. bytes];
+        return AuthenticatorCodes.Current((await _users.GetAuthenticatorKeyAsync(user))!);
     }
 }

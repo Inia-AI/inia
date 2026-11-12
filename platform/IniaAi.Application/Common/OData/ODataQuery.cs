@@ -35,6 +35,16 @@ public static class ODataQuery
     }
 
     /// <summary>
+    /// Orders an empty list of the options' element type by the request's <c>$orderby</c>, so the
+    /// checks the parser leaves to the query, such as a property ordered by twice, throw their
+    /// <see cref="Microsoft.OData.ODataException"/> before any data is read.
+    /// </summary>
+    public static void CheckOrderBy(ODataQueryOptions options)
+    {
+        _ = options.OrderBy?.ApplyTo(Array.CreateInstance(options.Context.ElementClrType, 0).AsQueryable(), _settings);
+    }
+
+    /// <summary>
     /// Reads one page of <paramref name="query"/>. A <paramref name="pageSize"/> is the page a
     /// request that sends no <c>$top</c> gets, for a list over a table that only grows; without it
     /// such a request reads every row. It never shortens a <c>$top</c> the caller sent, so a

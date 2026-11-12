@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   clearSignIn,
   cn,
@@ -312,5 +312,21 @@ describe('clearSignIn', () => {
     clearSignIn()
 
     expect(['accessToken', 'refreshToken', 'expiration', 'selectedOrgId'].map((key) => localStorage.getItem(key))).toEqual([null, null, null, null])
+  })
+
+  it('clears every session key even when the server does not answer', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
+    onTestFinished(() => fetchSpy.mockRestore())
+    localStorage.setItem('accessToken', 'access')
+    localStorage.setItem('refreshToken', 'refresh')
+    localStorage.setItem('expiration', '1')
+    localStorage.setItem('selectedOrgId', 'org-of-the-last-user')
+    localStorage.setItem('theme', 'dark')
+    localStorage.setItem('capabilitiesVary', 'true')
+
+    clearSignIn()
+
+    expect(Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).sort()).toEqual(['capabilitiesVary', 'theme'])
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

@@ -219,6 +219,6 @@ public static partial class AgentRunOutputFiles
         }
     }
 
-    [GeneratedRegex(@"^out/(?:[A-Za-z0-9_\-]+/)*[A-Za-z0-9_\-]+\.json$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"\Aout/(?:[A-Za-z0-9_\-]+/)*[A-Za-z0-9_\-]+\.json\z", RegexOptions.CultureInvariant)]
     private static partial Regex OutputFilePathRegex();
 }

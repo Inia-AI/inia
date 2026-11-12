@@ -109,6 +109,23 @@ public class UtilsTests : IDisposable
     }
 
     [Fact]
+    public void ATagRepeatedInAnAnswer_EachReaderTakesItsOwnOccurrence()
+    {
+        // Arrange
+        string text = "<answer>a</answer><answer>b</answer>";
+
+        // Act
+        string? first = Utils.GetStringFromTag(text, "answer");
+        string? every = Utils.GetStringFromTag(text, "answer", processMultipleTags: true);
+        string? last = Utils.GetStringFromLastTag(text, "answer");
+
+        // Assert
+        Assert.Equal("a", first);
+        Assert.Equal("a\nb", every);
+        Assert.Equal("b", last);
+    }
+
+    [Fact]
     public void GetStringFromTag_WhenTextHasTagStartLooseSingleProcessMultipleTagsFalse_FindsCorrectContent()
     {
         // Arrange

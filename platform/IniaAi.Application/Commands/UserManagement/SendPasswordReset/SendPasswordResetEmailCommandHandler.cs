@@ -2,10 +2,12 @@
 using IniaAi.Application.Common;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Configuration.Security;
 using IniaAi.Domain.Entities.UserManagement;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net;
 
 namespace IniaAi.Application.Commands.UserManagement.SendPasswordReset;
@@ -14,7 +16,7 @@ namespace IniaAi.Application.Commands.UserManagement.SendPasswordReset;
 /// Handles the <see cref="SendPasswordResetEmailCommand"/> by generating a reset token and mailing,
 /// to the address stored on the account, a link to the analyst app's reset page under
 /// <c>FrontendBaseUrl</c>. With no mail provider or no front-end address it sends nothing, so a
-/// token never goes to a built-in address.
+/// token never goes to a built-in address; while password sign-in is off it sends nothing either.
 /// </summary>
 public class SendPasswordResetEmailCommandHandler : IRequestHandler<SendPasswordResetEmailCommand, ErrorOr<Success>>
 {
@@ -25,6 +27,7 @@ public class SendPasswordResetEmailCommandHandler : IRequestHandler<SendPassword
     private readonly IOutgoingMail _mail;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SendPasswordResetEmailCommandHandler> _logger;
+    private readonly PasswordAuthSettings _passwordSettings;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SendPasswordResetEmailCommandHandler"/> class.
@@ -33,16 +36,19 @@ public class SendPasswordResetEmailCommandHandler : IRequestHandler<SendPassword
     /// <param name="mail">The deployment's outgoing mail.</param>
     /// <param name="configuration">Application configuration (the analyst app's address).</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="passwordSettings">Whether password sign-in is on; while it is off no reset mail goes.</param>
     public SendPasswordResetEmailCommandHandler(
         UserManager<User> userManager,
         IOutgoingMail mail,
         IConfiguration configuration,
-        ILogger<SendPasswordResetEmailCommandHandler> logger)
+        ILogger<SendPasswordResetEmailCommandHandler> logger,
+        IOptions<PasswordAuthSettings> passwordSettings)
     {
         _userManager = userManager;
         _mail = mail;
         _configuration = configuration;
         _logger = logger;
+        _passwordSettings = passwordSettings.Value;
     }
 
     /// <summary>
@@ -56,7 +62,7 @@ public class SendPasswordResetEmailCommandHandler : IRequestHandler<SendPassword
     /// <inheritdoc />
     public async Task<ErrorOr<Success>> Handle(SendPasswordResetEmailCommand request, CancellationToken cancellationToken)
     {
-        if (!CanSend(_mail, _configuration))
+        if (!_passwordSettings.Enabled || !CanSend(_mail, _configuration))
         {
             return Result.Success;
         }

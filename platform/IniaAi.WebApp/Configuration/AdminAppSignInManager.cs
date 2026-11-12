@@ -15,7 +15,10 @@ namespace IniaAi.WebApp.Configuration;
 /// </summary>
 /// <remarks>
 /// A staff role always signs in: an admin can make any organization a staff member's default, and
-/// the check reads the default organization.
+/// the check reads the default organization. Identity's recovery-code sign-in skips
+/// <see cref="CanSignInAsync"/> and spends the code before it signs in, so
+/// <see cref="TwoFactorRecoveryCodeSignInAsync"/> asks first, or a refused user would lose the code
+/// to a sign-in reported as a success.
 /// </remarks>
 public sealed class AdminAppSignInManager(
     UserManager<User> userManager,
@@ -33,6 +36,16 @@ public sealed class AdminAppSignInManager(
     public override async Task<bool> CanSignInAsync(User user)
     {
         return await base.CanSignInAsync(user) && await AdmitsAsync(user);
+    }
+
+    public override async Task<SignInResult> TwoFactorRecoveryCodeSignInAsync(string recoveryCode)
+    {
+        if (await GetTwoFactorAuthenticationUserAsync() is User user && !await CanSignInAsync(user))
+        {
+            return SignInResult.NotAllowed;
+        }
+
+        return await base.TwoFactorRecoveryCodeSignInAsync(recoveryCode);
     }
 
     public override async Task SignInWithClaimsAsync(User user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)

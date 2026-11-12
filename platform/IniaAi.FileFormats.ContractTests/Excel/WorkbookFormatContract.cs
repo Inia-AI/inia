@@ -25,6 +25,9 @@ public abstract class WorkbookFormatContract
     private const int EMPTY_SHEET = 3;
     private const int VALUE_COLUMN = 1;
     private const int ROW_WITH_NO_VALUE = 22;
+    private const string SHARED_STRINGS_PART = "xl/sharedStrings.xml";
+    private const string WORKBOOK_PART = "xl/workbook.xml";
+    private const string CONTENT_TYPES_PART = "[Content_Types].xml";
 
     protected abstract IWorkbookFormat Format { get; }
 
@@ -169,6 +172,76 @@ public abstract class WorkbookFormatContract
         _ = Assert.Throws<DocumentPasswordProtectedException>(() => Format.Open(stream, ContractFixture.NameOf(PROTECTED_WORKBOOK)));
 
         Assert.False(stream.CanRead);
+    }
+
+    [Theory]
+    [InlineData(SHARED_STRINGS_PART)]
+    [InlineData(WORKBOOK_PART)]
+    [InlineData(CONTENT_TYPES_PART)]
+    public async Task Open_NeverFetchesAnExternalDtdThatAPartNames(string part)
+    {
+        using var probe = new LoopbackProbe();
+
+        _ = await ReadOrRefusalAsync(EntityPackages.NamingAnExternalDtd(Bytes(CELL_TEXTS_WORKBOOK), part, probe.Address));
+
+        Assert.Equal(0, probe.Connections);
+    }
+
+    [Fact]
+    public async Task Open_NeverReadsInALocalFileThatACellNames()
+    {
+        string marker = $"marker-{Guid.NewGuid():N}";
+        string file = Path.Combine(Path.GetTempPath(), $"entity-{Guid.NewGuid():N}.txt");
+        await File.WriteAllTextAsync(file, marker, TestContext.Current.CancellationToken);
+
+        try
+        {
+            string read = await ReadOrRefusalAsync(EntityPackages.ReadingInAFile(Bytes(CELL_TEXTS_WORKBOOK), SHARED_STRINGS_PART, file));
+
+            Assert.DoesNotContain(marker, read);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    [Fact]
+    public async Task Open_OfDeclaredEntities_RefusesTheWorkbook_OrLeavesThemUnexpanded()
+    {
+        string read = await ReadOrRefusalAsync(EntityPackages.WithNestedEntities(Bytes(CELL_TEXTS_WORKBOOK), SHARED_STRINGS_PART));
+
+        Assert.DoesNotContain(EntityPackages.EXPANDED_TEXT, read);
+    }
+
+    [Fact]
+    public async Task Open_FetchesNothingThatTheWorkbookLinksTo()
+    {
+        using var probe = new LoopbackProbe();
+
+        _ = await ReadOrRefusalAsync(RemoteContent.WorkbookLinkingTo(Bytes(MACRO_WORKBOOK), probe.Address));
+
+        Assert.True(probe.Connections == 0, $"Fetched: {string.Join("; ", probe.Requests)}");
+    }
+
+    private async Task<string> ReadOrRefusalAsync(byte[] workbook)
+    {
+        IWorkbookFormat format = Format;
+
+        try
+        {
+            return await Task.Run(() =>
+            {
+                using IWorkbookDocument document = format.Open(new MemoryStream(workbook), ContractFixture.NameOf(CELL_TEXTS_WORKBOOK));
+                return string.Join('\n', document.Sheets.SelectMany(sheet =>
+                    Enumerable.Range(0, sheet.MaxDataRow + 1).SelectMany(row =>
+                        Enumerable.Range(0, sheet.MaxDataColumn + 1).Select(column => sheet.CellText(row, column))).Prepend(sheet.Name)));
+            }).WaitAsync(EntityPackages.ReadTimeLimit, TestContext.Current.CancellationToken);
+        }
+        catch (Exception refusal) when (refusal is not TimeoutException)
+        {
+            return refusal.Message;
+        }
     }
 
     private IWorkbookDocument Open(string fixture)

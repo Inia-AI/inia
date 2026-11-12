@@ -1,6 +1,7 @@
 using IniaAi.Application.Commands.UserManagement.SendPasswordReset;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Configuration.Security;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Testing;
 using IniaAi.Testing.DependencyInjection.Mocks;
@@ -57,6 +58,20 @@ public class SendPasswordResetEmailTests
         SentEmail email = Assert.Single(outbox.Sent);
         Assert.Equal(EMAIL, email.To);
         Assert.Contains($"{RESET_URL}?email={WebUtility.UrlEncode(EMAIL)}&token=", WebUtility.HtmlDecode(email.HtmlBody));
+    }
+
+    [Fact]
+    public async Task SendPasswordResetEmail_WhilePasswordSignInIsOff_SendsNothing()
+    {
+        RecordingOutgoingMail outbox = new(isConfigured: true);
+        using ServiceProvider services = BuildServices(outbox, FRONTEND, passwordSignIn: false);
+        using IServiceScope scope = services.CreateScope();
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+
+        _ = await scope.ServiceProvider.GetRequiredService<ISender>()
+            .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken);
+
+        Assert.Empty(outbox.Sent);
     }
 
     [Fact]
@@ -129,10 +144,11 @@ public class SendPasswordResetEmailTests
         Assert.Empty(outbox.Sent);
     }
 
-    private static ServiceProvider BuildServices(IOutgoingMail outbox, string? frontend, CapturingLogger<SendPasswordResetEmailCommandHandler>? mailStepLog = null)
+    private static ServiceProvider BuildServices(IOutgoingMail outbox, string? frontend, CapturingLogger<SendPasswordResetEmailCommandHandler>? mailStepLog = null, bool passwordSignIn = true)
     {
         return IdentityTestDatabase.Build(services =>
         {
+            _ = services.Configure<PasswordAuthSettings>(settings => settings.Enabled = passwordSignIn);
             _ = services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {

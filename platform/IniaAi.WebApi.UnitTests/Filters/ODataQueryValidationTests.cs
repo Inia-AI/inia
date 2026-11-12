@@ -50,6 +50,18 @@ public sealed class ODataQueryValidationTests : IClassFixture<ApiPipelineHost>
         Assert.NotEmpty(messages.EnumerateArray().First().GetString()!);
     }
 
+    [Theory]
+    [InlineData("$filter=true&$filter=false")]
+    [InlineData("filter=true&$FILTER=true")]
+    [InlineData("$top=1&top=2")]
+    [InlineData("$orderby=title&$ORDERBY=title")]
+    public async Task AClauseGivenTwice_AnswersBadRequest_NotAServerError(string query)
+    {
+        HttpResponseMessage response = await _client.GetAsync($"/{PROBE_ROUTE}?{query}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task MalformedDateFilter_AnswersBadRequestWithoutInternals()
     {

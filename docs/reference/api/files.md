@@ -86,7 +86,7 @@ through [`POST /documents/{id}/process`](documents.md#process-document) (every
 format above except emails).
 
 **File Size Limits:**
-- **Maximum file size**: configurable per deployment via `PlatformSettings.IniaAi.MaxFileSizeMb`; **default 100 MB** per file. The inspector refuses an oversized upload with `400` and `File.Refused.FileTooLarge`, and an empty one with `File.Refused.EmptyFile`; both write their record. The endpoint lifts the request body limit (`[DisableRequestSizeLimit]`), so this setting is the only bound. An oversized upload is refused from its declared size before a byte is read, so its record carries no content hash.
+- **Maximum file size**: configurable per deployment via `PlatformSettings.IniaAi.MaxFileSizeMb`; **default 100 MB** per file. The inspector refuses an oversized upload with `400` and `File.Refused.FileTooLarge`, and an empty one with `File.Refused.EmptyFile`; both write their record. The same setting bounds the request body itself (`[FileUploadSizeLimit]`: the file limit plus 64 KB for the form): a body over it is refused while it streams in, with `400` or `413`, before the server buffers it, and no record is written. An upload within that bound but over the file limit is refused from its declared size before a byte is read, so its record carries no content hash.
 
 **Example Request:**
 
@@ -188,13 +188,15 @@ curl -X GET "https://api.example.com/api/v1/files/file-abc123" \
 
 **Response (200 OK):**
 
-File content is returned with appropriate headers. `Content-Type` is the media type the intake gate detected when the file was stored, not the file's extension, so a PDF uploaded as `statement.dat` downloads as `application/pdf`. The file name is the stored name with its extension. With `disposition=preview` the response carries `Content-Disposition: inline` and no file name. The endpoint sets no caching header.
+File content is returned with appropriate headers. `Content-Type` is the media type the intake gate detected when the file was stored, not the file's extension, so a PDF uploaded as `statement.dat` downloads as `application/pdf`. The file name is the stored name with its extension. With `disposition=preview` the response carries `Content-Disposition: inline`, no file name and `Content-Security-Policy: sandbox`: the API shares the web app's origin, so a file opened from it in a browser runs nothing there. Every file response carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. A download's name is encoded per RFC 6266 (`filename*=UTF-8''…` beside an ASCII `filename`); intake has already turned any control character in the uploaded name into a space.
 
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/pdf
 Content-Length: 2048576
-Content-Disposition: attachment; filename="Q4-2024-Report.pdf"
+Content-Disposition: attachment; filename="Q4-2024-Report.pdf"; filename*=UTF-8''Q4-2024-Report.pdf
+Cache-Control: no-store
+X-Content-Type-Options: nosniff
 
 [File content bytes]
 ```
@@ -373,6 +375,7 @@ usual `400`, whose message for that file is the refusal's text. So the quota and
 | `404` | `File metadata not found.` | The document has no file row |
 | `404` | `File storage path not found.` | The file row names no stored blob |
 | `404` | `File content is empty.` | The stored blob is empty |
+| `403` | the deployment's refusal | The file was produced by a report whose content the deployment hides (`IReportContentRule`), the same rule as the report reads in [Reports](reports.md). An upload is never refused this way. The platform's default, `EveryReportContent`, hides no report |
 | `500` | `Error retrieving document content.` | The storage provider failed |
 
 ### 500 Internal Server Error — Storage Failure

@@ -21,6 +21,9 @@ public sealed class FilesController : ApiController
 {
     private const string INLINE_DISPOSITION = "inline";
 
+    // The API shares the web app's origin, so a file opened from it in a browser must run nothing there.
+    private const string SANDBOX_POLICY = "sandbox";
+
     private readonly ILogger<FilesController> _logger;
     private readonly ISender _sender;
 
@@ -59,7 +62,7 @@ public sealed class FilesController : ApiController
     /// <response code="500">An unexpected error occurred while uploading the file.</response>
     [HttpPost]
     [RequiresCapability(OrganizationCapabilities.UPLOAD)]
-    [DisableRequestSizeLimit]
+    [FileUploadSizeLimit]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(FileDto))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(List<Error>))]
@@ -138,6 +141,7 @@ public sealed class FilesController : ApiController
                 if (content.ContentDisposition == INLINE_DISPOSITION)
                 {
                     Response.Headers.ContentDisposition = INLINE_DISPOSITION;
+                    Response.Headers.ContentSecurityPolicy = SANDBOX_POLICY;
 
                     return File(content.Content, content.ContentType);
                 }

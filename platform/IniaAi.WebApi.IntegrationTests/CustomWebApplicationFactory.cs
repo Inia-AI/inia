@@ -1,6 +1,9 @@
 ﻿using FluentValidation;
 using IniaAi.AiConnection.Abstractions;
 using IniaAi.Application.Commands.WorkflowExecutions.StartWorkflowExecution;
+using IniaAi.Core.Services;
+using IniaAi.Core.Services.Abstraction;
+using IniaAi.Testing;
 using IniaAi.Testing.DependencyInjection.Mocks;
 using IniaAi.WebApi.IntegrationTests.CommandValidators;
 using Microsoft.AspNetCore.Hosting;
@@ -73,6 +76,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             _ = services.AddSingleton<IChatConnector>(ScriptedChatConnector.Answering("<answer>Yes</answer>"));
             _ = services.RemoveAll<IEmbeddingsConnector>();
             _ = services.AddSingleton<IEmbeddingsConnector>(new WordHashEmbeddingsConnector());
+            _ = services.AddHttpClient<IExchangeRateService, ExchangeRateService>()
+                .ConfigurePrimaryHttpMessageHandler(() => new CannedExchangeRatesHandler());
 
         });
     }

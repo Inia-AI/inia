@@ -1,6 +1,8 @@
 using IniaAi.FileFormats.Inspection;
 using IniaAi.FileFormats.Tests.Unlock;
 using IniaAi.Testing.Documents;
+using SkiaSharp;
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
 
@@ -138,6 +140,20 @@ internal static class InspectionFixtures
     internal static byte[] LegacyWordDocument()
     {
         return WordFixtures.Legacy();
+    }
+
+    /// <summary>A real 8 by 8 JPEG whose frame header is rewritten to claim <paramref name="width"/> by <paramref name="height"/> pixels.</summary>
+    internal static byte[] JpegClaimingSize(ushort width, ushort height)
+    {
+        const int HEIGHT_OFFSET = 5;
+        const int WIDTH_OFFSET = 7;
+        using var bitmap = new SKBitmap(8, 8);
+        using SKData encoded = bitmap.Encode(SKEncodedImageFormat.Jpeg, 80);
+        byte[] jpeg = encoded.ToArray();
+        int frame = jpeg.AsSpan().IndexOf(new byte[] { 0xFF, 0xC0 });
+        BinaryPrimitives.WriteUInt16BigEndian(jpeg.AsSpan(frame + HEIGHT_OFFSET), height);
+        BinaryPrimitives.WriteUInt16BigEndian(jpeg.AsSpan(frame + WIDTH_OFFSET), width);
+        return jpeg;
     }
 
     internal static byte[] PngClaimingSize(uint width, uint height)

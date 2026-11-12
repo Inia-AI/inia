@@ -98,6 +98,24 @@ public abstract class EditableWorkbookContract
         Assert.Equal(new (string, bool)[] { ("just text", false) }, OoxmlPackage.TextRuns(saved, INPUTS_SHEET, "G1"));
     }
 
+    // A spreadsheet program reads a cell that starts with one of these as a formula. Model text is written
+    // as text, so a document cannot make the customer's workbook compute or link.
+    [Theory]
+    [InlineData("=1+1")]
+    [InlineData("+1+1")]
+    [InlineData("-1+1")]
+    [InlineData("@SUM(1)")]
+    [InlineData("=HYPERLINK(\"https://example.invalid\",\"x\")")]
+    public void WriteText_StoresTextThatLooksLikeAFormula_AsText(string text)
+    {
+        using IEditableWorkbook workbook = OpenFixture();
+        workbook.Sheets[0].WriteText(20, 6, text, []);
+
+        using IEditableWorkbook reopened = Format.Open(workbook.Save());
+
+        Assert.Equal(new TextCell(20, 6, text, IsFormula: false), Assert.Single(reopened.Sheets[0].TextCells(), cell => cell is { Row: 20, Column: 6 }));
+    }
+
     [Fact]
     public void WrittenValues_ReadBackBeforeAndAfterSave()
     {

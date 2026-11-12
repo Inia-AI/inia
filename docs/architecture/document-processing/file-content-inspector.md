@@ -6,7 +6,7 @@ description: "The byte-level file inspector: what it detects, what it admits, wh
 
 # File content inspection
 
-**On this page:** Where it runs · The call and the verdict · The sequence · What the bytes decide · Limits · Encrypted files · Verification
+**On this page:** Where it runs · Rules per way in · The call and the verdict · The sequence · What the bytes decide · Limits · Encrypted files · Verification
 
 `FileContentInspector` in `platform/IniaAi.FileFormats/Inspection/` decides from the bytes whether a file may enter the platform. It is a pure function over the bytes and the filename. It has no dependency on HTTP, the dispatcher or Entity Framework, so the same rules can run at an HTTP upload, in a Blazor upload card and on an email attachment.
 
@@ -31,6 +31,19 @@ A `Document` is born with its type. The production constructor is `Document(File
 
 
 Email expansion (`EmailExpansionService`) runs the inspector once more, on each attachment and each ZIP entry, but only to read the detected type: it expands the five types it supports (PDF, Word, CSV, Excel, ZIP) and skips a recognised type it does not (an image, plain text, a nested email). Bytes no detector names are not skipped there; the part goes on to the intake gate, which refuses it and reports the refusal to its recorder. At expansion, the part's name and declared MIME type decide nothing except which text type a bare text part is; at the gate, a part whose name claims a signed format its bytes are not is refused like an upload.
+
+## Rules per way in
+
+Every way in admits by the bytes, through the same gate, and none runs a malware scanner: a file the checks admit is stored as it is, and a refused file is not stored and its refusal is recorded (see [Where it runs](#where-it-runs) for how each answers). The types are the ones the pipeline reads: PDF, JPEG, PNG, CSV, Excel (`.xlsx`, `.xlsm`, and `.xls` in the full edition), Word (`.docx`), plain text and Markdown, and in the full edition an RFC 822 or Outlook email.
+
+| Way in | Admitted types | What the file name does | Size | Archives |
+|---|---|---|---|---|
+| `POST /api/v1/files` | The pipeline's types | Refuses only a name that claims a signed format the bytes are not; it is stored, with control characters turned into spaces, and shown | `MaxFileSizeMb` (100 MiB unless set); the request body is bounded by the same figure plus 64 KiB before the form is read (`FileUploadSizeLimitAttribute`) | A ZIP is not a type the pipeline reads; a Word or Excel package must keep to the [limits](#limits) |
+| `POST /api/v1/workflow-executions/submit` | As the files endpoint, file by file; an email is expanded first | As the files endpoint | `MaxFileSizeMb` per file; the request at most 200 MB | As the files endpoint |
+| The Blazor upload card | The pipeline's types | As the files endpoint | `MaxFileSizeMb`, from the declared size | As the files endpoint |
+| An email's attachment (`EmailExpansionService`, `EmailIntakeJobStage`) | PDF, Word, CSV, Excel and ZIP are kept; another recognised type is skipped with a reason; bytes no detector names go on to the gate, which refuses them | Names the stored part; decides only which text type a bare text part is | `MaxFileSizeMb` per part | A ZIP attachment meets the gate's [limits](#limits) first, then at most `EmailExpansion:MaxArchiveEntries` (100) entries, each at most `MaxFileSizeMb`; a nested ZIP, a folder entry, macOS metadata and a symbolic link are not content; an entry keeps only its own name, never a folder |
+
+
 
 ## The call and the verdict
 

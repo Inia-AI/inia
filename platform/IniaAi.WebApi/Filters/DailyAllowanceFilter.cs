@@ -63,6 +63,12 @@ public sealed class DailyAllowanceFilter : IAsyncResourceFilter
 
         if (!take.Taken)
         {
+            _logger.LogInformation(
+                "Refused a {Kind} request of user {UserId} in organization {OrganizationId}: the daily limit of {Limit} is used",
+                _kind,
+                LogSanitizer.ForLog(take.UserId),
+                LogSanitizer.ForLog(_requestContext.OrganizationId),
+                take.Limit);
             RateLimitHeaders.WriteRefusal(http.Response, DailyAllowanceKinds.All[take.Kind].PolicyName, take.Limit, WINDOW_SECONDS, SecondsToReset(take));
             string message = DailyAllowanceKinds.All[_kind].ExhaustedMessageFor(take.Limit);
             context.Result = new ObjectResult(new DailyAllowanceRefusal(message, EXHAUSTED_CODE, take.ResetsAt))

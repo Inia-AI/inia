@@ -201,7 +201,7 @@ Most source projects have a parallel test project under `/tests/` (e.g. `IniaAi.
 | `IniaAi.Testing.Ooxml` | Reads Word documents and workbooks as raw Office Open XML (`WordFile`, `OoxmlPackage`), so a test checks what any library wrote alike. It references no document library. |
 | `IniaAi.Testing.DependencyInjection` | Builds a **real** service provider for tests (EF Core, real repositories, test seeders) and the test chat and embeddings connectors (`TestChatConnectorFactory`, `ScriptedChatConnector`, `WordHashEmbeddingsConnector`) — the real-instance approach the house rules require. |
 | `IniaAi.Samples.WordCount` | A Count Words block type in a project of its own: the working example of an extension ([A block type in its own project](../architecture/workflow-engine/block-implementation-guide.md#a-block-type-in-its-own-project)). `IniaAi.Core.Tests` and `IniaAi.WebApp.Tests` reference it and register it as they load. |
-| `IniaAi.WebApi.IntegrationTests` | Full-pipeline API tests; not in the CI filter `IniaAi.Platform.CI.slnf`, so CI does not run them (see [Testing](testing.md)). |
+| `IniaAi.WebApi.IntegrationTests` | Full-pipeline API tests; not in the CI filter `IniaAi.Platform.CI.slnf`. CI runs only their `*.Authorization` namespaces, in the isolation job with a PostgreSQL service (see [Testing](testing.md)). |
 
 
 ### Build output

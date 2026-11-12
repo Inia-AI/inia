@@ -280,14 +280,14 @@ public partial class TokenUsageTrackingTests : IClassFixture<ApiTestFixture>, IA
         }
     }
 
-    private async Task<string> GetOrCreateCounterpartyAsync()
+    private async Task<string> GetOrCreateCounterpartyAsync(string organizationId)
     {
-        // Try to find an existing counterparty
+        // Try to find an existing counterparty of the run's organization
         (IServiceScope? scope, UserDataDbContext? dbContext) = _apiBuilder.GetNewScope<UserDataDbContext>();
         using (scope)
         {
             Counterparty? existing = await dbContext.Counterparties
-                .Where(c => !c.IsDeleted)
+                .Where(c => !c.IsDeleted && c.OrganizationId == organizationId)
                 .FirstOrDefaultAsync();
 
             if (existing is not null)
@@ -299,8 +299,8 @@ public partial class TokenUsageTrackingTests : IClassFixture<ApiTestFixture>, IA
             var counterparty = new Counterparty
             {
                 Id = Guid.NewGuid().ToString(),
-                Name = "Test Counterparty for Token Usage Tests",
-                OrganizationId = "IniaAI"
+                Name = $"Test Counterparty for Token Usage Tests {organizationId}",
+                OrganizationId = organizationId
             };
             _ = dbContext.Counterparties.Add(counterparty);
             _ = await dbContext.SaveChangesAsync();
@@ -320,7 +320,7 @@ public partial class TokenUsageTrackingTests : IClassFixture<ApiTestFixture>, IA
         string? organizationId = null,
         string? userId = null)
     {
-        string counterpartyId = await GetOrCreateCounterpartyAsync();
+        string counterpartyId = await GetOrCreateCounterpartyAsync(organizationId ?? TestOrganizationId);
 
         List<WorkflowCategoryDto> workflowCategories = await GetValidWorkflowCategoriesAsync();
         WorkflowDto? workflow = workflowCategories

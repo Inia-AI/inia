@@ -1,12 +1,10 @@
-using IniaAi.Testing.DependencyInjection.Mocks;
-
-namespace IniaAi.Core.Tests.Workflows;
+namespace IniaAi.Testing.DependencyInjection.Mocks;
 
 /// <summary>
 /// The model the workflow tests run against. It answers a request that carries an image with a fixed
 /// sentence and anything else with the request itself, so a test sees which prompt and pages reached the model.
 /// </summary>
-internal static class EchoingModel
+public static class EchoingModel
 {
     public const string IMAGE_ANSWER = "An image reached the model.";
 

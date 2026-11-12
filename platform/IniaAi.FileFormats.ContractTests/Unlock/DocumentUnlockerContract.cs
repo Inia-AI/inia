@@ -2,6 +2,7 @@ using IniaAi.Common.Enums;
 using IniaAi.FileFormats.Inspection;
 using IniaAi.FileFormats.Unlock;
 using System.Text;
+using System.Text.RegularExpressions;
 using static IniaAi.FileFormats.ContractTests.ContractFixture;
 
 namespace IniaAi.FileFormats.ContractTests.Unlock;
@@ -13,7 +14,7 @@ namespace IniaAi.FileFormats.ContractTests.Unlock;
 /// (<see cref="EncryptedContainer.LegacyWorkbook"/>) is outside the contract: the open build does
 /// not support the binary .xls format.
 /// </summary>
-public abstract class DocumentUnlockerContract
+public abstract partial class DocumentUnlockerContract
 {
     private const string PDF_PASSWORD = "contract-open-pw";
     private const string WORKBOOK_PASSWORD = "contract-workbook-pw";
@@ -166,6 +167,35 @@ public abstract class DocumentUnlockerContract
             }
         }
     }
+
+    [Fact]
+    public async Task AnOfficeFile_WhoseEncryptionDescriptionNamesAnExternalDtd_NeverFetchesIt()
+    {
+        using var probe = new LoopbackProbe();
+        byte[] tampered = EncryptedPackages.WithEncryptionDescription(Bytes(PROTECTED_WORKBOOK_AGILE),
+            xml => EncryptedPackages.WithDocumentType(xml, $"<!ENTITY % external SYSTEM \"{probe.Address.AbsoluteUri}\"> %external;"));
+
+        _ = await Unlocker.TryUnlockAsync(tampered, EncryptedContainer.OfficePackage, WORKBOOK_PASSWORD, TestContext.Current.CancellationToken)
+            .WaitAsync(EntityPackages.ReadTimeLimit, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, probe.Connections);
+    }
+
+    [Fact]
+    public async Task AnOfficeFile_WhoseSpinCountComesFromAnEntity_IsNotDecrypted()
+    {
+        byte[] tampered = EncryptedPackages.WithEncryptionDescription(Bytes(PROTECTED_WORKBOOK_AGILE),
+            xml => EncryptedPackages.WithDocumentType(SpinCount().Replace(xml, "spinCount=\"&spin;\""), "<!ENTITY spin \"100000\">"));
+
+        FileUnlockResult result = await Unlocker.TryUnlockAsync(tampered, EncryptedContainer.OfficePackage, WORKBOOK_PASSWORD, TestContext.Current.CancellationToken)
+            .WaitAsync(EntityPackages.ReadTimeLimit, TestContext.Current.CancellationToken);
+
+        Assert.NotEqual(FileProtectionStatus.Decrypted, result.Status);
+        Assert.Null(result.DecryptedBytes);
+    }
+
+    [GeneratedRegex("spinCount=\"\\d+\"")]
+    private static partial Regex SpinCount();
 
     private static void AssertLocked(FileProtectionStatus expected, FileUnlockResult result)
     {

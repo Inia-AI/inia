@@ -149,6 +149,19 @@ public class FileDownloadControllerTests : IDisposable
         _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
+    [Theory]
+    [InlineData("folder/statement.pdf")]
+    [InlineData("..\\statement.pdf")]
+    [InlineData("../statement.pdf")]
+    [InlineData("..%2fstatement.pdf")]
+    [InlineData("..pdf")]
+    public async Task DownloadFileByName_ANameThatIsAPath_IsRefusedOrFindsNothing(string fileName)
+    {
+        IActionResult result = await _controller.DownloadFileByName(fileName);
+
+        Assert.True(result is BadRequestObjectResult or NotFoundObjectResult, $"The download answered {result.GetType().Name}.");
+    }
+
     [Fact]
     public async Task DownloadFileByName_NonExistentFile_ReturnsNotFound()
     {

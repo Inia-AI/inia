@@ -34,6 +34,14 @@ public static class CounterpartyErrorFactory
             $"If it is classified under a different {CounterpartyTerms.SINGULAR_LOWER} type, open the {CounterpartyTerms.PLURAL} tab and assign the correct type.");
     }
 
+    public static Error ParentNotFound(string parentId)
+    {
+        return Error.Validation(
+            "Counterparty.ParentNotFound",
+            $"The parent {CounterpartyTerms.SINGULAR_LOWER} with ID '{parentId}' does not exist in this organization. " +
+            $"Choose a parent from the {CounterpartyTerms.PLURAL} tab, or leave the parent empty.");
+    }
+
     public static Error NotFound(string id)
     {
         return Error.NotFound("Counterparty.NotFound", $"{CounterpartyTerms.SINGULAR} with ID '{id}' was not found.");

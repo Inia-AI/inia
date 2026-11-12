@@ -84,7 +84,7 @@ internal sealed class OfficePackageDecryption
 
     private static (XElement KeyData, XElement PasswordKey) AgileKeys(byte[] info)
     {
-        XElement encryption = XDocument.Parse(Encoding.UTF8.GetString(info, AGILE_XML_OFFSET, info.Length - AGILE_XML_OFFSET)).Root
+        XElement encryption = PackageXml.Parse(Encoding.UTF8.GetString(info, AGILE_XML_OFFSET, info.Length - AGILE_XML_OFFSET)).Root
             ?? throw new NotSupportedException("The encryption description is empty.");
         XElement keyData = encryption.Element(_encryption + "keyData") ?? throw new NotSupportedException("The encryption description has no key data.");
         XElement passwordKey = encryption
