@@ -12,11 +12,11 @@ namespace IniaAi.Services.Tests.CsvImport;
 
 public class UserCsvImportTests : IClassFixture<CsvImportFixture>
 {
-    private const string VALID_PASSWORD = "Password1";
+    private const string VALID_PASSWORD = "QuietMaple42";
 
     private const string USERS_WITH_PASSWORDS_CSV = @"
         Email,                  FirstName,  LastName,   Password
-        jane.doe@example.com,   Jane,       Doe,        Password1
+        jane.doe@example.com,   Jane,       Doe,        QuietMaple42
         john.smith@example.com, John,       Smith,      Secret42x
     ";
 
@@ -42,28 +42,28 @@ public class UserCsvImportTests : IClassFixture<CsvImportFixture>
 
     private const string DUPLICATE_EMAILS_CSV = @"
         Email,                  FirstName,  LastName,   Password
-        jane.doe@example.com,   Jane,       Doe,        Password1
+        jane.doe@example.com,   Jane,       Doe,        QuietMaple42
         JANE.DOE@example.com,   Janet,      Doeh,       Password2
     ";
 
     private const string USER_WITHOUT_EMAIL_CSV = @"
         Email,  FirstName,  LastName,   Password
-        ,       Jane,       Doe,        Password1
+        ,       Jane,       Doe,        QuietMaple42
     ";
 
     private const string USER_WITH_EXPLICIT_USERNAME_CSV = @"
         Email,                  UserName,   FirstName,  LastName,   Password
-        jane.doe@example.com,   jdoe,       Jane,       Doe,        Password1
+        jane.doe@example.com,   jdoe,       Jane,       Doe,        QuietMaple42
     ";
 
     private const string USER_NAME_WITH_A_SPACE_CSV = @"
         Email,                  UserName,   FirstName,  LastName,   Password
-        jane.doe@example.com,   Jane Doe,   Jane,       Doe,        Password1
+        jane.doe@example.com,   Jane Doe,   Jane,       Doe,        QuietMaple42
     ";
 
     private const string DUPLICATE_USERNAMES_CSV = @"
         Email,                  UserName,   FirstName,  LastName,   Password
-        jane.doe@example.com,   shared,     Jane,       Doe,        Password1
+        jane.doe@example.com,   shared,     Jane,       Doe,        QuietMaple42
         john.smith@example.com, SHARED,     John,       Smith,      Secret42x
     ";
 

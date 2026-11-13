@@ -102,6 +102,7 @@ A row names its role gate when the endpoint has one; a row with none is open to 
 | `POST` | `/passwords/forgot` | Initiate a password-reset email |
 | `POST` | `/passwords/reset` | Set a new password with the token from a reset email |
 | `POST` | `/profiles/change-password` | Change the authenticated user's password; needs no `X-Tenant-Id` (`[TenantOptional]`) |
+| `POST` | `/profiles/sign-out-everywhere` | End every session of the authenticated user, the calling one included; needs no `X-Tenant-Id` (`[TenantOptional]`) |
 | `GET` | `/auth/2fa/status` | Current user's 2FA status ([MFA](../../features/user-management/mfa.md)) |
 | `POST` | `/auth/2fa/totp/setup` | Begin TOTP enrolment (returns secret + QR payload) |
 | `POST` | `/auth/2fa/totp/enable` | Confirm TOTP enrolment with a code |
@@ -395,7 +396,7 @@ flowchart TD
 - A valid token whose organizations do not include the requested one is rejected with `403` and `title: "Invalid tenant context"` (`detail: "You do not have access to this tenant."`) by `TenantUserContextMiddleware`.
 - The token's organizations are its `tenant_ids` claim plus its `tenant_id` (or legacy `organization_id`) claim; [Authentication → Multi-Tenant Token Claims](authentication.md#multi-tenant-token-claims) says what goes into them.
 - A SuperAdmin passes the membership check for any active organization named in `X-Tenant-Id`.
-- `POST /profiles/change-password` and `GET /users/me/tenants` carry `[TenantOptional]` and skip both tenant checks; anonymous endpoints skip them too.
+- `POST /profiles/change-password`, `POST /profiles/sign-out-everywhere` and `GET /users/me/tenants` carry `[TenantOptional]` and skip both tenant checks; anonymous endpoints skip them too.
 - Paths under `/health`, `/readiness` and `/swagger` skip the tenant checks (`MiddlewareConstants.ExcludedPaths`).
 
 ## OpenAPI/Swagger Documentation

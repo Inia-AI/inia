@@ -168,7 +168,7 @@ app with the workflow editor. They share one database.
    - `YOUR_ANTHROPIC_API_KEY_HERE`: your Anthropic API key.
    - `YOUR_FIRST_SUPERADMIN_PASSWORD_HERE` and `YOUR_FIRST_CUSTOMER_ADMIN_PASSWORD_HERE`: the
      passwords that the first accounts get when the app creates the database. Each needs at least
-     8 characters, with an uppercase letter, a lowercase letter and a digit.
+     8 characters, and must not be one of the most commonly used passwords.
    - In the WebApi file only, `YOUR_SIGNING_KEY_HERE`: a key of at least 32 bytes, such as the
      output of `openssl rand -base64 48`, and `YOUR_SERVICE_CLIENT_SECRET_HERE`: the secret of
      the service clients that call the API.

@@ -86,6 +86,17 @@ describe('useRefreshToken', () => {
     expect(push).toHaveBeenCalledWith({ name: 'Login', query: { reason: 'session-ended', redirect: '/reports/42' } })
   })
 
+  it('leaves the sign-in screen alone when the user signed out before the last token expired', async () => {
+    localStorage.setItem('accessToken', tokenFor(10 * 60))
+    localStorage.setItem('expiration', (Date.now() + 10 * 60 * 1000).toString())
+
+    await useRefreshToken().setRefreshTokenTimer()
+    localStorage.clear()
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+
+    expect(push).not.toHaveBeenCalled()
+  })
+
   it('never writes the refresh token to the console when a refresh fails', async () => {
     signInFor(30)
     const failure = Object.assign(new Error('Request failed with status code 400'), {

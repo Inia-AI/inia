@@ -47,6 +47,7 @@ public static class AuthenticationConfiguration
                 options.ClientId = googleSettings.ClientId;
                 options.ClientSecret = googleSettings.ClientSecret;
                 options.ClaimActions.MapJsonKey(ExternalEmailVerification.EMAIL_VERIFIED_CLAIM, ExternalEmailVerification.EMAIL_VERIFIED_CLAIM);
+                options.ClaimActions.MapJsonKey(GoogleAddressProof.HOSTED_DOMAIN_CLAIM, GoogleAddressProof.HOSTED_DOMAIN_CLAIM);
             });
         }
 
@@ -71,7 +72,6 @@ public static class AuthenticationConfiguration
         _ = services.AddIdentityCore<User>(options =>
         {
             options.SignIn.RequireConfirmedAccount = true;
-            PasswordPolicy.Apply(options.Password);
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(passwordSettings.LockoutDurationMinutes);
             options.Lockout.MaxFailedAccessAttempts = passwordSettings.MaxFailedAccessAttempts;
         })

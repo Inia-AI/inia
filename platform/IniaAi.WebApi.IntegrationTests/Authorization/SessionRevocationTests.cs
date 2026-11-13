@@ -22,6 +22,7 @@ public sealed class SessionRevocationTests : IClassFixture<ApiTestFixture>, IAsy
     private const string CHANGE_PASSWORD_PATH = "api/v1/profiles/change-password";
     private const string RESET_PASSWORD_PATH = "api/v1/passwords/reset";
     private const string SIGN_OUT_PATH = "api/v1/connect/revoke";
+    private const string SIGN_OUT_EVERYWHERE_PATH = "api/v1/profiles/sign-out-everywhere";
     private const string NEW_PASSWORD = "Changed-Test-2b";
     private const string WRONG_PASSWORD = TestAccount.PASSWORD + "-not-it";
 
@@ -80,6 +81,32 @@ public sealed class SessionRevocationTests : IClassFixture<ApiTestFixture>, IAsy
         Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, accessToken)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, otherDeviceToken)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await _account.RefreshAsync(refreshToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task SigningOutEverywhere_EndsEverySessionOfTheUser_ThisOneIncluded()
+    {
+        (string accessToken, string refreshToken) = await _account.SignInAsync();
+        (string otherDeviceToken, _) = await _account.SignInAsync();
+
+        HttpResponseMessage signedOut = await _account.PostJsonAsync(SIGN_OUT_EVERYWHERE_PATH, accessToken, new { });
+
+        Assert.Equal(HttpStatusCode.NoContent, signedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, accessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, otherDeviceToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _account.RefreshAsync(refreshToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task SigningOutEverywhere_AlsoEndsTheAdminAppsSignIn_AtItsNextStampCheck()
+    {
+        (string accessToken, _) = await _account.SignInAsync();
+        string? stampBefore = await SecurityStampAsync();
+
+        HttpResponseMessage signedOut = await _account.PostJsonAsync(SIGN_OUT_EVERYWHERE_PATH, accessToken, new { });
+
+        Assert.Equal(HttpStatusCode.NoContent, signedOut.StatusCode);
+        Assert.NotEqual(stampBefore, await SecurityStampAsync());
     }
 
     [Fact]
@@ -209,5 +236,14 @@ public sealed class SessionRevocationTests : IClassFixture<ApiTestFixture>, IAsy
         return [.. new JwtSecurityTokenHandler().ReadJwtToken(accessToken).Claims
             .Where(claim => claim.Type == Claims.Role)
             .Select(claim => claim.Value)];
+    }
+
+    private async Task<string?> SecurityStampAsync()
+    {
+        (IServiceScope scope, UserManager<User> userManager) = _api.GetNewScope<UserManager<User>>();
+        using (scope)
+        {
+            return await userManager.GetSecurityStampAsync((await userManager.FindByIdAsync(_account.User.Id))!);
+        }
     }
 }

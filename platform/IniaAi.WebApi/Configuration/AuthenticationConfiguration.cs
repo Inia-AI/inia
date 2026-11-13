@@ -73,12 +73,14 @@ public static class AuthenticationConfiguration
         PasswordAuthSettings passwordSettings = configuration
             .GetSection(PasswordAuthSettings.SectionName)
             .Get<PasswordAuthSettings>() ?? new PasswordAuthSettings();
+        ServiceAccountAuthSettings serviceAccountSettings = configuration
+            .GetSection(ServiceAccountAuthSettings.SectionName)
+            .Get<ServiceAccountAuthSettings>() ?? new ServiceAccountAuthSettings();
 
         // Add Identity (no UI)
         _ = services.AddIdentityCore<User>(options =>
         {
             options.SignIn.RequireConfirmedAccount = false;
-            PasswordPolicy.Apply(options.Password);
 
             // Configure account lockout for brute force protection
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(passwordSettings.LockoutDurationMinutes);
@@ -110,7 +112,11 @@ public static class AuthenticationConfiguration
                 }
 
                 _ = options.AllowPasswordFlow();
-                _ = options.AllowClientCredentialsFlow();
+                if (serviceAccountSettings.Enabled)
+                {
+                    _ = options.AllowClientCredentialsFlow();
+                }
+
                 _ = options.AllowRefreshTokenFlow();
                 _ = options.AllowCustomFlow("mfa");
                 _ = options.AllowCustomFlow(ExternalLoginProviders.GOOGLE_GRANT_TYPE);

@@ -29,12 +29,7 @@ const schema = computed(() =>
   z
     .object({
       currentPassword: z.string(),
-      newPassword: newPasswordSchema({
-        minLength: $t('page.profile.resetPassword.rules.minLength', { minLength: PASSWORD_MIN_LENGTH }),
-        uppercase: $t('page.profile.resetPassword.rules.uppercase'),
-        lowercase: $t('page.profile.resetPassword.rules.lowercase'),
-        digit: $t('page.profile.resetPassword.rules.digit'),
-      }),
+      newPassword: newPasswordSchema($t('page.profile.resetPassword.rules.minLength', { minLength: PASSWORD_MIN_LENGTH })),
       confirmPassword: z.string(),
     })
     .refine(data => data.newPassword === data.confirmPassword, {

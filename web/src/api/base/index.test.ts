@@ -12,6 +12,7 @@ const SESSION_ENDED = { name: 'Login', query: { reason: 'session-ended', redirec
 
 import { BaseService } from './index'
 import AuthenticationService from '../authentication/service'
+import { leaveForSignIn } from '@/lib/sessionEnded'
 
 const answering401 = async (config: InternalAxiosRequestConfig) => {
   throw axiosError(401, { error: 'invalid_code' }, config)
@@ -53,6 +54,19 @@ describe('BaseService', () => {
 
     expect(push).toHaveBeenCalledTimes(1)
     expect(push).toHaveBeenCalledWith(SESSION_ENDED)
+  })
+
+  it('keeps the reason a user left with when a request of the session they ended is refused after', async () => {
+    const service = new BaseService({ base: 'https://api.example.com', withCredentials: false })
+    service.instance.defaults.adapter = answering401
+
+    const { default: router } = await import('@/plugins/router')
+    await leaveForSignIn(router, 'signed-out-everywhere')
+    await service.instance.get('api/v1/workflow-reports').catch(() => undefined)
+
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledWith({ name: 'Login', query: { reason: 'signed-out-everywhere' } })
+    expect(localStorage.getItem('accessToken')).toBeNull()
   })
 
   it('says nothing about a session to a browser that held no token', async () => {

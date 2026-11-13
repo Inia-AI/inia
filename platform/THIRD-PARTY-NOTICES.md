@@ -76,6 +76,38 @@ THE SOFTWARE.
 - Files: `IniaAi.WebApp/wwwroot/images/google-g.svg`, on the "Sign in with Google" button.
 - Terms: the logo is a trademark of Google LLC. The app shows it as Google's branding guidelines for Sign in with Google allow, at <https://developers.google.com/identity/branding-guidelines>. The licence of this repository does not cover it.
 
+### NCSC list of the most used passwords, through SecLists
+
+- Files: `IniaAi.Domain/Entities/UserManagement/CommonPasswords.txt.gz`, the passwords of 8 or more characters in SecLists' `Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt`, lower-cased.
+- Upstream: <https://github.com/danielmiessler/SecLists>. The original list is the UK National Cyber Security Centre's 100,000 passwords seen most often in breaches (April 2019, from Have I Been Pwned data).
+- Licences: Open Government Licence v3.0 for the NCSC's list, MIT for the SecLists copy. Both are in `IniaAi.Domain/Entities/UserManagement/CommonPasswords.LICENSE.txt`.
+
+Contains public sector information licensed under the Open Government Licence v3.0: <https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/>.
+
+```text
+MIT License
+
+Copyright (c) 2018 Daniel Miessler
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### Open Iconic 1.1.1
 
 - Files: `IniaAi.WebApp/wwwroot/open-iconic/`

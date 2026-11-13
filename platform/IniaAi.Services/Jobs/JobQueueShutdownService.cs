@@ -20,7 +20,8 @@ public class JobQueueShutdownService : IHostedService
     private readonly IJobsService _jobsService;
     private readonly IWorkflowOutputService _workflowOutputService;
     private readonly ILogger<JobQueueShutdownService> _logger;
-    private int _stopped;
+    private Task? _drain;
+    private object? _drainLock;
 
     public JobQueueShutdownService(
         IJobsService jobsService,
@@ -37,15 +38,16 @@ public class JobQueueShutdownService : IHostedService
         return Task.CompletedTask;
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
-        // A host can be stopped twice: under the test host factory, app.Run stops the host and disposes its
-        // services, then the factory stops it again. The queue was drained by the first stop.
-        if (Interlocked.Exchange(ref _stopped, 1) == 1)
-        {
-            return;
-        }
+        // A host can be stopped twice at once: under the test host factory, the factory's stop releases
+        // app.Run, which stops the host again and then disposes its services. Both stops wait on one drain,
+        // so the services outlive it.
+        return LazyInitializer.EnsureInitialized(ref _drain, ref _drainLock, () => DrainAsync(cancellationToken));
+    }
 
+    private async Task DrainAsync(CancellationToken cancellationToken)
+    {
         IReadOnlyList<Job> cancelledJobs = _jobsService.CancelAllQueuedJobs();
 
         await CancelDelegatedJobsAsync(cancellationToken);

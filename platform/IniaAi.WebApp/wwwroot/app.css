@@ -2252,7 +2252,8 @@ body:has(.editor-agent-screen) {
     top: calc(100% + 12px);
     right: 0;
     z-index: 1400;
-    width: 280px;
+    width: max-content;
+    max-width: min(320px, calc(100vw - 32px));
     padding: 12px 12px 8px 16px;
     border: 1px solid var(--mud-palette-lines-default);
     border-top: 3px solid var(--editor-agent-accent);
@@ -2274,6 +2275,7 @@ body:has(.editor-agent-screen) {
 
 .editor-agent-hint-text {
     margin: 0 0 4px;
+    overflow-wrap: break-word;
     font-size: 14px;
     line-height: 1.45;
 }
@@ -2562,7 +2564,7 @@ body:has(.editor-agent-screen) {
     min-width: 88px;
 }
 
-.editor-agent-hint {
+.editor-agent-composer-hint {
     margin-right: 8px;
     min-width: 0;
     overflow: hidden;

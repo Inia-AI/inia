@@ -13,4 +13,8 @@ export default class Service extends BaseService {
       params,
     )
   }
+
+  async signOutEverywhere() {
+    await this.instance.post(this.getApiPath(`profiles/sign-out-everywhere`))
+  }
 }

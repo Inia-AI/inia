@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Services;
 using IniaAi.Common.Constants;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.WebApp.Configuration;
@@ -78,6 +79,21 @@ public class AuthenticationConfigurationTests
         Assert.Equal("google-client", options.ClientId);
         Assert.Equal(IdentityConstants.ExternalScheme, options.SignInScheme);
         Assert.Equal("/signin-google", options.CallbackPath.Value);
+    }
+
+    [Fact]
+    public void TheGoogleScheme_KeepsTheWorkspaceDomain_ThatProvesAnAddress()
+    {
+        using ServiceProvider provider = BuildProvider(new Dictionary<string, string?>
+        {
+            ["Authentication:Google:Enabled"] = "true",
+            ["Authentication:Google:ClientId"] = "google-client",
+            ["Authentication:Google:ClientSecret"] = "google-secret",
+        });
+
+        GoogleOptions options = provider.GetRequiredService<IOptionsMonitor<GoogleOptions>>().Get(ExternalLoginProviders.GOOGLE);
+
+        Assert.Contains(options.ClaimActions, action => action.ClaimType == GoogleAddressProof.HOSTED_DOMAIN_CLAIM);
     }
 
     [Theory]

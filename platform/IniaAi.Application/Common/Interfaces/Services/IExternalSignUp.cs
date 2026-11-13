@@ -10,7 +10,8 @@ namespace IniaAi.Application.Common.Interfaces.Services;
 /// </summary>
 public interface IExternalSignUp
 {
-    Task<ExternalSignUpResult> SignUpAsync(string provider, string email, CancellationToken cancellationToken = default);
+    /// <param name="clientAddress">The address the request came from, for a limit per client network.</param>
+    Task<ExternalSignUpResult> SignUpAsync(string provider, string email, string? clientAddress, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

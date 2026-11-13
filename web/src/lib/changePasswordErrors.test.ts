@@ -36,16 +36,14 @@ describe('changePasswordErrors', () => {
         title: 'One or more validation errors occurred.',
         errors: {
           PasswordTooShort: ['Passwords must be at least 8 characters.'],
-          PasswordRequiresUpper: ["Passwords must have at least one uppercase ('A'-'Z')."],
-          PasswordRequiresDigit: ["Passwords must have at least one digit ('0'-'9')."],
+          PasswordTooCommon: ['This password is one of the most commonly used. Choose a different one.'],
         },
       }),
     )
     expect(errors.currentPassword).toEqual([])
     expect(errors.newPassword).toEqual([
       'Passwords must be at least 8 characters.',
-      "Passwords must have at least one uppercase ('A'-'Z').",
-      "Passwords must have at least one digit ('0'-'9').",
+      'This password is one of the most commonly used. Choose a different one.',
     ])
   })
 
@@ -68,16 +66,16 @@ describe('changePasswordErrors', () => {
       makeAxiosError(400, {
         errors: {
           PasswordMismatch: ['Incorrect password.'],
-          PasswordRequiresUpper: ["Passwords must have at least one uppercase ('A'-'Z')."],
+          PasswordTooCommon: ['This password is one of the most commonly used. Choose a different one.'],
           PasswordRequiresUniqueChars: ['Passwords must use at least 1 different characters.'],
         },
       }),
       (code, serverDescription) =>
-        code === 'PasswordRequiresUpper' ? 'Needs an uppercase letter' : serverDescription,
+        code === 'PasswordTooCommon' ? 'Choose a less common password' : serverDescription,
     )
     expect(errors.currentPassword).toEqual(['Incorrect password.'])
     expect(errors.newPassword).toEqual([
-      'Needs an uppercase letter',
+      'Choose a less common password',
       'Passwords must use at least 1 different characters.',
     ])
   })

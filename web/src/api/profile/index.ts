@@ -15,4 +15,8 @@ export default class {
         this.service.changePassword(params),
     })
   }
+
+  useSignOutEverywhere() {
+    return useMutation({ mutationFn: () => this.service.signOutEverywhere() })
+  }
 }

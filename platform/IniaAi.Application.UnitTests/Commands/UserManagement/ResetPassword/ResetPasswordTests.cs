@@ -70,6 +70,18 @@ public sealed class ResetPasswordTests : IDisposable
     }
 
     [Fact]
+    public async Task AValidToken_ForAnAccountWithNoPassword_GetsTheBadLinkAnswer_AndSetsNone()
+    {
+        User user = await _users.CreateAccountAsync(EMAIL);
+        string token = await _users.GeneratePasswordResetTokenAsync(user);
+
+        ErrorOr<Success> result = await _sender.Send(new ResetPasswordCommand(EMAIL, token, NEW_PASSWORD), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ResetPasswordCommandHandler.INVALID_LINK, result.FirstError.Code);
+        Assert.False(await _users.HasPasswordAsync(user));
+    }
+
+    [Fact]
     public async Task AReset_EndsTheUsersApiSessions()
     {
         User user = await _users.CreateAccountAsync(EMAIL, OLD_PASSWORD);

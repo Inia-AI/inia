@@ -35,12 +35,7 @@ const errors = ref<string[]>([])
 const linkSpent = ref(false)
 const done = ref(false)
 
-const passwordRules = newPasswordSchema({
-  minLength: $t(`${PASSWORD_RULE_KEYS}.minLength`, { minLength: PASSWORD_MIN_LENGTH }),
-  uppercase: $t(`${PASSWORD_RULE_KEYS}.uppercase`),
-  lowercase: $t(`${PASSWORD_RULE_KEYS}.lowercase`),
-  digit: $t(`${PASSWORD_RULE_KEYS}.digit`),
-})
+const passwordRules = newPasswordSchema($t(`${PASSWORD_RULE_KEYS}.minLength`, { minLength: PASSWORD_MIN_LENGTH }))
 const describeIdentityError = localizedIdentityErrors($t)
 
 const handleSubmit = async () => {

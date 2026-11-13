@@ -17,9 +17,7 @@ export const PASSWORD_RULE_KEYS = 'page.profile.resetPassword.rules'
 
 const LOCALIZED_IDENTITY_ERRORS: Record<string, string> = {
   passwordtooshort: `${PASSWORD_RULE_KEYS}.minLength`,
-  passwordrequiresupper: `${PASSWORD_RULE_KEYS}.uppercase`,
-  passwordrequireslower: `${PASSWORD_RULE_KEYS}.lowercase`,
-  passwordrequiresdigit: `${PASSWORD_RULE_KEYS}.digit`,
+  passwordtoocommon: `${PASSWORD_RULE_KEYS}.tooCommon`,
   passwordmismatch: `${PASSWORD_RULE_KEYS}.currentPasswordIncorrect`,
 }
 

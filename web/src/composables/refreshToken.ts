@@ -36,8 +36,13 @@ export const useRefreshToken = () => {
     const diffInMs = Math.floor(expiration.getTime() - currentTime.getTime())
 
     // The token that reaches the session's limit comes without a refresh token: the session ends when it expires.
+    // A user who signed out before then holds no token, and the sign-in screen keeps its own reason.
     if (!localStorage.getItem('refreshToken')) {
-      TIMEOUT_ID = setTimeout(signInAgain, diffInMs)
+      TIMEOUT_ID = setTimeout(() => {
+        if (localStorage.getItem('accessToken')) {
+          void signInAgain()
+        }
+      }, diffInMs)
       return
     }
 

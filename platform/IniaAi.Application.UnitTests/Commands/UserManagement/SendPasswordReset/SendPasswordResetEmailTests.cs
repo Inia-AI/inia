@@ -20,6 +20,7 @@ public class SendPasswordResetEmailTests
     private const string FRONTEND = "https://app.example.com";
     private const string RESET_URL = $"{FRONTEND}{SendPasswordResetEmailCommandHandler.RESET_PATH}";
     private const string NEW_PASSWORD = "N3w-Passw0rd!";
+    private const string PASSWORD = "0ld-Passw0rd!";
 
     [Fact]
     public async Task SendPasswordResetEmail_ForExistingUser_SendsOneResetEmail()
@@ -28,7 +29,7 @@ public class SendPasswordResetEmailTests
         using ServiceProvider services = BuildServices(outbox, FRONTEND);
         using IServiceScope scope = services.CreateScope();
         UserManager<User> users = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        User user = await users.CreateAccountAsync(EMAIL);
+        User user = await users.CreateAccountAsync(EMAIL, PASSWORD);
 
         _ = await scope.ServiceProvider.GetRequiredService<ISender>()
             .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken);
@@ -50,7 +51,7 @@ public class SendPasswordResetEmailTests
         RecordingOutgoingMail outbox = new(isConfigured: true);
         using ServiceProvider services = BuildServices(outbox, FRONTEND);
         using IServiceScope scope = services.CreateScope();
-        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL, PASSWORD);
 
         _ = await scope.ServiceProvider.GetRequiredService<ISender>()
             .Send(new SendPasswordResetEmailCommand(typed), TestContext.Current.CancellationToken);
@@ -66,7 +67,7 @@ public class SendPasswordResetEmailTests
         RecordingOutgoingMail outbox = new(isConfigured: true);
         using ServiceProvider services = BuildServices(outbox, FRONTEND, passwordSignIn: false);
         using IServiceScope scope = services.CreateScope();
-        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL, PASSWORD);
 
         _ = await scope.ServiceProvider.GetRequiredService<ISender>()
             .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken);
@@ -95,7 +96,7 @@ public class SendPasswordResetEmailTests
         RecordingOutgoingMail outbox = new(mailConfigured);
         using ServiceProvider services = BuildServices(outbox, frontend);
         using IServiceScope scope = services.CreateScope();
-        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL, PASSWORD);
 
         _ = await scope.ServiceProvider.GetRequiredService<ISender>()
             .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken);
@@ -108,7 +109,7 @@ public class SendPasswordResetEmailTests
     {
         using ServiceProvider services = BuildServices(new FailingOutgoingMail(), FRONTEND);
         using IServiceScope scope = services.CreateScope();
-        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL, PASSWORD);
 
         Exception? failure = await Record.ExceptionAsync(() => scope.ServiceProvider.GetRequiredService<ISender>()
             .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken));
@@ -122,12 +123,26 @@ public class SendPasswordResetEmailTests
         CapturingLogger<SendPasswordResetEmailCommandHandler> mailStep = new();
         using ServiceProvider services = BuildServices(new RecordingOutgoingMail(isConfigured: false), FRONTEND, mailStep);
         using IServiceScope scope = services.CreateScope();
-        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL, PASSWORD);
 
         _ = await scope.ServiceProvider.GetRequiredService<ISender>()
             .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken);
 
         Assert.Empty(mailStep.Entries);
+    }
+
+    [Fact]
+    public async Task SendPasswordResetEmail_ForAnAccountWithNoPassword_SendsNothing()
+    {
+        RecordingOutgoingMail outbox = new(isConfigured: true);
+        using ServiceProvider services = BuildServices(outbox, FRONTEND);
+        using IServiceScope scope = services.CreateScope();
+        _ = await scope.ServiceProvider.GetRequiredService<UserManager<User>>().CreateAccountAsync(EMAIL);
+
+        _ = await scope.ServiceProvider.GetRequiredService<ISender>()
+            .Send(new SendPasswordResetEmailCommand(EMAIL), TestContext.Current.CancellationToken);
+
+        Assert.Empty(outbox.Sent);
     }
 
     [Fact]

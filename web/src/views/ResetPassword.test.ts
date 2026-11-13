@@ -84,10 +84,19 @@ describe('ResetPassword', () => {
   it('refuses a password that breaks a rule before asking the API, naming the rule', async () => {
     const wrapper = await open(LINK)
 
-    await fillAndSubmit(wrapper, 'NoDigits!')
+    await fillAndSubmit(wrapper, 'Short1!')
 
     expect(resetPassword).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('page.profile.resetPassword.rules.digit')
+    expect(wrapper.text()).toContain('page.profile.resetPassword.rules.minLength')
+  })
+
+  it('names a commonly used password in the app\'s own words', async () => {
+    resetPassword.mockRejectedValue(problem({ PasswordTooCommon: ['This password is one of the most commonly used. Choose a different one.'] }))
+    const wrapper = await open(LINK)
+
+    await fillAndSubmit(wrapper, 'password1')
+
+    expect(wrapper.text()).toContain('page.profile.resetPassword.rules.tooCommon')
   })
 
   it('shows a password rule only the API knows, in its words', async () => {

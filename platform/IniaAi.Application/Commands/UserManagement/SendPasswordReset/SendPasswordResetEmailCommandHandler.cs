@@ -16,7 +16,8 @@ namespace IniaAi.Application.Commands.UserManagement.SendPasswordReset;
 /// Handles the <see cref="SendPasswordResetEmailCommand"/> by generating a reset token and mailing,
 /// to the address stored on the account, a link to the analyst app's reset page under
 /// <c>FrontendBaseUrl</c>. With no mail provider or no front-end address it sends nothing, so a
-/// token never goes to a built-in address; while password sign-in is off it sends nothing either.
+/// token never goes to a built-in address; while password sign-in is off, or for an account with no
+/// password (<see cref="PasswordReset"/>), it sends nothing either.
 /// </summary>
 public class SendPasswordResetEmailCommandHandler : IRequestHandler<SendPasswordResetEmailCommand, ErrorOr<Success>>
 {
@@ -68,10 +69,16 @@ public class SendPasswordResetEmailCommandHandler : IRequestHandler<SendPassword
         }
 
         User? user = await _userManager.FindByEmailAsync(request.Email);
-        if (user is null || user.IsSystem)
+        if (user is null)
         {
             _logger.LogWarning("Password reset requested for an address with no account");
             return Result.Success; // Don't reveal existence
+        }
+
+        if (!PasswordReset.IsOpenTo(user))
+        {
+            _logger.LogWarning("Password reset requested for an account with no password");
+            return Result.Success;
         }
 
         try

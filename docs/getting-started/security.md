@@ -6,6 +6,8 @@ description: "Lists what to set before an install of the platform serves real us
 
 # Security
 
+**On this page:** Before production · Documents that carry instructions · Sign-in · Roles · Organizations
+
 This page says what to set before an install serves real users, and how sign-in, roles and
 organizations work. To report a vulnerability, follow [SECURITY.md](../../SECURITY.md).
 
@@ -53,14 +55,20 @@ INIA_ADMIN_PASSWORD='<the password you set>' python3 platform/scripts/clean-mach
 ## Sign-in
 
 - A user signs in with an email address and a password. A password needs at least 8 characters,
-  with an uppercase letter, a lowercase letter and a digit. After 5 failed attempts in a row, the
+  and must not be one of the most commonly used passwords. After 5 failed attempts in a row, the
   account locks for 15 minutes. `Authentication:Password` holds both numbers.
 - A user can add a second factor: an authenticator app, with recovery codes, or a one-time code by
   email. A device can be trusted, so that it skips the second factor for 30 days.
 - An install can also sign users in with Google (`Authentication:Google`, limited to the domains in
-  `AllowedDomains`) or with an OpenID Connect provider (`Authentication:Oidc`).
+  `AllowedDomains`) or with an OpenID Connect provider (`Authentication:Oidc`). With
+  `Authentication:Google:ProvenAddressesOnly` on, Google sign-in accepts only a Gmail address or a
+  Google Workspace account.
+- The service account's `client_credentials` sign-in gives a super admin token to whoever holds its
+  secret. Turn it off with `Authentication:ServiceAccount:Enabled` where no integration uses it.
 - The API gives a signed-in user an access token and a refresh token, from
   `POST api/v1/connect/token`. `Jwt:TokenValidityInMinutes` sets how long an access token lasts.
+  A user ends every own session, on every device, with `POST api/v1/profiles/sign-out-everywhere`:
+  every API token at once, and the admin app's sign-in at its next security stamp check.
 
 ## Roles
 

@@ -28,7 +28,7 @@
     private const string NOT_ALLOWED_MESSAGE = "Error: This account cannot sign in to the admin app. Sign in to the Inia AI app instead, or ask an administrator if you need the admin app.";
     private const string DOMAIN_NOT_ALLOWED_MESSAGE = "Error: Email domain is not allowed.";
     private const string MISSING_EMAIL_MESSAGE = "Error: The external login did not provide an email address.";
-    private const string EMAIL_NOT_VERIFIED_MESSAGE = "Error: The external login does not confirm that this email address belongs to you.";
+    private const string EMAIL_NOT_VERIFIED_MESSAGE = "Error: The external login does not confirm that this email address belongs to you. Sign in with your email address instead.";
     private const string CANNOT_SIGN_IN_MESSAGE = "Error: This account cannot sign in. Please contact your administrator.";
 
     private ExternalLoginInfo externalLoginInfo = default!;
@@ -81,6 +81,14 @@
             externalLoginInfo.Principal.FindFirstValue(ExternalEmailVerification.EMAIL_VERIFIED_CLAIM),
             externalLoginInfo.Principal.FindFirstValue(ExternalEmailVerification.ENTRA_DOMAIN_OWNER_VERIFIED_CLAIM),
             externalLoginInfo.LoginProvider == ExternalLoginProviders.OIDC && OidcSettings.Value.TrustUnverifiedEmail);
+        if (externalLoginInfo.LoginProvider == ExternalLoginProviders.GOOGLE)
+        {
+            emailVerified = GoogleAddressProof.Vouches(
+                emailVerified,
+                email,
+                externalLoginInfo.Principal.FindFirstValue(GoogleAddressProof.HOSTED_DOMAIN_CLAIM),
+                GoogleSettings.Value.ProvenAddressesOnly);
+        }
 
         ExternalLoginUserResolution resolution = await ExternalLoginResolver.ResolveAsync(
             externalLoginInfo.LoginProvider, email, emailVerified, allowedDomains, HttpContext.ClientAddress());

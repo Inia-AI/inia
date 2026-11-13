@@ -3,29 +3,30 @@ using Microsoft.AspNetCore.Identity;
 namespace IniaAi.Domain.Entities.UserManagement;
 
 /// <summary>
-/// The one password rule. Identity applies it to a user's own change and reset; the admin app's
-/// Create User and Reset Password, the CSV import and the seeder set a password directly, not
-/// through UserManager, so they check it here.
+/// The one password rule: at least <see cref="MINIMUM_LENGTH"/> characters, and not one of the most
+/// commonly used passwords (<see cref="CommonPasswords"/>). It asks for no kind of character, as
+/// ASVS 6.2.5 forbids. Identity applies it to a user's own change and reset, through
+/// <see cref="Apply"/> and <see cref="CommonPasswordValidator"/>; the admin app's Create User and
+/// Reset Password, the CSV import and the seeder set a password directly, not through UserManager,
+/// so they check it here.
 /// </summary>
 public static class PasswordPolicy
 {
     public const int MINIMUM_LENGTH = 8;
 
     public const string REQUIRED = "Password is required!";
-    private const string NO_UPPERCASE = "Password must contain an uppercase letter (A to Z)";
-    private const string NO_LOWERCASE = "Password must contain a lowercase letter (a to z)";
-    private const string NO_DIGIT = "Password must contain a digit (0 to 9)";
+    public const string TOO_COMMON = "This password is one of the most commonly used. Choose a different one.";
 
     private static string TooShort => $"Password must be at least {MINIMUM_LENGTH} characters";
 
-    public static string Description => $"at least {MINIMUM_LENGTH} characters, with an uppercase letter, a lowercase letter and a digit";
+    public static string Description => $"at least {MINIMUM_LENGTH} characters, and not one of the most commonly used passwords";
 
     public static void Apply(PasswordOptions options)
     {
         options.RequiredLength = MINIMUM_LENGTH;
-        options.RequireDigit = true;
-        options.RequireUppercase = true;
-        options.RequireLowercase = true;
+        options.RequireDigit = false;
+        options.RequireUppercase = false;
+        options.RequireLowercase = false;
         options.RequireNonAlphanumeric = false;
     }
 
@@ -45,21 +46,12 @@ public static class PasswordPolicy
         if (password.Length < MINIMUM_LENGTH)
         {
             yield return TooShort;
+            yield break;
         }
 
-        if (!password.Any(char.IsAsciiLetterUpper))
+        if (CommonPasswords.Contains(password))
         {
-            yield return NO_UPPERCASE;
-        }
-
-        if (!password.Any(char.IsAsciiLetterLower))
-        {
-            yield return NO_LOWERCASE;
-        }
-
-        if (!password.Any(char.IsAsciiDigit))
-        {
-            yield return NO_DIGIT;
+            yield return TOO_COMMON;
         }
     }
 }

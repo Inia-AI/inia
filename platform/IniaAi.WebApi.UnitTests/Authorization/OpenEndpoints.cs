@@ -68,6 +68,7 @@ public static class OpenEndpoints
         new("Passwords.ForgotPasswordAsync", true, "Sends a reset link, and answers the same whether or not the address has an account."),
         new("Passwords.ResetPasswordAsync", true, "Sets a new password; the token from the reset mail is the caller's proof."),
         new("Profile.ChangePasswordAsync", false, "Changes the caller's own password."),
+        new("Profile.SignOutEverywhereAsync", false, "Ends the caller's own sessions."),
         new("TokenUsage.GetMyUsageSummary", false, "The caller's own token usage; the usage-cost capability governs it."),
         new("TwoFactor.GetStatus", false, SECOND_FACTOR),
         new("TwoFactor.SetupTotp", false, SECOND_FACTOR),

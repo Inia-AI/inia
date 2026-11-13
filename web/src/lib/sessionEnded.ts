@@ -1,3 +1,4 @@
+import type { Router } from 'vue-router'
 import { clearSignIn } from '@/lib/utils'
 
 export const SESSION_ENDED_REASON = 'session-ended'
@@ -9,12 +10,22 @@ let endedAt = Number.NEGATIVE_INFINITY
 /** Whether this tab ended its session a moment ago, so a later refusal belongs to that session. */
 export const sessionJustEnded = () => Date.now() - endedAt < LATE_REFUSALS_MS
 
-/** Signs the browser out and opens the sign-in screen, which says the session has ended and returns to this page after. */
-export async function signInAgain() {
+const endSession = () => {
   endedAt = Date.now()
   clearSignIn()
+}
+
+/** Signs the browser out and opens the sign-in screen, which says the session has ended and returns to this page after. */
+export async function signInAgain() {
+  endSession()
   // Lazy import router to avoid circular dependency
   const { default: router } = await import('@/plugins/router')
   const here = router.currentRoute.value
   await router.push({ name: 'Login', query: { reason: SESSION_ENDED_REASON, redirect: here.meta.isPublic ? undefined : here.fullPath } })
+}
+
+/** Signs the browser out after its user ended the session on purpose, and opens the sign-in screen, with the user's reason when one is given. */
+export async function leaveForSignIn(router: Router, reason?: string) {
+  endSession()
+  await router.push(reason ? { name: 'Login', query: { reason } } : { name: 'Login' })
 }

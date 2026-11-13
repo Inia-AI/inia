@@ -204,15 +204,14 @@ public class UserDataDbInitializerTests : IDisposable
 
     [Theory]
     [InlineData("admin")]
-    [InlineData("alllowercase1")]
-    [InlineData("NoDigitsHere")]
+    [InlineData("password1")]
     public void AWeakFirstPassword_RefusesNamingTheKeyAndTheRule(string weak)
     {
         SeedConfigurationException refusal = Assert.Throws<SeedConfigurationException>(
             () => Seed(INIA_ORG_ID, new SeedAccountPasswords(weak, CUSTOMER_ADMIN_PASSWORD)));
 
         Assert.Contains(SeedAccountPasswords.SUPER_ADMIN_PASSWORD_KEY, refusal.Message);
-        Assert.Contains("uppercase", refusal.Message);
+        Assert.Contains("not one of the most commonly used passwords", refusal.Message);
         using var context = new SqliteUserDataDbContext(_database.Options);
         Assert.DoesNotContain(context.Users, u => u.Id == SUPER_ADMIN_ID);
     }

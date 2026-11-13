@@ -25,6 +25,7 @@ public sealed class AccountMailRecipientTests : SignedInRenderTest
     private const string ACCOUNT_EMAIL = "analyst@bank.example.com";
     private const string UNKNOWN_EMAIL = "nobody@bank.example.com";
     private const string ADMIN_BASE_URL = "https://admin.example.com";
+    private const string PASSWORD = "Quiet-Test-Passw0rd"; // gitleaks:allow
 
     private readonly RecordingOutgoingMail _mail = new(isConfigured: true);
 
@@ -91,7 +92,7 @@ public sealed class AccountMailRecipientTests : SignedInRenderTest
     {
         await SeedAsync(new Organization(ORGANIZATION_NAME, ORGANIZATION_ID));
         IdentityResult created = await Services.GetRequiredService<UserManager<User>>()
-            .CreateAsync(new User(ORGANIZATION_ID) { UserName = ACCOUNT_EMAIL, Email = ACCOUNT_EMAIL, EmailConfirmed = true, IsSystem = isSystem });
+            .CreateAsync(new User(ORGANIZATION_ID) { UserName = ACCOUNT_EMAIL, Email = ACCOUNT_EMAIL, EmailConfirmed = true, IsSystem = isSystem }, PASSWORD);
         Assert.True(created.Succeeded, string.Join(", ", created.Errors.Select(error => error.Description)));
     }
 

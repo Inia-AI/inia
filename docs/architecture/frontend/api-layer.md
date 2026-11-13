@@ -284,7 +284,7 @@ The shared `API` object (`src/api/index.ts`) registers **28 service modules**, o
 | `pages` | `pages/{id}/image` | Page image retrieval. |
 | `password` | `passwords/forgot`, `passwords/reset` | The forgot-password request and the password reset. |
 | `peerCandidates` | `counterparties/peer-candidates` | The counterparties a run can name as peers, searched by name and filtered by workflow type. |
-| `profile` | `profiles/change-password` | Current-user profile / password change. |
+| `profile` | `profiles/change-password`, `profiles/sign-out-everywhere` | Current-user password change, and ending every session of the user. |
 | `refinementPresets` | `ai/content-refinement/presets` | Content-refinement presets. |
 | `signaturePlayground` | `workflow-executions/{id}/blocks`, `workflow-executions/{id}/test-signature-prompt` | The blocks of a past run and a test of a signature prompt against one of them. |
 | `signatures` | `workflow-types/{id}/signatures` | Signature field overrides per workflow type, their pending proposals and votes, and their history. |

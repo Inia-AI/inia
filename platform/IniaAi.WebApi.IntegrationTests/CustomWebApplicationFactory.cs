@@ -35,8 +35,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name)))
             {
-                // The suffix makes each value meet the password rule, which the two first passwords must.
-                Environment.SetEnvironmentVariable(name, Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)) + "Aa1");
+                Environment.SetEnvironmentVariable(name, Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)));
             }
         }
     }

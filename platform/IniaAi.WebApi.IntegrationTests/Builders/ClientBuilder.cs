@@ -38,6 +38,21 @@ public class ClientBuilder
     {
     }
 
+    /// <summary>
+    /// A host started with <paramref name="settings"/>, for a setting the app reads while it
+    /// registers its services, where a change to the options afterwards comes too late.
+    /// </summary>
+    public static ClientBuilder WithSettings(IReadOnlyDictionary<string, string> settings)
+    {
+        return new ClientBuilder(new CustomWebApplicationFactory().WithWebHostBuilder(host =>
+        {
+            foreach ((string key, string value) in settings)
+            {
+                _ = host.UseSetting(key, value);
+            }
+        }));
+    }
+
     private ClientBuilder(WebApplicationFactory<Program> factory)
     {
         _factory = factory;

@@ -87,4 +87,24 @@ public class JobQueueShutdownServiceTests
 
         Assert.Null(secondStop);
     }
+
+    [Fact]
+    public async Task StopAsync_ASecondTime_WhileTheFirstStopDrains_WaitsForTheDrainAsync()
+    {
+        var queuedJob = new Job(ORGANIZATION_ID, null)
+        {
+            WorkflowExecutionId = EXECUTION_ID,
+        };
+        _ = _jobsService.CancelAllQueuedJobs().Returns([queuedJob]);
+        var marking = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = _workflowOutputService.MarkExecutionAsCancelledIfActiveAsync(EXECUTION_ID, ORGANIZATION_ID).Returns(marking.Task);
+
+        Task firstStop = _service.StopAsync(TestContext.Current.CancellationToken);
+        Task secondStop = _service.StopAsync(TestContext.Current.CancellationToken);
+
+        Assert.False(secondStop.IsCompleted);
+        marking.SetResult(true);
+        await Task.WhenAll(firstStop, secondStop);
+        _ = _jobsService.Received(1).CancelAllQueuedJobs();
+    }
 }

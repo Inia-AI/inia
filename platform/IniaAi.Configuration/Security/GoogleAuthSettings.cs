@@ -38,6 +38,13 @@ public class GoogleAuthSettings
     /// </summary>
     public List<string> AllowedDomains { get; set; } = [];
 
+    /// <summary>
+    /// Gets or sets whether Google sign-in accepts only an address Google proves: a Gmail address, or
+    /// one in the Workspace domain its token names. Any other address counts as unverified, and its
+    /// holder signs in another way. Defaults to false for backwards compatibility.
+    /// </summary>
+    public bool ProvenAddressesOnly { get; set; } = false;
+
     /// <summary>Whether Google sign-in is off, or on with a client id to check tokens against.</summary>
     public static bool HasClientIdWhenEnabled(GoogleAuthSettings settings)
     {

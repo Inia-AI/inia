@@ -1,4 +1,5 @@
 ﻿using ErrorOr;
+using IniaAi.Application.Auditing;
 using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.WebApi.Attributes;
@@ -12,13 +13,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace IniaAi.WebApi.Controllers.v1;
 
 /// <summary>
-/// Handles logged on user details. and changing of password.
+/// Handles logged on user details, changing of password, and ending every session.
 /// </summary>
 [Route("api/v{version:apiVersion}/profiles")]
 public class ProfileController : ApiController
 {
     private readonly UserManager<User> _userManager;
     private readonly IUserSessionRevoker _sessionRevoker;
+    private readonly IAuthenticationAuditLog _audit;
     private readonly ILogger<ProfileController> _logger;
 
     /// <summary>
@@ -26,17 +28,20 @@ public class ProfileController : ApiController
     /// </summary>
     /// <param name="requestContext">The request context containing organization and user information.</param>
     /// <param name="userManager">The user manager.</param>
-    /// <param name="sessionRevoker">Ends the user's API sessions after a password change.</param>
+    /// <param name="sessionRevoker">Ends the user's API sessions after a password change or on request.</param>
+    /// <param name="audit">Records a sign-out from every device.</param>
     /// <param name="logger">The logger instance.</param>
     public ProfileController(
         IRequestContext requestContext,
         UserManager<User> userManager,
         IUserSessionRevoker sessionRevoker,
+        IAuthenticationAuditLog audit,
         ILogger<ProfileController> logger)
         : base(requestContext)
     {
         _userManager = userManager;
         _sessionRevoker = sessionRevoker;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -96,5 +101,40 @@ public class ProfileController : ApiController
         _logger.LogInformation("Password successfully changed for UserId: {UserId}", UserId);
 
         return Ok(new { Message = "Password changed successfully." });
+    }
+
+    /// <summary>
+    /// Ends every session of the authenticated user, on every device, this one included.
+    /// </summary>
+    /// <remarks>
+    /// This endpoint does not require the X-Tenant-Id header: the sessions belong to the user, not to
+    /// one tenant. Every API token of the user stops working at once, the calling one included, so the
+    /// caller signs in again. A new security stamp ends the user's admin app sign-in at its next
+    /// stamp check.
+    /// </remarks>
+    /// <response code="204">Every session of the user ended.</response>
+    /// <response code="401">User is not authenticated.</response>
+    [HttpPost("sign-out-everywhere")]
+    [TenantOptional]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SignOutEverywhereAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserId))
+        {
+            return Unauthorized(Error.Unauthorized(description: "User identity not found."));
+        }
+
+        User? user = await _userManager.FindByIdAsync(UserId);
+        if (user is null)
+        {
+            return Unauthorized(Error.Unauthorized(description: "User not found."));
+        }
+
+        _ = await _userManager.UpdateSecurityStampAsync(user);
+        await _sessionRevoker.RevokeAllAsync(user.Id, HttpContext.RequestAborted);
+        await _audit.RecordAsync(new AuthenticationAuditEvent(AuthenticationAuditKind.SignedOutEverywhere, user.Id, ClientAddress: ClientAddress), HttpContext.RequestAborted);
+
+        return NoContent();
     }
 }

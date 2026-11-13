@@ -416,7 +416,7 @@ public class UserDataDbInitializer
 
         if (!PasswordPolicy.Accepts(password))
         {
-            throw new SeedConfigurationException($"{key} must have {PasswordPolicy.Description}.");
+            throw new SeedConfigurationException($"{key} must be {PasswordPolicy.Description}.");
         }
 
         return password;

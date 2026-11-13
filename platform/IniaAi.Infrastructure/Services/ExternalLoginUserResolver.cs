@@ -28,7 +28,7 @@ public class ExternalLoginUserResolver : IExternalLoginUserResolver
 
     public async Task<ExternalLoginUserResolution> ResolveAsync(string provider, string? email, bool emailVerified, IReadOnlyCollection<string> allowedDomains, string? clientAddress = null)
     {
-        ExternalLoginUserResolution resolution = await ResolveUserAsync(provider, email, emailVerified, allowedDomains);
+        ExternalLoginUserResolution resolution = await ResolveUserAsync(provider, email, emailVerified, allowedDomains, clientAddress);
 
         AuthenticationAuditKind kind = resolution switch
         {
@@ -41,7 +41,7 @@ public class ExternalLoginUserResolver : IExternalLoginUserResolver
         return resolution;
     }
 
-    private async Task<ExternalLoginUserResolution> ResolveUserAsync(string provider, string? email, bool emailVerified, IReadOnlyCollection<string> allowedDomains)
+    private async Task<ExternalLoginUserResolution> ResolveUserAsync(string provider, string? email, bool emailVerified, IReadOnlyCollection<string> allowedDomains, string? clientAddress)
     {
         // Emails and domains are PII — log only presence/length, never the value.
         if (string.IsNullOrEmpty(email) || !email.Contains('@'))
@@ -70,7 +70,7 @@ public class ExternalLoginUserResolver : IExternalLoginUserResolver
         User? user = await _userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            ExternalSignUpResult signUp = await _signUp.SignUpAsync(provider, email);
+            ExternalSignUpResult signUp = await _signUp.SignUpAsync(provider, email, clientAddress);
             if (signUp.Error is not null)
             {
                 _logger.LogWarning("{Provider} login refused: The deployment refused to sign the address up ({Error})", provider, signUp.Error);

@@ -118,6 +118,8 @@ curl -X POST "https://api.example.com/api/v1/connect/token" \
 
 Used for system-to-system authentication without user interaction.
 
+The grant gives a super admin token to whoever holds the service account's secret, so a deployment whose integrations do not use it turns it off: with `Authentication:ServiceAccount:Enabled` false (default true), the API does not register the grant, and a `client_credentials` request answers `400` with `error: "unsupported_grant_type"` and `The specified 'grant_type' is not supported.`
+
 #### Request Parameters
 
 | Parameter | Type | Required | Description |
@@ -192,6 +194,8 @@ curl -X POST "https://api.example.com/api/v1/connect/token" \
 ### 4. Google and OIDC Grants (External Sign-In)
 
 The `oidc` grant signs a user in through an enterprise identity provider (Okta, Auth0, Azure AD, Keycloak). The frontend authenticates the user via the provider's popup flow and sends the resulting ID token to this endpoint. The `google` grant works the same way with a Google ID token, which the backend checks against `Authentication:Google:ClientId` as the audience. Each grant must be switched on (`Authentication:Google:Enabled`, `Authentication:Oidc:Enabled`); a switched-off grant answers `google_disabled` or `oidc_disabled`.
+
+Google marks an address verified when the Google account was made with it, which does not prove that the same person holds the address today: an address outside Gmail and Google Workspace may have changed hands since. With `Authentication:Google:ProvenAddressesOnly` on (default false), the `google` grant and the admin app's Google sign-in count an address as verified only when Google is authoritative for it: a Gmail address (`gmail.com`, `googlemail.com`), or any address of a Google Workspace account, whose token names the organization's domain in its `hd` claim ([Google: verify the ID token](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)). `GoogleAddressProof` holds the rule for both. Any other address is refused with `email_not_verified`, for an existing account too, and its holder signs in another way.
 
 #### Request Parameters
 
@@ -318,7 +322,7 @@ The token endpoint returns `400` with one of these `error` values. The `error_de
 | `invalid_request` | `google`, `oidc` | `Google credential is required.` or `OIDC credential is required.` |
 | `invalid_token` | `google`, `oidc` | `Invalid Google credential.` or `Invalid OIDC credential.` |
 | `missing_email` | `google`, `oidc` | `{provider} token does not contain a valid email claim.` |
-| `email_not_verified` | `google`, `oidc` | `{provider} does not confirm that this email address belongs to you.` |
+| `email_not_verified` | `google`, `oidc` | `{provider} does not confirm that this email address belongs to you. Sign in with your email address instead.` |
 | `domain_not_allowed` | `google`, `oidc` | `Email domain '{domain}' is not allowed.` (Google) or `Email domain is not allowed.` (OIDC) |
 | `user_not_found` | `google`, `oidc` | `Your account is not registered. Please contact your administrator.` |
 | `invalid_grant` | `refresh_token` | `Your session has ended. Sign in again.` (the session reached its limit), or OpenIddict's own text for an expired or revoked refresh token |
@@ -387,6 +391,7 @@ The default policy (`NoSessionLimit`) returns neither, so a session lasts as lon
 
 - **Sign-out ends the session on the server**: `POST /api/v1/connect/revoke` is OpenIddict's revocation endpoint (RFC 7009). It takes a form body with `token` (the session's refresh token, or its access token) and `token_type_hint` (`refresh_token` or `access_token`), and needs no other credential: the token is the proof. OpenIddict revokes that token, and `SignOutEndsTheSession` revokes the rest of its session: the authorization the token belongs to and every access and refresh token issued under it, including the ones a refresh rotated in. The next request with that session's access token answers `401`, and its refresh token is refused with `400`. The user's other sessions keep working. The endpoint answers `200`, also for a token that is already revoked, as RFC 7009 asks. The Vue app's sign-out buttons call it with the refresh token, then forget the session in the browser. There is no introspection or end-session endpoint.
 - **An account change that takes access away, and a new password, revoke at once**: disabling a user, an admin's password reset, removing one of their roles, removing one of their organization memberships, deleting one's own account in the admin app, a user's own password change (`POST /profiles/change-password`, the admin app's Account page) and a reset from the mailed link (`POST /passwords/reset`, the admin app's reset page) mark every stored token of that user `revoked` (`IUserSessionRevoker`, implemented by `UserSessionRevoker` over the UserData `Tokens` table). The API checks each access token's stored entry on every request (`EnableTokenEntryValidation` in `AuthenticationConfiguration`), so the next request with a revoked access token answers `401`, and a revoked refresh token is refused with `400`. The user signs in again and gets a token built from their current roles and memberships.
+- **A user can end every own session**: `POST /api/v1/profiles/sign-out-everywhere` takes no body and needs no `X-Tenant-Id` (`[TenantOptional]`). It marks every stored token of the calling user `revoked`, through the same `IUserSessionRevoker`, gives the user a new security stamp, records a `SignedOutEverywhere` audit event, and answers `204`. The access token that called it stops working at once too, so the caller signs in again. The admin app's sign-in ends at its next security stamp check (ASP.NET Core Identity checks every 30 minutes by default).
 - **A module can end sessions at a sign-in**: before it issues the tokens of any grant but `refresh_token`, the endpoint passes the user and the grant type to `ISignInMethods`. The open build's default does nothing.
 - **A change that grants access** (a new role or membership) revokes nothing; it reaches the token at the next refresh or sign-in ([Refresh Token Grant](#3-refresh-token-grant)).
 

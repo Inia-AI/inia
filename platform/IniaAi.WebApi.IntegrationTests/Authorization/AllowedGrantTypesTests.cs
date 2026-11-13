@@ -72,7 +72,7 @@ public class AllowedGrantTypesTests
     public async Task TheServiceClient_GetsATokenOnlyWithItsCredential()
     {
         var api = new ClientBuilder();
-        string credential = api.CurrentScope.ServiceProvider.GetRequiredService<IConfiguration>()[SystemUserClientSecret.CONFIGURATION_KEY]!;
+        string credential = ServiceCredential(api);
 
         using HttpResponseMessage withCredential = await PostAsync(api, ServiceGrant(credential));
         using HttpResponseMessage without = await PostAsync(api, ServiceGrant(null));
@@ -85,10 +85,28 @@ public class AllowedGrantTypesTests
     }
 
     [Fact]
+    public async Task TheServiceClient_GetsNoToken_WhenTheServiceAccountGrantIsOff()
+    {
+        ClientBuilder api = ClientBuilder.WithSettings(new Dictionary<string, string>
+        {
+            [$"{ServiceAccountAuthSettings.SectionName}:{nameof(ServiceAccountAuthSettings.Enabled)}"] = "false",
+        });
+        string credential = ServiceCredential(api);
+
+        using HttpResponseMessage response = await PostAsync(api, ServiceGrant(credential));
+
+        string description = await TestAccount.ReadTokenAsync(response, Parameters.ErrorDescription);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(Errors.UnsupportedGrantType, await TestAccount.ReadTokenAsync(response, Parameters.Error));
+        Assert.False(await HasAccessTokenAsync(response), description);
+        await TestEvidence.WriteAsync("service-account-grant-off.txt", description + "\n");
+    }
+
+    [Fact]
     public async Task TwentyWrongServiceCredentials_ThenTheRightOne_WhatTheEndpointAnswers()
     {
         var api = new ClientBuilder();
-        string credential = api.CurrentScope.ServiceProvider.GetRequiredService<IConfiguration>()[SystemUserClientSecret.CONFIGURATION_KEY]!;
+        string credential = ServiceCredential(api);
         var wrongAnswers = new List<int>();
         for (int attempt = 0; attempt < 20; attempt++)
         {
@@ -191,6 +209,11 @@ public class AllowedGrantTypesTests
             [Parameters.Password] = TestAccount.PASSWORD,
             [Parameters.Scope] = $"{Scopes.OfflineAccess} {API_SCOPE}",
         };
+    }
+
+    private static string ServiceCredential(ClientBuilder api)
+    {
+        return api.CurrentScope.ServiceProvider.GetRequiredService<IConfiguration>()[SystemUserClientSecret.CONFIGURATION_KEY]!;
     }
 
     private static Dictionary<string, string> ServiceGrant(string? credential)

@@ -440,6 +440,7 @@ Each endpoint that takes a credential or sends a mail (`/connect/token`, `/conne
 | `Authentication:Google:ClientId` | `<google-oauth-client-id>` | Google OAuth client ID. A Google token is accepted only when it was issued to this id, so the API refuses to start with `Enabled` on and this empty, naming the key. |
 | `Authentication:Google:ClientSecret` | `<google-oauth-client-secret>` | Google OAuth client secret. |
 | `Authentication:Google:AllowedDomains` | `["<allowed-domain>"]` | Workspace domains permitted to sign in; empty allows all. |
+| `Authentication:Google:ProvenAddressesOnly` | `false` | Google sign-in, in both apps, accepts only a Gmail address or a Google Workspace account ([Authentication](../reference/api/authentication.md#4-google-and-oidc-grants-external-sign-in)). |
 
 ### OIDC / SSO
 
@@ -474,6 +475,7 @@ The platform also hosts its own OAuth/token endpoint via OpenIddict (`/connect/t
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
 | `OpenIddict:ClientSecret` | `<openiddict-client-secret>` | Secret the seeder assigns to the built-in OAuth client(s). No default. |
+| `Authentication:ServiceAccount:Enabled` | `true` | Accept the `client_credentials` grant, which gives a super admin token to whoever holds the client's secret. Off, the API does not register the grant and a request for it answers `400` `unsupported_grant_type`. Turn it off where no integration uses it. The API reads it when it starts. |
 
 On startup `SystemUserSeeder` provisions one system user and one confidential OpenIddict client **per seeded organization**, with the client id `service_user_<org-id>` (lower-cased) and this secret. Two organizations are always seeded — `IniaAI` (the platform org) and the deployment's `PlatformSettings:CustomerOrgId` (`UserDataDbInitializer.SeedOrganizations`). Each client permits the `password`, `client_credentials`, and `refresh_token` grants and the `offline_access` + `api` scopes. The source carries no secret: with `OpenIddict:ClientSecret` unset or empty, the seeder creates the system users but no client, and `client_credentials` sign-in stays off until a secret is set and the API restarts. The system users have no password, and the seeder removes one an earlier build gave them; they sign in with their client's secret only. The real value is supplied by your deployment owner.
 
@@ -491,7 +493,7 @@ On startup `SystemUserSeeder` provisions one system user and one confidential Op
 | `Seeding:Staff:<n>:Email`, `Seeding:Staff:<n>:Roles:<m>` | none | Staff accounts that every start makes sure exist, with at least these roles (`SuperAdmin`, `Admin`, `WorkflowEditor`, …). A missing account is created in the `IniaAI` organization with no password, to sign in through the identity provider; an existing account with that address keeps its organizations and gains the roles. A start adds missing accounts and roles, removes none, and re-enables no disabled account. An address that is not one usable user name, an entry with no role or with a role the deployment does not define, an address that is another account's user name, or a list set as one value stops the start with a message that names the entry. |
 
 
-With password sign-in off (`Authentication:Password:Enabled` false, as on a stack with Google or OIDC sign-in), the first start creates both accounts with no password and reads neither key. When an account must be created and its key is unset, or its password is shorter than 8 characters or lacks an uppercase letter, a lowercase letter or a digit (the API's password rule, `PasswordPolicy`), the app stops at startup with a message that names the key. Once the accounts exist the keys are not read, so a running deployment needs neither. With password sign-in on, change both passwords after the first sign-in.
+With password sign-in off (`Authentication:Password:Enabled` false, as on a stack with Google or OIDC sign-in), the first start creates both accounts with no password and reads neither key. When an account must be created and its key is unset, or its password is shorter than 8 characters or is one of the most commonly used passwords (the API's password rule, `PasswordPolicy`), the app stops at startup with a message that names the key. Once the accounts exist the keys are not read, so a running deployment needs neither. With password sign-in on, change both passwords after the first sign-in.
 
 
 ### Vue SPA sign-in (browser login)

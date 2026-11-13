@@ -312,7 +312,7 @@ public class ExternalLoginUserResolverTests : IDisposable
     {
         public List<(string Provider, string Email)> Asked { get; } = [];
 
-        public async Task<ExternalSignUpResult> SignUpAsync(string provider, string email, CancellationToken cancellationToken = default)
+        public async Task<ExternalSignUpResult> SignUpAsync(string provider, string email, string? clientAddress, CancellationToken cancellationToken = default)
         {
             Asked.Add((provider, email));
 
@@ -322,7 +322,7 @@ public class ExternalLoginUserResolverTests : IDisposable
 
     private sealed class RefusesEverySignUp : IExternalSignUp
     {
-        public Task<ExternalSignUpResult> SignUpAsync(string provider, string email, CancellationToken cancellationToken = default)
+        public Task<ExternalSignUpResult> SignUpAsync(string provider, string email, string? clientAddress, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(ExternalSignUpResult.Refused("disposable_email", "Use an address you'll keep."));
         }

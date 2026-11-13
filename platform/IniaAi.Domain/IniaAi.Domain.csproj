@@ -18,6 +18,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Entities\UserManagement\CommonPasswords.txt.gz" LogicalName="IniaAi.Domain.CommonPasswords.txt.gz" />
+    </ItemGroup>
+
+    <ItemGroup>
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>$(AssemblyName).Tests</_Parameter1>
         </AssemblyAttribute>

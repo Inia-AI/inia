@@ -82,7 +82,7 @@ public class EndpointGateTests
                     || controller.GetCustomAttribute<TenantOptionalAttribute>(inherit: true) is not null)
                 .Select(method => $"{controller.Name[..^CONTROLLER_SUFFIX.Length]}.{method.Name}"));
 
-        Assert.Equal(["Profile.ChangePasswordAsync", "Users.GetMyTenants"], tenantOptional.Order(StringComparer.Ordinal));
+        Assert.Equal(["Profile.ChangePasswordAsync", "Profile.SignOutEverywhereAsync", "Users.GetMyTenants"], tenantOptional.Order(StringComparer.Ordinal));
     }
 
     /// <summary>

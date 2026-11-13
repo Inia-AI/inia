@@ -5,6 +5,7 @@ using IniaAi.Application.Auditing;
 using IniaAi.Application.Commands.Authentication.SendEmailOtp;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Services;
 using IniaAi.Common.Constants;
 using IniaAi.Common.Text;
 using IniaAi.Configuration.Security;
@@ -738,8 +739,9 @@ public class AuthenticationController : ApiController
 
         GoogleJsonWebSignature.Payload payload = payloadResult.Payload!;
 
+        bool googleVouches = GoogleAddressProof.Vouches(payload.EmailVerified, payload.Email, payload.HostedDomain, _googleSettings.ProvenAddressesOnly);
         ExternalLoginUserResolution resolution = await _externalLoginResolver.ResolveAsync(
-            ExternalLoginProviders.GOOGLE, payload.Email, payload.EmailVerified, _googleSettings.AllowedDomains, ClientAddress);
+            ExternalLoginProviders.GOOGLE, payload.Email, googleVouches, _googleSettings.AllowedDomains, ClientAddress);
         if (!resolution.Succeeded)
         {
             return MapExternalLoginFailure(resolution, ExternalLoginProviders.GOOGLE, echoRejectedDomain: true);
@@ -823,7 +825,7 @@ public class AuthenticationController : ApiController
             ExternalLoginFailure.EmailNotVerified => BadRequest(new
             {
                 error = "email_not_verified",
-                error_description = $"{provider} does not confirm that this email address belongs to you."
+                error_description = $"{provider} does not confirm that this email address belongs to you. Sign in with your email address instead."
             }),
             ExternalLoginFailure.DomainNotAllowed => BadRequest(new
             {

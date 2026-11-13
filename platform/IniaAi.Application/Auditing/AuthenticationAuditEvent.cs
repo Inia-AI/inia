@@ -16,6 +16,7 @@ public enum AuthenticationAuditKind
     RecoveryCodesRegenerated,
     TrustedDeviceRemoved,
     AllTrustedDevicesRemoved,
+    SignedOutEverywhere,
 }
 
 /// <summary>

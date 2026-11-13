@@ -167,9 +167,11 @@ When it fires, it POSTs `grant_type=refresh_token` (via the authentication servi
 
 **When the session ends.** The API ends a session in three ways, and the app sends the person to `/login?reason=session-ended` for each, with `redirect` set to the page they were on, where the sign-in screen says "Your session has ended. Sign in again." above the methods:
 
-- The token that reaches the session's absolute limit comes without a refresh token ([Authentication API](../../reference/api/authentication.md)). With no stored refresh token, the timer fires when that last token expires, and signs the browser out.
+- The token that reaches the session's absolute limit comes without a refresh token ([Authentication API](../../reference/api/authentication.md)). With no stored refresh token, the timer fires when that last token expires, and signs the browser out, unless the user already signed out and the browser holds no token.
 - A refresh answered `400 invalid_grant` (a refresh token that was revoked, or a session past a limit that was shortened) signs the browser out at once. Any other failed refresh, such as a network error, leaves the session as it is.
 - A `401` on any request that is not a sign-in step, while the browser holds a token, means the API revoked the session, for example when a customer's first sign-in by a second method ends their other sessions. The base service (`src/api/base/index.ts`) signs out the same way. Other requests of that session refused in the next 10 seconds do not replace the reason (`sessionJustEnded`, `src/lib/sessionEnded.ts`). A `401` with no token held goes to `/login` with no reason.
+
+**When the user leaves on purpose.** `leaveForSignIn(router, reason)` (`src/lib/sessionEnded.ts`) forgets the sign-in, opens `/login?reason=<reason>` with no `redirect`, and marks the session ended, so a request of that session refused in the next 10 seconds does not replace the reason. The profile page uses it, with no reason, after a password change. The self-serve module uses it after **Delete account** (`account-deleted`) and **Sign out everywhere** (`signed-out-everywhere`), and clears the query cache after it (`useLeaveForSignIn`).
 
 ## Login and 2FA flow
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { axiosError } from '@/test/helpers/axiosError'
+import { sessionJustEnded } from '@/lib/sessionEnded'
 
 const { changePassword, toast, REQUEST } = vi.hoisted(() => ({
   changePassword: vi.fn(),
@@ -66,6 +67,7 @@ describe('ProfileView', () => {
     expect(changePassword).toHaveBeenCalledWith(REQUEST)
     expect(SIGN_IN_KEYS.map(key => localStorage.getItem(key))).toEqual([null, null, null])
     expect(router.currentRoute.value.name).toBe('Login')
+    expect(sessionJustEnded(), 'a late refusal of the old session must not send the user elsewhere').toBe(true)
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ description: 'page.profile.passwordUpdated' }))
   })
 

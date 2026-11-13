@@ -14,7 +14,7 @@ import {
 } from '@/lib/changePasswordErrors'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { clearSignIn } from '@/lib/utils'
+import { leaveForSignIn } from '@/lib/sessionEnded'
 
 const { t: $t } = useI18n()
 const { toast } = useToast()
@@ -36,8 +36,7 @@ const onPasswordReset = async (data: ChangePasswordRequest) => {
       class: 'text-sm',
       description: $t(`page.profile.passwordUpdated`),
     })
-    clearSignIn()
-    await router.push({ name: 'Login' })
+    await leaveForSignIn(router)
   } catch (error) {
     serverErrors.value = changePasswordErrors(error, describeIdentityError)
     const messages = changePasswordErrorMessages(serverErrors.value)

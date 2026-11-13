@@ -13,7 +13,7 @@ namespace IniaAi.Application.Commands.UserManagement.ResetPassword;
 /// expired or used token get one answer, so the reset page does not reveal which accounts exist.
 /// A password that breaks a rule gets that rule back. A new password ends the user's API sessions.
 /// While password sign-in is off every reset gets the bad-link answer, so no account gains a password
-/// that nothing accepts.
+/// that nothing accepts, and an account with no password gets it too (<see cref="PasswordReset"/>).
 /// </summary>
 public class ResetPasswordCommandHandler(UserManager<User> userManager, IUserSessionRevoker sessionRevoker, IOptions<PasswordAuthSettings> passwordSettings) : IRequestHandler<ResetPasswordCommand, ErrorOr<Success>>
 {
@@ -29,7 +29,7 @@ public class ResetPasswordCommandHandler(UserManager<User> userManager, IUserSes
         }
 
         User? user = await userManager.FindByEmailAsync(request.Email);
-        if (user is null)
+        if (user is null || !PasswordReset.IsOpenTo(user))
         {
             return _invalidLink;
         }

@@ -30,7 +30,7 @@ You need Docker and an Anthropic API key. The first start makes every other secr
 
    - `ANTHROPIC_API_KEY`: your Anthropic API key. Every model call uses it.
    - `INIA_ADMIN_PASSWORD`: the password of the first admin, `superadmin@example.com` unless you set `INIA_ADMIN_EMAIL`. It needs at least
-     8 characters, with an uppercase letter, a lowercase letter and a digit.
+     8 characters, and must not be one of the most commonly used passwords.
 
 3. Build and start the stack:
 
