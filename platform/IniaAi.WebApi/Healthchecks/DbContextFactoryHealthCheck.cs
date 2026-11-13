@@ -26,7 +26,7 @@ public class DbContextFactoryHealthCheck<TContext> : IHealthCheck where TContext
         {
             // Create a DbContext instance using the factory
             await using TContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            _ = await dbContext.Database.ExecuteSqlRawAsync("SELECT 1", cancellationToken);
+            _ = await dbContext.Database.ExecuteSqlRawAsync("SELECT 1", cancellationToken);  // Raw SQL reviewed: constant SELECT 1 health probe; no request data
 
             return HealthCheckResult.Healthy("Database is reachable");
         }

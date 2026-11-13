@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import {
   appendFileSync,
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -21,6 +22,7 @@ import {
   evaluateReadRequest,
   MAX_DENIAL_LISTED_DOCUMENTS,
   type ReadMirror,
+  UNGATED_FILE_TOOL_REASON,
 } from "./read-gate.js";
 import { WORKSPACE_DOCUMENTS_DIR } from "./workspace-layout.js";
 
@@ -336,7 +338,40 @@ function preToolUseInput(toolName: string, toolInput: unknown): PreToolUseHookIn
   };
 }
 
+describe("a staged document replaced by a hardlink", () => {
+  it("refuses the first read of a hardlink to a foreign file of the staged size, by its bytes", () => {
+    const foreignPath = join(scratchRoot, "foreign.txt");
+    writeFileSync(foreignPath, Buffer.alloc(DOCUMENT_BYTES.length, 0x41));
+    rmSync(stagedDocumentPath);
+    linkSync(foreignPath, stagedDocumentPath);
+    expect(evaluateReadRequest(readInput(stagedDocumentPath), workspacePath, mirror)).toEqual({
+      allowed: false,
+      reason: `${join(docsDir, DOCUMENT_NAME)} does not match the staged document's bytes`,
+    });
+  });
+});
+
 describe("createReadGateHook", () => {
+  it("denies any other tool that names a file, so a renamed Read cannot pass unexamined", async () => {
+    const hook = createReadGateHook(workspacePath, mirror);
+    const output = await hook(preToolUseInput("FileRead", readInput(outsidePath)), "toolu_1", {
+      signal: new AbortController().signal,
+    });
+    expect(hookSpecificOutput(output)).toMatchObject({
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: UNGATED_FILE_TOOL_REASON,
+    });
+  });
+
+  it("leaves a tool that names no file to the run's other controls", async () => {
+    const hook = createReadGateHook(workspacePath, mirror);
+    const output = await hook(preToolUseInput("Bash", { command: "ls" }), "toolu_1", {
+      signal: new AbortController().signal,
+    });
+    expect(output).toEqual({});
+  });
+
   it("denies a Read whose path escapes the workspace, with a reason", async () => {
     const hook = createReadGateHook(workspacePath, mirror);
     const output = await hook(preToolUseInput("Read", readInput(outsidePath)), "toolu_1", {

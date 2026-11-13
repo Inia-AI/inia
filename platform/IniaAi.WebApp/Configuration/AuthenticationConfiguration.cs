@@ -3,6 +3,7 @@ using IniaAi.Common.Constants;
 using IniaAi.Configuration.Security;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
+using IniaAi.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -75,7 +76,7 @@ public static class AuthenticationConfiguration
             options.Lockout.MaxFailedAccessAttempts = passwordSettings.MaxFailedAccessAttempts;
         })
             .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<UserDataDbContext>()
+            .AddPlatformUserStores()
             .AddSignInManager<AdminAppSignInManager>()
             .AddDefaultTokenProviders();
 

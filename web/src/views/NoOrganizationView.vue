@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
-import { clearSignIn } from '@/lib/utils'
+import { signOut } from '@/lib/signOut'
 import useThemeStore from '@/store/theme'
 
 const router = useRouter()
@@ -9,7 +9,7 @@ const router = useRouter()
 useThemeStore()
 
 const onSignOut = () => {
-  clearSignIn()
+  signOut()
   router.push({ name: 'Login' })
 }
 </script>

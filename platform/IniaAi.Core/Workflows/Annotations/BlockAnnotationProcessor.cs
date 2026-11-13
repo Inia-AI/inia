@@ -1,5 +1,6 @@
 using IniaAi.AiConnection.Common.ChatConnector;
 using IniaAi.Common.Text;
+using IniaAi.Core.Common;
 using IniaAi.Core.Common.Helpers;
 using IniaAi.Core.Workflows.Annotations.Quantities;
 using IniaAi.Domain.Entities.Citations;
@@ -570,7 +571,7 @@ public partial class BlockAnnotationProcessor : IBlockAnnotationProcessor
                 facts,
                 factToCitationId,
                 factDictionary,
-                pattern.Length == 0 ? null : new Regex(pattern, RegexOptions.Compiled));
+                pattern.Length == 0 ? null : new Regex(pattern, RegexOptions.Compiled, RegexReplacer.RegexTimeout));
         }
 
         public string Apply(string rawResponse, CitationTraceRecorder? trace = null)
@@ -583,9 +584,16 @@ public partial class BlockAnnotationProcessor : IBlockAnnotationProcessor
             IReadOnlyList<Fact> facts = _facts;
             Dictionary<string, string> factToCitationId = _factToCitationId;
             Dictionary<string, string> factDictionary = _factDictionary;
-            IEnumerable<Match> literalMatches = _literalPattern is null
-                ? []
-                : _literalPattern.Matches(rawResponse);
+            List<Match> literalMatches;
+            try
+            {
+                literalMatches = _literalPattern is null ? [] : _literalPattern.Matches(rawResponse).ToList();
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // A text too long to search within the ceiling keeps its figures unmarked rather than failing the block.
+                return rawResponse;
+            }
 
             // HTML tag regions: a fact marker must never be emitted inside a tag or
             // attribute, because the emitted <fact id="..."> quote prematurely

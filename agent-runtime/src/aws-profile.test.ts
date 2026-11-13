@@ -5,7 +5,9 @@ import { join } from "node:path";
 import {
   AWS_PROFILE_NAME,
   applyAssumeRoleProfile,
+  applyCredentialsFileProfile,
   renderAssumeRoleProfile,
+  renderCredentialsFileProfile,
   toRoleSessionName,
   withoutStaticCredentials,
 } from "./aws-profile.js";
@@ -121,6 +123,48 @@ describe("applyAssumeRoleProfile", () => {
       expect(result["AWS_SECRET_ACCESS_KEY"]).toBeUndefined();
       expect(result["AWS_SESSION_TOKEN"]).toBeUndefined();
       expect(result["PATH"]).toBe("/usr/bin");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("renderCredentialsFileProfile", () => {
+  it("reads the credentials from the file through credential_process, and nothing else", () => {
+    const profile = renderCredentialsFileProfile({
+      credentialsFile: "/app/model-credentials/credentials.json",
+      region: "eu-west-2",
+    });
+    expect(profile).toBe(
+      `[profile ${AWS_PROFILE_NAME}]\ncredential_process = /bin/cat /app/model-credentials/credentials.json\nregion = eu-west-2\n`,
+    );
+  });
+});
+
+describe("applyCredentialsFileProfile", () => {
+  it("writes a private config, drops host credentials and turns the metadata service off for the chain", () => {
+    const home = mkdtempSync(join(tmpdir(), "credentials-file-"));
+    try {
+      const result = applyCredentialsFileProfile({
+        env: {
+          PATH: "/usr/bin",
+          AWS_REGION: "eu-west-2",
+          AWS_ACCESS_KEY_ID: "AKIA",
+          AWS_SECRET_ACCESS_KEY: "secret",
+        },
+        homeDir: home,
+        credentialsFile: "/app/model-credentials/credentials.json",
+      });
+      const configPath = join(home, ".aws", "config");
+      expect(result["AWS_CONFIG_FILE"]).toBe(configPath);
+      expect(result["AWS_PROFILE"]).toBe(AWS_PROFILE_NAME);
+      expect(result["AWS_EC2_METADATA_DISABLED"]).toBe("true");
+      expect(result["AWS_ACCESS_KEY_ID"]).toBeUndefined();
+      expect(result["AWS_SECRET_ACCESS_KEY"]).toBeUndefined();
+      expect(readFileSync(configPath, "utf8")).toContain(
+        "credential_process = /bin/cat /app/model-credentials/credentials.json",
+      );
+      expect(statSync(configPath).mode & 0o777).toBe(0o600);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

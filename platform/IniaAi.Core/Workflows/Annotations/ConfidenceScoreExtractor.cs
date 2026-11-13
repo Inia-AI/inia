@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using IniaAi.Core.Common;
 
 namespace IniaAi.Core.Workflows.Annotations;
 
@@ -8,7 +9,7 @@ public interface IConfidenceScoreExtractor
     double? ExtractConfidenceScore(string rawResponse);
 }
 
-public class ConfidenceScoreExtractor : IConfidenceScoreExtractor
+public partial class ConfidenceScoreExtractor : IConfidenceScoreExtractor
 {
     public double? ExtractConfidenceScore(string rawResponse)
     {
@@ -17,9 +18,7 @@ public class ConfidenceScoreExtractor : IConfidenceScoreExtractor
             return null;
         }
 
-        // Regular expression to match a number inside <confidence>...</confidence>
-        string pattern = @"<confidence>(?<score>[0-9]*\.?[0-9]+)</confidence>";
-        Match match = Regex.Match(rawResponse, pattern);
+        Match match = ConfidencePattern().Match(rawResponse);
         if (match.Success)
         {
             string scoreString = match.Groups["score"].Value;
@@ -31,4 +30,7 @@ public class ConfidenceScoreExtractor : IConfidenceScoreExtractor
 
         return null;
     }
+
+    [GeneratedRegex(@"<confidence>(?<score>[0-9]*\.?[0-9]+)</confidence>", RegexOptions.None, matchTimeoutMilliseconds: RegexReplacer.REGEX_TIMEOUT_MILLISECONDS)]
+    private static partial Regex ConfidencePattern();
 }

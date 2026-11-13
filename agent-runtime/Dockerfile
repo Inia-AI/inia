@@ -121,5 +121,5 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 CMD ["bun", "src/main.ts"]
 
 LABEL org.opencontainers.image.title="agent-runtime" \
-      org.opencontainers.image.description="Claude Agent SDK sidecar that runs report-generation agent runs for the Inia platform" \
+      org.opencontainers.image.description="Claude Agent SDK sidecar that runs report-generation agent runs for the Inia AI platform" \
       org.opencontainers.image.vendor="Inia AI"

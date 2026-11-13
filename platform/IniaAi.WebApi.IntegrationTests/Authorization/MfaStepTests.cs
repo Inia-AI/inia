@@ -1,6 +1,7 @@
 using System.Net;
 using IniaAi.Configuration.Security;
 using IniaAi.Domain.Entities.UserManagement;
+using IniaAi.Infrastructure.Services;
 using IniaAi.Testing;
 using IniaAi.WebApi.IntegrationTests.Builders;
 using Microsoft.AspNetCore.Identity;
@@ -36,6 +37,30 @@ public class MfaStepTests
     }
 
     [Fact]
+    public async Task ARecoveryCode_SignsInOnce_AndIsNeverStoredInClear()
+    {
+        var api = new ClientBuilder(services => services.Configure<PasswordAuthSettings>(settings => settings.Enabled = true));
+        await using TestAccount account = await TestAccount.CreateAsync(api);
+        _ = await EnrolAuthenticatorAsync(api, account.User.Id);
+        string code;
+        string stored;
+        (IServiceScope scope, UserManager<User> users) = api.GetNewScope<UserManager<User>>();
+        using (scope)
+        {
+            User user = (await users.FindByIdAsync(account.User.Id))!;
+            code = (await users.GenerateNewTwoFactorRecoveryCodesAsync(user, 2))!.First();
+            stored = (await users.GetAuthenticationTokenAsync(user, RecoveryCodeHashingUserStore.INTERNAL_LOGIN_PROVIDER, RecoveryCodeHashingUserStore.RECOVERY_CODE_TOKEN_NAME))!;
+        }
+
+        HttpStatusCode first = await RecoveryCodeSignInAsync(api, account, code);
+        HttpStatusCode second = await RecoveryCodeSignInAsync(api, account, code);
+
+        Assert.DoesNotContain(code, stored, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, first);
+        Assert.NotEqual(HttpStatusCode.OK, second);
+    }
+
+    [Fact]
     public async Task WithPasswordSignInOff_NoStepReachesTheSecondFactor()
     {
         var api = new ClientBuilder(services => services.Configure<PasswordAuthSettings>(settings => settings.Enabled = false));
@@ -63,6 +88,16 @@ public class MfaStepTests
             Assert.True((await users.SetTwoFactorEnabledAsync(user, true)).Succeeded);
             return (await users.GetAuthenticatorKeyAsync(user))!;
         }
+    }
+
+    private static async Task<HttpStatusCode> RecoveryCodeSignInAsync(ClientBuilder api, TestAccount account, string code)
+    {
+        using HttpResponseMessage password = await PostAsync(api, TestAccount.TOKEN_PATH, PasswordGrant(account));
+        Assert.Equal(HttpStatusCode.Accepted, password.StatusCode);
+        string mfaToken = await TestAccount.ReadTokenAsync(password, "mfaToken");
+        using HttpResponseMessage secondFactor = await PostAsync(api, MFA_PATH, new() { [Parameters.GrantType] = MFA_GRANT, ["mfa_token"] = mfaToken, ["method"] = "recovery", ["code"] = code });
+
+        return secondFactor.StatusCode;
     }
 
     private static Dictionary<string, string> PasswordGrant(TestAccount account)

@@ -21,6 +21,7 @@ public sealed class SessionRevocationTests : IClassFixture<ApiTestFixture>, IAsy
     private const string PROBE_PATH = "api/v1/users/me/tenants";
     private const string CHANGE_PASSWORD_PATH = "api/v1/profiles/change-password";
     private const string RESET_PASSWORD_PATH = "api/v1/passwords/reset";
+    private const string SIGN_OUT_PATH = "api/v1/connect/revoke";
     private const string NEW_PASSWORD = "Changed-Test-2b";
     private const string WRONG_PASSWORD = TestAccount.PASSWORD + "-not-it";
 
@@ -117,6 +118,59 @@ public sealed class SessionRevocationTests : IClassFixture<ApiTestFixture>, IAsy
     }
 
     [Fact]
+    public async Task SigningOut_EndsThatSessionOnTheServer_AndNoOther()
+    {
+        (string accessToken, string refreshToken) = await _account.SignInAsync();
+        (string otherDeviceToken, string otherDeviceRefreshToken) = await _account.SignInAsync();
+
+        HttpResponseMessage signedOut = await SignOutAsync(refreshToken, TokenTypeHints.RefreshToken);
+
+        Assert.Equal(HttpStatusCode.OK, signedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, accessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _account.RefreshAsync(refreshToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _account.GetAsync(PROBE_PATH, otherDeviceToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _account.RefreshAsync(otherDeviceRefreshToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task SigningOutWithTheAccessToken_EndsTheRefreshTokenOfThatSessionToo()
+    {
+        (string accessToken, string refreshToken) = await _account.SignInAsync();
+
+        HttpResponseMessage signedOut = await SignOutAsync(accessToken, TokenTypeHints.AccessToken);
+
+        Assert.Equal(HttpStatusCode.OK, signedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, accessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _account.RefreshAsync(refreshToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task SigningOut_AfterARefresh_EndsTheTokensTheRefreshIssued()
+    {
+        (string firstAccessToken, string firstRefreshToken) = await _account.SignInAsync();
+        HttpResponseMessage refreshed = await _account.RefreshAsync(firstRefreshToken);
+        string accessToken = await TestAccount.ReadTokenAsync(refreshed, Parameters.AccessToken);
+        string refreshToken = await TestAccount.ReadTokenAsync(refreshed, Parameters.RefreshToken);
+
+        HttpResponseMessage signedOut = await SignOutAsync(refreshToken, TokenTypeHints.RefreshToken);
+
+        Assert.Equal(HttpStatusCode.OK, signedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, accessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _account.GetAsync(PROBE_PATH, firstAccessToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task SigningOutAgainWithTheSameToken_AnswersOkAsRfc7009Asks()
+    {
+        (_, string refreshToken) = await _account.SignInAsync();
+        Assert.Equal(HttpStatusCode.OK, (await SignOutAsync(refreshToken, TokenTypeHints.RefreshToken)).StatusCode);
+
+        HttpResponseMessage again = await SignOutAsync(refreshToken, TokenTypeHints.RefreshToken);
+
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+    }
+
+    [Fact]
     public async Task ARefresh_CarriesTheRolesTheUserHoldsNow()
     {
         (_, string refreshToken) = await _account.SignInAsync();
@@ -133,6 +187,14 @@ public sealed class SessionRevocationTests : IClassFixture<ApiTestFixture>, IAsy
         Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
         string accessToken = await TestAccount.ReadTokenAsync(refreshed, Parameters.AccessToken);
         Assert.Equal([Roles.ADMIN], RolesIn(accessToken));
+    }
+
+    private async Task<HttpResponseMessage> SignOutAsync(string token, string tokenTypeHint)
+    {
+        return await _api.Client.PostAsync(
+            SIGN_OUT_PATH,
+            new FormUrlEncodedContent(new Dictionary<string, string> { [Parameters.Token] = token, [Parameters.TokenTypeHint] = tokenTypeHint }),
+            TestContext.Current.CancellationToken);
     }
 
     private async Task RevokeAllAsync()

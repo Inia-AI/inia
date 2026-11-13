@@ -21,14 +21,15 @@ const props = withDefaults(
       class?: HTMLAttributes['class']
       overlayClass?: HTMLAttributes['class']
       hideCloseButton?: boolean
+      ownButtonStyles?: boolean
     }
   >(),
-  { hideCloseButton: false },
+  { hideCloseButton: false, ownButtonStyles: false },
 )
 const emits = defineEmits<DialogContentEmits>()
 
 const delegatedProps = computed(() => {
-  const { class: _, overlayClass: __, hideCloseButton: ___, ...delegated } = props
+  const { class: _, overlayClass: __, hideCloseButton: ___, ownButtonStyles: ____, ...delegated } = props
 
   return delegated
 })
@@ -46,6 +47,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       :class="
         cn(
           'dialog-content-modern fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+          props.ownButtonStyles && 'dialog-own-button-styles',
           props.class,
         )"
     >
@@ -53,7 +55,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
 
       <DialogClose
         v-if="!hideCloseButton"
-        class="absolute right-4 top-4 rounded-xs text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+        class="dialog-close absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
       >
         <X class="w-4 h-4" />
         <span class="sr-only">Close</span>
@@ -70,12 +72,12 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
   box-shadow: var(--shadow-panel) !important;
 }
 
-.dialog-content-modern button[type="submit"],
-.dialog-content-modern button[type="button"]:not(.dialog-close) {
+.dialog-content-modern:not(.dialog-own-button-styles) button[type="submit"],
+.dialog-content-modern:not(.dialog-own-button-styles) button[type="button"]:not(.dialog-close) {
   transition: all 0.15s ease-in-out;
 }
 
-.dialog-content-modern button[type="submit"] {
+.dialog-content-modern:not(.dialog-own-button-styles) button[type="submit"] {
   background: var(--primary) !important;
   color: var(--primary-foreground) !important;
   border: none !important;
@@ -85,13 +87,13 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
   font-weight: 600 !important;
 }
 
-.dialog-content-modern button[type="submit"]:hover {
+.dialog-content-modern:not(.dialog-own-button-styles) button[type="submit"]:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(26, 56, 80, 0.3) !important;
 }
 
-.dialog-content-modern button[variant="outline"],
-.dialog-content-modern button:not([type="submit"]):not(.dialog-close):not([role="checkbox"]):not([role="switch"]) {
+.dialog-content-modern:not(.dialog-own-button-styles) button[variant="outline"],
+.dialog-content-modern:not(.dialog-own-button-styles) button:not([type="submit"]):not(.dialog-close):not([role="checkbox"]):not([role="switch"]) {
   background: transparent !important;
   border: 1px solid var(--stroke) !important;
   color: var(--text-primary) !important;
@@ -101,8 +103,8 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
   font-weight: 600 !important;
 }
 
-.dialog-content-modern button[variant="outline"]:hover,
-.dialog-content-modern button:not([type="submit"]):not(.dialog-close):not([role="checkbox"]):not([role="switch"]):hover {
+.dialog-content-modern:not(.dialog-own-button-styles) button[variant="outline"]:hover,
+.dialog-content-modern:not(.dialog-own-button-styles) button:not([type="submit"]):not(.dialog-close):not([role="checkbox"]):not([role="switch"]):hover {
   background: rgba(255, 255, 255, 0.05) !important;
   border-color: var(--stroke-hover) !important;
 }

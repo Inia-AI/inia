@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { fullFileName } from '@/lib/fileName'
 import { withPagesRead } from '@/lib/pagesRead'
 import { isDocumentProblem, submitValidationMessages } from '@/lib/workflowSubmitErrors'
@@ -20,6 +20,7 @@ import { extensionPoints } from '@/modules/extensionPoints'
 import { ALL_PARENT_COMPANY_TAGS } from '@/enums/workflow'
 import useCreateWorkflowPrefillStore from '@/store/createWorkflowPrefill'
 import type { ReRunChanges, WorkflowReRunPrefill } from '@/lib/workflowReRunPrefill'
+import { keepCreateWorkflowDraft, takeCreateWorkflowDraft } from '@/lib/createWorkflowDraft'
 import {
   REQUIRED_VARIABLE_MESSAGE,
   blankVariableValueOf,
@@ -128,7 +129,7 @@ const documentsAsRead = computed(() => withPagesRead(formData.value.documents ??
 // variables are merged on top of the workflow's defaults once the on-demand
 // details fetch completes.
 const prefillStore = useCreateWorkflowPrefillStore()
-const pendingPrefill = ref<WorkflowReRunPrefill | null>(prefillStore.consume())
+const pendingPrefill = ref<WorkflowReRunPrefill | null>(prefillStore.consume() ?? takeCreateWorkflowDraft())
 
 const reRunChanges = ref<ReRunChanges | null>(pendingPrefill.value?.reRunChanges ?? null)
 
@@ -661,10 +662,12 @@ watch(
       onProcessChange: () => {},
     }))
     formData.value.counterpartyId = prefill.counterpartyId
+    formData.value.peerCompanyIds = prefill.peerCompanyIds ?? []
     formData.value.type = prefill.workflowId
 
     form.setFieldValue('documents', formData.value.documents, false)
     form.setFieldValue('counterpartyId', formData.value.counterpartyId, false)
+    form.setFieldValue('peerCompanyIds', formData.value.peerCompanyIds, false)
     // setFieldValue('type', …) fires the watcher above, which sets
     // `selectedWorkflowTypeId` and clears variables. The `loadedWorkflow`
     // watcher then layers prefill variables over the workflow's defaults.
@@ -732,6 +735,24 @@ const isFirstStep = computed(() => currentStepIndex.value === 0)
 const isLastStep = computed(() => currentStepIndex.value === stepKeys.length - 1)
 
 const stepIndexByKey = (key: StepKey) => stepKeys.indexOf(key)
+
+// A full page load, such as the way to a payment page and back, would otherwise lose the form: the uploaded files stay on the server, so their ids are enough to show them again.
+const keepFormForReturn = () => {
+  if (!formData.value.type || !selectedWorkflowTypeId.value) {
+    return
+  }
+  keepCreateWorkflowDraft({
+    workflowId: formData.value.type,
+    workflowTypeId: selectedWorkflowTypeId.value,
+    counterpartyId: formData.value.counterpartyId,
+    peerCompanyIds: formData.value.peerCompanyIds ?? [],
+    variables: (form.values.variables ?? {}) as Record<string, unknown>,
+    documents: (formData.value.documents ?? []).filter(document => document.id).map(document => ({ fileId: document.id as string, documentClass: document.class, name: document.name, extension: '' })),
+    startStep: currentStepKey.value === 'type' ? undefined : currentStepKey.value,
+  })
+}
+onMounted(() => window.addEventListener('pagehide', keepFormForReturn))
+onBeforeUnmount(() => window.removeEventListener('pagehide', keepFormForReturn))
 
 const uploaderUploading = ref(false)
 const showOptionalDocs = ref(false)
@@ -802,6 +823,12 @@ const submitHolds = ref<Record<number, string | null>>({})
 const submitHeldBy = computed(() => Object.values(submitHolds.value).find(reason => !!reason) ?? null)
 const holdSubmit = (index: number, reason: string | null) => {
   submitHolds.value = { ...submitHolds.value, [index]: reason }
+}
+
+const submitLabels = ref<Record<number, string | null>>({})
+const submitLabel = computed(() => Object.values(submitLabels.value).find(label => !!label) ?? null)
+const nameSubmit = (index: number, label: string | null) => {
+  submitLabels.value = { ...submitLabels.value, [index]: label }
 }
 
 const onFormSubmit = (event: Event) => {
@@ -1347,6 +1374,7 @@ const reviewVariables = computed(() => {
                     :workflow="selectedWorkflow"
                     :documents="documentsAsRead"
                     @holds="(reason: string | null) => holdSubmit(index, reason)"
+                    @submit-label="(label: string | null) => nameSubmit(index, label)"
                   />
                 </dl>
 
@@ -1389,7 +1417,7 @@ const reviewVariables = computed(() => {
             :disabled="!!submitHeldBy"
             :aria-describedby="submitHeldBy ? 'submit-held' : undefined"
           >
-            {{ $t('page.createWorkflow.form.submitLabel') }}
+            {{ submitLabel ?? $t('page.createWorkflow.form.submitLabel') }}
           </Button>
         </div>
       </form>
@@ -1901,6 +1929,7 @@ button.step-rail-entry:enabled {
 }
 
 .review-value {
+  min-width: 0;
   font-size: 14px;
   color: var(--text-primary);
   display: flex;

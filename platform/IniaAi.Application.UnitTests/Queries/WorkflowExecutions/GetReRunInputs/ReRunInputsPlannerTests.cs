@@ -70,6 +70,22 @@ public class ReRunInputsPlannerTests
     }
 
     [Fact]
+    public void Plan_LeavesARequiredHiddenVariableToTheRun_AndIsReady()
+    {
+        Workflow run = WorkflowWithCompanyName();
+        Workflow template = WorkflowWithCompanyName();
+        AddAccountHolder(template, defaultValue: "Company");
+        template.Variables.Single(variable => variable.ReplacementTag == ACCOUNT_HOLDER_TAG).IsHidden = true;
+
+        ReRunInputsDto plan = _planner.Plan(template, [.. run.Variables], RunValues((COMPANY_TAG, "Acme Ltd")), Documents(STATEMENT_CLASS));
+
+        Assert.True(plan.IsReady);
+        Assert.Empty(plan.VariablesNeedingInput);
+        Assert.Empty(plan.DefaultedVariables);
+        Assert.Equal([(COMPANY_TAG, "Acme Ltd")], ValuesOf(plan));
+    }
+
+    [Fact]
     public void Plan_WhenTheTemplateDroppedAVariable_DropsItsValue_AndNamesIt()
     {
         Workflow run = WorkflowWithCompanyName();

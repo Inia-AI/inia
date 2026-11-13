@@ -94,6 +94,19 @@ export default class Service extends BaseService {
     return data
   }
 
+  async revokeToken(token: string, tokenTypeHint: 'refresh_token' | 'access_token') {
+    const formData = new URLSearchParams()
+    formData.append('token', token)
+    formData.append('token_type_hint', tokenTypeHint)
+
+    await this.instance.post(this.getApiPath(`connect/revoke`), formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      signInStep: true,
+    })
+  }
+
   // 2FA Management APIs (require authentication)
   async getTwoFactorStatus(): Promise<TwoFactorStatusResponse> {
     const { data } = await this.instance.get(

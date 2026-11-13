@@ -4,9 +4,9 @@ agent-runtime is licensed under the Apache License 2.0, in `LICENSE`. Some files
 
 ## The Claude Agent SDK
 
-`@anthropic-ai/claude-agent-sdk` and its platform packages, `@anthropic-ai/claude-agent-sdk-<platform>`, which carry the `claude` binary, are Anthropic's proprietary software under Anthropic's terms, at <https://code.claude.com/docs/en/legal-and-compliance>. The licence of this repository does not cover them. This repository does not contain them: `bun install` fetches them from npm when you build. Inia publishes no image that contains them. Their licence file is under "Terms outside the allowed list" below.
+`@anthropic-ai/claude-agent-sdk` and its platform packages, `@anthropic-ai/claude-agent-sdk-<platform>`, which carry the `claude` binary, are Anthropic's proprietary software under Anthropic's terms, at <https://code.claude.com/docs/en/legal-and-compliance>. The licence of this repository does not cover them. This repository does not contain them: `bun install` fetches them from npm when you build. Inia AI publishes no image that contains them. Their licence file is under "Terms outside the allowed list" below.
 
-## Files in this repository that Inia did not write
+## Files in this repository that Inia AI did not write
 
 ### Docker's default seccomp profile
 

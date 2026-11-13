@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createI18n } from 'vue-i18n'
@@ -6,6 +6,10 @@ import { createPinia } from 'pinia'
 import { EN } from '@/assets/locales/en'
 import { clearAuthToken, setAuthToken } from '@/test/helpers/jwt'
 import NoOrganizationView from './NoOrganizationView.vue'
+
+const { revokeToken } = vi.hoisted(() => ({ revokeToken: vi.fn().mockResolvedValue(undefined) }))
+
+vi.mock('@/api', () => ({ default: { Authentication: { service: { revokeToken } } } }))
 
 const mountView = async () => {
   const router = createRouter({
@@ -44,13 +48,15 @@ describe('NoOrganizationView', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
-  it('signs the user out from its one button', async () => {
+  it('signs the user out from its one button, on the server too', async () => {
     setAuthToken({ role: 'User' })
+    const accessToken = localStorage.getItem('accessToken')
     const { router, wrapper } = await mountView()
 
     await wrapper.find('button').trigger('click')
     await flushPromises()
 
+    expect(revokeToken).toHaveBeenCalledWith(accessToken, 'access_token')
     expect(localStorage.getItem('accessToken')).toBeNull()
     expect(router.currentRoute.value.path).toBe('/login')
   })

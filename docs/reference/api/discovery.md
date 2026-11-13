@@ -116,7 +116,7 @@ curl -X GET "$BASE_URL/api/v1/workflow-templates/CorporatesCreditReport/summary"
       "shouldBeSingular": true,
       "isOutputDocument": false,
       "documentCategoryId": "financials",
-      "llmDescription": "The audited annual report of the company itself; not a subsidiary's, not an interim report."
+      "llmDescription": null
     },
     {
       "key": "FinancialStatements",
@@ -196,7 +196,7 @@ So the workflow type above submits as:
 
 `AnnualReport` is required, so a file tagged with it must be present; `FinancialStatements` is only *suggested*, so it may be omitted. `currency` is omitted because its default `USD` is acceptable; `reportingPeriod` is required and has no default, so it must be supplied. See [Submit Workflow Execution](submit-workflow-execution.md#document-classes) for the multipart request that carries this metadata alongside the binary files.
 
-`llmDescription` is the class description written for a model rather than a person, when the template author set one; it is `null` otherwise. A consumer building an upload UI shows `description`; `llmDescription` is what the platform's own models read ([document classes](../../guides/workflows/document-classes.md)).
+`llmDescription` is always `null` here: the class description written for a model stays with the template, and the template editing API returns it to editors ([document classes](../../guides/workflows/document-classes.md)). A consumer building an upload UI shows `description`. A hidden variable (`isHidden: true`) carries no `defaultValue` here either; leave it out of a run, and the run fills it with the template's default on the server. A run's own reads leave hidden variables out too: the submit answer's `variables`, the report's `variables` and `variableValues`, and the re-run inputs.
 
 ## Document categories (optional)
 

@@ -2260,6 +2260,18 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.Property<int>("Amount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("BillingCountry")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<string>("BillingState")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CardFingerprint")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<int>("DebtRepaid")
                         .HasColumnType("integer");
 
@@ -2304,6 +2316,9 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasColumnType("integer");
 
                     b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WelcomeBonus")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");

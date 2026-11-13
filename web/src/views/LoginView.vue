@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/toast/use-toast'
 import { useI18n } from 'vue-i18n'
 import { signInFailure } from '@/lib/signInFailure'
 import { storeRefreshToken } from '@/lib/utils'
-import { destinationAfterSignIn, type SignInLanding } from '@/lib/signInDestination'
+import { destinationAfterSignIn } from '@/lib/signInDestination'
 import type { SignInTokens } from '@/api/authentication/schema'
 
 const { mutateAsync: login } = API.Authentication.useLogin()
@@ -22,16 +22,16 @@ const { setRefreshTokenTimer } = useRefreshToken()
 
 const finishingSignIn = ref(false)
 
-const goAfterSignIn = async (landings: SignInLanding[]) => {
+const goAfterSignIn = async () => {
   finishingSignIn.value = true
   try {
-    await router.push(await destinationAfterSignIn(landings, router.currentRoute.value.query.redirect))
+    await router.push(destinationAfterSignIn(router.currentRoute.value.query.redirect))
   } finally {
     finishingSignIn.value = false
   }
 }
 
-const onSubmit = async (data: { username: string; password: string }, landings: SignInLanding[]) => {
+const onSubmit = async (data: { username: string; password: string }) => {
   try {
     const response = await login(data)
 
@@ -92,7 +92,7 @@ const onSubmit = async (data: { username: string; password: string }, landings: 
 
     setRefreshTokenTimer()
 
-    await goAfterSignIn(landings)
+    await goAfterSignIn()
   } catch (error) {
     toast({
       variant: 'destructive',
@@ -105,7 +105,7 @@ const onSubmit = async (data: { username: string; password: string }, landings: 
   }
 }
 
-const handleExternalLogin = async (tokenResponse: SignInTokens, landings: SignInLanding[]) => {
+const handleExternalLogin = async (tokenResponse: SignInTokens) => {
   localStorage.setItem('accessToken', tokenResponse.access_token)
   storeRefreshToken(tokenResponse.refresh_token)
   const expiry = (tokenResponse.expires_in ?? 3600) * 1000
@@ -113,7 +113,7 @@ const handleExternalLogin = async (tokenResponse: SignInTokens, landings: SignIn
 
   setRefreshTokenTimer()
 
-  await goAfterSignIn(landings)
+  await goAfterSignIn()
 }
 </script>
 

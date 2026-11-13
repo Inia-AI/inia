@@ -28,6 +28,7 @@ describe('DefaultLayout module pieces', () => {
   afterEach(() => {
     extensionPoints.userMenuItems.length = 0
     extensionPoints.overlays.length = 0
+    extensionPoints.headerItems.length = 0
   })
 
   it('lists each account menu item a module registers, after Profile', async () => {
@@ -46,6 +47,19 @@ describe('DefaultLayout module pieces', () => {
     const wrapper = await mountLayout(DefaultLayout, EN)
 
     expect(wrapper.findAll('[data-testid="module-overlay"]')).toHaveLength(1)
+  })
+
+  it('shows each header item a module registers among the header actions, before the theme switch', async () => {
+    extensionPoints.headerItems.push(defineComponent({ setup: () => () => h('span', { 'data-testid': 'module-header-item' }) }))
+
+    const wrapper = await mountLayout(DefaultLayout, EN)
+
+    const actions = wrapper.find('.header-actions')
+    expect(actions.findAll('[data-testid="module-header-item"]')).toHaveLength(1)
+    const item = actions.find('[data-testid="module-header-item"]').element
+    const themeSwitch = actions.element.querySelector('theme-toggle-stub')
+    expect(themeSwitch).not.toBeNull()
+    expect(item.compareDocumentPosition(themeSwitch!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 
@@ -146,6 +160,17 @@ describe('DefaultLayout menu in the header', () => {
     expect(shown(wrapper, 'Open navigation menu')).toBe(false)
     expect(shown(wrapper, 'Open tools menu')).toBe(true)
     expect(wrapper.get('.desktop-nav').attributes('inert')).toBeUndefined()
+  })
+
+  it('gives the empty middle of the header to the controls while the menu is collapsed, so a narrow screen keeps every control in view', async () => {
+    stubHeaderWidth(TOO_NARROW_FOR_THE_MENU)
+    const collapsed = await mountLayout(DefaultLayout, EN)
+    expect(collapsed.get('header').classes()).toContain('header--menu-collapsed')
+    collapsed.unmount()
+
+    stubHeaderWidth(WIDE_ENOUGH_FOR_THE_MENU)
+    const open = await mountLayout(DefaultLayout, EN)
+    expect(open.get('header').classes()).not.toContain('header--menu-collapsed')
   })
 
   it('collapses as the window narrows, and comes back as it widens', async () => {

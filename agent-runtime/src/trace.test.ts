@@ -763,7 +763,7 @@ describe("readInstalledSdkVersion", () => {
 });
 
 describe("claimRetainedRoot", () => {
-  it("claims every declared retained root sticky and world-writable, owned by this process, idempotently", () => {
+  it("claims every declared retained root at its declared mode, owned by this process, idempotently", () => {
     for (const declared of RETAINED_WORKSPACE_ROOTS) {
       const { traceRoot } = freshArea(`claim-${declared.name}`);
       const rootPath = join(traceRoot, declared.name);

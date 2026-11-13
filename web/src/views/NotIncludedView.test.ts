@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { createI18n } from 'vue-i18n'
 import { EN } from '@/assets/locales/en'
+import { extensionPoints } from '@/modules/extensionPoints'
 import NotIncludedView from './NotIncludedView.vue'
 
 const mountAt = async (capability: string) => {
@@ -13,7 +15,22 @@ const mountAt = async (capability: string) => {
   return mount(NotIncludedView, { global: { plugins: [router, i18n] } })
 }
 
+afterEach(() => {
+  extensionPoints.notIncludedActions.length = 0
+})
+
 describe('NotIncludedView', () => {
+  it('shows what a module offers for the missing capability, before the way to the Dashboard', async () => {
+    extensionPoints.notIncludedActions.push(
+      defineComponent({ props: ['capability'], setup: props => () => h('p', { 'data-testid': 'module-offer' }, `offer for ${props.capability}`) }),
+    )
+    const wrapper = await mountAt('run')
+
+    const offer = wrapper.get('[data-testid="module-offer"]')
+    expect(offer.text()).toBe('offer for run')
+    expect(offer.element.compareDocumentPosition(wrapper.get('a[href="/"]').element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('tells an account that cannot start reports where to see why', async () => {
     const wrapper = await mountAt('run')
 

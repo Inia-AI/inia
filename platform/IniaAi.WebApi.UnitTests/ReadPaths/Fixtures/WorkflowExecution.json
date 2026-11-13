@@ -33,16 +33,6 @@
       "isRequired": true
     },
     {
-      "replacementTag": "Secret",
-      "displayName": "Secret",
-      "description": "A confidential input.",
-      "type": "String",
-      "displayValue": "\u2022\u2022\u2022\u2022",
-      "isConfidential": true,
-      "isHidden": true,
-      "isRequired": true
-    },
-    {
       "replacementTag": "peerCount",
       "displayName": "peerCount",
       "description": null,

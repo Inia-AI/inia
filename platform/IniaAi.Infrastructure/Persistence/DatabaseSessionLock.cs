@@ -95,6 +95,7 @@ internal sealed class DatabaseSessionLock : IDisposable
 
     private static bool TryPostgresLock(NpgsqlConnection connection, DatabaseLockName name, bool wait)
     {
+        // Raw SQL reviewed: constant advisory-lock text; the lock key enters as the @key parameter
         using var command = new NpgsqlCommand(wait ? POSTGRES_ACQUIRE_SQL : POSTGRES_TRY_ACQUIRE_SQL, connection)
         {
             CommandTimeout = WAIT_WITHOUT_TIMEOUT,
@@ -112,6 +113,7 @@ internal sealed class DatabaseSessionLock : IDisposable
 
     private static bool TrySqlServerLock(SqlConnection connection, DatabaseLockName name, bool wait)
     {
+        // Raw SQL reviewed: constant sp_getapplock text; resource and timeout enter as parameters
         using var command = new SqlCommand(SQL_SERVER_ACQUIRE_SQL, connection) { CommandTimeout = WAIT_WITHOUT_TIMEOUT };
         _ = command.Parameters.AddWithValue(SQL_SERVER_RESOURCE_PARAMETER, name.SqlServerResource);
         _ = command.Parameters.AddWithValue(SQL_SERVER_TIMEOUT_PARAMETER, wait ? SQL_SERVER_WAIT_FOREVER : SQL_SERVER_NO_WAIT);

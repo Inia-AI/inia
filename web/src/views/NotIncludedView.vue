@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { NEW_WORK, type Capability } from '@/constants/capabilities'
+import { extensionPoints } from '@/modules/extensionPoints'
 
 const route = useRoute()
 const capability = computed(() => {
@@ -19,6 +20,7 @@ const isNewWork = computed(() => !!capability.value && NEW_WORK.includes(capabil
       <p class="page-subtitle">
         {{ isNewWork ? $t('page.notIncluded.newWork') : $t('page.notIncluded.description') }}
       </p>
+      <component :is="piece" v-for="(piece, index) in extensionPoints.notIncludedActions" :key="index" :capability="capability" />
       <Button as-child class="btn-gradient-primary">
         <RouterLink to="/">{{ $t('page.notIncluded.home') }}</RouterLink>
       </Button>

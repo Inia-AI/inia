@@ -38,7 +38,7 @@ public static class ObsoleteRagSettingsCleanupHelper
                     DELETE FROM {q}{schema}{closingQ}.{q}RagSettings{closingQ}
                     WHERE {q}Type{closingQ} NOT IN ({supportedTypes})
                     """;
-                int deleted = context.Database.ExecuteSqlRaw(deleteRagSettings);
+                int deleted = context.Database.ExecuteSqlRaw(deleteRagSettings);  // Raw SQL reviewed: IN list is the RagTypes enum integer values; schema and table are constants
 
                 transaction.Commit();
 

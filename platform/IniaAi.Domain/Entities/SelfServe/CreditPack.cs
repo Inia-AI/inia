@@ -14,6 +14,8 @@ public class CreditPack
     public const int PAYMENT_PROVIDER_MAX_LENGTH = 50;
     public const int PROVIDER_ID_MAX_LENGTH = 255;
     public const int REASON_MAX_LENGTH = 500;
+    public const int COUNTRY_MAX_LENGTH = 2;
+    public const int STATE_MAX_LENGTH = 100;
 
     [Key]
     [StringLength(450)]
@@ -52,6 +54,21 @@ public class CreditPack
 
     /// <summary>Credits of this pack that paid the account's debt: when it was granted, or when a run or a dispute gave them back.</summary>
     public int DebtRepaid { get; set; }
+
+    /// <summary>The welcome bonus in <see cref="Amount"/>, on a person's first paid top-up; 0 on every other pack.</summary>
+    public int WelcomeBonus { get; set; }
+
+    /// <summary>The billing country of the invoice that paid for the pack, as a two-letter code.</summary>
+    [StringLength(COUNTRY_MAX_LENGTH)]
+    public string? BillingCountry { get; set; }
+
+    /// <summary>The billing state or region of that invoice, such as a US state's two-letter code.</summary>
+    [StringLength(STATE_MAX_LENGTH)]
+    public string? BillingState { get; set; }
+
+    /// <summary>The payment provider's fingerprint of the card that paid for a pack with a welcome bonus, which tells a second bonus on the same card.</summary>
+    [StringLength(PROVIDER_ID_MAX_LENGTH)]
+    public string? CardFingerprint { get; set; }
 
     [StringLength(450)]
     public string? GrantedByUserId { get; set; }

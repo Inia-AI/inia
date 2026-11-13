@@ -8,8 +8,16 @@ import {
 } from "./process-end.js";
 import type { UidPool } from "./uid-pool.js";
 
+const NO_INHERITED_CAPS = ["--inh-caps=-all", "--ambient-caps=-all"];
+
 export function privilegeDropArgs(uid: number): string[] {
-  return [`--reuid=${uid}`, `--regid=${uid}`, "--clear-groups", "--inh-caps=-all", "--ambient-caps=-all"];
+  return [`--reuid=${uid}`, `--regid=${uid}`, "--clear-groups", ...NO_INHERITED_CAPS];
+}
+
+// The supervisor holds no CAP_CHOWN, and chgrp to a group needs membership of it, which CAP_SETGID
+// grants a child for the length of one command.
+export function groupMemberArgs(gid: number): string[] {
+  return [`--groups=${gid}`, ...NO_INHERITED_CAPS];
 }
 
 // Signalling another uid's pid wants CAP_KILL, which the supervisor lacks — pkill -u as that uid does not.
@@ -86,6 +94,8 @@ export function createPoolUidTreeRemover(input: {
   pool: UidPool;
   ownerUidOf?: (path: string) => Promise<number | undefined>;
   runAsUidFn?: typeof runAsUid;
+  // A settled run's subtree is closed to its uid, which the removal runs as.
+  parentAccess?: { openTo: (path: string, uid: number) => void; close: (path: string) => void };
 }): RemoveTreeFn {
   const ownerUidOf = input.ownerUidOf ?? ownerUidOfPath;
   const runAsUidFn = input.runAsUidFn ?? runAsUid;
@@ -110,7 +120,12 @@ export function createPoolUidTreeRemover(input: {
       if (ownerNow !== ownerUid) {
         throw new Error(`refusing to remove ${path}: its owner changed from uid ${ownerUid} to ${ownerNow}`);
       }
-      await runAsUidFn(ownerUid, ["rm", "-rf", path]);
+      try {
+        input.parentAccess?.openTo(path, ownerUid);
+        await runAsUidFn(ownerUid, ["rm", "-rf", path]);
+      } finally {
+        input.parentAccess?.close(path);
+      }
     });
   };
 }

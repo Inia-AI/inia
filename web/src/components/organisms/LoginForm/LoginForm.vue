@@ -20,15 +20,14 @@ import IniaWordmark from '@/components/atoms/IniaWordmark/IniaWordmark.vue'
 import useThemeStore from '@/store/theme'
 import { extensionPoints } from '@/modules/extensionPoints'
 import type { SignInTokens } from '@/api/authentication/schema'
-import type { SignInLanding } from '@/lib/signInDestination'
 import { signInRefusalText } from '@/lib/signInFailure'
 import { SESSION_ENDED_REASON } from '@/lib/sessionEnded'
 
 const { t: $t } = useI18n()
 const props = defineProps<{ busy?: boolean }>()
 const $emits = defineEmits<{
-  submit: [data: TokenRequest, landings: SignInLanding[]]
-  'signed-in': [tokens: SignInTokens, landings: SignInLanding[]]
+  submit: [data: TokenRequest]
+  'signed-in': [tokens: SignInTokens]
 }>()
 const themeStore = useThemeStore()
 const route = useRoute()
@@ -74,7 +73,6 @@ const hasExternalProviders = computed(() =>
 )
 const leadingMethod = computed(() => signInMethods.value[0])
 const methodNotices = computed(() => signInMethods.value.flatMap(method => (method.notice ? [method.notice] : [])))
-const landings = () => signInMethods.value.flatMap(method => (method.landing ? [method.landing] : []))
 
 const googleRefusalKeys = computed(() =>
   Object.assign({}, ...signInMethods.value.map(method => method.googleRefusalKeys ?? {})) as Record<string, string>
@@ -160,7 +158,7 @@ const handleGoogleCallback = async (response: { credential: string }) => {
     // Exchange Google credential for our token
     const result = await API.Authentication.verifyGoogleToken(response.credential)
 
-    $emits('signed-in', result, landings())
+    $emits('signed-in', result)
   } catch (error: unknown) {
     console.error('Google login failed:', error)
     googleError.value = signInRefusalText(error, $t, googleRefusalKeys.value, 'page.login.errors.googleFailed')
@@ -187,7 +185,7 @@ const handleOidcSignIn = async () => {
     // Exchange ID token for our token
     const result = await API.Authentication.verifyOidcToken(idToken)
 
-    $emits('signed-in', result, landings())
+    $emits('signed-in', result)
   } catch (error: unknown) {
     console.error('SSO login failed:', error)
     // Never the error's own message: a chunk-load failure names internal URLs
@@ -232,7 +230,7 @@ const form = useForm<TokenRequest>({
 })
 
 const handleSubmit = form.handleSubmit(async data => {
-  $emits('submit', data, landings())
+  $emits('submit', data)
 })
 </script>
 
@@ -257,7 +255,7 @@ const handleSubmit = form.handleSubmit(async data => {
       v-for="method in signInMethods"
       :key="method.provider"
       :busy="props.busy"
-      @signed-in="(tokens: SignInTokens) => $emits('signed-in', tokens, landings())"
+      @signed-in="(tokens: SignInTokens) => $emits('signed-in', tokens)"
     />
     <div v-if="signInMethods.length > 0 && (hasPasswordProvider || hasExternalProviders)" class="divider method-divider" data-testid="sign-in-divider">
       <span class="divider-text">{{ $t('page.login.form.or') }}</span>

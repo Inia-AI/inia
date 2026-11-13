@@ -100,7 +100,7 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
         List<WorkflowExecutionVariableValueDto> variableValues =
             WorkflowExecutionVariableResolver.Resolve(snapshot.Variables, mapped.Variables);
         Dictionary<string, JsonElement>? sanitizedVariables =
-            StripConfidentialValues(mapped.Variables, snapshot.Variables);
+            UnreadableVariables.Without(mapped.Variables, snapshot.Variables);
 
         return mapped with
         {
@@ -232,34 +232,6 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
             Settled = entry.Settled,
             Activity = entry.Digest is null ? null : AgentActivityDtoMapper.ToDto(entry.Digest),
         })];
-    }
-
-    private static Dictionary<string, JsonElement>? StripConfidentialValues(
-        Dictionary<string, JsonElement>? rawValues,
-        IReadOnlyList<WorkflowVariable> definitions)
-    {
-        if (rawValues is null || rawValues.Count == 0)
-        {
-            return rawValues;
-        }
-
-        // Match the persisted camelCase value keys against the PascalCase
-        // ReplacementTags case-insensitively, else a confidential variable's raw
-        // value would not be stripped and would leak in the response payload.
-        var confidentialTags = new HashSet<string>(
-            definitions
-                .Where(v => v.IsConfidential)
-                .Select(v => v.ReplacementTag),
-            StringComparer.OrdinalIgnoreCase);
-
-        if (confidentialTags.Count == 0)
-        {
-            return rawValues;
-        }
-
-        return rawValues
-            .Where(kv => !confidentialTags.Contains(kv.Key))
-            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
     }
 
     /// <summary>

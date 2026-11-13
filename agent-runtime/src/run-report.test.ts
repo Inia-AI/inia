@@ -2808,7 +2808,7 @@ describe("buildQueryOptions with declared agents", () => {
   it("registers the agent gate for both tool names beside the read gate", () => {
     const options = buildWithAgents();
     const matchers = (options.hooks?.PreToolUse ?? []).map((entry) => entry.matcher);
-    expect(matchers).toEqual(["Read", "Agent", "Task"]);
+    expect(matchers).toEqual([undefined, "Agent", "Task"]);
   });
 
   it("keeps a run without agents at exactly today's surface: no Task tool, no agents, no agent gate", () => {
@@ -2821,7 +2821,19 @@ describe("buildQueryOptions with declared agents", () => {
     });
     expect(options.tools).toEqual(["Bash", "Read"]);
     expect("agents" in options).toBe(false);
-    expect((options.hooks?.PreToolUse ?? []).map((entry) => entry.matcher)).toEqual(["Read"]);
+    expect((options.hooks?.PreToolUse ?? []).map((entry) => entry.matcher)).toEqual([undefined]);
+  });
+
+  it("meets every tool with the read gate and renames none, so a renamed Read cannot slip past it", () => {
+    const options = buildQueryOptions({
+      maxBudgetUsd: 3,
+      maxTurns: DEFAULT_MAX_TURNS,
+      abortController: new AbortController(),
+      env: { PATH: "/usr/bin" },
+      workspacePath: WORKSPACE_WITH_AGENTS,
+    });
+    expect(options.hooks?.PreToolUse?.[0]?.matcher).toBeUndefined();
+    expect("toolAliases" in options).toBe(false);
   });
 
   it("the agent gate hook denies an undeclared subagent_type and forces foreground on a declared one", async () => {

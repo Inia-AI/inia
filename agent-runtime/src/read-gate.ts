@@ -118,6 +118,8 @@ function denyNotStaged(filePath: string, mirror: ReadMirror | undefined): ReadGa
   return deny(`${filePath} is not one of this run's staged input documents; Read serves only: ${served}`);
 }
 
+const FILE_PATH_PARAM = "file_path";
+
 export function evaluateReadRequest(
   toolInput: unknown,
   workspacePath: string,
@@ -126,7 +128,7 @@ export function evaluateReadRequest(
   if (!isRecord(toolInput)) {
     return deny("Read input must be an object");
   }
-  const filePath = toolInput["file_path"];
+  const filePath = toolInput[FILE_PATH_PARAM];
   if (typeof filePath !== "string" || filePath === "") {
     return deny("file_path is required and must be a non-empty string");
   }
@@ -187,20 +189,22 @@ function forwardedReadParams(toolInput: unknown): Record<string, unknown> {
   return forwarded;
 }
 
+export const UNGATED_FILE_TOOL_REASON = "only the Read tool may name a file, and it serves staged documents";
+
 export function createReadGateHook(workspacePath: string, mirror: ReadMirror | undefined): HookCallback {
   return (input): Promise<HookJSONOutput> => {
-    if (input.hook_event_name !== "PreToolUse" || input.tool_name !== READ_TOOL_NAME) {
+    if (input.hook_event_name !== "PreToolUse") {
       return Promise.resolve({});
+    }
+    if (input.tool_name !== READ_TOOL_NAME) {
+      // Under dontAsk a hook's silence approves the tool, and Options.toolAliases could rename Read,
+      // so a tool that names a file and is not Read is refused rather than passed through unexamined.
+      const namesAFile = isRecord(input.tool_input) && Object.hasOwn(input.tool_input, FILE_PATH_PARAM);
+      return Promise.resolve(namesAFile ? deniedToolUse(UNGATED_FILE_TOOL_REASON) : {});
     }
     const decision = evaluateReadRequest(input.tool_input, workspacePath, mirror);
     if (!decision.allowed) {
-      return Promise.resolve({
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "deny",
-          permissionDecisionReason: decision.reason,
-        },
-      });
+      return Promise.resolve(deniedToolUse(decision.reason));
     }
     return Promise.resolve({
       hookSpecificOutput: {
@@ -209,5 +213,15 @@ export function createReadGateHook(workspacePath: string, mirror: ReadMirror | u
         updatedInput: { ...forwardedReadParams(input.tool_input), file_path: decision.resolvedPath },
       },
     });
+  };
+}
+
+export function deniedToolUse(reason: string): HookJSONOutput {
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: reason,
+    },
   };
 }

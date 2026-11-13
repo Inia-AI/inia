@@ -26,18 +26,19 @@ export interface WorkflowReRunPrefillDocument {
  * Snapshot of an existing execution shaped for the `/workflows/create` form.
  * `workflowId` is the canonical workflow definition id (the value the form
  * submits as `type`); `workflowTypeId` is what gates the on-demand full-detail
- * fetch in CreateWorkflow.vue. `peerCompanyIds` isn't stored on
- * `WorkflowReport`, so it's intentionally absent here — the create page
- * renders it empty, matching what re-run produced before.
+ * fetch in CreateWorkflow.vue. A re-run leaves `peerCompanyIds` out, because
+ * `WorkflowReport` does not store them; a form kept across a visit to another
+ * site carries them.
  */
 export interface WorkflowReRunPrefill {
   workflowId: string
   workflowTypeId: string
   counterpartyId?: string
+  peerCompanyIds?: string[]
   variables: Record<string, unknown>
   documents: WorkflowReRunPrefillDocument[]
   /** The form step to open on; absent opens the first step. */
-  startStep?: 'documents' | 'details'
+  startStep?: 'documents' | 'details' | 'review'
   reRunChanges?: ReRunChanges
 }
 

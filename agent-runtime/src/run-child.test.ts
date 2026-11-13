@@ -2136,6 +2136,22 @@ describe("buildRunEnv", () => {
     expect(env["AWS_PROFILE"]).toBeUndefined();
   });
 
+  it("points the chain at the host's credentials file and never at the metadata service in file mode", () => {
+    const privateHome = newWorkspaceRoot();
+    const env = buildRunEnv({
+      env: { ...HOST_ENV, AGENT_RUNTIME_CREDENTIALS_FILE: "/app/model-credentials/credentials.json" },
+      privateHome,
+      executionId: "e-1",
+    });
+    expect(env["AWS_ACCESS_KEY_ID"]).toBeUndefined();
+    expect(env["AWS_SESSION_TOKEN"]).toBeUndefined();
+    expect(env["AWS_EC2_METADATA_DISABLED"]).toBe("true");
+    expect(env["AWS_CONFIG_FILE"]).toBe(join(privateHome, ".aws", "config"));
+    expect(readFileSync(join(privateHome, ".aws", "config"), "utf8")).toContain(
+      "credential_process = /bin/cat /app/model-credentials/credentials.json",
+    );
+  });
+
   it("writes the assume-role config, strips static credentials, and keeps the endpoint in role mode", () => {
     const privateHome = newWorkspaceRoot();
     const env = buildRunEnv({

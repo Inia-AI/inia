@@ -389,6 +389,16 @@ describe("loadServerConfig", () => {
     expect(config.logLevel).toBe("info");
   });
 
+  it("refuses a credentials file outside the roots the sandbox hides, where executed code could read it", () => {
+    expect(() =>
+      loadServerConfig({
+        ...PINNED_ENV,
+        AUTH_DISABLED: "true",
+        AGENT_RUNTIME_CREDENTIALS_FILE: "/etc/inia/credentials.json",
+      }),
+    ).toThrow(ConfigError);
+  });
+
   it("threads a configured LOG_LEVEL through", () => {
     const config = loadServerConfig({
       ...PINNED_ENV,
@@ -637,6 +647,36 @@ describe("parseAgentIdentity", () => {
     ).toEqual({ metadataCredentials: true });
   });
 
+  it("returns credentials-file mode for an absolute path the host keeps current", () => {
+    expect(
+      parseAgentIdentity({
+        roleArn: undefined,
+        ambientFlag: undefined,
+        metadataFlag: undefined,
+        credentialsFile: "/app/model-credentials/credentials.json",
+      }),
+    ).toEqual({ credentialsFile: "/app/model-credentials/credentials.json" });
+  });
+
+  it("refuses a credentials file that is relative, climbs out, or carries a character a shell would read", () => {
+    for (const credentialsFile of [
+      "model-credentials/credentials.json",
+      "/app/../etc/passwd",
+      "/app/./credentials.json",
+      "/app/a b",
+      "/app/$(x)",
+    ]) {
+      expect(() =>
+        parseAgentIdentity({
+          roleArn: undefined,
+          ambientFlag: undefined,
+          metadataFlag: undefined,
+          credentialsFile,
+        }),
+      ).toThrow(ConfigError);
+    }
+  });
+
   it("fails closed when none is set, so a lost variable cannot silently widen the identity", () => {
     expect(() =>
       parseAgentIdentity({ roleArn: undefined, ambientFlag: undefined, metadataFlag: undefined }),
@@ -655,6 +695,14 @@ describe("parseAgentIdentity", () => {
     );
     expect(() =>
       parseAgentIdentity({ roleArn: undefined, ambientFlag: "true", metadataFlag: "true" }),
+    ).toThrow(ConfigError);
+    expect(() =>
+      parseAgentIdentity({
+        roleArn: ROLE,
+        ambientFlag: undefined,
+        metadataFlag: undefined,
+        credentialsFile: "/app/model-credentials/credentials.json",
+      }),
     ).toThrow(ConfigError);
   });
 });

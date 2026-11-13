@@ -243,7 +243,7 @@ public class WorkflowExecutionVariableResolverTests
     }
 
     [Fact]
-    public void Resolve_Hidden_FlagPreserved()
+    public void Resolve_Hidden_IsLeftOut_AndItsValueIsNoOrphanRow()
     {
         var workflow = new Workflow();
         _ = Define(workflow, "internal", WorkflowVariableTypes.String, isHidden: true);
@@ -252,9 +252,7 @@ public class WorkflowExecutionVariableResolverTests
         List<WorkflowExecutionVariableValueDto> result =
             WorkflowExecutionVariableResolver.Resolve(workflow.Variables, raw);
 
-        WorkflowExecutionVariableValueDto entry = Assert.Single(result);
-        Assert.True(entry.IsHidden);
-        Assert.Equal("x", entry.DisplayValue);
+        Assert.Empty(result);
     }
 
     [Fact]

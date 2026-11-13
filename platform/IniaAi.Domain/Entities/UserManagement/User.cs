@@ -54,8 +54,6 @@ public class User : IdentityUser//, IAuditableEntity
         OrganizationId = organizationId;
     }
 
-    private static readonly PasswordHasher<User> _passwordHasher = new();
-
     /// <summary>
     /// Gets the full name of the user by combining first, middle (if present), and last names.
     /// </summary>
@@ -73,7 +71,7 @@ public class User : IdentityUser//, IAuditableEntity
     /// </summary>
     public void SetPassword(string rawPassword)
     {
-        PasswordHash = _passwordHasher.HashPassword(this, rawPassword);
+        PasswordHash = PasswordHashing.Hasher.HashPassword(this, rawPassword);
     }
 
     /// <summary>

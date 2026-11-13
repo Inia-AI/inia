@@ -41,7 +41,8 @@ public record DocumentClassDto
     public string? DocumentCategoryId { get; init; }
 
     /// <summary>
-    /// What qualifies a document as this class, written for a model rather than a person. Null when not set.
+    /// What qualifies a document as this class, written for a model rather than a person. Null when not set,
+    /// and always null in the report type summary a run's reader gets.
     /// </summary>
     public string? LlmDescription { get; init; }
 }

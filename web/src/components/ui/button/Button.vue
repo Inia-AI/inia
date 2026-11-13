@@ -11,6 +11,7 @@ interface Props extends PrimitiveProps {
   variant?: ButtonVariants['variant']
   size?: ButtonVariants['size']
   fontSize?: ButtonVariants['fontSize']
+  wrap?: boolean
   class?: HTMLAttributes['class']
   isLoading?: boolean
   type?: ButtonHTMLAttributes['type']
@@ -28,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
     :as-child="asChild"
     :type="as === 'button' && !asChild ? type : undefined"
     :disabled="isLoading"
-    :class="cn(buttonVariants({ variant, size, fontSize }), 'aria-disabled:pointer-events-none aria-disabled:opacity-50', props.class)"
+    :class="cn(buttonVariants({ variant, size, fontSize, wrap }), 'aria-disabled:pointer-events-none aria-disabled:opacity-50', props.class)"
   >
     <IniaLoader v-if="isLoading" class="w-4" />
     <slot />

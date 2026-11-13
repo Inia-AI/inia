@@ -4,6 +4,7 @@ import {
   cn,
   formatDate,
   formatDateTime,
+  formatLongDateTime,
   formatDuration,
   formatDurationMs,
   formatMonth,
@@ -328,5 +329,16 @@ describe('clearSignIn', () => {
 
     expect(Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).sort()).toEqual(['capabilitiesVary', 'theme'])
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('formatLongDateTime', () => {
+  it('writes the day, the month name, the year and the time', () => {
+    expect(formatLongDateTime('2026-11-12T17:31:00Z')).toMatch(/^\d{1,2} November 2026, \d{1,2}:\d{2}(am|pm)$/)
+  })
+
+  it('writes a dash for a value that is not a date, instead of failing the page', () => {
+    expect(formatLongDateTime('not a date')).toBe('-')
+    expect(formatLongDateTime(null)).toBe('-')
   })
 })

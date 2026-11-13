@@ -110,14 +110,22 @@ const AWS_MODE_VARS: readonly string[] = [
   "AGENT_RUNTIME_ROLE_ARN",
   "AGENT_RUNTIME_METADATA_CREDENTIALS",
   "AGENT_RUNTIME_AMBIENT_CREDENTIALS",
+  "AGENT_RUNTIME_CREDENTIALS_FILE",
   "AWS_EC2_METADATA_SERVICE_ENDPOINT",
   ...STATIC_CREDENTIAL_VARS,
 ];
+
+export const FOUNDRY_TOKEN_ENDPOINT_ENV_VAR = "AGENT_RUNTIME_FOUNDRY_TOKEN_ENDPOINT";
+
+// The host endpoint serves the runtime identity's Foundry token and nothing else, so the header the
+// Azure credential chain's App Service source requires guards nothing and is a fixed value.
+export const FOUNDRY_TOKEN_ENDPOINT_HEADER = "inia-agent-runtime";
 
 const FOUNDRY_MODE_VARS: readonly string[] = [
   "CLAUDE_CODE_USE_FOUNDRY",
   "ANTHROPIC_FOUNDRY_RESOURCE",
   "ANTHROPIC_FOUNDRY_BASE_URL",
+  FOUNDRY_TOKEN_ENDPOINT_ENV_VAR,
 ];
 
 const FOUNDRY_SECRET_VARS: readonly string[] = [
@@ -185,6 +193,15 @@ export function buildSubprocessEnv(source: Env): Record<string, string> {
   return allowlisted(source, BEDROCK_SUBPROCESS_ENV_ALLOWLIST);
 }
 
+// The credential chain's App Service source fetches and refreshes the token from this endpoint, in
+// place of the metadata service the host closes to the container (ADR 0166).
+function foundryTokenEndpointEnv(source: Env): Record<string, string> {
+  const endpoint = nonEmpty(source[FOUNDRY_TOKEN_ENDPOINT_ENV_VAR]);
+  return endpoint === undefined
+    ? {}
+    : { IDENTITY_ENDPOINT: endpoint, IDENTITY_HEADER: FOUNDRY_TOKEN_ENDPOINT_HEADER };
+}
+
 export function buildProviderSubprocessEnv(provider: ModelProvider, source: Env): Record<string, string> {
   switch (provider) {
     case "bedrock":
@@ -192,6 +209,7 @@ export function buildProviderSubprocessEnv(provider: ModelProvider, source: Env)
     case "foundry":
       return {
         ...allowlisted(source, FOUNDRY_SUBPROCESS_ENV_ALLOWLIST),
+        ...foundryTokenEndpointEnv(source),
         ...NONESSENTIAL_TRAFFIC_SWITCH,
         ...OUTPUT_TOKEN_CEILING,
         ...DEFERRED_TOOL_LOADING_OFF,
@@ -358,6 +376,10 @@ function parseFoundry(env: Env): ModelProviderConfig {
       `ANTHROPIC_FOUNDRY_RESOURCE must be a Foundry resource name (letters, digits, hyphens), got "${resource}"`,
     );
   }
+  const tokenEndpoint = nonEmpty(env[FOUNDRY_TOKEN_ENDPOINT_ENV_VAR]);
+  if (tokenEndpoint !== undefined) {
+    assertHttpUrl(tokenEndpoint, FOUNDRY_TOKEN_ENDPOINT_ENV_VAR, ["http:"]);
+  }
   pinnedModelOf(provider, env);
   return { provider };
 }
@@ -458,6 +480,7 @@ function parseBedrock(env: Env): ModelProviderConfig {
       ambientFlag: env["AGENT_RUNTIME_AMBIENT_CREDENTIALS"],
       metadataFlag: env["AGENT_RUNTIME_METADATA_CREDENTIALS"],
       metadataEndpoint: env["AWS_EC2_METADATA_SERVICE_ENDPOINT"],
+      credentialsFile: env["AGENT_RUNTIME_CREDENTIALS_FILE"],
     }),
   };
 }

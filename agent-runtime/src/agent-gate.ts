@@ -1,5 +1,6 @@
 import type { HookCallback, HookJSONOutput } from "@anthropic-ai/claude-agent-sdk";
 import { isRecord } from "./narrow.js";
+import { deniedToolUse } from "./read-gate.js";
 
 // The SDK names the sub-agent tool "Task" in init tool lists and "Agent" in the
 // model's tool_use blocks (both measured); the gate registers under both so no rename
@@ -70,13 +71,7 @@ export function createAgentGateHook(declaredAgentNames: readonly string[]): Hook
     }
     const decision = evaluateAgentSpawnRequest(input.tool_input, declared);
     if (!decision.allowed) {
-      return Promise.resolve({
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "deny",
-          permissionDecisionReason: decision.reason,
-        },
-      });
+      return Promise.resolve(deniedToolUse(decision.reason));
     }
     return Promise.resolve({
       hookSpecificOutput: {

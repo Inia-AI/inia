@@ -98,7 +98,7 @@ import type { SpawnRunFn } from "./run-spawner.js";
 import { createPoolUidTreeRemover } from "./setpriv.js";
 import { assertUniqueSkillIdentities, qualifiedSkillName } from "./skill-plugin.js";
 import type { UidPool } from "./uid-pool.js";
-import { ARTIFACTS_DIR_NAME, TRACES_DIR_NAME } from "./workspace-layout.js";
+import { ARTIFACTS_DIR_NAME, attemptRunDirAccess, TRACES_DIR_NAME } from "./workspace-layout.js";
 
 export { bodyReadBudgetMs, socketAbandonment } from "./http-transport.js";
 
@@ -435,7 +435,7 @@ export function startServer(config: ServerConfig, deps: ServerDeps): RunApiServe
     createRunFilesView({
       artifactsRoot: join(WORKSPACE_ROOT, ARTIFACTS_DIR_NAME),
       traceRoot: join(WORKSPACE_ROOT, TRACES_DIR_NAME),
-      removeTree: createPoolUidTreeRemover({ pool: deps.uidPool }),
+      removeTree: createPoolUidTreeRemover({ pool: deps.uidPool, parentAccess: attemptRunDirAccess }),
     });
   const now = deps.now ?? Date.now;
   const admission = deps.admission ?? admitEverything(deps.uidPool);

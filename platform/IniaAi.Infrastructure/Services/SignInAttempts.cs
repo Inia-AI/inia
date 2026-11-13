@@ -36,8 +36,7 @@ public class SignInAttempts(UserManager<User> userManager, IAuthenticationAuditL
 {
     private const string UNKNOWN_METHOD = "unknown";
 
-    private static readonly PasswordHasher<User> _hasher = new();
-    private static readonly string _unknownUserHash = _hasher.HashPassword(new User(), Guid.NewGuid().ToString());
+    private static readonly string _unknownUserHash = PasswordHashing.Hasher.HashPassword(new User(), Guid.NewGuid().ToString());
 
     /// <summary>
     /// Checks a password for the account an email named, or for none. Every path runs one hash
@@ -47,7 +46,7 @@ public class SignInAttempts(UserManager<User> userManager, IAuthenticationAuditL
     {
         if (user is null)
         {
-            _ = _hasher.VerifyHashedPassword(new User(), _unknownUserHash, password);
+            _ = PasswordHashing.Hasher.VerifyHashedPassword(new User(), _unknownUserHash, password);
             await RecordAsync(AuthenticationAuditKind.SignInRefused, null, AuthenticationAuditMethods.PASSWORD_SIGN_IN, clientAddress);
             return PasswordOutcome.Refused;
         }

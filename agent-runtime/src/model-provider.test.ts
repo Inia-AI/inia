@@ -8,6 +8,7 @@ import {
   buildProviderSubprocessEnv,
   buildSubprocessEnv,
   EXECUTION_ID_HEADER,
+  FOUNDRY_TOKEN_ENDPOINT_HEADER,
   LOOPBACK_BASE_URL,
   LOOPBACK_PORT,
   MAX_OUTPUT_TOKENS,
@@ -180,6 +181,19 @@ describe("buildProviderSubprocessEnv", () => {
     });
   });
 
+  it("foundry with a token endpoint points the run's Azure credential chain at it, and only then", () => {
+    const env = buildProviderSubprocessEnv("foundry", {
+      ...FOUNDRY_HOST,
+      AGENT_RUNTIME_FOUNDRY_TOKEN_ENDPOINT: "http://172.31.255.1:8131/msi/token",
+    });
+    expect(env["IDENTITY_ENDPOINT"]).toBe("http://172.31.255.1:8131/msi/token");
+    expect(env["IDENTITY_HEADER"]).toBe(FOUNDRY_TOKEN_ENDPOINT_HEADER);
+    expect("AGENT_RUNTIME_FOUNDRY_TOKEN_ENDPOINT" in env).toBe(false);
+    const without = buildProviderSubprocessEnv("foundry", FOUNDRY_HOST);
+    expect("IDENTITY_ENDPOINT" in without).toBe(false);
+    expect("IDENTITY_HEADER" in without).toBe(false);
+  });
+
   it("foundry passes the base-URL form through when that is what the deployment set", () => {
     const env = buildProviderSubprocessEnv("foundry", {
       ...FOUNDRY_HOST,
@@ -281,6 +295,46 @@ describe("parseModelProviderConfig — bedrock", () => {
   });
 });
 
+describe("parseModelProviderConfig — foundry token endpoint", () => {
+  it("accepts a plain http endpoint on the host", () => {
+    expect(
+      parseModelProviderConfig({
+        ...FOUNDRY_HOST,
+        AGENT_RUNTIME_FOUNDRY_TOKEN_ENDPOINT: "http://172.31.255.1:8131/msi/token",
+      }),
+    ).toEqual({ provider: "foundry" });
+  });
+
+  it("refuses an endpoint that is not an http URL, or that carries userinfo", () => {
+    for (const endpoint of [
+      "172.31.255.1:8131",
+      "ftp://172.31.255.1/token",
+      "http://u:p@172.31.255.1/token",
+    ]) {
+      expect(() =>
+        parseModelProviderConfig({ ...FOUNDRY_HOST, AGENT_RUNTIME_FOUNDRY_TOKEN_ENDPOINT: endpoint }),
+      ).toThrow(ConfigError);
+    }
+  });
+
+  it("still refuses the credential chain's own endpoint variables from the deployment", () => {
+    for (const name of ["IDENTITY_ENDPOINT", "IDENTITY_HEADER"]) {
+      expect(() => parseModelProviderConfig({ ...FOUNDRY_HOST, [name]: "http://172.31.255.1:8131" })).toThrow(
+        ConfigError,
+      );
+    }
+  });
+
+  it("is a Foundry setting that another mode refuses", () => {
+    expect(() =>
+      parseModelProviderConfig({
+        ...BEDROCK_HOST,
+        AGENT_RUNTIME_FOUNDRY_TOKEN_ENDPOINT: "http://172.31.255.1:8131/msi/token",
+      }),
+    ).toThrow(ConfigError);
+  });
+});
+
 describe("parseModelProviderConfig — foundry", () => {
   it("accepts the resource form and the base-URL form, and carries no identity record", () => {
     expect(parseModelProviderConfig(FOUNDRY_HOST)).toEqual({ provider: "foundry" });
@@ -355,6 +409,7 @@ describe("parseModelProviderConfig — foundry", () => {
       "AGENT_RUNTIME_ROLE_ARN",
       "AGENT_RUNTIME_METADATA_CREDENTIALS",
       "AGENT_RUNTIME_AMBIENT_CREDENTIALS",
+      "AGENT_RUNTIME_CREDENTIALS_FILE",
       "AWS_ACCESS_KEY_ID",
       "AWS_SECRET_ACCESS_KEY",
       "AWS_SESSION_TOKEN",
@@ -401,6 +456,7 @@ describe("parseModelProviderConfig — anthropic", () => {
       "AGENT_RUNTIME_ROLE_ARN",
       "AGENT_RUNTIME_METADATA_CREDENTIALS",
       "AGENT_RUNTIME_AMBIENT_CREDENTIALS",
+      "AGENT_RUNTIME_CREDENTIALS_FILE",
       "AWS_ACCESS_KEY_ID",
       "AWS_SECRET_ACCESS_KEY",
       "AWS_SESSION_TOKEN",

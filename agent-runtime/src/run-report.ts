@@ -649,7 +649,8 @@ export function buildQueryOptions(input: {
     // be this PreToolUse hook, which runs first.
     hooks: {
       PreToolUse: [
-        { matcher: READ_TOOL_NAME, hooks: [createReadGateHook(input.workspacePath, input.readMirror)] },
+        // No matcher: Options.toolAliases could rename Read, and a renamed Read must still meet the gate.
+        { hooks: [createReadGateHook(input.workspacePath, input.readMirror)] },
         ...(declaredAgents.length === 0
           ? []
           : AGENT_TOOL_MATCHERS.map((matcher) => ({

@@ -50,7 +50,6 @@ const SampleForm = defineComponent({
     h('button', { 'data-testid': 'sample-form', 'data-busy': String(props.busy), onClick: () => emit('signed-in', TOKENS) }),
 })
 
-const sampleLanding = async () => ({ name: 'Elsewhere' })
 
 const sampleMethod: SignInMethod = {
   provider: SAMPLE.name,
@@ -59,7 +58,6 @@ const sampleMethod: SignInMethod = {
   titleKey: 'sample.title',
   subtitleKey: 'sample.subtitle',
   googleRefusalKeys: { sample_refusal: 'sample.refusal' },
-  landing: sampleLanding,
 }
 
 afterEach(() => {
@@ -150,13 +148,13 @@ describe('LoginForm with a module sign-in method', () => {
     expect(wrapper.find('[data-testid="sign-in-divider"]').exists()).toBe(false)
   })
 
-  it('hands on the method\'s tokens with its landing, and tells the method while the sign-in finishes', async () => {
+  it('hands on the method\'s tokens, and tells the method while the sign-in finishes', async () => {
     answerAuthentication({ [PROVIDERS_URL]: providers(SAMPLE) })
     const wrapper = await mountForm({ busy: true })
 
     await wrapper.get('[data-testid="sample-form"]').trigger('click')
 
-    expect(wrapper.emitted('signed-in')).toEqual([[TOKENS, [sampleLanding]]])
+    expect(wrapper.emitted('signed-in')).toEqual([[TOKENS]])
     expect(wrapper.get('[data-testid="sample-form"]').attributes('data-busy')).toBe('true')
   })
 })
@@ -212,12 +210,12 @@ describe('LoginForm with Google', () => {
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ theme: otherTheme }))
   })
 
-  it('hands on the tokens with the listed method\'s landing', async () => {
+  it('hands on the tokens of the listed method', async () => {
     extensionPoints.signInMethods.push(sampleMethod)
 
     const wrapper = await signInWithGoogle({ status: 200, data: TOKENS })
 
-    expect(wrapper.emitted('signed-in')).toEqual([[TOKENS, [sampleLanding]]])
+    expect(wrapper.emitted('signed-in')).toEqual([[TOKENS]])
   })
 
   it('shows the API\'s words when it refuses a Google account, and keeps the button', async () => {

@@ -54,7 +54,7 @@ public sealed class TokenUsageTotalsSweep
 
         if (added >= BATCH_SIZE && _db.Database.IsSqlServer())
         {
-            _ = await _db.Database.ExecuteSqlRawAsync(TokenUsageNotInTotalsIndex.SQL_SERVER_REFRESH_STATISTICS, cancellationToken);
+            _ = await _db.Database.ExecuteSqlRawAsync(TokenUsageNotInTotalsIndex.SQL_SERVER_REFRESH_STATISTICS, cancellationToken);  // Raw SQL reviewed: constant statistics-refresh statement; no request data
         }
 
         return added;

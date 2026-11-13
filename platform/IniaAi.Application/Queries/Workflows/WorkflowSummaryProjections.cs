@@ -9,7 +9,9 @@ namespace IniaAi.Application.Queries.Workflows;
 
 /// <summary>
 /// Builds a <see cref="WorkflowDto"/> from the few parts of a workflow it shows, so a read never
-/// loads the workflow's run state or citation traces.
+/// loads the workflow's run state or citation traces. It leaves out what a reader must not see: a
+/// document class's description written for the model, and a hidden variable's default value, which
+/// the run fills in on the server.
 /// </summary>
 public static class WorkflowSummaryProjections
 {
@@ -23,7 +25,7 @@ public static class WorkflowSummaryProjections
         IsRequired = variable.IsRequired,
         IsHidden = variable.IsHidden,
         IsConfidential = variable.IsConfidential,
-        DefaultValue = variable.DefaultValue,
+        DefaultValue = variable.IsHidden ? null : variable.DefaultValue,
         Options = variable.Options,
     };
 
@@ -89,7 +91,6 @@ public static class WorkflowSummaryProjections
             ShouldBeSingular = documentClass.ShouldBeSingular,
             IsOutputDocument = documentClass.IsOutputDocument,
             DocumentCategoryId = documentClass.DocumentCategoryId,
-            LlmDescription = documentClass.LlmDescription,
         };
     }
 

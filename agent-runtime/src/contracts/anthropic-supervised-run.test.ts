@@ -5,7 +5,7 @@
 // sandboxed command looks for the key everywhere a run can look, and must find only the placeholder.
 import { describe, expect, it } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startAnthropicProxyServer } from "../anthropic-proxy.js";
@@ -21,8 +21,8 @@ import {
   LOOPBACK_HOST,
   LOOPBACK_PORT,
 } from "../model-provider.js";
+import { removeRunResidue } from "../run-files-test-helpers.js";
 import { createRunSpawner } from "../run-spawner.js";
-import { runAsUid } from "../setpriv.js";
 import { createUidPool } from "../uid-pool.js";
 import { estimateUsageCostUsd, resultModelUsageOf, ZERO_TOKEN_USAGE } from "../usage-cost.js";
 import { claimRetainedRoot, retainedRootsUnder } from "../workspace-layout.js";
@@ -206,18 +206,7 @@ describe("anthropic mode, supervised: spawner → child → CLI → key holder �
       } finally {
         await proxy.close();
         await stub.close();
-        try {
-          await runAsUid(UID_POOL_BASE, [
-            "find",
-            workspaceRoot,
-            tmpRoot,
-            "-user",
-            String(UID_POOL_BASE),
-            "-delete",
-          ]);
-        } finally {
-          rmSync(scratch, { recursive: true, force: true });
-        }
+        await removeRunResidue({ scratch, workspaceRoot, tmpRoot, uid: UID_POOL_BASE });
       }
     },
     SUPERVISED_RUN_TIMEOUT_MS,

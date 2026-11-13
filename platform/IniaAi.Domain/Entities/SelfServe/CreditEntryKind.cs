@@ -7,4 +7,5 @@ public enum CreditEntryKind
     Release,
     Expiry,
     Reversal,
+    WelcomeBonus,
 }

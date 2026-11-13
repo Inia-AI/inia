@@ -56,6 +56,9 @@ export const formatDateTime = (dateString: string | null | undefined): string =>
 /** Day, month name and year, such as 5 December 2026. */
 export const formatLongDate = (dateString: string | null | undefined): string => formatServerDate(dateString, 'd MMMM yyyy')
 
+/** Day, month name, year and time, such as 5 December 2026, 3:29pm. */
+export const formatLongDateTime = (dateString: string | null | undefined): string => formatServerDate(dateString, 'd MMMM yyyy, h:mmaaa')
+
 export const formatDateTimeSeconds = (dateString: string | null | undefined): string =>
   formatServerDate(dateString, 'dd/MM/yyyy HH:mm:ss')
 

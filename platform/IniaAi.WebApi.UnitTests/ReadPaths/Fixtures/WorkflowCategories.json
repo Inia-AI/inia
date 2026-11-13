@@ -57,7 +57,7 @@
             "shouldBeSingular": true,
             "isOutputDocument": false,
             "documentCategoryId": "category-financials",
-            "llmDescription": "An annual report with audited statements."
+            "llmDescription": null
           },
           {
             "key": "Output",
@@ -128,7 +128,7 @@
             "shouldBeSingular": true,
             "isOutputDocument": false,
             "documentCategoryId": "category-financials",
-            "llmDescription": "An annual report with audited statements."
+            "llmDescription": null
           },
           {
             "key": "Output",

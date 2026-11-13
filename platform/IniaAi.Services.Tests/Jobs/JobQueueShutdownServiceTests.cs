@@ -1,8 +1,11 @@
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Configuration;
 using IniaAi.Core.Workflows.Outputs.Interfaces;
 using IniaAi.Services.Jobs;
 using IniaAi.Services.Models.Jobs;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace IniaAi.Services.Tests.Jobs;
@@ -67,5 +70,21 @@ public class JobQueueShutdownServiceTests
         await _service.StopAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(_workflowOutputService.ReceivedCalls());
+    }
+
+    [Fact]
+    public async Task StopAsync_ASecondTime_AfterTheFirstStopDisposedTheJobs_HasNothingLeftToDoAsync()
+    {
+        var settings = new PlatformSettings();
+        settings.IniaAi.MaxConcurrentJobs = 1;
+        await using ServiceProvider provider = new ServiceCollection().BuildServiceProvider();
+        var jobsService = new JobsService(provider, NullLogger<JobsService>.Instance, Options.Create(settings));
+        var service = new JobQueueShutdownService(jobsService, _workflowOutputService, NullLogger<JobQueueShutdownService>.Instance);
+        await service.StopAsync(TestContext.Current.CancellationToken);
+        jobsService.Dispose();
+
+        Exception? secondStop = await Record.ExceptionAsync(() => service.StopAsync(TestContext.Current.CancellationToken));
+
+        Assert.Null(secondStop);
     }
 }

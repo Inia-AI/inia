@@ -85,7 +85,7 @@ public static class AuthenticationConfiguration
             options.Lockout.MaxFailedAccessAttempts = passwordSettings.MaxFailedAccessAttempts;
         })
         .AddRoles<IdentityRole>()
-        .AddEntityFrameworkStores<UserDataDbContext>()
+        .AddPlatformUserStores()
         .AddDefaultTokenProviders();
 
         // Configure OpenIddict
@@ -102,6 +102,12 @@ public static class AuthenticationConfiguration
                 _ = options.SetTokenEndpointUris(
                     "/api/v1/connect/token",
                     "/api/v1/connect/token/mfa");
+                _ = options.SetRevocationEndpointUris("/api/v1/connect/revoke");
+                _ = options.AddEventHandler(SignOutEndsTheSession.Descriptor);
+                foreach (OpenIddictServerHandlerDescriptor descriptor in RefusedRefreshAudit.Descriptors)
+                {
+                    _ = options.AddEventHandler(descriptor);
+                }
 
                 _ = options.AllowPasswordFlow();
                 _ = options.AllowClientCredentialsFlow();

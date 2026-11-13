@@ -81,7 +81,7 @@
     <!-- Main Content Area -->
     <div class="main-container" :inert="drawerOpen || sidebarOpen || undefined">
       <!-- Header -->
-      <header ref="header" class="header">
+      <header ref="header" class="header" :class="{ 'header--menu-collapsed': !menuFits }">
         <div ref="headerStart" class="header-left">
           <button
             v-if="!menuFits || hamburgerMenuItems.length"
@@ -167,6 +167,8 @@
             />
           </div>
 
+          <component :is="item" v-for="(item, index) in extensionPoints.headerItems" :key="index" />
+
           <ThemeToggle />
 
           <button
@@ -235,7 +237,8 @@ import {
 import { useRouter } from 'vue-router'
 import API from '@/api'
 import { IniaSelect } from '@/components/molecules'
-import { activeOrganizationId, clearSignIn, hasAnyRole, hasMultipleTenants } from '@/lib/utils'
+import { activeOrganizationId, hasAnyRole, hasMultipleTenants } from '@/lib/utils'
+import { signOut } from '@/lib/signOut'
 import { extensionPoints, type DrawerLink, type MenuLink } from '@/modules/extensionPoints'
 import { useMyReviewCounts } from '@/composables/useMyReviewCounts'
 import { useCurrentUserRoles } from '@/composables/useCurrentUserRoles'
@@ -438,7 +441,7 @@ const onTenantChange = (value: string | undefined) => {
 }
 
 const onLogout = async () => {
-  clearSignIn()
+  signOut()
   router.push({ name: 'Login' })
 }
 
@@ -579,6 +582,15 @@ const onDownloadLog = async () => {
   border-bottom: 1px solid var(--nav-stroke);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
+}
+
+/* The collapsed menu leaves the middle column empty; dropping it keeps its two gaps for the controls. */
+.header--menu-collapsed {
+  grid-template-columns: auto 1fr;
+}
+
+.header--menu-collapsed .header-actions {
+  grid-column: 2;
 }
 
 .header-left {

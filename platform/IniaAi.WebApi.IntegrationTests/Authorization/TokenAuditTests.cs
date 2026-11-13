@@ -1,5 +1,6 @@
 using System.Net;
 using IniaAi.Application.Auditing;
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Infrastructure.Persistence.Seed;
 using IniaAi.Testing;
 using IniaAi.WebApi.IntegrationTests.Builders;
@@ -33,6 +34,35 @@ public class TokenAuditTests
         Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
         Assert.Single(AuditRecords(AuthenticationAuditKind.SignInSucceeded, AuthenticationAuditMethods.PASSWORD_SIGN_IN), record => record.Message.Contains(account.User.Id, StringComparison.Ordinal));
         Assert.Single(AuditRecords(AuthenticationAuditKind.SignInSucceeded, GrantTypes.RefreshToken), record => record.Message.Contains(account.User.Id, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ARefreshTokenTheServerRefuses_IsRecorded_AsARefusalOfTheRefreshGrant()
+    {
+        var api = new ClientBuilder(services => services.AddLogging(logging => logging.AddProvider(_logs)));
+        await using TestAccount account = await TestAccount.CreateAsync(api);
+        (_, string refreshToken) = await account.SignInAsync();
+        using (IServiceScope scope = api.CurrentScope.ServiceProvider.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IUserSessionRevoker>().RevokeAllAsync(account.User.Id, TestContext.Current.CancellationToken);
+        }
+
+        using HttpResponseMessage refused = await account.RefreshAsync(refreshToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Single(AuditRecords(AuthenticationAuditKind.SignInRefused, GrantTypes.RefreshToken), record => record.Message.Contains(account.User.Id, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AnUnreadableRefreshToken_IsRecorded_AsARefusalOfTheRefreshGrant()
+    {
+        var api = new ClientBuilder(services => services.AddLogging(logging => logging.AddProvider(_logs)));
+        await using TestAccount account = await TestAccount.CreateAsync(api);
+
+        using HttpResponseMessage refused = await account.RefreshAsync("not-a-refresh-token");
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        _ = Assert.Single(AuditRecords(AuthenticationAuditKind.SignInRefused, GrantTypes.RefreshToken));
     }
 
     [Fact]

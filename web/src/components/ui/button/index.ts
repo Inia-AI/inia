@@ -33,11 +33,17 @@ export const buttonVariants = cva(
         sm: 'text-sm',
         lg: 'text-lg',
       },
+      wrap: {
+        true: 'h-auto min-h-9 whitespace-normal text-left',
+        false: '',
+      },
     },
+    compoundVariants: [{ wrap: true, size: 'sm', class: 'min-h-8' }],
     defaultVariants: {
       variant: 'default',
       size: 'default',
       fontSize: 'default',
+      wrap: false,
     },
   },
 )

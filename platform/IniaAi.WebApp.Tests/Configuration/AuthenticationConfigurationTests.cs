@@ -37,6 +37,19 @@ public class AuthenticationConfigurationTests
     }
 
     [Fact]
+    public async Task TheAdminApp_HashesPasswordsWithTheOwaspWorkFactor()
+    {
+        await using ServiceProvider provider = BuildProvider([]);
+        IPasswordHasher<User> hasher = provider.GetRequiredService<IPasswordHasher<User>>();
+        var user = new User();
+
+        string hash = hasher.HashPassword(user, "Abcdefg1");
+
+        Assert.Equal(PasswordHashing.ITERATIONS, provider.GetRequiredService<IOptions<PasswordHasherOptions>>().Value.IterationCount);
+        Assert.Equal(PasswordVerificationResult.Success, PasswordHashing.Hasher.VerifyHashedPassword(user, hash, "Abcdefg1"));
+    }
+
+    [Fact]
     public async Task NoAuthConfig_RegistersNoExternalSchemesAsync()
     {
         await using ServiceProvider provider = BuildProvider([]);

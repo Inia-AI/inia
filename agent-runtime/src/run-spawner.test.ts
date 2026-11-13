@@ -36,6 +36,7 @@ import {
   continuationStartOf,
   createMissedCloseBelt,
   createRunSpawner,
+  createUidSweeper,
   MISSED_CLOSE_STDERR_NOTICE,
   type SpawnRunOptions,
   signalDidNotLand,
@@ -46,7 +47,13 @@ import {
 import { RESULT_UNDELIVERED_EXIT_CODE, type WireResponse } from "./run-wire.js";
 import { privilegeDropArgs, RunAsUidError } from "./setpriv.js";
 import { createUidPool } from "./uid-pool.js";
-import { ARTIFACTS_DIR_NAME, claimRetainedRoot, RETAINED_WORKSPACE_ROOTS } from "./workspace-layout.js";
+import {
+  ARTIFACTS_DIR_NAME,
+  claimRetainedRoot,
+  claimRunDir,
+  RETAINED_WORKSPACE_ROOTS,
+  TRACES_DIR_NAME,
+} from "./workspace-layout.js";
 
 const ZERO_USAGE = {
   inputTokens: 0,
@@ -793,14 +800,15 @@ describe("run spawner", () => {
     expect(settledWhenSpawned).toEqual([false, true]);
   });
 
-  it("claims each retained root's per-execution dir as the supervisor before the child starts", async () => {
+  it("claims each retained root's per-execution dir for the leased uid before the child starts, and seals it after", async () => {
     const workspaceRoot = mkdtempSync(join(tmpdir(), "spawner-claim-"));
     for (const root of RETAINED_WORKSPACE_ROOTS) {
       claimRetainedRoot(join(workspaceRoot, root.name), root.mode);
     }
-    const claimedWhenChildStarted: boolean[] = [];
+    const claimedWhenChildStarted: { mode: string; gid: number }[] = [];
     const { runner } = makeFakeChildRun((child) => {
-      claimedWhenChildStarted.push(existsSync(join(workspaceRoot, "artifacts", "e-1")));
+      const stats = statSync(join(workspaceRoot, "artifacts", "e-1"));
+      claimedWhenChildStarted.push({ mode: (stats.mode & 0o7777).toString(8), gid: stats.gid });
       queueMicrotask(() => child.emit({ kind: "final", response: { ok: true, result: RESULT } }));
     });
     const spawner = createRunSpawner({
@@ -815,16 +823,116 @@ describe("run spawner", () => {
       sweepUidResidue: () => Promise.resolve(),
     });
     expect(await spawner({ executionId: "e-1", prompt: "p" })).toEqual(RESULT);
-    expect(claimedWhenChildStarted).toEqual([true]);
+    expect(claimedWhenChildStarted).toEqual([{ mode: "770", gid: 20001 }]);
     const ownUid = process.getuid?.();
     for (const root of RETAINED_WORKSPACE_ROOTS) {
-      const runDir = join(workspaceRoot, root.name, "e-1");
-      const stats = statSync(runDir);
-      // Claimed by the supervisor uid, not a pool uid, though mode stays 1777 like the root above it.
-      expect((stats.mode & 0o7777).toString(8)).toBe("1777");
+      const stats = statSync(join(workspaceRoot, root.name, "e-1"));
+      expect((stats.mode & 0o7777).toString(8)).toBe("700");
       if (ownUid !== undefined) {
         expect(stats.uid).toBe(ownUid);
       }
+    }
+  });
+
+  it("keeps the uid out of the pool when its run's subtrees cannot be sealed", async () => {
+    const pool = createUidPool({ baseUid: 20001, size: 1 });
+    const { runner } = oneShotSuccessChild();
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "spawner-seal-"));
+    const spawner = createRunSpawner({
+      pool,
+      childRun: runner,
+      workspaceRoot,
+      subprocessEnv: { PATH: "/usr/bin" },
+      modelProvider: { provider: "bedrock", identity: { ambient: true } },
+      buildIdentity: { version: "0.0.0-test", revision: "testrev" },
+      pauseGraceMs: 60_000,
+      documentStore: emptyDocumentStore(),
+      uidSweeper: createUidSweeper({
+        workspaceRoot,
+        log: captureLogger().logger,
+        sweepUidResidue: () => Promise.resolve(),
+        waitForUidIdle: () => Promise.resolve(true),
+        sealRunDirsOf: () => {
+          throw new Error("seal refused");
+        },
+      }),
+      claimRunSubtrees: () => {},
+    });
+    expect(await spawner({ executionId: "e-1", prompt: "p" })).toEqual(RESULT);
+    expect(pool.available()).toBe(0);
+  });
+
+  it("seals the dir a half-done claim opened before the uid returns to the pool", async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "spawner-half-claim-"));
+    for (const root of RETAINED_WORKSPACE_ROOTS) {
+      claimRetainedRoot(join(workspaceRoot, root.name), root.mode);
+    }
+    const pool = createUidPool({ baseUid: 20001, size: 1 });
+    const { runner, children } = oneShotSuccessChild();
+    const spawner = createRunSpawner({
+      pool,
+      childRun: runner,
+      workspaceRoot,
+      subprocessEnv: { PATH: "/usr/bin" },
+      modelProvider: { provider: "bedrock", identity: { ambient: true } },
+      buildIdentity: { version: "0.0.0-test", revision: "testrev" },
+      pauseGraceMs: 60_000,
+      documentStore: emptyDocumentStore(),
+      sweepUidResidue: () => Promise.resolve(),
+      claimRunSubtrees: (executionId, runUid) => {
+        claimRunDir(join(workspaceRoot, TRACES_DIR_NAME, executionId), runUid);
+        throw new Error("no space left on device");
+      },
+    });
+    await expect(spawner({ executionId: "e-1", prompt: "p" })).rejects.toThrow("no space left on device");
+    expect(children.length).toBe(0);
+    expect(statSync(join(workspaceRoot, TRACES_DIR_NAME, "e-1")).mode & 0o777).toBe(0o700);
+    expect(pool.available()).toBe(1);
+  });
+
+  it("seals the run's subtrees at settle even when a process of its uid outlived the run", async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "spawner-busy-seal-"));
+    for (const root of RETAINED_WORKSPACE_ROOTS) {
+      claimRetainedRoot(join(workspaceRoot, root.name), root.mode);
+    }
+    const pool = createUidPool({ baseUid: 20001, size: 1 });
+    const { runner } = oneShotSuccessChild();
+    const spawner = createRunSpawner({
+      pool,
+      childRun: runner,
+      workspaceRoot,
+      subprocessEnv: { PATH: "/usr/bin" },
+      modelProvider: { provider: "bedrock", identity: { ambient: true } },
+      buildIdentity: { version: "0.0.0-test", revision: "testrev" },
+      pauseGraceMs: 60_000,
+      documentStore: emptyDocumentStore(),
+      sweepUidResidue: () => Promise.resolve(),
+      waitForUidIdle: () => Promise.resolve(false),
+    });
+    expect(await spawner({ executionId: "e-1", prompt: "p" })).toEqual(RESULT);
+    for (const root of RETAINED_WORKSPACE_ROOTS) {
+      expect(statSync(join(workspaceRoot, root.name, "e-1")).mode & 0o777).toBe(0o700);
+    }
+    expect(pool.available()).toBe(0);
+  });
+
+  it("seals a retained uid's run subtrees when the reclaimer sweeps it, and only that uid's", async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "sweeper-seal-"));
+    for (const root of RETAINED_WORKSPACE_ROOTS) {
+      claimRetainedRoot(join(workspaceRoot, root.name), root.mode);
+      claimRunDir(join(workspaceRoot, root.name, "e-retained"), 20001);
+      claimRunDir(join(workspaceRoot, root.name, "e-live"), 20002);
+    }
+    const sweeper = createUidSweeper({
+      workspaceRoot,
+      log: captureLogger().logger,
+      sweepUidResidue: () => Promise.resolve(),
+      waitForUidIdle: () => Promise.resolve(true),
+    });
+    expect(await sweeper.sweepWhenIdle(20001)).toEqual({ idle: true, swept: true });
+    for (const root of RETAINED_WORKSPACE_ROOTS) {
+      expect(statSync(join(workspaceRoot, root.name, "e-retained")).mode & 0o777).toBe(0o700);
+      expect(statSync(join(workspaceRoot, root.name, "e-live")).mode & 0o777).toBe(0o770);
     }
   });
 
@@ -1053,6 +1161,22 @@ describe("run spawner", () => {
     expect(children[0]?.input.env["PATH"]).toBe("/usr/bin");
     expect(children[0]?.input.env["AGENT_RUNTIME_METADATA_CREDENTIALS"]).toBe("true");
     expect("AGENT_RUNTIME_ROLE_ARN" in (children[0]?.input.env ?? {})).toBe(false);
+  });
+
+  it("strips host credentials and names the credentials file for the child in file mode", async () => {
+    const { runner, children } = oneShotSuccessChild();
+    await spawnerWith(runner, {
+      subprocessEnv: { PATH: "/usr/bin", AWS_ACCESS_KEY_ID: "AKIA", AWS_SESSION_TOKEN: "t" },
+      modelProvider: {
+        provider: "bedrock",
+        identity: { credentialsFile: "/app/model-credentials/credentials.json" },
+      },
+    })({ executionId: "e-1", prompt: "p" });
+    expect(children[0]?.input.env["AWS_ACCESS_KEY_ID"]).toBeUndefined();
+    expect(children[0]?.input.env["AGENT_RUNTIME_CREDENTIALS_FILE"]).toBe(
+      "/app/model-credentials/credentials.json",
+    );
+    expect("AGENT_RUNTIME_METADATA_CREDENTIALS" in (children[0]?.input.env ?? {})).toBe(false);
   });
 
   it("leaves ambient credentials in place when no role is configured", async () => {

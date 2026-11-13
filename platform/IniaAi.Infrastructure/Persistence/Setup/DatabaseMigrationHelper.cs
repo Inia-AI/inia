@@ -141,7 +141,7 @@ public class DatabaseMigrationHelper
         context.Database.CreateExecutionStrategy().Execute(() =>
         {
             using IDbContextTransaction transaction = context.Database.BeginTransaction();
-            _ = context.Database.ExecuteSqlRaw(script);
+            _ = context.Database.ExecuteSqlRaw(script);  // Raw SQL reviewed: EF-generated migration-history script; no request data
             transaction.Commit();
         });
 

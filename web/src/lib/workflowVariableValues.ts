@@ -64,8 +64,12 @@ export const submittableVariables = (
   definitions: WorkflowVariable[],
 ): Record<string, unknown> => {
   const definitionsByTag = new Map(definitions.map(definition => [definition.replacementTag, definition]))
+  // A hidden variable is the template's own: the run fills it on the server, and the summary does not carry its default.
   return Object.fromEntries(
-    Object.entries(values).filter(([tag, value]) => !isLeftOut(definitionsByTag.get(tag), value)),
+    Object.entries(values).filter(([tag, value]) => {
+      const definition = definitionsByTag.get(tag)
+      return !definition?.isHidden && !isLeftOut(definition, value)
+    }),
   )
 }
 

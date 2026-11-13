@@ -27,7 +27,7 @@ The workflow variable system provides dynamic, user-configurable input parameter
 | `Description` | string | Help text for users (non-nullable, defaults to empty string) |
 | `Type` | WorkflowVariableTypes | Data type of the variable (defaults to `String`) |
 | `IsRequired` | bool | Whether user must provide a value (defaults to `true`) |
-| `IsHidden` | bool | Hide from user input UI |
+| `IsHidden` | bool | The template's own value: kept off the run form, filled from `DefaultValue` on the server, and left out of every read of the template summary and of a run (its `variables`, `variableValues` and re-run inputs) |
 | `IsConfidential` | bool | Masks the value wherever a finished run is shown and withholds it from a re-run (see [Confidential Variables](#confidential-variables)) |
 | `DefaultValue` | string? | Optional preset value (nullable; omitted from JSON when null) |
 | `Options` | Dictionary<string, string> | Available choices for Dropdown/MultiSelect (non-nullable, defaults to empty dictionary) |

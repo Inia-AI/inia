@@ -20,6 +20,7 @@ public class JobQueueShutdownService : IHostedService
     private readonly IJobsService _jobsService;
     private readonly IWorkflowOutputService _workflowOutputService;
     private readonly ILogger<JobQueueShutdownService> _logger;
+    private int _stopped;
 
     public JobQueueShutdownService(
         IJobsService jobsService,
@@ -38,6 +39,13 @@ public class JobQueueShutdownService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        // A host can be stopped twice: under the test host factory, app.Run stops the host and disposes its
+        // services, then the factory stops it again. The queue was drained by the first stop.
+        if (Interlocked.Exchange(ref _stopped, 1) == 1)
+        {
+            return;
+        }
+
         IReadOnlyList<Job> cancelledJobs = _jobsService.CancelAllQueuedJobs();
 
         await CancelDelegatedJobsAsync(cancellationToken);

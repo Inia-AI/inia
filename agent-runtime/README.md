@@ -3,7 +3,7 @@
 A container that runs Claude agent jobs safely. Built on the Claude Agent SDK (TypeScript, on Bun),
 it takes a prompt and optional documents over an HTTP API, runs the agent in a sandbox under a
 spend fuse, a turn fuse and a deadline, and hands back the answer, the files the run produced and a
-trace of what it did. It was built as the agent runtime of the Inia platform, and it runs on its own.
+trace of what it did. It was built as the agent runtime of the Inia AI platform, and it runs on its own.
 
 A run is an agent query over a deliberately narrow tool surface: `Bash` inside bubblewrap with no
 network, a `Read` that serves only the run's own staged documents (rendered PDF pages included),
@@ -173,7 +173,7 @@ wrote, with its licence. To report a vulnerability, follow [`SECURITY.md`](SECUR
 which carry the `claude` binary, are Anthropic's proprietary software under Anthropic's terms, at
 <https://code.claude.com/docs/en/legal-and-compliance>. The licence of this repository does not
 cover them. This repository does not contain them: `bun install` fetches them from npm when you
-build. Inia publishes no image that contains them. You build the image from this source, as the
+build. Inia AI publishes no image that contains them. You build the image from this source, as the
 Quickstart shows, and the image you build contains the SDK under Anthropic's terms.
 
 When you add, remove or update a package, write the package list again with `python3

@@ -121,6 +121,12 @@ describe('submittableVariables', () => {
     expect(submitted).toEqual({ Choice: 'a', Income: 0, Rate: 1.5, Note: 'x', Asof: '2026-01-01' })
   })
 
+  it('leaves a hidden variable out, so the run takes the template default the summary no longer carries', () => {
+    const hidden = [variable('Secret', WorkflowVariableTypes.String, { isRequired: true, isHidden: true })]
+
+    expect(submittableVariables({ Secret: '' }, hidden)).toEqual({})
+  })
+
   it('sends a blank text field that has a default, so the blank overrides the default', () => {
     expect(submittableVariables({ Region: '' }, definitions)).toEqual({ Region: '' })
   })

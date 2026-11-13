@@ -214,6 +214,8 @@ Fields only this endpoint fills (`WorkflowExecutionDto`):
 > **`variables` keys are re-cased by the serializer**
 >
 > `variables` is the raw tag → value dictionary the execution ran with, but the API's global `DictionaryKeyPolicy = JsonNamingPolicy.CamelCase` (`ControllerConfiguration.cs`) re-cases its **keys** on serialization — `NetLeverage` comes back as `netLeverage`, `EBITDA2` as `ebitdA2` — so they do not reliably equal the workflow definition's `replacementTag`s. `variableValues` entries (`replacementTag`, `displayName`, `description`, `type`, `displayValue`, `isConfidential`, `isHidden`, `isRequired`) are DTO property **values**, which the policy leaves untouched: `variableValues[].replacementTag` always carries the definition's original casing. Consumers matching `variables` back to variable definitions — e.g. the SPA's "Edit & Re-run" prefill (`restoreDefinitionCasedVariableKeys` in `frontend:src/lib/workflowReRun.ts`) — must recover key casing from it.
+>
+> A hidden variable's value is left out of both `variables` and `variableValues`, as a confidential variable's value is left out of `variables` and masked in `variableValues`.
 
 ### Get Report Sections
 

@@ -1,5 +1,6 @@
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
+using IniaAi.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,7 @@ public sealed class InMemoryIdentityHarness : IDisposable
             options.UseInMemoryDatabase($"identity-harness-{Guid.NewGuid()}"));
         _ = services.AddIdentityCore<User>()
             .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<UserDataDbContext>()
+            .AddPlatformUserStores()
             .AddDefaultTokenProviders();
 
         _provider = services.BuildServiceProvider();

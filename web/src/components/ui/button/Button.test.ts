@@ -12,6 +12,23 @@ describe('Button', () => {
     expect(wrapper.attributes('type')).toBe('button')
   })
 
+  it('keeps its label on one line unless asked to wrap it, so a long label never runs past a narrow screen', () => {
+    const oneLine = mount(Button, { slots: { default: 'Top up $750 to run this report' } })
+    const wrapping = mount(Button, { props: { wrap: true }, slots: { default: 'Top up $750 to run this report' } })
+
+    expect(oneLine.classes()).toEqual(expect.arrayContaining(['whitespace-nowrap', 'h-9']))
+    expect(wrapping.classes()).toEqual(expect.arrayContaining(['whitespace-normal', 'h-auto', 'min-h-9']))
+    expect(wrapping.classes()).not.toEqual(expect.arrayContaining(['whitespace-nowrap']))
+    expect(wrapping.classes()).not.toContain('h-9')
+  })
+
+  it('keeps a small wrapping button as short as a small one-line button', () => {
+    const wrapping = mount(Button, { props: { wrap: true, size: 'sm' }, slots: { default: 'Top up' } })
+
+    expect(wrapping.classes()).toContain('min-h-8')
+    expect(wrapping.classes()).not.toContain('min-h-9')
+  })
+
   it('keeps an explicit submit type', () => {
     const wrapper = mount(Button, { props: { type: 'submit' }, slots: { default: 'Submit' } })
 

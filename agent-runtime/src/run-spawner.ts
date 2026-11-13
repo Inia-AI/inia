@@ -65,7 +65,12 @@ import { privilegeDropArgs, RunAsUidError, runAsUid, signalRunArgv } from "./set
 import { type UidPool, UidPoolExhaustedError } from "./uid-pool.js";
 import { isPidDeadOrZombie, type UidIdleWait, waitForUidIdle } from "./uid-processes.js";
 import type { TokenUsage } from "./usage-cost.js";
-import { ARTIFACTS_DIR_NAME, claimRunSubtree, retainedRootsUnder } from "./workspace-layout.js";
+import {
+  ARTIFACTS_DIR_NAME,
+  claimRunDir,
+  retainedRootsUnder,
+  sealRunDirsSharedWith,
+} from "./workspace-layout.js";
 
 const ONE_SHOT_ENTRY = "src/run-one-shot.ts";
 
@@ -219,7 +224,7 @@ export type SweptRoot = { path: string; retain: readonly string[] };
 
 export type UidResidueSweep = (input: { uid: number; roots: readonly SweptRoot[] }) => Promise<void>;
 
-export type ClaimRunSubtrees = (executionId: string) => void;
+export type ClaimRunSubtrees = (executionId: string, runUid: number) => void;
 
 export type RunSpawnerDeps = {
   pool: UidPool;
@@ -667,6 +672,7 @@ export type UidSweepOutcome = { idle: boolean; swept: boolean };
 
 export type UidSweeper = {
   idleOf: (uid: number, executionId?: string, settleBudgetMs?: number) => Promise<boolean>;
+  sealRunDirs: (uid: number, executionId?: string) => boolean;
   sweepWhenIdle: (uid: number, executionId?: string) => Promise<UidSweepOutcome>;
 };
 
@@ -676,12 +682,21 @@ export function createUidSweeper(deps: {
   tmpRoot?: string;
   sweepUidResidue?: UidResidueSweep;
   waitForUidIdle?: UidIdleWait;
+  sealRunDirsOf?: (uid: number) => void;
 }): UidSweeper {
   const { log } = deps;
   const sweepResidue = deps.sweepUidResidue ?? sweepUidResidue;
   const uidIdleWait = deps.waitForUidIdle ?? waitForUidIdle;
+  const retainedRoots = retainedRootsUnder(deps.workspaceRoot);
+  const sealRunDirsOf =
+    deps.sealRunDirsOf ??
+    ((uid: number): void => {
+      for (const root of retainedRoots) {
+        sealRunDirsSharedWith(root.path, uid);
+      }
+    });
   const residueRoots: readonly SweptRoot[] = [
-    { path: deps.workspaceRoot, retain: retainedRootsUnder(deps.workspaceRoot).map((root) => root.path) },
+    { path: deps.workspaceRoot, retain: retainedRoots.map((root) => root.path) },
     { path: deps.tmpRoot ?? SHARED_TMP_ROOT, retain: [] },
   ];
 
@@ -714,7 +729,21 @@ export function createUidSweeper(deps: {
 
   // Idle first, then sweep: the sweep runs as the uid, so anything still signalling the
   // uid can kill it. A sweep a signal killed is retried once after idleness is re-proven.
+  // Sealing needs no idleness: a process that outlived its run loses the run's dirs at once.
+  function sealRunDirs(uid: number, executionId?: string): boolean {
+    try {
+      sealRunDirsOf(uid);
+      return true;
+    } catch (error) {
+      log.error("uid_sweep_failed", { ...logFieldsOf(executionId), uid, error: toError(error) });
+      return false;
+    }
+  }
+
   async function sweepWhenIdle(uid: number, executionId?: string): Promise<UidSweepOutcome> {
+    if (!sealRunDirs(uid, executionId)) {
+      return { idle: false, swept: false };
+    }
     let attempt = await sweptOnceIdle(uid, executionId);
     if (attempt.error !== undefined && sweepWasSignalled(attempt.error)) {
       log.warn("uid_sweep_retried", { ...logFieldsOf(executionId), uid, error: toError(attempt.error) });
@@ -727,7 +756,7 @@ export function createUidSweeper(deps: {
     return { idle: attempt.idle, swept: attempt.idle };
   }
 
-  return { idleOf, sweepWhenIdle };
+  return { idleOf, sealRunDirs, sweepWhenIdle };
 }
 
 export function createRunSpawner(deps: RunSpawnerDeps): SpawnRunFn {
@@ -750,12 +779,11 @@ export function createRunSpawner(deps: RunSpawnerDeps): SpawnRunFn {
       ...(deps.sweepUidResidue === undefined ? {} : { sweepUidResidue: deps.sweepUidResidue }),
       ...(deps.waitForUidIdle === undefined ? {} : { waitForUidIdle: deps.waitForUidIdle }),
     });
-  // Retained roots are world-writable, so the per-execution level is claimed here, not lazily by whichever uid publishes first.
   const claimSubtrees =
     deps.claimRunSubtrees ??
-    ((executionId: string): void => {
+    ((executionId: string, runUid: number): void => {
       for (const root of retainedRoots) {
-        claimRunSubtree(root.path, executionId);
+        claimRunDir(join(root.path, executionId), runUid);
       }
     });
 
@@ -777,6 +805,7 @@ export function createRunSpawner(deps: RunSpawnerDeps): SpawnRunFn {
       ...runtimeFacts,
       ...("roleArn" in identity ? { AGENT_RUNTIME_ROLE_ARN: identity.roleArn } : {}),
       ...("metadataCredentials" in identity ? { AGENT_RUNTIME_METADATA_CREDENTIALS: "true" } : {}),
+      ...("credentialsFile" in identity ? { AGENT_RUNTIME_CREDENTIALS_FILE: identity.credentialsFile } : {}),
     };
   }
 
@@ -785,7 +814,6 @@ export function createRunSpawner(deps: RunSpawnerDeps): SpawnRunFn {
     options: SpawnRunOptions = {},
   ): Promise<RunReportResult> {
     const executionId = params.executionId;
-    claimSubtrees(executionId);
     let uid: number;
     let runLog = log.with({ executionId });
     try {
@@ -799,6 +827,17 @@ export function createRunSpawner(deps: RunSpawnerDeps): SpawnRunFn {
           estimatedCostUsd: 0,
           sessionId: null,
         });
+      }
+      throw error;
+    }
+    try {
+      claimSubtrees(executionId, uid);
+    } catch (error) {
+      const { swept } = await sweeper.sweepWhenIdle(uid, executionId);
+      if (swept) {
+        deps.pool.release(uid);
+      } else {
+        deps.pool.retain(uid);
       }
       throw error;
     }
@@ -1191,6 +1230,9 @@ export function createRunSpawner(deps: RunSpawnerDeps): SpawnRunFn {
         }
         await handle.exited;
         signalsSettled = await handle.signalsSettled();
+      }
+      if (!signalsSettled) {
+        sweeper.sealRunDirs(uid, executionId);
       }
       const { idle, swept } = signalsSettled
         ? await sweeper.sweepWhenIdle(uid, executionId)

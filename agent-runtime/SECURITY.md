@@ -16,7 +16,7 @@ An escape from the sandbox that runs the agent's Bash commands is in scope: a co
 
 ## What happens next
 
-Inia's maintainers read every report and answer in it. A confirmed vulnerability is fixed in a release.
+Inia AI's maintainers read every report and answer in it. A confirmed vulnerability is fixed in a release.
 
 ## Versions
 

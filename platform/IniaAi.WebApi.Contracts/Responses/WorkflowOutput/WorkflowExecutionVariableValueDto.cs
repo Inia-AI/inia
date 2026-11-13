@@ -37,8 +37,8 @@ public record WorkflowExecutionVariableValueDto
     public bool IsConfidential { get; init; }
 
     /// <summary>
-    /// Whether the variable is flagged hidden by the workflow definition.
-    /// The frontend uses this to filter the rendered list.
+    /// Whether the variable is flagged hidden by the workflow definition. A run's read leaves hidden variables
+    /// out, so a row never carries true; the field stays for clients that read it.
     /// </summary>
     public bool IsHidden { get; init; }
 

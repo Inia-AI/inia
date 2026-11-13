@@ -23,21 +23,34 @@ export function toRoleSessionName(executionId: string): string {
   return executionId.slice(0, SESSION_NAME_MAX).padEnd(SESSION_NAME_MIN, "-");
 }
 
+function renderProfile(settings: readonly string[], region: string | undefined): string {
+  const lines = [`[profile ${AWS_PROFILE_NAME}]`, ...settings];
+  if (region !== undefined && region !== "") {
+    lines.push(`region = ${region}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 export function renderAssumeRoleProfile(input: {
   roleArn: string;
   region?: string | undefined;
   sessionName: string;
 }): string {
-  const lines = [
-    `[profile ${AWS_PROFILE_NAME}]`,
-    `role_arn = ${input.roleArn}`,
-    "credential_source = Ec2InstanceMetadata",
-    `role_session_name = ${input.sessionName}`,
-  ];
-  if (input.region !== undefined && input.region !== "") {
-    lines.push(`region = ${input.region}`);
-  }
-  return `${lines.join("\n")}\n`;
+  return renderProfile(
+    [
+      `role_arn = ${input.roleArn}`,
+      "credential_source = Ec2InstanceMetadata",
+      `role_session_name = ${input.sessionName}`,
+    ],
+    input.region,
+  );
+}
+
+export function renderCredentialsFileProfile(input: {
+  credentialsFile: string;
+  region?: string | undefined;
+}): string {
+  return renderProfile([`credential_process = /bin/cat ${input.credentialsFile}`], input.region);
 }
 
 export function withoutStaticCredentials(env: Record<string, string>): Record<string, string> {
@@ -50,23 +63,46 @@ export function withoutStaticCredentials(env: Record<string, string>): Record<st
   return filtered;
 }
 
+// The host keeps the file current with the model role's short-lived credentials; the metadata
+// service, which would hand out the host's own role, is never asked.
+export function applyCredentialsFileProfile(input: {
+  env: Record<string, string>;
+  homeDir: string;
+  credentialsFile: string;
+}): Record<string, string> {
+  const configPath = writePrivateConfig(
+    input.homeDir,
+    renderCredentialsFileProfile({ credentialsFile: input.credentialsFile, region: input.env["AWS_REGION"] }),
+  );
+  return {
+    ...withoutStaticCredentials(input.env),
+    AWS_CONFIG_FILE: configPath,
+    AWS_PROFILE: AWS_PROFILE_NAME,
+    AWS_EC2_METADATA_DISABLED: "true",
+  };
+}
+
+function writePrivateConfig(homeDir: string, profile: string): string {
+  const awsDir = join(homeDir, ".aws");
+  mkdirSync(awsDir, { recursive: true, mode: 0o700 });
+  const configPath = join(awsDir, "config");
+  writeFileSync(configPath, profile, { mode: 0o600 });
+  return configPath;
+}
+
 export function applyAssumeRoleProfile(input: {
   env: Record<string, string>;
   homeDir: string;
   roleArn: string;
   executionId: string;
 }): Record<string, string> {
-  const awsDir = join(input.homeDir, ".aws");
-  mkdirSync(awsDir, { recursive: true, mode: 0o700 });
-  const configPath = join(awsDir, "config");
-  writeFileSync(
-    configPath,
+  const configPath = writePrivateConfig(
+    input.homeDir,
     renderAssumeRoleProfile({
       roleArn: input.roleArn,
       region: input.env["AWS_REGION"],
       sessionName: toRoleSessionName(input.executionId),
     }),
-    { mode: 0o600 },
   );
   return {
     ...withoutStaticCredentials(input.env),

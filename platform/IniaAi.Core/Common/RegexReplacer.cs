@@ -17,7 +17,9 @@ public static class RegexReplacer
     public const string TOKEN_RETURN = "[:return:]";
 
     // Guards user-supplied regex from catastrophic backtracking hanging a worker thread.
-    public static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
+    public const int REGEX_TIMEOUT_MILLISECONDS = 1_000;
+
+    public static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(REGEX_TIMEOUT_MILLISECONDS);
 
     /// <summary>
     /// Every TOKEN_NEWLINE / TOKEN_TAB / TOKEN_SPACE / TOKEN_RETURN becomes its actual character.

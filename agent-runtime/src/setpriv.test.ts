@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { EventEmitter } from "node:events";
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { UID_POOL_BASE, UID_POOL_SIZE } from "./config.js";
@@ -12,6 +12,12 @@ import {
   signalRunArgv,
 } from "./setpriv.js";
 import { createUidPool, type UidPool, UidPoolExhaustedError } from "./uid-pool.js";
+import {
+  attemptRunDirAccess,
+  claimRetainedRoot,
+  claimRunDir,
+  sealRunDirsSharedWith,
+} from "./workspace-layout.js";
 
 describe("privilegeDropArgs", () => {
   it("drops to exactly the given uid and gid with every capability cleared", () => {
@@ -205,6 +211,45 @@ describe("createPoolUidTreeRemover", () => {
     await removal;
     expect(existsSync(tree)).toBe(false);
     expect(pool.available()).toBe(1);
+  });
+
+  it("removes a pool uid's attempt inside a sealed run subtree as that uid, and seals the subtree again", async () => {
+    const pool = createUidPool({ baseUid: UID_POOL_BASE, size: 1 });
+    const runUid = pool.acquire();
+    const area = mkdtempSync(join(tmpdir(), "pool-rm-sealed-"));
+    chmodSync(area, 0o755);
+    const root = join(area, "artifacts");
+    claimRetainedRoot(root);
+    const runDir = join(root, "e-1");
+    claimRunDir(runDir, runUid);
+    const tree = join(runDir, "attempt-1");
+    await runAsUid(runUid, ["sh", "-c", `mkdir -m 755 ${tree} && echo report > ${tree}/report.md`]);
+    sealRunDirsSharedWith(root, runUid);
+    pool.release(runUid);
+    const remove = createPoolUidTreeRemover({ pool, parentAccess: attemptRunDirAccess });
+    await remove(tree);
+    expect(existsSync(tree)).toBe(false);
+    expect(statSync(runDir).mode & 0o777).toBe(0o700);
+  });
+
+  it("closes the run dir again when opening it to the owner uid fails partway", async () => {
+    const tree = seededTree();
+    const closed: string[] = [];
+    const remove = createPoolUidTreeRemover({
+      pool: createUidPool({ baseUid: UID_POOL_BASE, size: 1 }),
+      ownerUidOf: () => Promise.resolve(UID_POOL_BASE),
+      runAsUidFn: () => Promise.resolve(),
+      parentAccess: {
+        openTo: () => {
+          throw new Error("run subtree is not shared with the owner uid");
+        },
+        close: (path) => {
+          closed.push(path);
+        },
+      },
+    });
+    await expect(remove(tree)).rejects.toThrow("run subtree is not shared with the owner uid");
+    expect(closed).toEqual([tree]);
   });
 
   it("refuses a tree whose owner changed while it waited for the owner uid", async () => {

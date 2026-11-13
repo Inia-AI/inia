@@ -10,6 +10,7 @@ import {
   SETTINGS_DIRECTORIES,
   settingsFileProvider,
 } from "./config-provider.js";
+import { assertCredentialsFileReadable } from "./credentials-file.js";
 import { createLocalDocumentStore } from "./document-store.js";
 import { toError } from "./errors.js";
 import { createLogger, type Logger } from "./logger.js";
@@ -21,7 +22,7 @@ import { createRunSpawner, createUidSweeper } from "./run-spawner.js";
 import { startServer } from "./server.js";
 import { createUidPool } from "./uid-pool.js";
 import { createUidReclaimer } from "./uid-reclaimer.js";
-import { claimRetainedRoot, retainedRootsUnder } from "./workspace-layout.js";
+import { claimRetainedRoot, retainedRootsUnder, sealEveryRunDir } from "./workspace-layout.js";
 
 const log = createLogger();
 
@@ -120,6 +121,9 @@ async function main(): Promise<void> {
           "deployed environment.",
       });
     }
+    if (config.modelProvider.provider === "bedrock" && "credentialsFile" in config.modelProvider.identity) {
+      assertCredentialsFileReadable(config.modelProvider.identity.credentialsFile);
+    }
     loopbackProcess = await startModelLoopback(config.modelProvider, {
       supervisorEnv: configValues,
       logger: runtimeLog,
@@ -129,6 +133,7 @@ async function main(): Promise<void> {
     const documentStore = createLocalDocumentStore(config.documentRoot);
     for (const root of retainedRootsUnder(WORKSPACE_ROOT)) {
       claimRetainedRoot(root.path, root.mode);
+      sealEveryRunDir(root.path);
     }
     const pool = createUidPool({ baseUid: UID_POOL_BASE, size: UID_POOL_SIZE });
     const admission = createAdmissionQueue(

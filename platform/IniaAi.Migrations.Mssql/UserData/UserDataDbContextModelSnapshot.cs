@@ -2261,6 +2261,18 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.Property<int>("Amount")
                         .HasColumnType("int");
 
+                    b.Property<string>("BillingCountry")
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
+
+                    b.Property<string>("BillingState")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CardFingerprint")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<int>("DebtRepaid")
                         .HasColumnType("int");
 
@@ -2305,6 +2317,9 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasColumnType("int");
 
                     b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WelcomeBonus")
                         .HasColumnType("int");
 
                     b.HasKey("Id");

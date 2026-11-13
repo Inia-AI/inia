@@ -507,6 +507,9 @@ function parseAllowedModelsForProvider(
 
 export function loadServerConfig(env: Record<string, string | undefined>): ServerConfig {
   const modelProvider = parseModelProviderConfig(env);
+  if (modelProvider.provider === "bedrock" && "credentialsFile" in modelProvider.identity) {
+    assertUnderSandboxDeniedRoot(modelProvider.identity.credentialsFile, "AGENT_RUNTIME_CREDENTIALS_FILE");
+  }
   const pinnedModel = pinnedModelOf(modelProvider.provider, env);
   return {
     port: parsePort(env["PORT"]),

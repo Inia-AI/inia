@@ -521,7 +521,7 @@ public class SoftDeleteCleanupService : ISoftDeleteCleanupService
             count = 0;
             foreach (string cpId in counterpartyIdsToDelete)
             {
-                count += await _db.Database.ExecuteSqlRawAsync(
+                count += await _db.Database.ExecuteSqlRawAsync(  // Raw SQL reviewed: join-table and column names are constants quoted per provider; the counterparty id is a parameter
                     deleteSql, [cpId], ct);
             }
 

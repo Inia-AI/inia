@@ -148,7 +148,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
                     "Duplicate submission detected for idempotency key {IdempotencyKey}, returning existing execution {ExecutionId}",
                     LogSanitizer.ForLog(idempotencyKey),
                     existing.Id);
-                return WorkflowExecutionProjections.DtoOf(existing);
+                return ReadableDtoOf(existing, workflow);
             }
         }
 
@@ -404,7 +404,13 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
 
         _jobsService.Execute(queued, shouldUseQueue: true);
 
-        return WorkflowExecutionProjections.DtoOf(execution);
+        return ReadableDtoOf(execution, workflow);
+    }
+
+    private static WorkflowExecutionDto ReadableDtoOf(WorkflowExecution execution, Workflow workflow)
+    {
+        WorkflowExecutionDto dto = WorkflowExecutionProjections.DtoOf(execution);
+        return dto with { Variables = UnreadableVariables.Without(dto.Variables, workflow.Variables) };
     }
 
     /// <summary>

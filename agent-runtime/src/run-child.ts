@@ -1,6 +1,10 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { applyAssumeRoleProfile, withoutStaticCredentials } from "./aws-profile.js";
+import {
+  applyAssumeRoleProfile,
+  applyCredentialsFileProfile,
+  withoutStaticCredentials,
+} from "./aws-profile.js";
 import {
   CHECKPOINT_BUNDLE_FORMAT,
   type CheckpointManifest,
@@ -315,6 +319,10 @@ function bedrockRunEnv(
       roleArn,
       executionId: input.executionId,
     });
+  }
+  const credentialsFile = input.env["AGENT_RUNTIME_CREDENTIALS_FILE"];
+  if (credentialsFile !== undefined && credentialsFile !== "") {
+    return applyCredentialsFileProfile({ env: subprocessEnv, homeDir: input.privateHome, credentialsFile });
   }
   if (input.env["AGENT_RUNTIME_METADATA_CREDENTIALS"] === "true") {
     return withoutStaticCredentials(subprocessEnv);

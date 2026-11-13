@@ -90,6 +90,15 @@ public sealed class ReRunInputsPlanner
             _ = values.Remove(variable.ReplacementTag);
         }
 
+        // A hidden variable is the template's own: validated with its default above, then left to the run to fill.
+        HashSet<string> hiddenTags = new(
+            template.Variables.Where(variable => variable.IsHidden).Select(variable => variable.ReplacementTag),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (string tag in hiddenTags)
+        {
+            _ = values.Remove(tag);
+        }
+
         foreach (string tag in withheldTags.Where(tag => needingInput.All(variable => variable.ReplacementTag != tag)))
         {
             WorkflowVariable variable = template.Variables.First(candidate => candidate.ReplacementTag == tag);
@@ -116,7 +125,7 @@ public sealed class ReRunInputsPlanner
             IsReady = needingInput.Count == 0 && documentClassesNeedingInput.Count == 0 && unavailableDocuments.Count == 0,
             Variables = [.. values.Select(entry => new ReRunVariableValueDto { ReplacementTag = entry.Key, Value = entry.Value })],
             VariablesNeedingInput = needingInput,
-            DefaultedVariables = [.. defaulted.Where(change => needingInput.All(variable => variable.ReplacementTag != change.ReplacementTag))],
+            DefaultedVariables = [.. defaulted.Where(change => !hiddenTags.Contains(change.ReplacementTag) && needingInput.All(variable => variable.ReplacementTag != change.ReplacementTag))],
             RemovedVariables = Removed(runVariables, runValuesByTag, templateTags),
             DocumentClassesNeedingInput = documentClassesNeedingInput,
             UnavailableDocuments = unavailableDocuments,

@@ -2,7 +2,6 @@ import { defineComponent, h, type Component } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import type { ColumnDef } from '@tanstack/vue-table'
 import type { WorkflowReportSummary } from '@/api/workflowReports/schema'
-import type { SignInLanding } from '@/lib/signInDestination'
 
 export interface MenuLink {
   titleKey: string
@@ -64,8 +63,6 @@ export interface SignInMethod {
   titleKey: string
   subtitleKey: string
   googleRefusalKeys?: Record<string, string>
-  /** Where a sign-in lands while the method is listed, or null for the usual place. */
-  landing?: SignInLanding
 }
 
 export const extensionPoints = {
@@ -78,13 +75,17 @@ export const extensionPoints = {
   reportNotices: [] as Component[],
   userMenuItems: [] as Component[],
   overlays: [] as Component[],
+  /** Pieces among the header's actions, before the theme switch. */
+  headerItems: [] as Component[],
+  /** Pieces on the page that says the account does not include a feature, before the way to the Dashboard; each gets the missing capability as `capability`. */
+  notIncludedActions: [] as Component[],
   uploads: [] as UploadFormats[],
   signInMethods: [] as SignInMethod[],
   /** Each says whether an organization on this deployment can lack a capability; the app reads the list only then. */
   capabilitiesVary: [] as (() => boolean)[],
   /** Pieces under a report type's name in the new report flow; each gets the type as `workflow`. */
   reportTypeDetails: [] as Component[],
-  /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow` and the uploaded files as `documents`, each with `countedPages` as the pages the run reads from it, and may emit `holds` with a reason that keeps Submit off, or null to release it. */
+  /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow` and the uploaded files as `documents`, each with `countedPages` as the pages the run reads from it, may emit `holds` with a reason that keeps Submit off, or null to release it, and may emit `submit-label` with Submit's name, such as one with the price, or null for the usual one. */
   reviewDetails: [] as Component[],
 }
 

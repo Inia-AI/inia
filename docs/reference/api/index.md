@@ -111,6 +111,8 @@ A row names its role gate when the endpoint has one; a row with none is open to 
 | `DELETE` | `/auth/2fa/trusted-devices` | Revoke all trusted devices |
 | `DELETE` | `/auth/2fa/trusted-devices/{deviceId}` | Revoke one trusted device |
 
+Signing out posts the session's token to `POST /connect/revoke`, OpenIddict's revocation endpoint, which ends that session on the server ([Revocation and Sign-Out](authentication.md#revocation-and-sign-out)).
+
 ### 🔄 Workflow Executions
 | Method | Endpoint | Description |
 |--------|----------|-------------|

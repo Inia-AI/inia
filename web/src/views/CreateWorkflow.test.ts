@@ -40,6 +40,7 @@ vi.mock('@/api', async () => {
             { replacementTag: 'Note', displayName: 'Note', type: 'String', isRequired: false, options: {} },
             { replacementTag: 'Region', displayName: 'Region', type: 'String', isRequired: false, defaultValue: 'EMEA', options: {} },
             { replacementTag: 'Limit', displayName: 'Limit', type: 'Number', isRequired: true, options: {} },
+            { replacementTag: 'Weighting', displayName: 'Weighting', type: 'Number', isRequired: false, isHidden: true, defaultValue: '3', options: {} },
           ]
         : []
   const workflow = (id: string, workflowTypeName: string) => ({ id, workflowTypeId: id, workflowTypeName, isAvailable: true })
@@ -217,6 +218,55 @@ describe('CreateWorkflow report type step', () => {
   })
 })
 
+describe('CreateWorkflow left for another site and back, such as a payment page', () => {
+  const leaveThePage = () => window.dispatchEvent(new Event('pagehide'))
+
+  beforeEach(() => sessionStorage.clear())
+
+  it('keeps the chosen type, the values and the documents, and opens on the step it was left on', async () => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'credit-memo',
+      workflowTypeId: 'credit-memo',
+      variables: { CompanyName: 'Acme Ltd' },
+      documents: [{ fileId: 'file-1', documentClass: 'Annual Report', name: 'annual-report', extension: '.pdf' }],
+      startStep: 'details',
+    })
+    await mountPage()
+    expect(wrapper!.get('[aria-current="step"]').text()).toContain('Details')
+
+    leaveThePage()
+    wrapper!.unmount()
+    await mountPage()
+
+    expect(wrapper!.get('[aria-current="step"]').text()).toContain('Details')
+    expect((wrapper!.get('input[name="variables.CompanyName"]').element as HTMLInputElement).value).toBe('Acme Ltd')
+    expect(wrapper!.find('[data-testid="rerun-changes"]').exists(), 'a kept form is not a re-run').toBe(false)
+    await press('Back')
+    expect(wrapper!.text()).toContain('annual-report.pdf')
+  })
+
+  it('uses a kept form once, so the next visit starts empty', async () => {
+    useCreateWorkflowPrefillStore().set({ workflowId: 'credit-memo', workflowTypeId: 'credit-memo', variables: {}, documents: [], startStep: 'details' })
+    await mountPage()
+    leaveThePage()
+    wrapper!.unmount()
+    await mountPage()
+    wrapper!.unmount()
+
+    await mountPage()
+
+    expect(wrapper!.get('[aria-current="step"]').text()).toContain('Report type')
+  })
+
+  it('keeps nothing while no report type is chosen', async () => {
+    await mountPage()
+
+    leaveThePage()
+
+    expect(sessionStorage.length).toBe(0)
+  })
+})
+
 describe('CreateWorkflow after a re-run found the workflow changed', () => {
   const prefillReRun = (extraNeeded: { replacementTag: string; displayName: string; reason: 'NoValue' | 'InvalidValue' | 'Confidential'; message: string }[] = []) =>
     useCreateWorkflowPrefillStore().set({
@@ -387,6 +437,22 @@ describe('CreateWorkflow optional number fields', () => {
     expect(createExecution.mock.calls[0]![0].variables).toEqual({ Segment: 'Retail', Region: 'APAC', Limit: 5000 })
   })
 
+  it('never shows or sends a hidden variable, not even one a re-run carries over', async () => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'loan-check',
+      workflowTypeId: 'loan-check',
+      variables: { Segment: 'Retail', Limit: 5000, Region: 'APAC', Weighting: 7 },
+      documents: [],
+      startStep: 'details',
+    })
+    await mountPage()
+
+    expect(wrapper!.find('input[name="variables.Weighting"]').exists()).toBe(false)
+    await submit()
+
+    expect(createExecution.mock.calls[0]![0].variables).not.toHaveProperty('Weighting')
+  })
+
   it('still holds the user on the details step while a required number is blank', async () => {
     await openDetailsStep()
     await chooseSegment()
@@ -492,5 +558,34 @@ describe('CreateWorkflow review piece that holds Submit', () => {
     await wrapper!.get('form').trigger('submit')
     await flushPromises()
     expect(createExecution).not.toHaveBeenCalled()
+  })
+})
+
+describe('CreateWorkflow review piece that names Submit', () => {
+  const namingPiece = defineComponent({
+    emits: ['submit-label'],
+    setup: (_, { emit }) => {
+      emit('submit-label', 'Run report · $75')
+      return () => h('div', { class: 'review-row' })
+    },
+  })
+
+  beforeEach(() => {
+    extensionPoints.reviewDetails.push(namingPiece)
+  })
+
+  afterEach(() => {
+    extensionPoints.reviewDetails.splice(extensionPoints.reviewDetails.indexOf(namingPiece), 1)
+  })
+
+  it('shows the name the piece gives on Submit, such as the price', async () => {
+    await mountPage()
+    await chooseType('hf-monthly')
+    await press('Continue')
+    await press('Continue')
+    await press('Continue')
+    await vi.waitFor(() => expect(wrapper!.get('[aria-current="step"]').text()).toContain('Review'))
+
+    expect(wrapper!.get('button[type="submit"]').text()).toBe('Run report · $75')
   })
 })

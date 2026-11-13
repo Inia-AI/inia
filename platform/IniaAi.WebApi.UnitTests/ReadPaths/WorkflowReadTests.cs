@@ -151,6 +151,26 @@ public class WorkflowReadTests : ReadPathTests
     }
 
     [Fact]
+    public async Task AWorkflowSummary_CarriesNoTextWrittenForTheModel_AndNoHiddenVariablesDefault()
+    {
+        Workflow workflow = BuildWorkflow("workflow-summary-reader", WORKFLOW_TYPE_ID);
+        workflow.Variables.Single(variable => variable.ReplacementTag == "Secret").DefaultValue = "a hidden default";
+        _ = Core.WorkflowTypes.Add(BuildType(WORKFLOW_TYPE_ID, "Corporate Read", categoryId: null, ORGANIZATION_ID, "type-corporation"));
+        _ = Core.Workflows.Add(workflow);
+        _ = await Core.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Core.ChangeTracker.Clear();
+
+        ErrorOr<WorkflowDto> result = await Handler<GetWorkflowSummaryByTypeQueryHandler>().Handle(
+            new GetWorkflowSummaryByTypeQuery(ORGANIZATION_ID, WORKFLOW_TYPE_ID),
+            TestContext.Current.CancellationToken);
+
+        string json = System.Text.Json.JsonSerializer.Serialize(result.Value);
+        Assert.DoesNotContain("An annual report with audited statements.", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("a hidden default", json, StringComparison.Ordinal);
+        Assert.Equal("2025", result.Value.Variables!.Single(variable => variable.ReplacementTag == "ReviewYear").DefaultValue);
+    }
+
+    [Fact]
     public async Task AWorkflowExecution_ReadsAsTheSameJson()
     {
         _ = Core.WorkflowTypes.Add(new WorkflowType(WORKFLOW_TYPE_ID, "Corporate Read"));

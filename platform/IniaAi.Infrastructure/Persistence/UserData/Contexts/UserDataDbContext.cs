@@ -244,7 +244,7 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
             query = $"SELECT * FROM ({query})";
         }
 
-        using DbCommand command = Database.GetDbConnection().CreateCommand();
+        using DbCommand command = Database.GetDbConnection().CreateCommand();  // Raw SQL reviewed: table-existence probe; table and schema names from model metadata, quoted; covers the CommandText line below
         command.CommandText = query;
         Database.OpenConnection();
 

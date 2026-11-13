@@ -1,6 +1,13 @@
 import { ConfigError, nonEmpty } from "./config-error.js";
 
-export type AgentIdentityConfig = { roleArn: string } | { ambient: true } | { metadataCredentials: true };
+export type AgentIdentityConfig =
+  | { roleArn: string }
+  | { ambient: true }
+  | { metadataCredentials: true }
+  | { credentialsFile: string };
+
+// The path rides a credential_process command line, which the AWS chain runs through a shell.
+const CREDENTIALS_FILE_PATTERN = /^\/[A-Za-z0-9._/-]+$/;
 
 // Validated here rather than beside the call: a metadata-mode identity that was
 // never checked for a usable endpoint must not be constructible.
@@ -9,19 +16,28 @@ export function parseAgentIdentity(input: {
   ambientFlag: string | undefined;
   metadataFlag: string | undefined;
   metadataEndpoint?: string | undefined;
+  credentialsFile?: string | undefined;
 }): AgentIdentityConfig {
   const roleArn = nonEmpty(input.roleArn);
   const ambient = input.ambientFlag === "true";
   const metadata = input.metadataFlag === "true";
-  const chosenModes = [roleArn !== undefined, ambient, metadata].filter(Boolean).length;
+  const credentialsFile = nonEmpty(input.credentialsFile);
+  const chosenModes = [roleArn !== undefined, ambient, metadata, credentialsFile !== undefined].filter(
+    Boolean,
+  ).length;
   if (chosenModes !== 1) {
     throw new ConfigError(
       "agent identity is fail-closed: set exactly one of AGENT_RUNTIME_ROLE_ARN, " +
-        "AGENT_RUNTIME_METADATA_CREDENTIALS=true, or AGENT_RUNTIME_AMBIENT_CREDENTIALS=true",
+        "AGENT_RUNTIME_CREDENTIALS_FILE, AGENT_RUNTIME_METADATA_CREDENTIALS=true, " +
+        "or AGENT_RUNTIME_AMBIENT_CREDENTIALS=true",
     );
   }
   if (roleArn !== undefined) {
     return { roleArn };
+  }
+  if (credentialsFile !== undefined) {
+    assertCredentialsFilePath(credentialsFile);
+    return { credentialsFile };
   }
   if (metadata) {
     assertMetadataEndpoint(input.metadataEndpoint);
@@ -47,5 +63,14 @@ function assertMetadataEndpoint(raw: string | undefined): void {
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new ConfigError(`AWS_EC2_METADATA_SERVICE_ENDPOINT must be an http(s) URL, got "${raw}"`);
+  }
+}
+
+function assertCredentialsFilePath(path: string): void {
+  const notNormalized = path.split("/").some((segment) => segment === ".." || segment === ".");
+  if (!CREDENTIALS_FILE_PATTERN.test(path) || notNormalized) {
+    throw new ConfigError(
+      `AGENT_RUNTIME_CREDENTIALS_FILE must be a normalized absolute path of letters, digits, '.', '_', '-' and '/', got "${path}"`,
+    );
   }
 }

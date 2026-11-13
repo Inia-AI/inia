@@ -39,6 +39,10 @@ internal static class WorkflowExecutionVariableResolver
         foreach (WorkflowVariable definition in definitions)
         {
             _ = seenTags.Add(definition.ReplacementTag);
+            if (definition.IsHidden)
+            {
+                continue;
+            }
 
             JsonElement? rawValue =
                 valuesByTag.TryGetValue(definition.ReplacementTag, out JsonElement value)
