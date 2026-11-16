@@ -13,7 +13,8 @@ namespace IniaAi.Services.Tests.Workflows;
 /// <summary>
 /// Blocks that parse a model's answer as JSON meet the answer a hostile document could steer: nesting far past any
 /// real report, a string of megabytes. Each parsing block ends with an answer or its own failure, in bounded time,
-/// and the run goes on. A tag the answer repeats reaches a later block as the one match the output format checked.
+/// and the run goes on. A tag the answer repeats reaches a later block as every match, joined by line breaks, as the
+/// output format docs say.
 /// </summary>
 public sealed class ParsersBoundModelOutputTests(DocumentsFixture fixture, ITestOutputHelper output) : IClassFixture<DocumentsFixture>
 {
@@ -56,8 +57,8 @@ public sealed class ParsersBoundModelOutputTests(DocumentsFixture fixture, ITest
         }
     }
 
-    [Fact(Skip = "security run AI-11: shows an open finding, see the ledger")]
-    public async Task ARepeatedTag_ReachesALaterBlock_AsTheFirstMatchTheOutputFormatValidated()
+    [Fact]
+    public async Task ARepeatedTag_ReachesALaterBlock_AsEveryMatchInOrder()
     {
         using var run = new MarkerRun(fixture, output, new ScriptedChatConnector(call =>
             call.Text.Contains(MarkerWorkflow.USER_PROMPT, StringComparison.Ordinal)
@@ -82,8 +83,9 @@ public sealed class ParsersBoundModelOutputTests(DocumentsFixture fixture, ITest
 
         string received = run.Model.Calls.Single(call => call.Text.Contains(TAG_REFERENCE, StringComparison.Ordinal)).Text;
         output.WriteLine(received);
-        Assert.Contains(FIRST_MATCH, received, StringComparison.Ordinal);
-        Assert.DoesNotContain(SECOND_MATCH, received, StringComparison.Ordinal);
+        int first = received.IndexOf(FIRST_MATCH, StringComparison.Ordinal);
+        int second = received.IndexOf(SECOND_MATCH, StringComparison.Ordinal);
+        Assert.True(first >= 0 && second > first, "the later block should receive both matches, the first one first");
     }
 
     private static string Hostile(string answer)

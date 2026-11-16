@@ -1,8 +1,10 @@
 ﻿using IniaAi.Common.Enums;
 using IniaAi.Common.Text;
 using IniaAi.Domain.Entities.Documents;
+using IniaAi.Domain.Entities.WorkflowExecutions;
 using IniaAi.Domain.Enums;
 using IniaAi.Domain.Persistence.UserData.Repositories;
+using IniaAi.Domain.Specifications.Common;
 using IniaAi.Infrastructure.Persistence.Abstractions;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -209,6 +211,34 @@ public class DocumentRepository : RepositoryBase<Document>, IDocumentRepository
             .FirstOrDefaultAsync(f => !f.IsDeleted && f.OrganizationId == organizationId && f.Name == name && f.SizeBytes == size);
     }
 
+    public async Task<HashSet<string>> GetIdsReadByUnfinishedReportsAsync(
+        IReadOnlyCollection<string> documentIds,
+        string organizationId,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<string?> unfinishedJobIds = Context.Set<WorkflowExecution>()
+            .Where(WorkflowExecutionExpressions.ByOrganization(organizationId))
+            .Where(WorkflowExecutionExpressions.IsInActiveState)
+            .Select(execution => execution.JobId);
+
+        return await Context.Set<DocumentInfo>()
+            .Where(DocumentInfo.IsRunInputOfAny(unfinishedJobIds))
+            .Where(info => documentIds.Contains(info.DocumentId))
+            .Select(info => info.DocumentId)
+            .ToHashSetAsync(cancellationToken);
+    }
+
+    public async Task<List<string>> GetDeletedRunInputFileNamesAsync(string jobId, CancellationToken cancellationToken)
+    {
+        return await Context.Set<DocumentInfo>()
+            .IgnoreQueryFilters()
+            .Where(DocumentInfo.IsRunInputOf(jobId))
+            .Where(info => info.Document != null && info.Document.IsDeleted)
+            .OrderBy(info => info.CreatedAt)
+            .Select(info => Document.FileNameOf(info.Document!.Name, info.Document.FileMetadata == null ? null : info.Document.FileMetadata.Extension))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<List<DocumentInfo>> GetRunInputByJobIdAsync(string jobId)
     {
         return await Context.Set<DocumentInfo>()
@@ -218,11 +248,20 @@ public class DocumentRepository : RepositoryBase<Document>, IDocumentRepository
 
     public async Task<List<DocumentInfo>> GetByJobIdWithMetadataAsync(string jobId)
     {
-        return await Context.Set<DocumentInfo>()
+        return await ByJobIdWithMetadata(Context.Set<DocumentInfo>(), jobId).ToListAsync();
+    }
+
+    public async Task<List<DocumentInfo>> GetByJobIdWithDeletedDocumentsAsync(string jobId)
+    {
+        return await ByJobIdWithMetadata(Context.Set<DocumentInfo>().IgnoreQueryFilters().AsNoTracking(), jobId).ToListAsync();
+    }
+
+    private static IQueryable<DocumentInfo> ByJobIdWithMetadata(IQueryable<DocumentInfo> documentInfos, string jobId)
+    {
+        return documentInfos
             .Where(di => di.JobId == jobId)
             .Include(di => di.Document)
-                .ThenInclude(d => d!.FileMetadata)
-            .ToListAsync();
+                .ThenInclude(d => d!.FileMetadata);
     }
 
     public void RemovePagesRange(IEnumerable<Page> pages)

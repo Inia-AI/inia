@@ -4,6 +4,7 @@ using IniaAi.Domain.Entities.Workflows.Enums;
 namespace IniaAi.Application.Common.Workflows;
 
 /// <param name="PageOverviews">The class's overview prompts; null leaves the stored prompts as they are, and prompts with no text clear them.</param>
+/// <param name="MadeBy">The workflow output that makes this input; null leaves the stored link as it is, and <see cref="DocumentClassMadeBy.None"/> clears it.</param>
 public record DocumentClassEdit(
     string? OriginalKey,
     string Key,
@@ -14,4 +15,5 @@ public record DocumentClassEdit(
     bool ShouldBeSingular,
     bool IsOutputDocument,
     string? LlmDescription = null,
-    PageOverviewPrompts? PageOverviews = null);
+    PageOverviewPrompts? PageOverviews = null,
+    DocumentClassMadeBy? MadeBy = null);

@@ -122,7 +122,7 @@ const sourceSections = computed((): SourceSection[] => {
 })
 
 const breadcrumbs = computed(() => {
-  return sourceChainStack.value.map(s => s.blockTitle || s.blockId)
+  return sourceChainStack.value.map(s => s.blockTitle || $t('shared.citations.synthesis.defaultTitle'))
 })
 
 // Methods
@@ -210,7 +210,7 @@ const getSourceLabel = (agg: AggregatedSource): string => {
     }
   }
   if (isBlockSource(source)) {
-    const title = source.blockTitle || source.blockId || $t('shared.citations.synthesis.defaultTitle')
+    const title = source.blockTitle || $t('shared.citations.synthesis.defaultTitle')
     return $t('shared.citations.synthesis.labelWithTitle', { title })
   }
   return $t('shared.citations.sources.unknownSource')

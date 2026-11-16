@@ -952,6 +952,14 @@ namespace IniaAi.Migrations.Mssql.Core
                     b.Property<string>("LlmDescription")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("MadeByDocumentClassKey")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("MadeByWorkflowTypeId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("PageOverviews")
                         .HasColumnType("nvarchar(max)");
 

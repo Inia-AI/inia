@@ -1,5 +1,7 @@
 using ErrorOr;
+using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.WorkflowExecutions.GetWorkflowExecution;
 using IniaAi.Common.Interfaces.Services.AgentRuntime;
 using IniaAi.Common.Interfaces.Services.AgentRuntime.Activity;
@@ -84,6 +86,7 @@ public class GetWorkflowExecutionQueryHandlerAgentActivityTests : IDisposable
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
             new NoBaselineReader(),
+            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), new EveryWorkflowAvailable(), new NoCreditCost()),
             _feed);
     }
 

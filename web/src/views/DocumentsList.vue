@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast/use-toast'
+import { useCurrentUserId } from '@/composables/useCurrentUserId'
 import { useCurrentUserRoles } from '@/composables/useCurrentUserRoles'
 import { useDebouncedRef } from '@/composables/useDebounce'
 import { useDocumentsQueryState } from '@/composables/useDocumentsQueryState'
@@ -37,14 +38,21 @@ import type { DocumentSummary, DocumentsQueryParams } from '@/api/documents/sche
 import { MEDIA_TYPE_GROUPS, previewKindOf } from '@/lib/formatMediaType'
 import type { OptionType } from '@/types'
 import { ownEmail } from '@/lib/utils'
-import { useCanSeeTeam, useCanUploadDocuments } from '@/composables/useCapabilities'
+import { useCanDeleteOwnDocuments, useCanSeeTeam, useCanUploadDocuments } from '@/composables/useCapabilities'
 
 const searchFieldId = useId()
 
 const { t: $t } = useI18n()
 const { toast } = useToast()
 const { isAdmin, isOperator } = useCurrentUserRoles()
-const canDeleteDocuments = computed(() => isAdmin.value || isOperator.value)
+const canDeleteEveryDocument = computed(() => isAdmin.value || isOperator.value)
+const canDeleteOwnDocuments = useCanDeleteOwnDocuments()
+// The table reads its columns once, so the template keys it on this value: the selection column
+// appears when the organization's features arrive after the first render.
+const canDeleteDocuments = computed(() => canDeleteEveryDocument.value || canDeleteOwnDocuments.value)
+const { userId: currentUserId } = useCurrentUserId()
+const canDelete = (doc: DocumentSummary) =>
+  canDeleteEveryDocument.value || (canDeleteOwnDocuments.value && doc.userId !== null && doc.userId === currentUserId.value)
 
 const { state, patchState } = useDocumentsQueryState()
 
@@ -175,8 +183,10 @@ const toggleRow = (id: string) => {
   selection.value = next
 }
 
+const deletableOnPage = computed(() => rows.value.filter(canDelete).map(r => r.id))
+
 const toggleAll = () => {
-  const allOnPage = rows.value.map(r => r.id)
+  const allOnPage = deletableOnPage.value
   const allSelected = allOnPage.every(id => selection.value.has(id))
   const next = new Set(selection.value)
   if (allSelected) {
@@ -188,8 +198,8 @@ const toggleAll = () => {
 }
 
 const allSelectedState = computed<AllSelectedState>(() => {
-  if (!rows.value.length) return 'off'
-  const onPage = rows.value.map(r => r.id)
+  const onPage = deletableOnPage.value
+  if (!onPage.length) return 'off'
   const selectedCount = onPage.filter(id => selection.value.has(id)).length
   if (selectedCount === 0) return 'off'
   if (selectedCount === onPage.length) return 'on'
@@ -228,15 +238,24 @@ const confirmDelete = async () => {
       })
     } else {
       console.warn('Documents bulk-delete partial failure', result.failed)
+      const namesByReason = new Map<string, string[]>()
+      for (const [id, reason] of Object.entries(result.failed)) {
+        const name = rows.value.find(row => row.id === id)?.name ?? id
+        namesByReason.set(reason, [...(namesByReason.get(reason) ?? []), name])
+      }
+      const reasons = [...namesByReason].map(([reason, names]) => `${names.join(', ')}: ${reason}`).join(' ')
       toast({
         class: 'text-sm',
-        description: $t('page.documents.toast.deletePartial', {
-          deleted: result.deleted.length,
-          total: ids.length,
-          failed: failedCount,
-        }),
+        description:
+          ids.length === 1
+            ? Object.values(result.failed)[0]
+            : `${$t('page.documents.toast.deletePartial', {
+                deleted: result.deleted.length,
+                total: ids.length,
+                failed: failedCount,
+              })} ${reasons}`,
         variant: 'destructive',
-        duration: 3000,
+        duration: 8000,
       })
     }
     selection.value = new Set()
@@ -321,7 +340,9 @@ const { columns } = useDocumentsTable({
   onDownload: row => onDownload(row),
   onEdit,
   onDelete: row => askDeleteSingle(row),
-  canDelete: canDeleteDocuments.value,
+  canDeleteDocuments,
+  canSelectAny: computed(() => deletableOnPage.value.length > 0),
+  canDelete,
 })
 
 // Pagination + sort wiring
@@ -434,6 +455,7 @@ const deleteDialogTitle = computed(() =>
     <div class="card-panel table-container">
       <DataTable
         v-if="rows.length"
+        :key="String(canDeleteDocuments)"
         :columns="columns"
         :data="rows"
         :page-size="state.pageSize"

@@ -1,4 +1,4 @@
-import { h, type ComputedRef, type Ref } from 'vue'
+import { computed, h, type ComputedRef, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ColumnDef, Row } from '@tanstack/vue-table'
 
@@ -33,11 +33,9 @@ interface Options {
   onDownload: (row: DocumentRow, event: Event) => void
   onEdit: (row: DocumentRow, event: Event) => void
   onDelete: (row: DocumentRow, event: Event) => void
-  /**
-   * When false, the selection column and the per-row delete icon are omitted
-   * — used to hide delete UI from users without admin privileges.
-   */
-  canDelete: boolean
+  canDeleteDocuments: Ref<boolean>
+  canSelectAny: Ref<boolean>
+  canDelete: (row: DocumentRow) => boolean
 }
 
 export default ({
@@ -49,6 +47,8 @@ export default ({
   onDownload,
   onEdit,
   onDelete,
+  canDeleteDocuments,
+  canSelectAny,
   canDelete,
 }: Options) => {
   const { t } = useI18n()
@@ -78,6 +78,7 @@ export default ({
         [
           h(Checkbox, {
             'aria-label': column('selectAll'),
+            disabled: !canSelectAny.value,
             modelValue:
               allSelected.value === 'on'
                 ? true
@@ -89,21 +90,24 @@ export default ({
         ],
       ),
     cell: ({ row }: { row: Row<DocumentRow> }) =>
-      h(
-        'label',
-        { class: 'flex items-center' },
-        [
-          h(Checkbox, {
-            'aria-label': t('page.documents.table.selectRow', { name: row.original.name }),
-            modelValue: selection.value.has(row.original.id),
-            'onUpdate:modelValue': () => onToggleRow(row.original.id),
-          }),
-        ],
-      ),
+      canDelete(row.original)
+        ? h(
+            'label',
+            { class: 'flex items-center' },
+            [
+              h(Checkbox, {
+                'aria-label': t('page.documents.table.selectRow', { name: row.original.name }),
+                modelValue: selection.value.has(row.original.id),
+                'onUpdate:modelValue': () => onToggleRow(row.original.id),
+              }),
+            ],
+
+          )
+        : null,
   }
 
-  const columns: ColumnDef<DocumentRow>[] = [
-    ...(canDelete ? [selectColumn] : []),
+  const columns = computed<ColumnDef<DocumentRow>[]>(() => [
+    ...(canDeleteDocuments.value ? [selectColumn] : []),
     {
       accessorKey: 'name',
       header: () => column('name'),
@@ -179,12 +183,12 @@ export default ({
             : null,
           rowAction(row.original, 'download', 'download', 'text-info hover:opacity-80', onDownload),
           rowAction(row.original, 'edit', 'pencil', 'text-muted-foreground hover:text-foreground', onEdit),
-          canDelete
+          canDelete(row.original)
             ? rowAction(row.original, 'delete', 'trash-can', 'text-error hover:opacity-80', onDelete)
             : null,
         ]),
     },
-  ]
+  ])
 
   return { columns }
 }

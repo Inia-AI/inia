@@ -21,6 +21,8 @@ export interface WorkflowExecutionDocument {
   sources?: string[]
   shouldBeDisplayedInOutput: boolean
   isOutputDocument?: boolean
+  /** True when the document was deleted after the run read it: it cannot be opened or downloaded. */
+  isDeleted?: boolean
   /** When the run took this document out of its input before processing it. Null for a document the run used. */
   excludedAt?: string | null
   /** Why the run took this document out of its input, such as Unreadable, NotExpectedDocument or NotNeeded. Null for a document the run used. */
@@ -90,6 +92,22 @@ export interface WorkflowActivity {
   steps: WorkflowActivityStep[]
 }
 
+export interface NextWorkflowDocument {
+  fileId: string
+  name: string
+  extension: string
+  /** The class of the next workflow that the document goes to. */
+  documentClass: string
+}
+
+export interface NextWorkflow {
+  workflowId: string
+  workflowTypeId: string
+  workflowTypeName: string
+  creditCost?: number | null
+  documents: NextWorkflowDocument[]
+}
+
 export interface WorkflowReport {
   id: string
   workflowId?: string
@@ -114,6 +132,8 @@ export interface WorkflowReport {
   /** Whether every live validation case behind the baseline is Active. Null/absent when not a baseline. */
   baselineVerified?: boolean | null
   workflowExecutionDocuments?: WorkflowExecutionDocument[]
+  /** The workflows a finished run leads to, each with the documents of the run it takes. Absent until the run finishes. */
+  nextWorkflows?: NextWorkflow[] | null
   /** Documents the caller sent that the run did not use, each with its exclusion reason. Not in workflowExecutionDocuments. */
   excludedDocuments?: WorkflowExecutionDocument[]
   /** Set when the execution replayed external fetches from another execution (a test artifact). */

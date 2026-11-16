@@ -543,6 +543,8 @@ Referential integrity is application-enforced: re-categorization validates the i
 | `PageOverviews` | text (nullable) | The class's page overview prompts as JSON (`PageOverviewPrompts`: `pages` and `singlePage`, each a system prompt, a user prompt and the advanced-model flag); null when the class uses the workflow default. Absent from the template JSON when empty, so an untouched template's content hash does not move ([Overview generation](../../architecture/rag/overview-generation.md)) |
 | `Requirement` | integer (enum) | `DocumentClassRequirement`: `Required` (0), `Suggested` (1) or `Optional` (2) |
 | `IsOutputDocument` | boolean | Produced rather than consumed |
+| `MadeByWorkflowTypeId` | string (≤100, nullable) | For an input class: the workflow type whose output a file of this class is ("Made by" in the editor). Absent from the template JSON when unset |
+| `MadeByDocumentClassKey` | string (≤450, nullable) | The output class of `MadeByWorkflowTypeId` that a file of this class is. A link counts only when both columns are set |
 | `ShouldBeSingular` | boolean | Expect exactly one document |
 | `CreatedAt` / `UpdatedAt` | datetime | Audit timestamps |
 | `IsDeleted` | boolean | Soft delete flag |

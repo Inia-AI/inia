@@ -1,4 +1,5 @@
 using IniaAi.Domain.Entities.TokenUsage;
+using IniaAi.Domain.Entities.Workflows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -62,7 +63,7 @@ public class TokenUsageConfiguration : IEntityTypeConfiguration<Domain.Entities.
             .HasMaxLength(450);
 
         _ = builder.Property(e => e.WorkflowTypeId)
-            .HasMaxLength(36);
+            .HasMaxLength(WorkflowType.ID_MAX_LENGTH);
 
         _ = builder.Property(e => e.WorkflowExecutionId)
             .HasMaxLength(450);

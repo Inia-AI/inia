@@ -194,7 +194,8 @@ GET /api/v{version}/workflow-reports/{id}
   "duration": "00:02:15",
   "intakeSkippedFiles": null,
   "agentActivity": null,
-  "workflowActivity": null
+  "workflowActivity": null,
+  "nextWorkflows": []
 }
 ```
 
@@ -204,10 +205,11 @@ Fields only this endpoint fills (`WorkflowExecutionDto`):
 
 - `agentActivity` is the live activity of the execution's Agent blocks, one entry per run the process's live feed holds; null once no entry is held. A settled block's record is the [agent-activity digest](workflow-executions.md#run-evidence).
 - `workflowActivity` is the plain-language activity of a running classic workflow, from its version's cached activity script; null unless the execution is running and its template version carries a script.
+- `nextWorkflows` lists the workflows a finished run leads to: the current workflow of each workflow type that has an input [made by](../../guides/workflows/document-classes.md) this run's workflow type and that the organization can run. A user who chose which report types to see gets only those. Each entry has `workflowId` (the workflow a new run names), `workflowTypeId`, `workflowTypeName`, `creditCost` (null in the open build) and `documents`: the run's documents to attach by id, each with `fileId`, `name`, `extension` and `documentClass`, the class of the next workflow it goes to. The documents are the run's output that the input names, only the workbook where the run made the output as a workbook and in another format too, then the run's inputs whose class key the next workflow also has as an input. A deleted document and a document a stage took out of the run are left out, and a workflow whose output is gone from the run is not listed. The list is empty when the run leads nowhere, and null for a run that is not `Draft` or `Confirmed`.
 - `intakeSkippedFiles` is filled only on the [submit](submit-workflow-execution.md) response; here it is null, and the durable record is the `Skipped` rows of the execution's logs.
 
 
-`workflowExecutionDocuments` is the run's input. `excludedDocuments` holds the documents the caller sent that a stage took out of the run before processing them; the open build has no such stage, so the list stays empty. Each entry carries `excludedAt` and `exclusionReason`, one of `Unreadable`, `NotExpectedDocument` or `NotNeeded`; a document appears in exactly one of the two lists, so a caller can tell a document that was never sent from one that was sent and dropped. The same drop is a `Skipped` row in the execution's logs, under the section `Document intake`, with the document id in `replacementTag`. Both document fields are populated on this endpoint only.
+`workflowExecutionDocuments` is the run's input. An entry with `isDeleted: true` is a document deleted after the run read it: the entry keeps the document's name, the file can no longer be opened or downloaded, and the entry leaves the list when the deleted record is purged ([After a delete](documents.md#after-a-delete)). `excludedDocuments` holds the documents the caller sent that a stage took out of the run before processing them; the open build has no such stage, so the list stays empty. Each entry carries `excludedAt` and `exclusionReason`, one of `Unreadable`, `NotExpectedDocument` or `NotNeeded`; a document appears in exactly one of the two lists, so a caller can tell a document that was never sent from one that was sent and dropped. The same drop is a `Skipped` row in the execution's logs, under the section `Document intake`, with the document id in `replacementTag`. Both document fields are populated on this endpoint only.
 
 
 > [!WARNING]

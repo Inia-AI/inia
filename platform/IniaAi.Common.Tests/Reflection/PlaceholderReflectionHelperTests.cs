@@ -164,7 +164,7 @@ public class PlaceholderReflectionHelperTests
     }
 
     [Fact]
-    public void ReplaceAll_UrlEncodedProperty_WholePropertyIsSinglePlaceholder_SubstitutesVerbatim()
+    public void ReplaceAll_UrlEncodedProperty_WholePropertyIsSinglePlaceholder_EncodesTheValueLikeAnyOther()
     {
         // Arrange
         var target = new WithUrlProperty { Url = "{next}" };
@@ -175,7 +175,7 @@ public class PlaceholderReflectionHelperTests
             StringComparison.InvariantCultureIgnoreCase);
 
         // Assert
-        Assert.Equal("https://x.com/a?b=1&c=2", target.Url);
+        Assert.Equal("https%3A%2F%2Fx.com%2Fa%3Fb%3D1%26c%3D2", target.Url);
     }
 
     [Fact]

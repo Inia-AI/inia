@@ -209,9 +209,37 @@ public class UploadFileCommandHandlerIntakeTests : IDisposable
         Assert.False(result.IsError);
         Document document = Assert.Single(await _harness.Context.Documents.Include(d => d.FileMetadata).ToListAsync(TestContext.Current.CancellationToken));
         Assert.Equal(MediaType.ApplicationPdf, document.MediaType);
-        Assert.Equal(".exe", document.FileMetadata!.Extension);
+        Assert.Equal(("report", ".pdf"), (document.FileMetadata!.Name, document.FileMetadata.Extension));
         _ = await _harness.FileStorageManager.Received(1).StoreFileAsync(
             Arg.Any<string>(), UploadFileHandlerHarness.ORGANIZATION_ID, Arg.Any<string>(), document.FileMetadata.Id, Arg.Any<Stream>(), "application/pdf");
+    }
+
+    [Theory]
+    [InlineData("statement", "statement", ".pdf")]
+    [InlineData("statement.PDF", "statement", ".PDF")]
+    [InlineData("annual report.v2", "annual report", ".pdf")]
+    public async Task APdf_IsStoredUnderAPdfsExtension_KeepingOneItAlreadyHas(string uploaded, string name, string extension)
+    {
+        ErrorOr<FileDto> result = await _harness.HandleAsync(MakePdf(), uploaded);
+
+        Assert.False(result.IsError);
+        Document document = Assert.Single(await _harness.Context.Documents.Include(d => d.FileMetadata).ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal((name, extension), (document.FileMetadata!.Name, document.FileMetadata.Extension));
+    }
+
+    [Theory]
+    [InlineData("notes.md", ".md")]
+    [InlineData("figures.csv", ".csv")]
+    [InlineData("notes.txt", ".txt")]
+    [InlineData("notes.exe", ".txt")]
+    [InlineData("notes.log", ".txt")]
+    public async Task AText_IsStoredUnderItsTypesExtension(string uploaded, string extension)
+    {
+        ErrorOr<FileDto> result = await _harness.HandleAsync("Net assets are 1,234,567."u8.ToArray(), uploaded);
+
+        Assert.False(result.IsError);
+        Document document = Assert.Single(await _harness.Context.Documents.Include(d => d.FileMetadata).ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(extension, document.FileMetadata!.Extension);
     }
 
     [Fact]

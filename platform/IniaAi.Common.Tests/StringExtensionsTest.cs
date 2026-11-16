@@ -420,7 +420,7 @@ public class StringExtensionsTest
     }
 
     [Fact]
-    public void ReplacePlaceholdersWithUrlEncodedValues_WholeStringIsSinglePlaceholder_SubstitutesVerbatim()
+    public void ReplacePlaceholdersWithUrlEncodedValues_WholeStringIsSinglePlaceholder_EncodesTheValueLikeAnyOther()
     {
         // Arrange
         string input = "{NextPage.url}";
@@ -431,11 +431,11 @@ public class StringExtensionsTest
             true, inputs, StringComparison.InvariantCultureIgnoreCase);
 
         // Assert
-        Assert.Equal("https://x.com/a?b=1&c=2", result);
+        Assert.Equal("https%3A%2F%2Fx.com%2Fa%3Fb%3D1%26c%3D2", result);
     }
 
     [Fact]
-    public void ReplacePlaceholdersWithUrlEncodedValues_WholeStringIsDoubleBracedPlaceholder_SubstitutesVerbatim()
+    public void ReplacePlaceholdersWithUrlEncodedValues_WholeStringIsDoubleBracedPlaceholder_EncodesTheValueLikeAnyOther()
     {
         // Arrange
         string input = "{{NextPage.url}}";
@@ -446,7 +446,7 @@ public class StringExtensionsTest
             true, inputs, StringComparison.InvariantCultureIgnoreCase);
 
         // Assert
-        Assert.Equal("https://x.com/a?b=1&c=2", result);
+        Assert.Equal("https%3A%2F%2Fx.com%2Fa%3Fb%3D1%26c%3D2", result);
     }
 
     [Fact]

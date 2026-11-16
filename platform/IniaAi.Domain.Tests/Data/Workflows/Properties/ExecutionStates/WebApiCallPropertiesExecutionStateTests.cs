@@ -246,7 +246,7 @@ public class WebApiCallPropertiesExecutionStateTests
     }
 
     [Fact]
-    public void SetExecutionState_WholeTemplateIsSinglePlaceholder_SubstitutesUrlVerbatim()
+    public void SetExecutionState_WholeTemplateIsSinglePlaceholder_EncodesTheValueLikeAnyOther()
     {
         // Arrange
         var props = new WebApiCallProperties { UrlTemplate = "{NextPage.url}" };
@@ -258,7 +258,7 @@ public class WebApiCallPropertiesExecutionStateTests
         });
 
         // Assert
-        Assert.Equal("https://api.example.com/items?page=2&size=10", props.ExecutionState!.Url);
+        Assert.Equal(Uri.EscapeDataString("https://api.example.com/items?page=2&size=10"), props.ExecutionState!.Url);
     }
 
     [Fact]

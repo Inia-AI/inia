@@ -112,6 +112,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
     private readonly Dictionary<string, IStringReplacerStrategy> _stringReplacerStrategies = [];
     private readonly ConcurrentDictionary<string, Dictionary<string, Dictionary<int, Page>>> _ragResultsCache = [];
     private readonly CookieContainer _webApiCookies = new();
+    private IReadOnlySet<string>? _allowedWebOrigins;
 
     // A group member's report output waits for its group: its unit stashes the block annotations
     // here (keyed by block id) instead of materializing, a later pass of the member overwrites the
@@ -301,6 +302,12 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
         Logger.LogInformation("ExecuteWorkflowAsync: AFTER setting - workflow.OrganizationId to '{OrganizationId}' for workflow '{WorkflowId}'",
             organizationId,
             workflow.Id);
+
+        using (IServiceScope scope = ServiceScopeFactory.CreateScope())
+        {
+            IWebCallAddresses webCallAddresses = scope.ServiceProvider.GetService<IWebCallAddresses>() ?? new AnyPublicWebAddress();
+            _allowedWebOrigins = await webCallAddresses.AllowedAsync(organizationId, workflow, cancellationToken);
+        }
 
         _ = Interlocked.Exchange(ref _schedulerEscapedBlockFailures, 0);
         _ = Interlocked.Exchange(ref _consecutivePersistFailures, 0);
@@ -1639,6 +1646,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
         blockExecutionContext.PeerCompanies = RetrievePeerCompanies();
         blockExecutionContext.RagResultsCache = _ragResultsCache;
         blockExecutionContext.WebApiCookies = _webApiCookies;
+        blockExecutionContext.AllowedWebOrigins = _allowedWebOrigins;
         blockExecutionContext.UnitPermits = _scheduler.UnitPermits;
 
         return blockExecutionContext;
@@ -3556,7 +3564,7 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
         var existingBlockIds = section.Blocks.Select(b => b.Id).ToHashSet();
         int blockCountBefore = section.Blocks.Count;
         // Snapshot for ProcessLoops, which takes a plain Dictionary and only reads it.
-        section.ProcessLoops(new Dictionary<string, string>(SharedInputs));
+        section.ProcessLoops(new Dictionary<string, string>(SharedInputs), items => ThrowIfLoopExceedsItemCap(section, items));
         bool loopWasProcessed = section.Blocks.Count != blockCountBefore;
 
         if (loopWasProcessed)
@@ -3576,6 +3584,21 @@ public class WorkflowHandler : IWorkflowHandler, IBlockGroupHost
                 existingBlockIds,
                 blocksToRemoveFromDb,
                 userDataUnitOfWork);
+        }
+    }
+
+    private void ThrowIfLoopExceedsItemCap(Section section, int items)
+    {
+        if (PlatformSettings.Value.IniaAi.MaxLoopItems is { } cap && items > cap)
+        {
+            Logger.LogWarning(
+                "The loop in section {SectionId} runs over {Items} items, more than PlatformSettings:IniaAi:MaxLoopItems allows ({Cap})",
+                section.Id,
+                items,
+                cap);
+            throw new InvalidOperationException(
+                $"The loop in section '{section.Title}' runs over {items} items, more than the {cap} one loop may run over. "
+                + "No block of the loop ran. Shorten the list the loop runs over.");
         }
     }
 

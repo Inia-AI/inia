@@ -32,11 +32,20 @@ public interface IDocumentRepository : IRepository<Document>
     Task<IEnumerable<DocumentInfo>> GetDocumentInfosByJobIdOrWorkTypeIdAsync(string jobId, string organizationId, string? workflowTypeId = null);
     Task AddDocumentInfoAsync(DocumentInfo documentInfo);
     void RemoveDocumentInfo(DocumentInfo documentInfo);
+    /// <summary>Of these documents, the ones that are run input of a report of the organization that has not finished.</summary>
+    Task<HashSet<string>> GetIdsReadByUnfinishedReportsAsync(IReadOnlyCollection<string> documentIds, string organizationId, CancellationToken cancellationToken);
+
+    /// <summary>The file names of the job's run input documents that were deleted since the job was sent them.</summary>
+    Task<List<string>> GetDeletedRunInputFileNamesAsync(string jobId, CancellationToken cancellationToken);
+
     /// <summary>The job's run input: a document taken out of the run is left out.</summary>
     Task<List<DocumentInfo>> GetRunInputByJobIdAsync(string jobId);
 
     /// <summary>Every document the job was given, including one taken out of the run, with its file metadata.</summary>
     Task<List<DocumentInfo>> GetByJobIdWithMetadataAsync(string jobId);
+
+    /// <summary>As <see cref="GetByJobIdWithMetadataAsync"/>, read-only, and a document deleted since the job read it still comes with its record. The purge of a deleted document removes its rows here too.</summary>
+    Task<List<DocumentInfo>> GetByJobIdWithDeletedDocumentsAsync(string jobId);
     void RemovePagesRange(IEnumerable<Page> pages);
     void RemoveEmbeddingVectorsRange(IEnumerable<EmbeddingVector> vectors);
 

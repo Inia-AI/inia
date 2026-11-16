@@ -1,7 +1,9 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.AgentRuns.GetAgentRunActivity;
+using IniaAi.Common.Extensions;
 using IniaAi.Common.Interfaces.Services.AgentRuntime;
 using IniaAi.Common.Interfaces.Services.AgentRuntime.Activity;
 using IniaAi.Common.Text;
@@ -34,6 +36,7 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
     private readonly ICoreUnitOfWork _coreUnitOfWork;
     private readonly IAgentRunActivityFeed? _agentRunActivityFeed;
     private readonly IBaselineReader _baselines;
+    private readonly NextWorkflows _nextWorkflows;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GetWorkflowExecutionQueryHandler"/> class.
@@ -42,12 +45,14 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
     /// <param name="userDataUnitOfWork">The unit of work for user data repository access.</param>
     /// <param name="coreUnitOfWork">The unit of work for core repository access.</param>
     /// <param name="baselines">Reads whether a starred execution's baseline is verified.</param>
+    /// <param name="nextWorkflows">Finds the workflows a finished run leads to.</param>
     /// <param name="agentRunActivityFeed">The live agent-run activity feed; optional so hosts without it keep working.</param>
     public GetWorkflowExecutionQueryHandler(
         ILogger<GetWorkflowExecutionQueryHandler> logger,
         IUserDataUnitOfWork userDataUnitOfWork,
         ICoreUnitOfWork coreUnitOfWork,
         IBaselineReader baselines,
+        NextWorkflows nextWorkflows,
         IAgentRunActivityFeed? agentRunActivityFeed = null)
     {
         _logger = logger;
@@ -55,6 +60,7 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
         _coreUnitOfWork = coreUnitOfWork;
         _agentRunActivityFeed = agentRunActivityFeed;
         _baselines = baselines;
+        _nextWorkflows = nextWorkflows;
     }
 
     /// <inheritdoc />
@@ -77,8 +83,8 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
         WorkflowExecutionDto mapped = element.Execution;
         if (mapped.WorkflowTypeId is null)
         {
-            _logger.LogWarning("WorkflowType with ID: {Id} not found", LogSanitizer.ForLog(request.Id));
-            return Error.NotFound(description: "WorkflowType with ID '{id}' not found.");
+            _logger.LogWarning("Workflow Execution with ID: {Id} has no workflow type", LogSanitizer.ForLog(request.Id));
+            return Error.NotFound(description: "Workflow Execution has no workflow type, so it cannot be shown.");
         }
 
         WorkflowType? workflowType = await _coreUnitOfWork
@@ -90,12 +96,14 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
         WorkflowSnapshotForReport snapshot = await LoadWorkflowSnapshotAsync(mapped.WorkflowId, cancellationToken);
         List<DocumentInfo> documentInfos = await LoadDocumentInfosAsync(mapped.JobId);
 
-        List<WorkflowExecutionDocumentDto> executionDocuments = [.. documentInfos
-            .Where(di => !di.IsExcludedFromRun)
-            .Select(di => CreateExecutionDocumentDto(di, snapshot))];
-        List<WorkflowExecutionDocumentDto> excludedDocuments = [.. documentInfos
-            .Where(di => di.IsExcludedFromRun)
-            .Select(di => CreateExecutionDocumentDto(di, snapshot))];
+        List<(DocumentInfo Info, WorkflowExecutionDocumentDto Shown)> documents = [.. documentInfos
+            .Select(di => (di, CreateExecutionDocumentDto(di, snapshot)))];
+        List<WorkflowExecutionDocumentDto> executionDocuments = [.. documents
+            .Where(document => !document.Info.IsExcludedFromRun)
+            .Select(document => document.Shown)];
+        List<WorkflowExecutionDocumentDto> excludedDocuments = [.. documents
+            .Where(document => document.Info.IsExcludedFromRun)
+            .Select(document => document.Shown)];
 
         List<WorkflowExecutionVariableValueDto> variableValues =
             WorkflowExecutionVariableResolver.Resolve(snapshot.Variables, mapped.Variables);
@@ -112,7 +120,50 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
             BaselineVerified = await ReadBaselineStarStateAsync(mapped, request.OrganizationId, cancellationToken),
             AgentActivity = SnapshotAgentActivity(request.OrganizationId, mapped.Id),
             WorkflowActivity = await ComposeWorkflowActivityAsync(element, cancellationToken),
+            NextWorkflows = await FindNextWorkflowsAsync(mapped, request.OrganizationId, request.UserId, documents, cancellationToken),
         };
+    }
+
+    private async Task<List<NextWorkflowDto>?> FindNextWorkflowsAsync(
+        WorkflowExecutionDto execution,
+        string organizationId,
+        string userId,
+        List<(DocumentInfo Info, WorkflowExecutionDocumentDto Shown)> documents,
+        CancellationToken cancellationToken)
+    {
+        if (!WorkflowExecution.CompletedStates.Contains((WorkflowState)execution.WorkflowState))
+        {
+            return null;
+        }
+
+        List<NextWorkflows.RunDocument> attachable = [.. documents
+            .Where(document => !document.Info.IsExcludedFromRun && document.Info.Document is { IsDeleted: false, FileMetadata: not null })
+            .Select(document => new NextWorkflows.RunDocument(
+                document.Shown.FileId,
+                document.Shown.Name,
+                document.Shown.Extension,
+                document.Shown.DocumentClass,
+                document.Shown.IsOutputDocument,
+                document.Info.Document!.MediaType.IsWorkbook()))];
+
+        try
+        {
+            List<NextWorkflowDto> next = await _nextWorkflows.OfAsync(organizationId, execution.WorkflowTypeId!, attachable, cancellationToken);
+            List<string> chosenTypeIds = next.Count == 0
+                ? []
+                : await UserWorkflowTypeVisibilityResolver.ResolveChosenTypeIdsAsync(_userDataUnitOfWork, userId, cancellationToken);
+
+            return chosenTypeIds.Count == 0 ? next : [.. next.Where(workflow => chosenTypeIds.Contains(workflow.WorkflowTypeId))];
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not find the next workflows of execution {ExecutionId}", execution.Id);
+            return [];
+        }
     }
 
     private async Task<bool?> ReadBaselineStarStateAsync(
@@ -296,7 +347,7 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
         {
             return await _userDataUnitOfWork
                 .Documents
-                .GetByJobIdWithMetadataAsync(jobId);
+                .GetByJobIdWithDeletedDocumentsAsync(jobId);
         }
         catch (OperationCanceledException)
         {
@@ -343,6 +394,7 @@ public sealed class GetWorkflowExecutionQueryHandler : IRequestHandler<GetWorkfl
             Sources = sources,
             ExcludedAt = documentInfo.ExcludedAt,
             ExclusionReason = documentInfo.ExclusionReason,
+            IsDeleted = document?.IsDeleted ?? false,
         };
     }
 

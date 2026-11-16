@@ -1,21 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted, nextTick, watch } from 'vue'
-import { useForm, Field as FormField } from 'vee-validate'
-import { z } from 'zod'
-
 import { TokenRequest } from '@/api/schema'
 import API from '@/api'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
-import {
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import PasswordSignInForm from './PasswordSignInForm.vue'
 import IniaWordmark from '@/components/atoms/IniaWordmark/IniaWordmark.vue'
 import useThemeStore from '@/store/theme'
 import { extensionPoints } from '@/modules/extensionPoints'
@@ -212,26 +203,6 @@ onMounted(async () => {
   }
 })
 
-const formData = ref<TokenRequest>({
-  username: '',
-  password: '',
-})
-
-const schema = computed(() =>
-  z.object({
-    username: z.string().email(),
-    password: z.string().min(3, 'Password required'),
-  }),
-)
-
-const form = useForm<TokenRequest>({
-  validationSchema: schema,
-  initialValues: formData.value,
-})
-
-const handleSubmit = form.handleSubmit(async data => {
-  $emits('submit', data)
-})
 </script>
 
 <template>
@@ -261,54 +232,11 @@ const handleSubmit = form.handleSubmit(async data => {
       <span class="divider-text">{{ $t('page.login.form.or') }}</span>
     </div>
 
-    <!-- Password Login Form -->
-    <form v-if="hasPasswordProvider" @submit="handleSubmit" class="login-form">
-      <FormField v-slot="{ componentField }" name="username">
-        <FormItem>
-          <FormLabel class="form-label">{{ $t('page.login.form.emailLabel') }}</FormLabel>
-          <FormControl>
-            <Input
-              autocomplete
-              v-bind="componentField"
-              v-model="formData.username"
-              :placeholder="$t('page.login.form.emailPlaceholder')"
-              class="form-input"
-            />
-          </FormControl>
-          <FormMessage class="form-error" />
-        </FormItem>
-      </FormField>
-
-      <FormField v-slot="{ componentField }" name="password">
-        <FormItem>
-          <FormLabel class="form-label">{{ $t('page.login.form.passwordLabel') }}</FormLabel>
-          <FormControl>
-            <Input
-              autocomplete
-              v-bind="componentField"
-              v-model="formData.password"
-              :placeholder="$t('page.login.form.passwordPlaceholder')"
-              type="password"
-              class="form-input"
-            />
-          </FormControl>
-          <FormMessage class="form-error" />
-        </FormItem>
-      </FormField>
-
-      <div class="form-actions">
-        <Button type="submit" variant="soft" class="submit-button">
-          {{ $t('page.login.form.submitLabel') }}
-        </Button>
-
-        <RouterLink
-          v-if="passwordReset"
-          :to="{ name: 'ForgotPassword' }"
-          class="forgot-password-link"
-          >{{ $t('page.login.form.forgotPassword') }}</RouterLink
-        >
-      </div>
-    </form>
+    <PasswordSignInForm
+      v-if="hasPasswordProvider"
+      :password-reset="passwordReset"
+      @submit="(data: TokenRequest) => $emits('submit', data)"
+    />
 
     <!-- External Auth Providers -->
     <div
@@ -390,43 +318,6 @@ const handleSubmit = form.handleSubmit(async data => {
   color: var(--text-secondary);
 }
 
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.form-input {
-  background: rgba(26, 56, 80, 0.15);
-  border: 1px solid var(--accent-indigo-from);
-  color: var(--text-primary);
-  border-radius: var(--radius-button);
-  font-size: 14px;
-  padding: 10px 14px;
-  transition: all 0.15s ease-in-out;
-}
-
-.form-input:focus,
-.form-input:focus-visible {
-  background: rgba(26, 56, 80, 0.2);
-  border-color: var(--accent-indigo-from);
-  box-shadow: 0 0 0 3px rgba(26, 56, 80, 0.15);
-  outline: none;
-}
-
-.form-error {
-  color: var(--accent-error);
-  font-size: 13px;
-  margin-top: var(--spacing-xs);
-}
-
 /* Deep override for input component */
 :deep(input) {
   background: rgba(26, 56, 80, 0.15) !important;
@@ -439,41 +330,6 @@ const handleSubmit = form.handleSubmit(async data => {
   outline: none !important;
   border-color: var(--accent-indigo-from) !important;
   box-shadow: 0 0 0 3px rgba(26, 56, 80, 0.15) !important;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: var(--spacing-sm);
-}
-
-.submit-button {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  border-radius: var(--radius-button);
-  padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.15s ease-in-out;
-}
-
-.submit-button:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(26, 56, 80, 0.3);
-}
-
-.forgot-password-link {
-  font-size: 13px;
-  color: var(--accent-indigo-from);
-  text-decoration: underline;
-  cursor: pointer;
-  transition: color 0.15s ease-in-out;
-}
-
-.forgot-password-link:hover {
-  color: var(--accent-indigo-to);
 }
 
 /* External Auth Section */

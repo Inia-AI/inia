@@ -15,6 +15,17 @@ describe('describeRunFailure', () => {
     })
   })
 
+  it('shows the reason the platform wrote for a document deleted before the report started, and offers other documents', () => {
+    const deleted = 'The document annual-report.pdf was deleted before the report started, so the report did not run. Start the report again with the documents it needs.'
+
+    expect(describeRunFailure(t, 'InputDocumentDeleted', deleted)).toEqual({
+      label: 'A document was deleted before the report started',
+      body: deleted,
+      detail: null,
+      action: 'changeDocuments',
+    })
+  })
+
   it('shows the reason the platform wrote for documents with nothing to read or too much text, and offers other documents', () => {
     const nothingToRead = 'The report stopped because the platform found no text to read in its documents. Check that each file opens and is not blank, then start the report again.'
     const tooMuchText = 'The report stopped because its documents hold more text than this report reads. Start it again with fewer or shorter documents.'

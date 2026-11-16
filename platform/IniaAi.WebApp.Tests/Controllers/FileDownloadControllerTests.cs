@@ -249,7 +249,19 @@ public class FileDownloadControllerTests : IDisposable
 
         FileContentResult fileResult = Assert.IsType<FileContentResult>(result);
         Assert.Equal("application/pdf", fileResult.ContentType);
-        Assert.Equal("statement-by-id.dat", fileResult.FileDownloadName);
+        Assert.Equal("statement-by-id.pdf", fileResult.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task DownloadDocument_ANameWithADotInIt_KeepsEveryPartOfIt()
+    {
+        Document document = await StoreDocumentAsync(
+            _testOrganization.Id, "Q3 results v1.2.pdf", "test/q3-results", Encoding.UTF8.GetBytes("%PDF-1.7 test content"));
+
+        IActionResult result = await _controller.DownloadDocument(document.Id);
+
+        FileContentResult fileResult = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("Q3 results v1.2.pdf", fileResult.FileDownloadName);
     }
 
     [Fact]

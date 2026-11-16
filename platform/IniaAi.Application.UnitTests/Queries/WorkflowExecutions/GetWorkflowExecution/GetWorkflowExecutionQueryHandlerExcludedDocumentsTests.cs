@@ -1,10 +1,13 @@
 using ErrorOr;
+using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.WorkflowExecutions.GetWorkflowExecution;
 using IniaAi.Common.Enums;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.WorkflowExecutions;
+using IniaAi.Domain.Specifications.Documents;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.Core.Repositories;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
@@ -20,7 +23,8 @@ namespace IniaAi.Application.UnitTests.Queries.WorkflowExecutions.GetWorkflowExe
 /// The report poll against a real database: a document a stage took out of the run leaves the
 /// input list and is shown in its own list with the reason, so a consumer can tell a document
 /// that was never sent from one that was sent and dropped, and a refused run carries its kind and
-/// detail on the same response.
+/// detail on the same response. A document deleted after the run still comes by its name, marked
+/// as deleted.
 /// </summary>
 public class GetWorkflowExecutionQueryHandlerExcludedDocumentsTests : IDisposable
 {
@@ -47,6 +51,7 @@ public class GetWorkflowExecutionQueryHandlerExcludedDocumentsTests : IDisposabl
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
             new NoBaselineReader(),
+            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), new EveryWorkflowAvailable(), new NoCreditCost()),
             new SilentAgentRunActivityFeed());
     }
 
@@ -96,6 +101,43 @@ public class GetWorkflowExecutionQueryHandlerExcludedDocumentsTests : IDisposabl
 
         _ = Assert.Single(result.WorkflowExecutionDocuments!);
         Assert.Empty(result.ExcludedDocuments!);
+    }
+
+    [Fact]
+    public async Task Handle_AnExecutionWithNoWorkflowType_IsNotFound_WithNoPlaceholderLeftInItsText()
+    {
+        var execution = new WorkflowExecution { OrganizationId = ORG_ID, JobId = JOB_ID };
+        _ = await _context.WorkflowExecutions.AddAsync(execution, TestContext.Current.CancellationToken);
+        _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        ErrorOr<WorkflowExecutionDto> result = await _handler.Handle(
+            new GetWorkflowExecutionQuery(ORG_ID, USER_ID, execution.Id),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorType.NotFound, result.FirstError.Type);
+        Assert.DoesNotContain("{", result.FirstError.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Handle_AfterItsDocumentIsDeleted_TheFinishedReportLoadsAndNamesTheDocumentAsDeleted()
+    {
+        WorkflowExecution execution = await SeedExecutionAsync();
+        Document kept = await SeedDocumentInfoAsync("statement.pdf", excluded: false);
+        Document deleted = await SeedDocumentInfoAsync("annual-report.pdf", excluded: false);
+        IUserDataUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
+        unitOfWork.Documents.Remove((await unitOfWork.Documents.GetFirstOrDefaultAsync(new DocumentByIdTrackingSpec(deleted.Id), TestContext.Current.CancellationToken))!);
+        _ = await unitOfWork.CompleteAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        WorkflowExecutionDto result = await HandleAsync(execution.Id);
+
+        Assert.Equal(2, result.WorkflowExecutionDocuments!.Count);
+        WorkflowExecutionDocumentDto gone = result.WorkflowExecutionDocuments.Single(document => document.FileId == deleted.Id);
+        Assert.True(gone.IsDeleted);
+        Assert.Equal("annual-report", gone.Name);
+        Assert.Equal(".pdf", gone.Extension);
+        Assert.False(result.WorkflowExecutionDocuments.Single(document => document.FileId == kept.Id).IsDeleted);
     }
 
     private async Task<WorkflowExecutionDto> HandleAsync(string executionId)

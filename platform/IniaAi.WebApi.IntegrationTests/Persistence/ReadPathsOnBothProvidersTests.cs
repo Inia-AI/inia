@@ -1,4 +1,5 @@
 using IniaAi.Application.Commands.Documents.UpdateDocument;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.Counterparties.ExportCounterparties;
 using IniaAi.Application.Queries.Documents.GetDocument;
 using IniaAi.Application.Queries.Documents.GetDocumentPage;
@@ -7,6 +8,7 @@ using IniaAi.Application.Queries.Organizations.GetUserTenants;
 using IniaAi.Application.Queries.WorkflowExecutions.GetWorkflowExecution;
 using IniaAi.Application.Queries.Workflows.ListWorkflowCategories;
 using IniaAi.Common.Enums;
+using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Counterparties;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.TokenUsage;
@@ -139,6 +141,16 @@ public abstract class ReadPathsOnBothProvidersTests
         Assert.Equal(3, Assert.Single(execution.Variables!, variable => string.Equals(variable.Key, "PeerCount", StringComparison.OrdinalIgnoreCase)).Value.GetInt32());
         Assert.Equal(TimeSpan.FromMinutes(4), execution.Duration);
         Assert.Equal("2025", Assert.Single(execution.VariableValues!, value => value.ReplacementTag == "ReviewYear").DisplayValue);
+
+        await using (AsyncServiceScope scope = services.CreateAsyncScope())
+        {
+            ICoreUnitOfWork core = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+            MadeByReader reader = Assert.Single(await MadeByLinks.ReadersOfAsync(core, WORKFLOW_TYPE_ID, ["Spread", "Another output"], ORGANIZATION_ID, cancellationToken));
+            Assert.Equal("Read Paths Type", reader.WorkflowTypeName);
+            Assert.Equal(["AnnualReport", "Statement"], reader.Inputs.Select(input => input.Key).Order());
+            Assert.Empty(await MadeByLinks.ReadersOfAsync(core, WORKFLOW_TYPE_ID, ["Spread"], "another-organization", cancellationToken));
+            Assert.Null(await MadeByLinks.OutputReachableByAsync(core, ORGANIZATION_ID, WORKFLOW_TYPE_ID, "Spread", cancellationToken));
+        }
 
         DocumentDetailDto document = await BothProvidersHandlers.HandleAsync<GetDocumentQueryHandler, DocumentDetailDto>(
             services, handler => handler.Handle(new GetDocumentQuery(ORGANIZATION_ID, USER_ID, DOCUMENT_ID), cancellationToken));
@@ -273,7 +285,14 @@ public abstract class ReadPathsOnBothProvidersTests
             Title = "Read paths",
         };
         _ = new DocumentClass(workflow, "AnnualReport") { DisplayName = "Annual Report", Description = "An audited report.", Requirement = DocumentClassRequirement.Required };
-        _ = new DocumentClass(workflow, "Statement") { DisplayName = "Statement", Description = string.Empty, Requirement = DocumentClassRequirement.Required };
+        _ = new DocumentClass(workflow, "Statement")
+        {
+            DisplayName = "Statement",
+            Description = string.Empty,
+            Requirement = DocumentClassRequirement.Required,
+            MadeByWorkflowTypeId = WORKFLOW_TYPE_ID,
+            MadeByDocumentClassKey = "Spread",
+        };
         _ = new WorkflowVariable(workflow, "ReviewYear")
         {
             DisplayName = "Review year",

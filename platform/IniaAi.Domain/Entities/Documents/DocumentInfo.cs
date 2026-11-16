@@ -90,6 +90,12 @@ public partial class DocumentInfo
         return documentInfo => documentInfo.JobId == jobId && documentInfo.ExcludedAt == null;
     }
 
+    /// <summary><see cref="IsRunInputOf"/> for a set of jobs: the rows of any of them that no stage took out of its run.</summary>
+    public static Expression<Func<DocumentInfo, bool>> IsRunInputOfAny(IQueryable<string?> jobIds)
+    {
+        return documentInfo => documentInfo.JobId != null && jobIds.Contains(documentInfo.JobId) && documentInfo.ExcludedAt == null;
+    }
+
     public void ExcludeFromRun(string reason, DateTime excludedAt)
     {
         ExcludedAt = excludedAt;

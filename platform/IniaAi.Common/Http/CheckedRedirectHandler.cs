@@ -8,11 +8,15 @@ namespace IniaAi.Common.Http;
 /// the HTTP stack wrapped at connect time is unwrapped, so no caller retries it as a network
 /// error. Redirects follow the rules of the built-in .NET handler: no step down from HTTPS to
 /// HTTP, a POST becomes a GET after 301, 302 and 300, every method but HEAD becomes a GET after
-/// 303, and the Authorization header is dropped.
+/// 303, and the Authorization header is dropped. A redirect to another scheme, host or port also
+/// drops every header the caller set but Accept, since a header can carry a stored key the next
+/// host must not receive. A caller that named the web addresses it may reach is refused any other
+/// at every hop.
 /// </summary>
 internal sealed class CheckedRedirectHandler : DelegatingHandler
 {
     private const int MAX_REDIRECTS = 50;
+    private const string ACCEPT_HEADER = "Accept";
 
     private readonly OutboundAddressGuard _guard;
 
@@ -29,6 +33,7 @@ internal sealed class CheckedRedirectHandler : DelegatingHandler
             Uri target = request.RequestUri
                 ?? throw new InvalidOperationException("The request has no URI.");
 
+            RefuseOutsideAllowedOrigins(request, target);
             await _guard.CheckProxiedTargetAsync(target, cancellationToken);
 
             HttpResponseMessage response = await SendCheckedAsync(request, cancellationToken);
@@ -41,6 +46,16 @@ internal sealed class CheckedRedirectHandler : DelegatingHandler
             HttpStatusCode status = response.StatusCode;
             response.Dispose();
             PrepareRedirect(request, status, next);
+        }
+    }
+
+    private static void RefuseOutsideAllowedOrigins(HttpRequestMessage request, Uri target)
+    {
+        if (request.Options.TryGetValue(AllowedOriginsHandler.Option, out IReadOnlySet<string>? allowed)
+            && OutboundOrigin.Of(target) is var origin
+            && !allowed.Contains(origin))
+        {
+            throw new OutboundOriginRefusedException(origin);
         }
     }
 
@@ -85,6 +100,14 @@ internal sealed class CheckedRedirectHandler : DelegatingHandler
 
     private static void PrepareRedirect(HttpRequestMessage request, HttpStatusCode status, Uri next)
     {
+        if (request.RequestUri is { } previous && !OutboundOrigin.Same(previous, next))
+        {
+            foreach (string name in request.Headers.Select(header => header.Key).Where(IsNotAccept).ToList())
+            {
+                _ = request.Headers.Remove(name);
+            }
+        }
+
         request.RequestUri = next;
         request.Headers.Authorization = null;
 
@@ -102,5 +125,10 @@ internal sealed class CheckedRedirectHandler : DelegatingHandler
             request.Content = null;
             request.Headers.TransferEncodingChunked = false;
         }
+    }
+
+    private static bool IsNotAccept(string headerName)
+    {
+        return !string.Equals(headerName, ACCEPT_HEADER, StringComparison.OrdinalIgnoreCase);
     }
 }

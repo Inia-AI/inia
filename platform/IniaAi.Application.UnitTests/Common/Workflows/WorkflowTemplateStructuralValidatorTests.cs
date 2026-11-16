@@ -165,6 +165,44 @@ public class WorkflowTemplateStructuralValidatorTests
         Assert.Contains(result.Errors, error => error.Description.Contains("DataOutputName is 101 characters"));
     }
 
+    [Theory]
+    [InlineData("{{TargetUrl}}", null)]
+    [InlineData("https://{{Host}}/v1/search", null)]
+    [InlineData("https://api.parallel.ai/v1/tasks/runs", "{Start.result_url}")]
+    public void AWebAddressWhoseHostAPlaceholderCanFill_ReturnsABlockingErrorOnTheField(string url, string? completionUrl)
+    {
+        var workflow = new Workflow("Report") { Title = "Report" };
+        var section = new Section("Body", workflow);
+        var properties = new WebApiCallProperties { UrlTemplate = url, PollCompletionUrlTemplate = completionUrl };
+        _ = new Block(BlockTypes.WebApiCall, section, "search") { Name = "Company search", Properties = properties };
+
+        WorkflowStructuralValidationResult result = _validator.Validate(workflow);
+
+        Error error = Assert.Single(result.Errors);
+        Assert.True(WorkflowTemplateStructuralValidator.IsWebAddressError(error));
+        Assert.EndsWith(
+            completionUrl is null ? nameof(WebApiCallProperties.UrlTemplate) : nameof(WebApiCallProperties.PollCompletionUrlTemplate),
+            error.Code,
+            StringComparison.Ordinal);
+        Assert.Equal(properties.FixedHostProblems("Company search").Single(), error.Description);
+    }
+
+    [Fact]
+    public void AWebAddressWithItsHostWrittenOut_AndPlaceholdersAfterIt_IsAccepted()
+    {
+        var workflow = new Workflow("Report") { Title = "Report" };
+        var section = new Section("Body", workflow);
+        _ = new Block(BlockTypes.WebApiCall, section, "quote")
+        {
+            Name = "Quote",
+            Properties = new WebApiCallProperties { UrlTemplate = "https://api.example.com/v1/{Id}?q={Query}" },
+        };
+
+        WorkflowStructuralValidationResult result = _validator.Validate(workflow);
+
+        Assert.DoesNotContain(result.Errors, WorkflowTemplateStructuralValidator.IsWebAddressError);
+    }
+
     [Fact]
     public void DataOutputNameTwoBlocksShare_ReturnsWarningOnly()
     {

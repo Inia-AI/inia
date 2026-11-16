@@ -2,6 +2,10 @@ import axios from 'axios'
 import { onUnmounted, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/api'
+import { problemDetailsMessage } from '@/api/base/errors'
+import { readBlobProblem } from '@/lib/downloadFile'
+
+const DOCUMENT_DELETED = 'Document.Deleted'
 
 /**
  * Loads the image the platform renders for a page while `active` holds. For a file type with no
@@ -22,12 +26,13 @@ export function usePageImage(pageId: Ref<string | null>, active: Ref<boolean>) {
     imageUrl.value = null
   }
 
-  const errorMessageFor = (failure: unknown) => {
+  const errorMessageFor = async (failure: unknown) => {
     if (axios.isAxiosError(failure) && failure.response?.status === 403) {
       return $t('shared.citations.errors.noAccess')
     }
     if (axios.isAxiosError(failure) && failure.response?.status === 404) {
-      return $t('shared.citations.errors.notAvailable')
+      const problem = await readBlobProblem(failure)
+      return (problem?.code === DOCUMENT_DELETED && problemDetailsMessage(problem)) || $t('shared.citations.errors.notAvailable')
     }
     return $t('shared.citations.errors.loadPreviewFailed')
   }
@@ -60,8 +65,9 @@ export function usePageImage(pageId: Ref<string | null>, active: Ref<boolean>) {
         error.value = $t('shared.citations.errors.unsupportedContentType')
       }
     } catch (failure) {
+      const message = await errorMessageFor(failure)
       if (isCurrent()) {
-        error.value = errorMessageFor(failure)
+        error.value = message
       }
     } finally {
       if (request === latestRequest) {

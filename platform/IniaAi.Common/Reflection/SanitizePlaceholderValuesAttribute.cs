@@ -5,9 +5,8 @@ namespace IniaAi.Common.Reflection;
 /// each substituted placeholder value for the declared syntax while leaving the template's own
 /// literals untouched:
 /// <list type="bullet">
-/// <item><see cref="PlaceholderSanitization.Url"/> — percent-encodes each value; a property
-/// consisting of a single placeholder substitutes verbatim so a variable can carry a complete
-/// URL.</item>
+/// <item><see cref="PlaceholderSanitization.Url"/> — percent-encodes each value, also when the
+/// property is a single placeholder, so no value can carry a whole URL.</item>
 /// <item><see cref="PlaceholderSanitization.Json"/> — JSON-escapes each value as string content
 /// (assumes the property is JSON-shaped; a non-JSON body would need its own mode). A
 /// single-placeholder property substitutes verbatim so a value can carry a complete JSON

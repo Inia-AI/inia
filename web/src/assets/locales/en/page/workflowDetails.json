@@ -68,6 +68,7 @@
     "hiddenFromOutput": "hidden from output",
     "previewFile": "Preview {name}",
     "downloadFile": "Download {name}",
+    "deleted": "Deleted",
     "exclusionReasons": {
       "Unreadable": "Could not be read",
       "NotExpectedDocument": "Not a document this report uses",

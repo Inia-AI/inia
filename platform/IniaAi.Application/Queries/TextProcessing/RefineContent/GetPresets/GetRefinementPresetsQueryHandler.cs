@@ -1,6 +1,7 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Domain.Entities.Tools;
+using IniaAi.Domain.Specifications.Common;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.WebApi.Models.Responses.ContentRefinement;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +26,7 @@ public class GetRefinementPresetsQueryHandler
         List<RefinementPreset> presets = await _unitOfWork.Repository<RefinementPreset>()
             .GetAll()
             .AsNoTracking()
-            .Where(p => !p.IsDeleted
-                && p.OrganizationId == request.OrganizationId
-                && (p.UserId == request.UserId || p.IsShared))
+            .Where(RefinementPresetExpressions.VisibleTo(request.OrganizationId, request.UserId))
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
 

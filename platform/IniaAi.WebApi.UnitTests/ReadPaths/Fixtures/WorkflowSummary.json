@@ -45,7 +45,8 @@
       "shouldBeSingular": true,
       "isOutputDocument": false,
       "documentCategoryId": "category-financials",
-      "llmDescription": null
+      "llmDescription": null,
+      "madeBy": null
     },
     {
       "key": "Output",
@@ -55,7 +56,8 @@
       "shouldBeSingular": false,
       "isOutputDocument": true,
       "documentCategoryId": null,
-      "llmDescription": null
+      "llmDescription": null,
+      "madeBy": null
     }
   ],
   "counterpartyTypeMappings": [

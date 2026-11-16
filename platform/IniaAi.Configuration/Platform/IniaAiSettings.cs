@@ -19,4 +19,10 @@ public class IniaAiSettings
     public int MaxRetriesForTopicsGeneration { get; set; } = 3;
 
     public int WordCountPerPage { get; set; } = 250;
+
+    /// <summary>
+    /// The most items one loop may run over; empty for no limit. Each item runs every block inside the
+    /// loop, so this bounds the model calls one run can make.
+    /// </summary>
+    public int? MaxLoopItems { get; set; }
 }

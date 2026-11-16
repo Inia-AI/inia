@@ -101,49 +101,16 @@ public class WebApiCallStrategyInternalAddressTests
         Assert.Empty(strategy.RetryWaits);
     }
 
-    [Fact]
-    public async Task ExecuteBlockAsync_AWholePlaceholderUrlFilledWithAnInternalAddress_IsRefused()
-    {
-        (Block block, BlockExecutionContext context) = Arrange(
-            new WebApiCallProperties
-            {
-                UrlTemplate = "{target}",
-                HttpMethod = "GET",
-            },
-            new Dictionary<string, string?> { ["target"] = "http://169.254.169.254/metadata/identity/oauth2/token" });
-
-        OutboundAddressRefusedException refusal = await Assert.ThrowsAsync<OutboundAddressRefusedException>(
-            () => new RetryRecordingStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
-
-        Assert.Equal(InternalAddresses.LINK_LOCAL, refusal.Rule);
-    }
-
-    // A previous block's output can fill the host of an address: the same rule refuses an internal one.
+    // A previous block's output can fill a placeholder, so a placeholder may not reach the host: the block is
+    // refused before any request, whatever the value would have been.
     [Theory]
-    [InlineData("https://{host}/latest/meta-data/", "169.254.169.254", InternalAddresses.LINK_LOCAL)]
-    [InlineData("http://{host}/admin", "127.0.0.1", InternalAddresses.LOOPBACK)]
-    [InlineData("https://{host}/", "localhost", InternalAddresses.LOOPBACK)]
-    public async Task ExecuteBlockAsync_APlaceholderHostThatIsInternal_IsRefused(string template, string value, string rule)
-    {
-        (Block block, BlockExecutionContext context) = Arrange(
-            new WebApiCallProperties { UrlTemplate = template, HttpMethod = "GET" },
-            new Dictionary<string, string?> { ["host"] = value });
-        var strategy = new RetryRecordingStrategy();
-
-        OutboundAddressRefusedException refusal = await Assert.ThrowsAsync<OutboundAddressRefusedException>(
-            () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
-
-        Assert.Equal(rule, refusal.Rule);
-        Assert.Empty(strategy.RetryWaits);
-    }
-
-    // A value that fills part of an address is URL-encoded, so a user-info "@", a slash or a scheme in it cannot
-    // move the request to another host: the address stops being valid and the block fails before any request.
-    [Theory]
+    [InlineData("{part}", "http://169.254.169.254/metadata/identity/oauth2/token")]
+    [InlineData("https://{part}/latest/meta-data/", "169.254.169.254")]
+    [InlineData("http://{part}/admin", "127.0.0.1")]
     [InlineData("https://{part}/v3/quote", "example.invalid@127.0.0.1")]
     [InlineData("https://api.example.invalid{part}", "@127.0.0.1/v3/quote")]
     [InlineData("{part}://example.invalid/v3/quote", "http://127.0.0.1/#")]
-    public async Task ExecuteBlockAsync_APlaceholderThatWouldMoveTheHost_StaysEncoded_AndSendsNothing(string template, string value)
+    public async Task ExecuteBlockAsync_AWebAddressWhoseHostAPlaceholderFills_IsRefused_AndSendsNothing(string template, string value)
     {
         string path = $"/moved-{Guid.NewGuid():N}";
         (Block block, BlockExecutionContext context) = Arrange(
@@ -154,10 +121,32 @@ public class WebApiCallStrategyInternalAddressTests
         InvalidOperationException failure = await Assert.ThrowsAsync<InvalidOperationException>(
             () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
 
-        Assert.StartsWith("Invalid URL format: ", failure.Message, StringComparison.Ordinal);
-        Assert.Contains("%", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(PropertiesOf(block).FixedHostProblems(block.Name).First(), failure.Message);
         Assert.Equal(0, _server.PathHits(path));
         Assert.Empty(strategy.RetryWaits);
+    }
+
+    [Fact]
+    public async Task ExecuteBlockAsync_ACompletionAddressWhoseHostAPlaceholderFills_IsRefused_BeforeTheFirstRequest()
+    {
+        string path = $"/start-{Guid.NewGuid():N}";
+        (Block block, BlockExecutionContext context) = Arrange(
+            new WebApiCallProperties
+            {
+                UrlTemplate = $"{_server.BaseUrl}{path}",
+                HttpMethod = "GET",
+                PollUntilJsonPath = "status",
+                PollUntilSuccessValues = "done",
+                PollCompletionUrlTemplate = "{Start.result_url}",
+            },
+            new Dictionary<string, string?> { ["Start.result_url"] = "http://169.254.169.254/result" });
+        var strategy = new RetryRecordingStrategy();
+
+        InvalidOperationException failure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => strategy.ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
+
+        Assert.Contains(WebApiCallProperties.COMPLETION_URL_TEMPLATE_LABEL, failure.Message, StringComparison.Ordinal);
+        Assert.Equal(0, _server.PathHits(path));
     }
 
     [Fact]
@@ -177,5 +166,10 @@ public class WebApiCallStrategyInternalAddressTests
 
         Assert.Equal(InternalAddresses.LINK_LOCAL, refusal.Rule);
         Assert.Empty(strategy.RetryWaits);
+    }
+
+    private static WebApiCallProperties PropertiesOf(Block block)
+    {
+        return (WebApiCallProperties)block.Properties;
     }
 }

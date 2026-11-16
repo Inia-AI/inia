@@ -10,10 +10,22 @@ namespace IniaAi.Application.Errors;
 public static class DocumentErrorFactory
 {
     public const string NOT_FOUND_MESSAGE = "Document not found.";
+    public const string READ_BY_RUNNING_REPORT_MESSAGE = "A report that is still running reads this document. Delete the document after the report finishes.";
 
     public static Error NotFound()
     {
         return Error.NotFound(description: NOT_FOUND_MESSAGE);
+    }
+
+    /// <summary>For the organization of a deleted document only: anyone else gets the plain not-found.</summary>
+    public static Error Deleted()
+    {
+        return Error.NotFound("Document.Deleted", "The document was deleted, so its pages can no longer be shown.");
+    }
+
+    public static Error ReadByRunningReport()
+    {
+        return Error.Conflict("Document.ReadByRunningReport", READ_BY_RUNNING_REPORT_MESSAGE);
     }
 
     public static Error PageNotFound(int pageNumber)

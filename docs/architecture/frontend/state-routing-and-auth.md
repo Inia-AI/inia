@@ -18,7 +18,7 @@ State is intentionally thin — most server data is fetched on demand by the API
 |---|---|---|---|
 | `login` | `src/store/login.ts` | A single `creds` ref (`{}`). Minimal scratch slot. | In-memory |
 | `theme` | `src/store/theme.ts` | `theme` (`'light' \| 'dark'`, default `'dark'`); `toggleTheme` / `setTheme`. Applies `.dark` class to `document.documentElement`. | `localStorage['theme']` |
-| `createWorkflowPrefill` | `src/store/createWorkflowPrefill.ts` | A single-shot hand-off slot (`pending: WorkflowReRunPrefill \| null`) between `WorkflowDetails` ("edit inputs first" on a re-run) and the `/workflows/create` page. | In-memory |
+| `createWorkflowPrefill` | `src/store/createWorkflowPrefill.ts` | A single-shot hand-off slot (`pending: CreateWorkflowPrefill \| null`) between a report ("edit inputs first" on a re-run, changed documents, or an extension piece that opens the next workflow) and the `/workflows/create` page. | In-memory |
 | `agentActivity` | `src/store/agentActivity.ts` | The desk's live activity: one entry per agent block leg (run, block, round) with its activity digest and whether it has settled, the section progress of each running run, and which entry's panel is open. A run can have both, and the desk then shows its section progress and its agents together. `railEntries` shows the newest round of each block; `prune` drops an entry not seen for 15 minutes. | In-memory |
 
 > [!NOTE]

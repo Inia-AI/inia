@@ -747,6 +747,12 @@ public partial class WebApiCallStrategy : IBlockStrategy
             throw new InvalidOperationException(errorMessage);
         }
 
+        if (props.FixedHostProblems(block.Name).FirstOrDefault() is string hostProblem)
+        {
+            context.Logger.LogError("{block} {ErrorMessage}", block, hostProblem);
+            throw new InvalidOperationException(hostProblem);
+        }
+
         if (!Uri.TryCreate(props.ExecutionState.Url, UriKind.Absolute, out Uri? uri)
             || (uri.Scheme != "http" && uri.Scheme != "https"))
         {
@@ -980,7 +986,7 @@ public partial class WebApiCallStrategy : IBlockStrategy
         try
         {
             return await ExecuteRequestAsync(
-                context.PlatformSettings.OutboundAccess.Guard.SharedHandlerWith(context.WebApiCookies),
+                context.PlatformSettings.OutboundAccess.Guard.SharedHandlerWith(context.WebApiCookies, context.AllowedWebOrigins),
                 url,
                 method,
                 payload,
@@ -995,6 +1001,13 @@ public partial class WebApiCallStrategy : IBlockStrategy
                 "A WebApiCall request was refused ({Address}): {Reason}",
                 refusal.Address,
                 LogSanitizer.ForLog(refusal.Message));
+            throw;
+        }
+        catch (OutboundOriginRefusedException refusal)
+        {
+            context.Logger.LogWarning(
+                "A WebApiCall request to {Origin} was refused: the run may not reach that web address",
+                LogSanitizer.ForLog(refusal.Origin));
             throw;
         }
     }

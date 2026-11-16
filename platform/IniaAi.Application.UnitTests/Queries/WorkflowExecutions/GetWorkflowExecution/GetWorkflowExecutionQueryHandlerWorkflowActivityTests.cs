@@ -1,5 +1,7 @@
 using ErrorOr;
+using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.WorkflowExecutions.GetWorkflowExecution;
 using IniaAi.Core.Workflows.Activity;
 using IniaAi.Domain.Core.Interfaces;
@@ -41,7 +43,8 @@ public class GetWorkflowExecutionQueryHandlerWorkflowActivityTests : IDisposable
             NullLogger<GetWorkflowExecutionQueryHandler>.Instance,
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
-            new NoBaselineReader());
+            new NoBaselineReader(),
+            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), new EveryWorkflowAvailable(), new NoCreditCost()));
     }
 
     private const string FIRST_BLOCK_STABLE_ID = "stablefirst0000000000000000000001";

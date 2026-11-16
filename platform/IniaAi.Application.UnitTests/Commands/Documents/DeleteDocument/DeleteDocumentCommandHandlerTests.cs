@@ -1,9 +1,11 @@
 using ErrorOr;
 using IniaAi.Application.Commands.Documents.DeleteDocument;
+using IniaAi.Application.Errors;
 using IniaAi.Common.Enums;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Configuration.Storage;
 using IniaAi.Domain.Entities.Documents;
+using IniaAi.Domain.Entities.WorkflowExecutions;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Testing.DependencyInjection;
@@ -111,6 +113,71 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
 
         Assert.Equal(ErrorType.NotFound, result.FirstError.Type);
         Assert.True(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(WorkflowState.Undefined)]
+    [InlineData(WorkflowState.Queued)]
+    [InlineData(WorkflowState.ProcessingDocuments)]
+    [InlineData(WorkflowState.Running)]
+    public async Task Handle_DocumentAnUnfinishedReportReads_IsRefusedAndStays(WorkflowState state)
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "In Use");
+        string storagePath = document.FileMetadata!.ExternalStoragePath!;
+        _fileStorageService.AddTestFile(ORG_ID, StorageCategories.Documents, storagePath, [0x01]);
+        await SeedReportReadingAsync(document, state);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorType.Conflict, result.FirstError.Type);
+        Assert.Equal("Document.ReadByRunningReport", result.FirstError.Code);
+        Assert.Equal(DocumentErrorFactory.READ_BY_RUNNING_REPORT_MESSAGE, result.FirstError.Description);
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+        Assert.NotNull(_fileStorageService.GetTestFile(ORG_ID, StorageCategories.Documents, storagePath));
+    }
+
+    [Theory]
+    [InlineData(WorkflowState.Draft)]
+    [InlineData(WorkflowState.Confirmed)]
+    [InlineData(WorkflowState.Failed)]
+    [InlineData(WorkflowState.Cancelled)]
+    public async Task Handle_DocumentOnlyFinishedReportsRead_IsDeleted(WorkflowState state)
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Was Used");
+        await SeedReportReadingAsync(document, state);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsError);
+        Assert.False(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Handle_DocumentARunningReportTookOutOfItsInput_IsDeleted()
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Dropped");
+        await SeedReportReadingAsync(document, WorkflowState.Running, excluded: true);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsError);
+    }
+
+    private async Task SeedReportReadingAsync(Document document, WorkflowState state, bool excluded = false)
+    {
+        string jobId = Guid.NewGuid().ToString();
+        _ = await _context.WorkflowExecutions.AddAsync(
+            new WorkflowExecution { OrganizationId = document.OrganizationId, JobId = jobId, Title = "Report", WorkflowState = state },
+            TestContext.Current.CancellationToken);
+        var documentInfo = new DocumentInfo(document.Id) { JobId = jobId };
+        if (excluded)
+        {
+            documentInfo.ExcludeFromRun("NotExpectedDocument", DateTime.UtcNow);
+        }
+
+        _ = await _context.DocumentInfos.AddAsync(documentInfo, TestContext.Current.CancellationToken);
+        _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
     }
 
     private async Task<Document> SeedDocumentAsync(string organizationId, string name, string? uploadedBy = null)

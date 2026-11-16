@@ -16,7 +16,8 @@ namespace IniaAi.Application.Commands.Documents.DeleteDocument;
 /// FileMetadata in a single DB transaction, then attempts to delete the blob
 /// from external storage. Blob deletion failures are logged but do not roll back
 /// the DB removal — an orphan blob is preferable to an undeletable document, and
-/// existing cleanup jobs (<c>SoftDeleteCleanupService</c>) handle orphans.
+/// existing cleanup jobs (<c>SoftDeleteCleanupService</c>) handle orphans. A document that a running
+/// report reads is refused, so the report never loses its input.
 /// </summary>
 public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentCommand, ErrorOr<Deleted>>
 {
@@ -66,6 +67,13 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
                 request.UserId,
                 document.Id);
             return DocumentErrorFactory.NotFound();
+        }
+
+        HashSet<string> readByUnfinishedReports = await _unitOfWork.Documents
+            .GetIdsReadByUnfinishedReportsAsync([document.Id], request.OrganizationId, cancellationToken);
+        if (readByUnfinishedReports.Count > 0)
+        {
+            return DocumentErrorFactory.ReadByRunningReport();
         }
 
         FileMetadata? fileMetadata = document.FileMetadata;

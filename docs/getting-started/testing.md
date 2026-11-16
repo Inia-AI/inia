@@ -21,7 +21,7 @@ This guide covers the automated PR testing process and local developer testing f
 - CI runs `dotnet test --solution IniaAi.Platform.CI.slnf`, which scopes the run to the unit/component test projects
 
 
-- `IniaAi.WebApi.IntegrationTests` (the full-pipeline API tests, which host the API in-process through `CustomWebApplicationFactory`) is **excluded** from the main CI run via the `IniaAi.Platform.CI.slnf` solution filter; run it locally, with the database servers some of its tests need ([below](#database-backed-integration-tests-local-only)). One part of it runs on every pull request: the **Organization isolation tests** job of `.github/workflows/Run tests.yml` starts a PostgreSQL service and runs the project's `*.Authorization` namespaces, the tests of who may reach which organization's data
+- `IniaAi.WebApi.IntegrationTests` (the full-pipeline API tests, which host the API in-process through `CustomWebApplicationFactory`) is **excluded** from the main CI run via the `IniaAi.Platform.CI.slnf` solution filter; run it locally, with the database servers some of its tests need ([below](#database-backed-integration-tests-local-only)). One part of it runs on every pull request: the **Organization isolation tests** job of `.github/workflows/Run tests.yml` starts a PostgreSQL service and runs the project's `*.Authorization` namespaces, the tests of who may reach which organization's data, and its `…OnPostgresTests` and `…OnBothProvidersTests` classes, the database tests that need a real PostgreSQL, among them the credit ledger's locks, races and invariants. The SQL Server halves skip there.
 
 > [!TIP]
 > **Test runner**

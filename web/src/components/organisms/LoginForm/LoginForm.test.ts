@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h, nextTick } from 'vue'
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import API from '@/api'
 import { answerService, SIGN_IN_TOKENS as TOKENS, type Answer } from '@/test/helpers/answerService'
 import { extensionPoints, type SignInMethod } from '@/modules/extensionPoints'
@@ -107,6 +108,57 @@ describe('LoginForm', () => {
 
     expect(wrapper.get('[data-testid="sign-in-unavailable"]').text()).toBe('page.login.errors.providersFailed')
     expect(wrapper.find('form').exists()).toBe(false)
+  })
+})
+
+describe('LoginForm field errors', () => {
+  const FIELD_ERRORS = /Invalid email|Password required/
+  const fieldErrors = (wrapper: Awaited<ReturnType<typeof mountForm>>) => wrapper.findAll('.form-error').map(error => error.text())
+
+  it('shows no field error when the form appears after the sign-in methods load', async () => {
+    answerAuthentication({ [PROVIDERS_URL]: providers(PASSWORD) })
+    const instance = API.Authentication.service.instance
+    const answerNow = instance.defaults.adapter as (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>
+    let release = () => {}
+    const held = new Promise<void>(resolve => (release = resolve))
+    instance.defaults.adapter = async config => {
+      await held
+      return answerNow(config)
+    }
+    const seen: string[] = []
+    const observer = new MutationObserver(() => {
+      seen.push(document.body.textContent ?? '')
+    })
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+
+    const wrapper = await mountForm()
+    release()
+    await vi.waitFor(() => expect(wrapper.find('form.login-form').exists()).toBe(true))
+    await flushPromises()
+    observer.disconnect()
+
+    expect(seen.filter(text => FIELD_ERRORS.test(text))).toEqual([])
+    expect(wrapper.text()).not.toMatch(FIELD_ERRORS)
+  })
+
+  it('shows both field errors when the person submits empty fields', async () => {
+    answerAuthentication({ [PROVIDERS_URL]: providers(PASSWORD) })
+    const wrapper = await mountForm()
+
+    await wrapper.find('form.login-form').trigger('submit')
+
+    await vi.waitFor(() => expect(fieldErrors(wrapper)).toEqual([expect.stringMatching(/Invalid email/), 'Password required']))
+  })
+
+  it('shows the email error when the person leaves the field with an invalid address', async () => {
+    answerAuthentication({ [PROVIDERS_URL]: providers(PASSWORD) })
+    const wrapper = await mountForm()
+
+    const email = wrapper.find('form.login-form input')
+    await email.setValue('not-an-address')
+    await email.trigger('blur')
+
+    await vi.waitFor(() => expect(fieldErrors(wrapper)[0]).toMatch(/Invalid email/))
   })
 })
 

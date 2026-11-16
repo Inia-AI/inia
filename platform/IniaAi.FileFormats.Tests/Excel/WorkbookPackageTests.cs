@@ -54,6 +54,25 @@ public class WorkbookPackageTests
         Assert.DoesNotContain(EntityPackages.EXPANDED_TEXT, names);
     }
 
+    [Fact]
+    public void SheetNames_OfAWorkbookThatDeclaresEntities_RefusesIt_OrLeavesThemUnexpanded()
+    {
+        byte[] workbook = WithPart(WORKBOOK_PART,
+            $"<?xml version=\"1.0\"?><!DOCTYPE workbook [{NESTED_ENTITIES}]><workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheets><sheet name=\"&c;\" sheetId=\"1\"/></sheets></workbook>");
+
+        string names;
+        try
+        {
+            names = string.Join('\n', WorkbookPackage.SheetNames(new MemoryStream(workbook)));
+        }
+        catch (XmlException refusal)
+        {
+            names = refusal.Message;
+        }
+
+        Assert.DoesNotContain(EntityPackages.EXPANDED_TEXT, names);
+    }
+
     private static byte[] WithPart(string part, string xml)
     {
         using var stream = new MemoryStream();

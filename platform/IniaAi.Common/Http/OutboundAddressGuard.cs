@@ -100,11 +100,14 @@ public sealed class OutboundAddressGuard
     /// <summary>
     /// The handler every caller shares, with one connection pool, sending and keeping cookies in
     /// <paramref name="cookies"/> only, so callers that hold different jars never share a cookie.
-    /// The caller does not dispose it. It checks requests as <see cref="CreateHandler"/> does.
+    /// The caller does not dispose it. It checks requests as <see cref="CreateHandler"/> does, and
+    /// with <paramref name="allowedOrigins"/> it also refuses a request or a redirect to any web
+    /// address outside them.
     /// </summary>
-    public HttpMessageHandler SharedHandlerWith(CookieContainer cookies)
+    public HttpMessageHandler SharedHandlerWith(CookieContainer cookies, IReadOnlySet<string>? allowedOrigins = null)
     {
-        return new CookieJarHandler(cookies, _sharedHandler.Value);
+        var jar = new CookieJarHandler(cookies, _sharedHandler.Value);
+        return allowedOrigins is null ? jar : new AllowedOriginsHandler(allowedOrigins, jar);
     }
 
     /// <summary>

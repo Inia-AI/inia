@@ -9,12 +9,12 @@ import {
   reRunChangesOf,
   withReRunInputs,
   type ReRunChanges,
-  type WorkflowReRunPrefill,
+  type CreateWorkflowPrefill,
 } from './workflowReRunPrefill'
 
 export type ReRunPlan =
   | { kind: 'start'; payload: StartWorkflowExecutionRequest; changes?: ReRunChanges }
-  | { kind: 'form'; prefill: WorkflowReRunPrefill }
+  | { kind: 'form'; prefill: CreateWorkflowPrefill }
 
 const isMissingEndpoint = (err: unknown) => {
   const response = (err as { response?: { status?: number; data?: { title?: string } } })?.response
@@ -61,7 +61,7 @@ export function planEdit(
   execution: WorkflowReport,
   canonicalWorkflowId: string,
   inputs: ReRunInputs | null,
-): WorkflowReRunPrefill {
+): CreateWorkflowPrefill {
   const prefill = buildReRunPrefill(execution, canonicalWorkflowId)
   return inputs ? withReRunInputs(prefill, inputs) : prefill
 }
@@ -69,7 +69,7 @@ export function planEdit(
 export function variableRefusalPrefill(
   execution: WorkflowReport,
   canonicalWorkflowId: string,
-): WorkflowReRunPrefill {
+): CreateWorkflowPrefill {
   return { ...buildReRunPrefill(execution, canonicalWorkflowId), startStep: 'details' }
 }
 

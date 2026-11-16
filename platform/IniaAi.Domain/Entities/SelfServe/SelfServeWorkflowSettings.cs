@@ -24,12 +24,22 @@ public class SelfServeWorkflowSettings
     [JsonProperty(nameof(Paused), DefaultValueHandling = DefaultValueHandling.Ignore)]
     public bool Paused { get; set; }
 
+    /// <summary>
+    /// The web addresses, each a scheme, host and port such as <c>https://api.example.com</c>, that a
+    /// super admin approved for the type's Web API calls. A customer's run sends a Web API call to no other.
+    /// </summary>
+    [JsonProperty(nameof(ApprovedHosts), NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? ApprovedHosts { get; set; }
+
     [JsonIgnore]
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsEmpty => !Enabled && !Paused && CreditCost is null && MaxDocuments is null && MaxPages is null;
+    public bool IsEmpty => !Enabled && !Paused && CreditCost is null && MaxDocuments is null && MaxPages is null
+        && ApprovedHosts is not { Count: > 0 };
 
     public SelfServeWorkflowSettings Clone()
     {
-        return (SelfServeWorkflowSettings)MemberwiseClone();
+        var clone = (SelfServeWorkflowSettings)MemberwiseClone();
+        clone.ApprovedHosts = ApprovedHosts is null ? null : [.. ApprovedHosts];
+        return clone;
     }
 }

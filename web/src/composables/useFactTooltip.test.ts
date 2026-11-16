@@ -141,6 +141,13 @@ describe('useFactTooltip block citations', () => {
     expect(footer?.querySelector('.fact-trace-btn')).not.toBeNull()
   })
 
+  it('names a block that comes without its title as prior analysis, never by its id', () => {
+    const popup = openPopup(mountParagraph([blockCitation({ blockTitle: undefined })]))
+
+    expect(popup.textContent).toContain('prior analysis')
+    expect(popup.textContent).not.toContain('block-synthesis')
+  })
+
   it('hands the paragraph\'s lists to the chain panel when the reader traces a block', () => {
     const lists = listFor([url(MATCHING_URL)])
     const popup = openPopup(mountParagraph([blockCitation()], lists))

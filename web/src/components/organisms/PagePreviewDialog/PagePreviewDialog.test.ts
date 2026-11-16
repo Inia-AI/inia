@@ -4,6 +4,7 @@ import { createI18n } from 'vue-i18n'
 
 import api from '@/api'
 import { EN } from '@/assets/locales/en'
+import { axiosError } from '@/test/helpers/axiosError'
 import PagePreviewDialog from './PagePreviewDialog.vue'
 
 let wrapper: VueWrapper | null = null
@@ -76,6 +77,22 @@ describe('PagePreviewDialog', () => {
     await openPreview(new Error('network'))
 
     expect(dialog()!.textContent).toContain(EN.shared.citations.errors.loadPreviewFailed)
+  })
+
+  it('says the document was deleted, in the platform\'s words, when the page belongs to a deleted document', async () => {
+    const words = 'The document was deleted, so its pages can no longer be shown.'
+    const problem = new Blob([JSON.stringify({ title: words, status: 404, code: 'Document.Deleted' })], { type: 'application/problem+json' })
+    await openPreview(axiosError(404, problem))
+
+    expect(dialog()!.textContent).toContain(words)
+    expect(dialog()!.textContent).not.toContain(EN.shared.citations.errors.notAvailable)
+  })
+
+  it('says the page is no longer available for any other missing page', async () => {
+    const problem = new Blob([JSON.stringify({ title: 'Not Found', status: 404 })], { type: 'application/problem+json' })
+    await openPreview(axiosError(404, problem))
+
+    expect(dialog()!.textContent).toContain(EN.shared.citations.errors.notAvailable)
   })
 
   it.each([

@@ -8,6 +8,7 @@ using IniaAi.Common.Text;
 using IniaAi.Configuration.Storage;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.Documents.Enums;
+using IniaAi.Domain.Specifications.Documents;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.FileFormats.Pdf;
 using IniaAi.WebApi.Contracts.Responses.Pages;
@@ -78,7 +79,9 @@ public sealed class GetPageImageQueryHandler : IRequestHandler<GetPageImageQuery
         if (document is null)
         {
             _logger.LogWarning("Document for page {PageId} not found", LogSanitizer.ForLog(request.PageId));
-            return DocumentErrorFactory.NotFound();
+            Document? deletedHere = await _userDataUnitOfWork.Documents
+                .GetFirstOrDefaultAsync(new DeletedDocumentInOrganizationSpec(page.DocumentId, request.OrganizationId), cancellationToken);
+            return deletedHere is null ? _pageNotFound : DocumentErrorFactory.Deleted();
         }
 
         if (document.OrganizationId != request.OrganizationId)

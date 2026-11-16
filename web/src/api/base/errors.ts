@@ -8,6 +8,8 @@ export interface ProblemDetails {
   detail?: string
   errors?: Record<string, string[]>
   capability?: string
+  /** The platform's stable name for the error, such as Document.Deleted. */
+  code?: string
 }
 
 // Placeholder titles ASP.NET puts on ValidationProblem/500 responses; the real

@@ -1,3 +1,4 @@
+using IniaAi.Common;
 using IniaAi.Common.Extensions;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Common.Text;
@@ -75,8 +76,7 @@ public class FileDownloadController : ControllerBase
                 return NotFound("File content is empty.");
             }
 
-            string downloadName =
-                $"{Path.GetFileNameWithoutExtension(fileName) ?? "document"}{fileMetadata.Extension}";
+            string downloadName = document.MediaType.ServedFileName(fileName.TrimEnd().WithExtension(fileMetadata.Extension));
 
             return File(fileBytes, document.MediaType.ToContentType(), downloadName);
         }

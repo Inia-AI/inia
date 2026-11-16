@@ -93,6 +93,15 @@ const openDocument = (doc: WorkflowExecutionDocument) => {
   emit(isPdf(doc.extension) ? 'preview' : 'download', doc)
 }
 
+const documentButtonAttrs = (doc: WorkflowExecutionDocument, section: string, index: number) => ({
+  type: 'button',
+  class: 'row-main-button',
+  'data-testid': `document-row-${doc.fileId}`,
+  'aria-label': documentButtonName(doc),
+  'aria-describedby': documentDescriptionIds(doc, section, index),
+  onClick: () => openDocument(doc),
+})
+
 type DocumentDescriptionPart = 'note' | 'hidden'
 
 const panelId = useId()
@@ -259,18 +268,15 @@ const getFileIcon = (extension: string | undefined) => {
               <li
                 v-for="(doc, index) in section.documents"
                 :key="doc.fileId"
-                class="meta-row meta-row--clickable"
-                :class="{ 'meta-row--hidden-from-output': isHiddenFromOutput(doc) }"
+                class="meta-row"
+                :class="{ 'meta-row--clickable': !doc.isDeleted, 'meta-row--hidden-from-output': isHiddenFromOutput(doc) }"
               >
                 <Tooltip>
                   <TooltipTrigger as-child>
-                    <button
-                      type="button"
-                      class="meta-doc-main row-main-button"
-                      :data-testid="`document-row-${doc.fileId}`"
-                      :aria-label="documentButtonName(doc)"
-                      :aria-describedby="documentDescriptionIds(doc, section.value, index)"
-                      @click="openDocument(doc)"
+                    <component
+                      :is="doc.isDeleted ? 'div' : 'button'"
+                      class="meta-doc-main"
+                      v-bind="doc.isDeleted ? { 'data-testid': `document-deleted-${doc.fileId}` } : documentButtonAttrs(doc, section.value, index)"
                     >
                       <span class="meta-label meta-doc-label">
                         <IniaIcon
@@ -283,6 +289,7 @@ const getFileIcon = (extension: string | undefined) => {
                       <span class="meta-value meta-doc-value">
                         <span class="meta-doc-text">
                           <span class="meta-doc-name">{{ fullFileName(doc) }}</span>
+                          <span v-if="doc.isDeleted" class="meta-doc-note">{{ $t('page.workflowDetails.documents.deleted') }}</span>
                           <span v-if="section.value === 'excluded'" :id="documentElementId(section.value, index, 'note')" class="meta-doc-note">{{ describeExclusionReason($t, doc.exclusionReason) }}</span>
                         </span>
                         <span
@@ -294,7 +301,7 @@ const getFileIcon = (extension: string | undefined) => {
                           {{ $t('page.workflowDetails.documents.hiddenFromOutput') }}
                         </span>
                       </span>
-                    </button>
+                    </component>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div class="text-sm">
@@ -306,6 +313,7 @@ const getFileIcon = (extension: string | undefined) => {
                   </TooltipContent>
                 </Tooltip>
                 <button
+                  v-if="!doc.isDeleted"
                   type="button"
                   :data-testid="`document-download-${doc.fileId}`"
                   class="meta-doc-download hit-target row-main-button-raised"

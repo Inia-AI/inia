@@ -18,4 +18,7 @@ export const CAPABILITIES = {
 
 export type Capability = (typeof CAPABILITIES)[keyof typeof CAPABILITIES]
 
+// Not one of CAPABILITIES, which holds what the platform grants to everyone: only a module adds this one.
+export const DELETE_OWN_DOCUMENTS = 'delete-own-documents'
+
 export const NEW_WORK: readonly Capability[] = [CAPABILITIES.RUN, CAPABILITIES.UPLOAD, CAPABILITIES.EXPLORE, CAPABILITIES.REFINE]

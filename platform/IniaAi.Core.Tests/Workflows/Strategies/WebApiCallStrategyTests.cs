@@ -240,17 +240,50 @@ public class WebApiCallStrategyTests
     }
 
     [Fact]
-    public async Task ExecuteBlockAsync_InvalidUrl_ThrowsExceptionAsync()
+    public async Task ExecuteBlockAsync_AnAddressOutsideTheRunsAllowedSet_IsRefused_AndSendsNothing()
     {
+        string path = $"/unapproved-{Guid.NewGuid():N}";
         (Block block, BlockExecutionContext context) = Arrange(new WebApiCallProperties
         {
-            UrlTemplate = "not-a-valid-url",
+            UrlTemplate = $"{_server.BaseUrl}{path}",
         });
+        context.AllowedWebOrigins = new HashSet<string>(["https://api.perplexity.ai"], StringComparer.OrdinalIgnoreCase);
+
+        OutboundOriginRefusedException refusal = await Assert.ThrowsAsync<OutboundOriginRefusedException>(
+            () => new WebApiCallStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
+
+        Assert.Equal(OutboundOrigin.Of(new Uri(_server.BaseUrl)), refusal.Origin);
+        Assert.Equal(0, _server.PathHits(path));
+    }
+
+    [Fact]
+    public async Task ExecuteBlockAsync_AnAddressInTheRunsAllowedSet_IsSent()
+    {
+        string path = $"/approved-{Guid.NewGuid():N}";
+        (Block block, BlockExecutionContext context) = Arrange(new WebApiCallProperties
+        {
+            UrlTemplate = $"{_server.BaseUrl}{path}",
+        });
+        context.AllowedWebOrigins = new HashSet<string>([OutboundOrigin.Of(new Uri(_server.BaseUrl))], StringComparer.OrdinalIgnoreCase);
+
+        _ = await new WebApiCallStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _server.PathHits(path));
+    }
+
+    [Fact]
+    public async Task ExecuteBlockAsync_AnAddressWithNoSchemeOrHost_ThrowsTheFixedHostProblem()
+    {
+        var properties = new WebApiCallProperties
+        {
+            UrlTemplate = "not-a-valid-url",
+        };
+        (Block block, BlockExecutionContext context) = Arrange(properties);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => new WebApiCallStrategy().ExecuteBlockAsync(block, context, TestContext.Current.CancellationToken));
 
-        Assert.Contains("Invalid URL format", exception.Message);
+        Assert.Equal(properties.FixedHostProblems(block.Name).Single(), exception.Message);
     }
 
     [Fact]

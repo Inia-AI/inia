@@ -57,7 +57,7 @@ public sealed class GetFileQueryHandlerTests : IDisposable
 
         Assert.False(result.IsError);
         Assert.Equal("application/pdf", result.Value.ContentType);
-        Assert.Equal("statement.dat", result.Value.FileName);
+        Assert.Equal("statement.pdf", result.Value.FileName);
         Assert.Equal(pdf, result.Value.Content);
     }
 

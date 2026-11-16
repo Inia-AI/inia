@@ -18,8 +18,9 @@ import { useToast } from '@/components/ui/toast/use-toast'
 import { WorkflowCategorySummary } from '@/api/workflowCategories/schema'
 import { extensionPoints } from '@/modules/extensionPoints'
 import { ALL_PARENT_COMPANY_TAGS } from '@/enums/workflow'
+import DocumentClassChipLabel from '@/components/molecules/DocumentClassChipLabel/DocumentClassChipLabel.vue'
 import useCreateWorkflowPrefillStore from '@/store/createWorkflowPrefill'
-import type { ReRunChanges, WorkflowReRunPrefill } from '@/lib/workflowReRunPrefill'
+import type { ReRunChanges, CreateWorkflowPrefill } from '@/lib/workflowReRunPrefill'
 import { keepCreateWorkflowDraft, takeCreateWorkflowDraft } from '@/lib/createWorkflowDraft'
 import {
   REQUIRED_VARIABLE_MESSAGE,
@@ -119,7 +120,7 @@ const formData = ref<WorkflowFormData>({
 const uploadRequestFields = ref<Record<string, unknown>>({})
 const documentsAsRead = computed(() => withPagesRead(formData.value.documents ?? [], uploadRequestFields.value))
 
-// "Edit inputs first" hand-off from a re-run on WorkflowDetails. Consumed
+// The hand-off from a report (a re-run, changed documents, or the next workflow). Consumed
 // synchronously in setup so it's already populated before the categorySummaries
 // watcher's `immediate: true` run — otherwise a cached summaries query (warm
 // from a prior visit) makes the watcher fire once with a still-null prefill,
@@ -129,7 +130,7 @@ const documentsAsRead = computed(() => withPagesRead(formData.value.documents ??
 // variables are merged on top of the workflow's defaults once the on-demand
 // details fetch completes.
 const prefillStore = useCreateWorkflowPrefillStore()
-const pendingPrefill = ref<WorkflowReRunPrefill | null>(prefillStore.consume() ?? takeCreateWorkflowDraft())
+const pendingPrefill = ref<CreateWorkflowPrefill | null>(prefillStore.consume() ?? takeCreateWorkflowDraft())
 
 const reRunChanges = ref<ReRunChanges | null>(pendingPrefill.value?.reRunChanges ?? null)
 
@@ -352,6 +353,8 @@ const handleSubmit = form.handleSubmit(async data => {
     }
   }
 })
+
+const attachedClassKeys = computed(() => new Set((formData.value.documents ?? []).map(document => document.class)))
 
 const requiredDocuments = computed(() => {
   return selectedWorkflow?.value?.documentClasses
@@ -623,7 +626,7 @@ watch(
   },
 )
 
-// Hydrate documents/type/counterparty from a pending re-run prefill once the
+// Hydrate documents/type/counterparty from a pending prefill once the
 // lightweight category summaries have loaded — we need them so the
 // form.values.type watcher above can resolve `selectedWorkflowTypeId` from the
 // canonical workflow id we just set. Variables are intentionally NOT applied
@@ -769,6 +772,11 @@ const goToStep = (index: number) => {
   }
   currentStepIndex.value = index
 }
+
+// vee-validate keeps the errors of a check that ran while a step's fields were off screen, and one
+// runs while the old step leaves. They would show for a moment when the new step appears, so a step
+// enters with none; Continue on the details step checks again.
+const dropStoredFieldErrors = () => Object.keys(form.errors.value).forEach(path => form.setFieldError(path as never, undefined))
 
 const stepContentEl = ref<HTMLElement | null>(null)
 const focusStepContent = () => stepContentEl.value?.focus()
@@ -973,7 +981,7 @@ const reviewVariables = computed(() => {
 
       <form @submit="onFormSubmit" class="workflow-form">
         <div class="card-panel step-panel">
-          <Transition name="step" mode="out-in" @after-enter="focusStepContent">
+          <Transition name="step" mode="out-in" @before-enter="dropStoredFieldErrors" @after-enter="focusStepContent">
             <div
               :key="currentStep.key"
               ref="stepContentEl"
@@ -1072,7 +1080,7 @@ const reviewVariables = computed(() => {
                         class="doc-chip"
                         :class="{ 'doc-chip--rerun': reRunDocumentClassKeys.has(doc.key) }"
                       >
-                        {{ doc.displayName }}<span v-if="doc.shouldBeSingular" class="doc-req-note">{{ $t('page.createWorkflow.documentsStep.singleOnly') }}</span>
+                        <DocumentClassChipLabel :document-class="doc" :empty="!attachedClassKeys.has(doc.key)" />
                       </span>
                     </div>
                   </div>
@@ -1081,7 +1089,7 @@ const reviewVariables = computed(() => {
                     <span class="doc-req-label doc-req-suggested">{{ $t('page.createWorkflow.documentsStep.suggested') }}</span>
                     <div class="doc-req-chips">
                       <span v-for="doc in suggestedDocuments" :key="doc.key" class="doc-chip">
-                        {{ doc.displayName }}<span v-if="doc.shouldBeSingular" class="doc-req-note">{{ $t('page.createWorkflow.documentsStep.singleOnly') }}</span>
+                        <DocumentClassChipLabel :document-class="doc" :empty="!attachedClassKeys.has(doc.key)" />
                       </span>
                     </div>
                   </div>
@@ -1099,7 +1107,7 @@ const reviewVariables = computed(() => {
                     </button>
                     <div v-if="showOptionalDocs" class="doc-req-chips">
                       <span v-for="doc in optionalDocuments" :key="doc.key" class="doc-chip">
-                        {{ doc.displayName }}<span v-if="doc.shouldBeSingular" class="doc-req-note">{{ $t('page.createWorkflow.documentsStep.singleOnly') }}</span>
+                        <DocumentClassChipLabel :document-class="doc" :empty="!attachedClassKeys.has(doc.key)" />
                       </span>
                     </div>
                   </div>
@@ -1842,11 +1850,6 @@ button.step-rail-entry:enabled {
   border-color: var(--accent-warning-border);
   background: var(--accent-warning-light);
   font-weight: 600;
-}
-
-.doc-req-note {
-  font-style: italic;
-  color: var(--text-muted);
 }
 
 .form-bottom-grid {

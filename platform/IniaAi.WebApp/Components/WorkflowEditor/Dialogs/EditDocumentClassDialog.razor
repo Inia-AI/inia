@@ -1,5 +1,6 @@
 @using ErrorOr
 @using IniaAi.Application.Common.Workflows
+@using IniaAi.Common.Interfaces.Services.Runs
 @using IniaAi.Domain.Entities.Workflows
 @using IniaAi.Domain.Entities.Workflows.Enums
 @using IniaAi.Domain.Entities.Workflows.Templates
@@ -120,6 +121,39 @@
 
             @if (!_isOutputDocument)
             {
+                <MudAutocomplete T="MadeByChoice"
+                                 Label="@MADE_BY"
+                                 Variant="Variant.Outlined"
+                                 Clearable="true"
+                                 SearchFunc="SearchMadeByAsync"
+                                 ToStringFunc="@(choice => choice is null ? string.Empty : Label(choice))"
+                                 Value="@_madeBy"
+                                 ValueChanged="ChooseMadeByAsync"
+                                 MaxItems="null"
+                                 HelperText="The output of another workflow that a file of this class is, such as the spread an earlier workflow makes. Type to search. Leave it empty when any file will do." />
+
+                @if (_madeBy is { } chosen && chosen == _goneMadeBy)
+                {
+                    <MudAlert Severity="Severity.Warning">
+                        This input is made by @Label(chosen), which no workflow makes any more. Choose another output, or clear the field.
+                    </MudAlert>
+                }
+                else if (_madeBy is { } unstamped && _makerUnstamped)
+                {
+                    <MudAlert Severity="Severity.Warning">
+                        The step that makes @Label(unstamped) does not stamp its file, so a run that checks this input refuses the file. Turn the stamp on in that step.
+                    </MudAlert>
+                }
+            }
+            else if (_usedBy.Count > 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    Used by: @string.Join(", ", _usedBy.Select(Label))
+                </MudText>
+            }
+
+            @if (!_isOutputDocument)
+            {
                 <MudDivider />
 
                 <MudText Typo="Typo.subtitle1">Page overview prompt</MudText>
@@ -154,6 +188,7 @@
 @code {
     public const string LIMIT_TO_ONE_DOCUMENT = "Limit to one document";
     public const string IS_FOR_OUTPUT_DOCUMENTS = "Is for output documents";
+    public const string MADE_BY = "Made by";
 
     private string _saveButtonText => DocumentClass is null
         ? "Create"
@@ -170,6 +205,11 @@
     private string _originalKey = string.Empty;
     private IList<DocumentCategory>? _documentCategories;
     private PageOverviewPrompts _pageOverviews = new();
+    private List<MadeByChoice> _madeByChoices = [];
+    private MadeByChoice? _madeBy;
+    private MadeByChoice? _goneMadeBy;
+    private bool _makerUnstamped;
+    private List<MadeByChoice> _usedBy = [];
 
     private string RequirementHelperText => _isOutputDocument
         ? "An output class is never required from the user"
@@ -188,7 +228,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDocumentCategoriesAsync();
+        await Task.WhenAll(LoadDocumentCategoriesAsync(), LoadMadeByLinksAsync());
 
         if (DocumentClass is not null)
         {
@@ -210,6 +250,77 @@
         _key = $"documentClass_{documentClassCount}";
         _originalKey = _key;
         _displayName = _key;
+    }
+
+    private async Task LoadMadeByLinksAsync()
+    {
+        try
+        {
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            ICoreUnitOfWork coreUnitOfWork = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
+            _madeByChoices = await MadeByLinks.OutputsAsync(coreUnitOfWork, Workflow.WorkflowTypeId, CancellationToken.None);
+
+            if (DocumentClass is { IsOutputDocument: true } output && Workflow.WorkflowTypeId is { } typeId)
+            {
+                _usedBy = await MadeByLinks.UsersOfAsync(coreUnitOfWork, typeId, output.Key, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load the workflow outputs an input can be made by");
+        }
+
+        if (DocumentClass is { IsMadeByAnotherWorkflow: true } input)
+        {
+            _madeBy = _madeByChoices.FirstOrDefault(choice => choice.WorkflowTypeId == input.MadeByWorkflowTypeId && choice.DocumentClassKey == input.MadeByDocumentClassKey);
+            if (_madeBy is null)
+            {
+                _goneMadeBy = new MadeByChoice(input.MadeByWorkflowTypeId!, input.MadeByWorkflowTypeId!, input.MadeByDocumentClassKey!, input.MadeByDocumentClassKey!);
+                _madeByChoices.Add(_goneMadeBy);
+                _madeBy = _goneMadeBy;
+            }
+        }
+
+        _makerUnstamped = await IsUnstampedAsync(_madeBy);
+    }
+
+    private Task<IEnumerable<MadeByChoice>> SearchMadeByAsync(string? search, CancellationToken cancellationToken)
+    {
+        IEnumerable<MadeByChoice> found = string.IsNullOrWhiteSpace(search)
+            ? _madeByChoices
+            : _madeByChoices.Where(choice => Label(choice).Contains(search.Trim(), StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(found);
+    }
+
+    private async Task ChooseMadeByAsync(MadeByChoice? choice)
+    {
+        _madeBy = choice;
+        _makerUnstamped = await IsUnstampedAsync(choice);
+    }
+
+    private async Task<bool> IsUnstampedAsync(MadeByChoice? choice)
+    {
+        if (choice is null || choice == _goneMadeBy)
+        {
+            return false;
+        }
+
+        try
+        {
+            using IServiceScope scope = ServiceScopeFactory.CreateScope();
+            Workflow? maker = await scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>().Workflows.GetByTypeIdAsync(choice.WorkflowTypeId);
+            return maker is not null && scope.ServiceProvider.GetRequiredService<IWorkbookOutputStamps>().Stamps(maker, choice.DocumentClassKey) == false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to read whether the workflow an input is made by stamps its output");
+            return false;
+        }
+    }
+
+    private static string Label(MadeByChoice choice)
+    {
+        return $"{choice.WorkflowTypeName} · {choice.DisplayName}";
     }
 
     private async Task LoadDocumentCategoriesAsync()
@@ -250,7 +361,8 @@
             ShouldBeSingular: _shouldBeSingular,
             IsOutputDocument: _isOutputDocument,
             LlmDescription: _llmDescription,
-            PageOverviews: _isOutputDocument ? null : _pageOverviews);
+            PageOverviews: _isOutputDocument ? null : _pageOverviews,
+            MadeBy: _madeBy is null ? DocumentClassMadeBy.None : new DocumentClassMadeBy(_madeBy.WorkflowTypeId, _madeBy.DocumentClassKey));
 
         ErrorOr<DocumentClass> result = DocumentClassEditor.Upsert(Workflow, edit);
         if (result.IsError)

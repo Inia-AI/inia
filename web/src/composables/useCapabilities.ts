@@ -1,9 +1,9 @@
 import { computed, type ComputedRef } from 'vue'
 import API from '@/api'
-import { CAPABILITIES } from '@/constants/capabilities'
+import { CAPABILITIES, DELETE_OWN_DOCUMENTS } from '@/constants/capabilities'
 import { ROLES } from '@/constants/roles'
 import { hasAnyRole } from '@/lib/utils'
-import { CAPABILITIES_STALE_MS, capabilitiesOf, capabilitiesVary } from '@/lib/capabilities'
+import { CAPABILITIES_STALE_MS, capabilitiesOf, capabilitiesVary, holds } from '@/lib/capabilities'
 import { extensionPoints } from '@/modules/extensionPoints'
 
 // Until the list arrives nothing gated shows, so a feature the organization lacks never flashes on screen.
@@ -11,7 +11,7 @@ const NONE_YET: ReadonlySet<string> = new Set()
 
 export function useCapabilities(): (capability: string) => boolean {
   if (extensionPoints.capabilitiesVary.length === 0) {
-    return () => true
+    return capability => holds(null, capability)
   }
   const varies = computed(capabilitiesVary)
   const { data: tenants, isPending } = API.Users.useGetTenants(varies, CAPABILITIES_STALE_MS)
@@ -21,7 +21,7 @@ export function useCapabilities(): (capability: string) => boolean {
     }
     return isPending.value ? NONE_YET : capabilitiesOf(tenants.value)
   })
-  return capability => capabilities.value?.has(capability) ?? true
+  return capability => holds(capabilities.value, capability)
 }
 
 export function useCanAskAi(): ComputedRef<boolean> {
@@ -37,6 +37,11 @@ export function useCanSeeTeam(): ComputedRef<boolean> {
 export function useCanUploadDocuments(): ComputedRef<boolean> {
   const has = useCapabilities()
   return computed(() => has(CAPABILITIES.UPLOAD) && has(CAPABILITIES.STANDALONE_PROCESSING))
+}
+
+export function useCanDeleteOwnDocuments(): ComputedRef<boolean> {
+  const has = useCapabilities()
+  return computed(() => has(DELETE_OWN_DOCUMENTS))
 }
 
 export function useCanReviewSignatures(): ComputedRef<boolean> {

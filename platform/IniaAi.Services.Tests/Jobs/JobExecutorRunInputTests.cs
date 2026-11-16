@@ -1,7 +1,9 @@
 using IniaAi.Common.Enums;
 using IniaAi.Core.Documents;
 using IniaAi.Domain.Entities.Documents;
+using IniaAi.Domain.Entities.WorkflowExecutions;
 using IniaAi.Domain.Entities.Workflows;
+using IniaAi.Domain.Specifications.Documents;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Services.Jobs;
@@ -60,6 +62,26 @@ public sealed class JobExecutorRunInputTests : IDisposable
             .LoadRunInputAsync(job, UnitOfWork, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, runInput.Count);
+    }
+
+    [Fact]
+    public async Task ARunWhoseDocumentWasDeletedBeforeItStarted_StopsBeforeItsStage_AndNamesTheDocument()
+    {
+        var stage = new RecordingStage();
+        Job job = CreateJob();
+        _ = await SeedDocumentInfoAsync(job, "statement.pdf");
+        string deleted = await SeedDocumentInfoAsync(job, "annual-report.pdf");
+        UnitOfWork.Documents.Remove((await UnitOfWork.Documents.GetFirstOrDefaultAsync(new DocumentByIdTrackingSpec(deleted), TestContext.Current.CancellationToken))!);
+        _ = await UnitOfWork.CompleteAsync(TestContext.Current.CancellationToken);
+
+        RunInputDeletedException refusal = await Assert.ThrowsAsync<RunInputDeletedException>(
+            () => CreateExecutor(stage).LoadRunInputAsync(job, UnitOfWork, TestContext.Current.CancellationToken));
+
+        Assert.Equal(WorkflowExecutionFailureKinds.INPUT_DOCUMENT_DELETED, refusal.FailureKind);
+        Assert.Equal(
+            "The document annual-report.pdf was deleted before the report started, so the report did not run. Start the report again with the documents it needs.",
+            refusal.FailureDetail);
+        Assert.Equal(0, stage.Calls);
     }
 
     private IUserDataUnitOfWork UnitOfWork => _provider.GetRequiredService<IUserDataUnitOfWork>();

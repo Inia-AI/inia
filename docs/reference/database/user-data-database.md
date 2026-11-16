@@ -488,7 +488,7 @@ There is no `TemplateId`, `InstanceType`, or `ExecutionCount` column.
 
 `Duration` is a `[NotMapped]` computed `TimeSpan`. There is no `Status`, `Progress`, `ErrorMessage`, or `Results` column.
 
-Both failure columns are written only by a `Failed` transition through `TryMarkTerminalIfActiveAsync`; a `Cancelled` or `Draft` transition leaves them null. The vocabulary is `CriticalBlockFailure` (a critical block's failure aborted the run), `ResultsLost` (block results could not be trusted), `LifetimeExceeded` (the janitor failed an execution stranded past its maximum lifetime), `HostLost` (the host-loss sweep failed a run whose process stopped heartbeating), `NoReadableDocuments` and `DocumentsNotRead` (the run content check, `IRunContentCheck`, stopped the run before its blocks because no document gave text to read, or because the model failed to read them; the open build's check passes every run; a run stopped by the self-serve token limit before its removal on 10 November 2026 holds `InputTooLarge`) — see [critical blocks abort the run](../../architecture/workflow-engine/parallel-execution.md#critical-blocks-abort-the-run) for how they are produced. Both columns are on the execution-list and report API contracts as `failureKind` and `failureDetail` ([Reports API](../api/reports.md)). A block failure also writes its reason as a `WorkflowExecutionLog` row, which is what the execution's Logs tab renders.
+Both failure columns are written only by a `Failed` transition through `TryMarkTerminalIfActiveAsync`; a `Cancelled` or `Draft` transition leaves them null. The vocabulary is `CriticalBlockFailure` (a critical block's failure aborted the run), `ResultsLost` (block results could not be trusted), `LifetimeExceeded` (the janitor failed an execution stranded past its maximum lifetime), `HostLost` (the host-loss sweep failed a run whose process stopped heartbeating), `InputDocumentDeleted` (a document the run was sent was deleted before the run started, so the job stopped it before anything was read), `NoReadableDocuments` and `DocumentsNotRead` (the run content check, `IRunContentCheck`, stopped the run before its blocks because no document gave text to read, or because the model failed to read them; the open build's check passes every run; a run stopped by the self-serve token limit before its removal on 10 November 2026 holds `InputTooLarge`) — see [critical blocks abort the run](../../architecture/workflow-engine/parallel-execution.md#critical-blocks-abort-the-run) for how they are produced. Both columns are on the execution-list and report API contracts as `failureKind` and `failureDetail` ([Reports API](../api/reports.md)). A block failure also writes its reason as a `WorkflowExecutionLog` row, which is what the execution's Logs tab renders.
 
 
 
@@ -547,6 +547,8 @@ Log rows optionally attach to a `ReportParagraph` via the shadow FK `ReportParag
 | `IsOutputDocument` | boolean |  |
 | `Key` | string (≤450) |  |
 | `LlmDescription` | string | What qualifies a document as this class, written for a model rather than a person: distinguishing features, near-miss classes, what the document is not. (nullable) |
+| `MadeByDocumentClassKey` | string (≤450) | The output class of `MadeByWorkflowTypeId` that a file of this class is. (nullable) |
+| `MadeByWorkflowTypeId` | string (≤100) | The workflow type whose output a file of this class is. (nullable) |
 | `PageOverviews` | string | The prompts this class's pages are summarised with. Empty means the workflow's default prompts apply, and without those the pages get no overview. (nullable) |
 | `Requirement` | integer | `Required`, `Suggested` or `Optional` |
 | `ShouldBeSingular` | boolean |  |
@@ -1281,7 +1283,7 @@ Audit columns: `CreatedAt`, `DeletedAt`, `DeletedByUserId`, `IsDeleted`, `Update
 | `Id` | string (≤36) (PK) | Row identifier |
 | `OrganizationId` | string | Organization billed |
 | `UserId` | string | User who started the work (nullable) |
-| `WorkflowTypeId`, `WorkflowExecutionId`, `SectionId`, `BlockId` | string | Where in a run the spend happened (nullable). `WorkflowTypeId` holds 36 characters while a workflow type id may hold 100, so the usage of a type with a longer id fails to save; the widening waits for the migration squash |
+| `WorkflowTypeId`, `WorkflowExecutionId`, `SectionId`, `BlockId` | string | Where in a run the spend happened (nullable). `WorkflowTypeId` holds up to 100 characters, as a workflow type id does (`WorkflowType.ID_MAX_LENGTH`) |
 | `DocumentId`, `PageId` | string | The document or page the call read (nullable) |
 | `UsageType` | integer | What triggered the spend, from `UsageType` below |
 | `ExecutionContext` | integer | Where the call ran: `WorkflowExecution` (0), `SectionTest` (1), `BlockTest` (2), `DocumentUpload` (3), `ApiCall` (4), `SystemMonitoring` (5), `Validation` (6), `ScreeningBacktest` (7), `WorkflowEditorAgent` (8) |
@@ -1340,7 +1342,7 @@ Audit columns: `CreatedAt`, `DeletedAt`, `DeletedByUserId`, `IsDeleted`, `Update
 | `OrganizationId` | string (≤450) | Organization billed |
 | `Day` | date | The UTC day the ledger rows were created |
 | `UsageType` | integer | From the `UsageType` table above |
-| `WorkflowTypeId` | string (≤36) | (nullable) |
+| `WorkflowTypeId` | string (≤100) | (nullable) |
 | `UserId` | string (≤450) | (nullable) |
 | `InputTokens`, `OutputTokens` | bigint | Units of the `Input` and `Output` components |
 | `CacheWriteTokens` | bigint | Units of `CacheWrite5m` and `CacheWrite1h` |
@@ -1359,7 +1361,7 @@ Index: (`OrganizationId`, `Day`). Audit columns: `CreatedAt`, `DeletedAt`, `Dele
 | `Id` | string (PK) | Row identifier |
 | `WorkflowExecutionId` | string (≤450) | The execution (unique index; no foreign key) |
 | `OrganizationId` | string (≤450) | Organization billed |
-| `WorkflowTypeId` | string (≤36) | The workflow type of the execution's first ledger row that has one (nullable) |
+| `WorkflowTypeId` | string (≤100) | The workflow type of the execution's first ledger row that has one (nullable) |
 | `FirstUsageAt` | timestamp | When the execution's earliest ledger row was created |
 | `InputTokens`, `OutputTokens`, `CacheWriteTokens`, `CacheReadTokens`, `EmbeddingTokens`, `Cost`, `OperationCount` | | As in `TokenUsageDailyTotals` |
 

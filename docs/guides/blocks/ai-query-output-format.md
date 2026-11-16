@@ -214,8 +214,8 @@ Once a Single Tag / Multi Tag / JSON / JSON-in-tag block validates, each named p
 
 | Format | Reference syntax | Resolves to |
 | --- | --- | --- |
-| Single Tag (`tag = answer`) | `{Score.answer}` | Inner text of `<answer>...</answer>` |
-| Multi Tag | `{Score.reasoning}`, `{Score.answer}`, … | One reference per tag, the inner text of the first match |
+| Single Tag (`tag = answer`) | `{Score.answer}` | Inner text of `<answer>...</answer>`; when the answer repeats the tag, every match in order, joined by line breaks |
+| Multi Tag | `{Score.reasoning}`, `{Score.answer}`, … | One reference per tag, the inner text of every match in order, joined by line breaks |
 | JSON (whole response) | `{Score.fieldName}` or `{Score.Json.fieldName}` | The value of top-level key `fieldName` (dot-path into the validated JSON); `{Score.Json}` is the whole JSON |
 | JSON in Tag | `{Score.fieldName}` or `{Score.Json.fieldName}` | A sub-key of the inner JSON; `{Score.Json}` is the whole inner JSON. `{Score.tagName}` still reads the tag's inner text |
 | Any | `{Score}` | The full raw response |
@@ -239,7 +239,7 @@ The retry uses the **same prompt** — no error feedback is fed back to the mode
 
 - **Empty tag content** like `<answer></answer>` is valid. The reference resolves to an empty string.
 - **Extra JSON keys** not in the schema are tolerated by default. Tighten with `additionalProperties: false` in Advanced if you need to reject them.
-- **Multiple matches of the same tag** — the **first** match wins.
+- **Multiple matches of the same tag**: the validator checks the **first** match, but a `{Score.tagName}` reference reads **every** match in order, joined by line breaks.
 - **A wrapping Markdown code fence around JSON** is stripped before validation, but not from the raw response, so `{Score}` shows the fence. A dotted path walks the raw response as JSON when it parses as JSON, and otherwise looks for a `<fieldName>` tag. When neither finds a value and the format is **JSON** or **JSON in Tag**, the path walks the validated JSON (`JsonResponse`) instead (`PopulatePlaceholderStringFromSection` in `WorkflowHandler`), so `{Score.fieldName}` works with or without a fence. A tag of the same name in the raw response wins over a JSON key.
 - **Leading and trailing whitespace** is trimmed.
 

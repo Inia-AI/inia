@@ -572,7 +572,11 @@ public class Section : Entity<Section>, ITemplatable, ISharedComponentLinkable
         return true;
     }
 
-    public void ProcessLoops(Dictionary<string, string> sharedInputs)
+    /// <summary>
+    /// Expands the section's loop over the list its template resolves to. <paramref name="beforeExpansion"/>
+    /// gets the item count once the list is known and before any block is cloned, so it can refuse the loop.
+    /// </summary>
+    public void ProcessLoops(Dictionary<string, string> sharedInputs, Action<int>? beforeExpansion = null)
     {
         NormalizeBlockOrdering();
 
@@ -596,6 +600,8 @@ public class Section : Entity<Section>, ITemplatable, ISharedComponentLinkable
         {
             return;
         }
+
+        beforeExpansion?.Invoke(listToLoopOn.Count);
 
         var blocksToLoop = Blocks
             .Where(q => q.Order > loopStart.Order && q.Order < loopEnd.Order)

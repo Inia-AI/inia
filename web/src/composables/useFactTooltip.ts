@@ -228,7 +228,7 @@ const formatBlockSource = (
   combinedCitedText: string | null,
   citedSourcesByBlock: BlockCitedSources[],
 ): string => {
-  const safeBlockTitle = escapeHtml(source.blockTitle || source.blockId || t('shared.citations.synthesis.defaultTitle'))
+  const safeBlockTitle = escapeHtml(source.blockTitle || t('shared.citations.synthesis.defaultTitle'))
   const blockData = escapeHtml(JSON.stringify(source))
   const drawn = drawnFromSources(source, citedSourcesOf(source, citedSourcesByBlock))
   const canTrace = drawn.length > 0 || source.upstreamSources.length > 0

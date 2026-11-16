@@ -4,6 +4,7 @@ using IniaAi.Common.Constants;
 using IniaAi.Domain.Entities.SharedComponents.Enums;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Entities.Workflows.Blocks;
+using IniaAi.Domain.Entities.Workflows.Blocks.Properties;
 using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
@@ -126,6 +127,7 @@ public class WorkflowTemplateStructuralValidator : IWorkflowTemplateStructuralVa
         }
 
         bool blockPropertiesValid = ValidateBlockProperties(workflow, errors);
+        ValidateWebAddresses(workflow, errors);
         ValidateReplacementTags(workflow, errors, warnings);
         ValidateDataOutputNames(workflow, errors, warnings);
         ValidateRegressionSchemas(workflow, errors);
@@ -482,6 +484,36 @@ public class WorkflowTemplateStructuralValidator : IWorkflowTemplateStructuralVa
         return valid;
     }
 
+    /// <summary>
+    /// A Web API call whose host a placeholder could choose is refused, since a value can come from a
+    /// model's answer about a stranger's document and send the request anywhere.
+    /// </summary>
+    private static void ValidateWebAddresses(Workflow workflow, List<Error> errors)
+    {
+        List<Section> sections = [.. workflow.Sections];
+        for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+        {
+            List<Block> blocks = [.. sections[sectionIndex].Blocks];
+            for (int blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
+            {
+                if (blocks[blockIndex].Properties is not WebApiCallProperties webCall)
+                {
+                    continue;
+                }
+
+                foreach ((string field, string label, string? template) in webCall.AddressTemplates())
+                {
+                    if (WebApiCallProperties.FixedHostProblem(blocks[blockIndex].Name, label, template) is string problem)
+                    {
+                        errors.Add(Error.Validation(
+                            $"{SECTIONS_PROPERTY}[{sectionIndex}].{BLOCKS_PROPERTY}[{blockIndex}].Properties.{field}",
+                            problem));
+                    }
+                }
+            }
+        }
+    }
+
     private static bool IsExplicitNull(JObject parent, string propertyName)
     {
         JToken? token = parent[propertyName];
@@ -700,6 +732,16 @@ public class WorkflowTemplateStructuralValidator : IWorkflowTemplateStructuralVa
     public static bool IsSignatureError(Error error)
     {
         return error.Code.Contains(SIGNATURE_FIELDS_PROPERTY, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// True for the errors of a Web API call address whose host a placeholder could choose, so the
+    /// editor's save gate refuses them as the API does.
+    /// </summary>
+    public static bool IsWebAddressError(Error error)
+    {
+        return error.Code.EndsWith($".Properties.{nameof(WebApiCallProperties.UrlTemplate)}", StringComparison.Ordinal)
+            || error.Code.EndsWith($".Properties.{nameof(WebApiCallProperties.PollCompletionUrlTemplate)}", StringComparison.Ordinal);
     }
 
     /// <summary>

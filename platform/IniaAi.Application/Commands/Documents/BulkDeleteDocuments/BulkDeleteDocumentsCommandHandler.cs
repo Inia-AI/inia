@@ -16,7 +16,8 @@ namespace IniaAi.Application.Commands.Documents.BulkDeleteDocuments;
 /// id in turn, collecting per-id outcomes into a
 /// <see cref="BulkDeleteDocumentsResultDto"/>. DB mutations are batched and
 /// committed once at the end; blob deletions are attempted after the commit so a
-/// storage failure does not block the DB side of the operation.
+/// storage failure does not block the DB side of the operation. A document that a running
+/// report reads stays, with that reason, as for one delete.
 /// </summary>
 public class BulkDeleteDocumentsCommandHandler
     : IRequestHandler<BulkDeleteDocumentsCommand, ErrorOr<BulkDeleteDocumentsResultDto>>
@@ -49,6 +50,9 @@ public class BulkDeleteDocumentsCommandHandler
             .GetAllAsync(new DocumentsByIdsTrackingSpec(uniqueIds), cancellationToken);
         var documentsById = loaded.ToDictionary(d => d.Id);
 
+        HashSet<string> readByUnfinishedReports = await _unitOfWork.Documents
+            .GetIdsReadByUnfinishedReportsAsync(uniqueIds, request.OrganizationId, cancellationToken);
+
         foreach (string id in uniqueIds)
         {
             if (!documentsById.TryGetValue(id, out Document? document))
@@ -76,6 +80,12 @@ public class BulkDeleteDocumentsCommandHandler
                     request.UserId,
                     document.Id);
                 result.Failed[id] = DocumentErrorFactory.NOT_FOUND_MESSAGE;
+                continue;
+            }
+
+            if (readByUnfinishedReports.Contains(id))
+            {
+                result.Failed[id] = DocumentErrorFactory.READ_BY_RUNNING_REPORT_MESSAGE;
                 continue;
             }
 

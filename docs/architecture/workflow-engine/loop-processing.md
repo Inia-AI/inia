@@ -169,6 +169,8 @@ After the in-memory loop expansion, the `WorkflowHandler` updates the database (
 
 A failure here fails the run: the per-block writer later updates these rows and assumes they exist.
 
+Once the list is resolved and before any block is cloned, `ProcessLoops` hands its item count to `ThrowIfLoopExceedsItemCap`. More than `PlatformSettings:IniaAi:MaxLoopItems` fails the run before any block of the loop runs, with the error "The loop in section '{Title}' runs over {N} items, more than the {Cap} one loop may run over. No block of the loop ran. Shorten the list the loop runs over." The setting is not set by default, and then a loop has no item cap.
+
 Before the sync, `ThrowIfLoopExceedsAgentCopyCap` counts the Agent-family blocks the expansion added. More than `PlatformSettings:AgentRuntime:MaxLoopAgentCopies` fails the run before any agent run starts (the error text is on [Execution Context](execution-context.md#loop-processing-system)).
 
 ---
@@ -255,6 +257,7 @@ The LoopEnd block has no configuration UI.
 | LoopStart without LoopEnd | `InvalidOperationException` thrown |
 | LoopEnd without LoopStart | `InvalidOperationException` thrown |
 | Empty `LoopedListTemplate`, a template that resolves to no lines, or a null `ListTitle` | The loop is not expanded. LoopStart and LoopEnd stay in the section and have no strategy, so each fails with `No strategy found for block type: LoopStart` (or `LoopEnd`); the body blocks run once, and `{ListTitle}` resolves to the no-data text. The run continues, because neither block is critical. |
+| The list holds more items than `MaxLoopItems` | The run fails before any block of the loop runs |
 | Expansion would start more Agent runs than `MaxLoopAgentCopies` | The run fails before any agent run starts |
 
 ---

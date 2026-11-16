@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace IniaAi.FileFormats.Excel;
@@ -14,6 +15,9 @@ internal static class WorkbookPackage
     private const string PART_NAME_ATTRIBUTE = "PartName";
     private const string TYPE_ATTRIBUTE = "Type";
     private const string TARGET_ATTRIBUTE = "Target";
+    private const string NAME_ATTRIBUTE = "name";
+    private const string SHEETS_ELEMENT = "sheets";
+    private const string SHEET_ELEMENT = "sheet";
     private const string PACKAGE_RELATIONSHIPS_PART = "_rels/.rels";
     private const string OFFICE_DOCUMENT_RELATIONSHIP_TYPE = "/officeDocument";
 
@@ -75,13 +79,45 @@ internal static class WorkbookPackage
     public static List<XElement> DefinedNames(Stream source)
     {
         using var package = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
-        string? workbookPart = Part(package, PACKAGE_RELATIONSHIPS_PART)?
+        XDocument? workbook = WorkbookPart(package) is { } part ? Part(package, part) : null;
+        return workbook?.Descendants(_spreadsheetMl + "definedName").ToList() ?? [];
+    }
+
+    /// <inheritdoc cref="WorkbookSheetNames.Read"/>
+    public static HashSet<string> SheetNames(Stream source)
+    {
+        using var package = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
+        HashSet<string> names = new(StringComparer.OrdinalIgnoreCase);
+        if (WorkbookPart(package) is not { } part || package.GetEntry(part) is not { } entry)
+        {
+            return names;
+        }
+
+        using Stream stream = entry.Open();
+        using XmlReader reader = PackageXml.Reader(stream);
+        while (reader.Read())
+        {
+            if (reader.LocalName == SHEETS_ELEMENT && (reader.NodeType == XmlNodeType.EndElement || reader.IsEmptyElement))
+            {
+                break;
+            }
+
+            if (reader.NodeType == XmlNodeType.Element && reader.LocalName == SHEET_ELEMENT && reader.GetAttribute(NAME_ATTRIBUTE) is { } name)
+            {
+                _ = names.Add(name);
+            }
+        }
+
+        return names;
+    }
+
+    private static string? WorkbookPart(ZipArchive package)
+    {
+        return Part(package, PACKAGE_RELATIONSHIPS_PART)?
             .Descendants(_relationships + "Relationship")
             .FirstOrDefault(relationship => ((string?)relationship.Attribute(TYPE_ATTRIBUTE) ?? string.Empty)
                 .EndsWith(OFFICE_DOCUMENT_RELATIONSHIP_TYPE, StringComparison.OrdinalIgnoreCase))?
             .Attribute(TARGET_ATTRIBUTE)?.Value.TrimStart('/');
-        XDocument? workbook = workbookPart is null ? null : Part(package, workbookPart);
-        return workbook?.Descendants(_spreadsheetMl + "definedName").ToList() ?? [];
     }
 
     private static XDocument? Part(ZipArchive package, string entryName)

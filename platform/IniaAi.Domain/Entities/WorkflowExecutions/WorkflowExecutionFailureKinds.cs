@@ -29,4 +29,7 @@ public static class WorkflowExecutionFailureKinds
 
     /// <summary>The model failed to read the run's documents, so the run stopped before its blocks: a problem on the platform's side, not with the documents.</summary>
     public const string DOCUMENTS_NOT_READ = "DocumentsNotRead";
+
+    /// <summary>A document the run was sent was deleted before the run read it, so the run stopped before its blocks.</summary>
+    public const string INPUT_DOCUMENT_DELETED = "InputDocumentDeleted";
 }

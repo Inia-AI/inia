@@ -16,11 +16,13 @@
 <MudGrid Spacing="2" Class="editor-twin-grid">
     <MudItem xs="12" md="6">
         <MudTextField Variant="Variant.Outlined"
-                      Label="URL Template"
+                      Label="@WebApiCallProperties.URL_TEMPLATE_LABEL"
                       Class="editor-mono-field"
-                      HelperText="The URL to make the HTTP request to.
-                        This can include {{placeholder}} variables."
+                      HelperText="The URL to make the HTTP request to. Write its host out;
+                        {{placeholder}} variables can follow the first /, ? or #."
                       Sizing="InputSizing.Auto"
+                      Error="@(UrlProblem is not null)"
+                      ErrorText="@UrlProblem"
                       @bind-Value="@_props.UrlTemplate" />
     </MudItem>
 
@@ -155,12 +157,14 @@
 <MudGrid Spacing="2" Class="editor-twin-grid">
     <MudItem xs="12" md="6">
         <MudTextField Variant="Variant.Outlined"
-                      Label="On Completion: Fetch URL Template (optional)"
+                      Label="@($"{WebApiCallProperties.COMPLETION_URL_TEMPLATE_LABEL} (optional)")"
                       Class="editor-mono-field"
                       HelperText="Fetched once (GET, same headers) after polling succeeds; its response becomes
                         the block output. Collapses the poll + result pair into one block.
-                        Can include {{placeholder}} variables."
+                        Write its host out; {{placeholder}} variables can follow the first /, ? or #."
                       Sizing="InputSizing.Auto"
+                      Error="@(CompletionUrlProblem is not null)"
+                      ErrorText="@CompletionUrlProblem"
                       @bind-Value="@_props.PollCompletionUrlTemplate" />
     </MudItem>
 
@@ -280,6 +284,12 @@
 
     private WebApiCallProperties _props => Block.Properties as WebApiCallProperties
         ?? throw new InvalidOperationException("Block properties must be of type WebApiCallProperties");
+
+    private string? UrlProblem => WebApiCallProperties.FixedHostProblem(
+        Block.Name, WebApiCallProperties.URL_TEMPLATE_LABEL, _props.UrlTemplate);
+
+    private string? CompletionUrlProblem => WebApiCallProperties.FixedHostProblem(
+        Block.Name, WebApiCallProperties.COMPLETION_URL_TEMPLATE_LABEL, _props.PollCompletionUrlTemplate);
 
     [Parameter, EditorRequired]
     public EventCallback BlockChanged { get; set; }

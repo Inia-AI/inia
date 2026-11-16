@@ -111,7 +111,7 @@ public sealed class GetFileQueryHandler : IRequestHandler<GetFileQuery, ErrorOr<
                 return Error.NotFound(description: "File content is empty.");
             }
 
-            string fileName = fileMetadata.Name.TrimEnd().WithExtension(fileMetadata.Extension);
+            string fileName = document.MediaType.ServedFileName(fileMetadata.Name.TrimEnd().WithExtension(fileMetadata.Extension));
             string contentType = document.MediaType.ToContentType();
 
             string contentDisposition = request.Disposition.Equals("preview", StringComparison.OrdinalIgnoreCase)

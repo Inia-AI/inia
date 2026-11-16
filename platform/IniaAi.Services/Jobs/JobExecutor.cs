@@ -541,6 +541,7 @@ public class JobExecutor : IJobExecutor
     /// <summary>
     /// The documents the run processes: every document linked to the job or to its workflow type,
     /// less what the run-input stage took out of the run.
+    /// A run that was sent a document deleted since stops here, before anything is read.
     /// </summary>
     internal async Task<IReadOnlyList<DocumentInfo>> LoadRunInputAsync(
         Job job,
@@ -548,6 +549,12 @@ public class JobExecutor : IJobExecutor
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(job.Workflow, nameof(job.Workflow));
+
+        List<string> deleted = await userDataUnitOfWork.Documents.GetDeletedRunInputFileNamesAsync(job.Id, cancellationToken);
+        if (deleted.Count > 0)
+        {
+            throw new RunInputDeletedException(deleted);
+        }
 
         IReadOnlyList<DocumentInfo> documentInfos = [.. await userDataUnitOfWork
             .Documents

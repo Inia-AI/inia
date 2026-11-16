@@ -64,5 +64,6 @@
   "duration": "00:04:00",
   "intakeSkippedFiles": null,
   "agentActivity": null,
-  "workflowActivity": null
+  "workflowActivity": null,
+  "nextWorkflows": []
 }

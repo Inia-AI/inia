@@ -99,6 +99,11 @@ public static class DependencyInjection
         services.TryAddSingleton<IDeletedRecordRetention, DefaultDeletedRecordRetention>();
         services.TryAddSingleton<IReportNotice, NoReportNotice>();
         services.TryAddTransient<IRunAdmission, AdmitEveryRun>();
+        services.TryAddSingleton<IWorkbookInputSheets, NoWorkbookInputSheets>();
+        services.TryAddSingleton<IWorkbookOutputStamps, NoWorkbookOutputStamps>();
+        services.TryAddSingleton<IWebCallAddresses, AnyPublicWebAddress>();
+        services.TryAddSingleton<IWorkflowAvailability, EveryWorkflowAvailable>();
+        services.TryAddScoped<NextWorkflows>();
         services.TryAddSingleton<RunIntake>();
         services.TryAddTransient<IRunSettlement, NoRunSettlement>();
         services.TryAddTransient<IExternalSignUp, NoExternalSignUp>();

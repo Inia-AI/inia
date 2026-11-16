@@ -787,13 +787,14 @@
         List<(Block block, List<string> invalidTags)> blocksWithInvalidTags = FindBlocksWithInvalidReplacementTags();
 
         // The editor sends SaveWorkflowCommand directly (bypassing the API's structural validation),
-        // so the regression- and signature-field rules are gated here. Only errors with those codes
-        // block the save; other structural rules stay API-only for the editor path.
+        // so the regression-field, signature-field and web address rules are gated here. Only errors
+        // with those codes block the save; other structural rules stay API-only for the editor path.
         List<Error> fieldErrors = StructuralValidator
             .Validate(EditorContext.Workflow)
             .Errors
             .Where(e => WorkflowTemplateStructuralValidator.IsRegressionError(e)
-                || WorkflowTemplateStructuralValidator.IsSignatureError(e))
+                || WorkflowTemplateStructuralValidator.IsSignatureError(e)
+                || WorkflowTemplateStructuralValidator.IsWebAddressError(e))
             .ToList();
 
         if (fieldErrors.Count > 0)
@@ -801,7 +802,11 @@
             string details = string.Join("\n", fieldErrors.Select(e => $"• {e.Description}"));
             var messageBoxOptions = new MessageBoxOptions
             {
-                Title = "Regression or signature fields are misconfigured",
+                Title = fieldErrors.All(WorkflowTemplateStructuralValidator.IsWebAddressError)
+                    ? "A web address does not name its host"
+                    : fieldErrors.Any(WorkflowTemplateStructuralValidator.IsWebAddressError)
+                        ? "Some block fields are misconfigured"
+                        : "Regression or signature fields are misconfigured",
                 Message = details,
                 YesText = "OK",
             };

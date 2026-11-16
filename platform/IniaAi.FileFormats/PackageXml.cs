@@ -17,8 +17,14 @@ internal static class PackageXml
 
     public static XDocument Load(Stream stream)
     {
-        using XmlReader reader = XmlReader.Create(stream, _settings);
+        using XmlReader reader = Reader(stream);
         return XDocument.Load(reader);
+    }
+
+    /// <summary>Reads a part forward only, for a caller that needs its start and not the whole part in memory.</summary>
+    public static XmlReader Reader(Stream stream)
+    {
+        return XmlReader.Create(stream, _settings);
     }
 
     public static XDocument Parse(string text)

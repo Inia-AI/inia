@@ -10,6 +10,7 @@ using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.Documents;
 using IniaAi.WebApi.Contracts.Responses.Pages;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -127,6 +128,24 @@ public class GetPageImageQueryHandlerTests : IDisposable
         Assert.True(result.IsError);
         Assert.Equal(ErrorType.NotFound, result.FirstError.Type);
         Assert.Contains("storage path", result.FirstError.Description);
+    }
+
+    [Fact]
+    public async Task Handle_PageOfADeletedDocument_SaysTheDocumentWasDeleted_ToItsOrganizationOnly()
+    {
+        (Page page, Document document, _) = await CreateTestPageWithDocumentAsync("org123");
+        IUserDataUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
+        unitOfWork.Documents.Remove(await _context.Documents.SingleAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+        _ = await unitOfWork.CompleteAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        ErrorOr<PageImageResultDto> own = await _handler.Handle(new GetPageImageQuery("org123", "user456", page.Id), TestContext.Current.CancellationToken);
+        ErrorOr<PageImageResultDto> foreign = await _handler.Handle(new GetPageImageQuery("org999", "user456", page.Id), TestContext.Current.CancellationToken);
+        ErrorOr<PageImageResultDto> missing = await _handler.Handle(new GetPageImageQuery("org999", "user456", "nonexistent-page-id"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorType.NotFound, own.FirstError.Type);
+        Assert.Equal("Document.Deleted", own.FirstError.Code);
+        Assert.Equal(missing.FirstError, foreign.FirstError);
     }
 
     private async Task<(Page, Document, FileMetadata)> CreateTestPageWithDocumentAsync(

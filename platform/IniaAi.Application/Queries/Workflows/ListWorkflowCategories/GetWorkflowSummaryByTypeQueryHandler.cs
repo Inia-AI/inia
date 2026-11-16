@@ -2,11 +2,13 @@ using ErrorOr;
 using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.RunLimits;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Common.Constants;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Entities.Workflows.Blocks;
 using IniaAi.Domain.Entities.Workflows.Enums;
+using IniaAi.WebApi.Contracts.Dto;
 using IniaAi.WebApi.Models.Dto;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,6 +67,7 @@ public class GetWorkflowSummaryByTypeQueryHandler
         }
 
         WorkflowDto result = WorkflowSummaryProjections.ToDto(workflow, _creditCost, _pageLimit);
+        result.DocumentClasses = await WithMadeByAsync(result.DocumentClasses, workflow.DocumentClasses, request.OrganizationId, cancellationToken);
 
         // Check if any block in this workflow or its sections uses a Counterparty placeholder.
         // Checks the Properties JSON column (via double-cast trick for value-converted jsonb/nvarchar)
@@ -90,5 +93,27 @@ public class GetWorkflowSummaryByTypeQueryHandler
                 cancellationToken);
 
         return result;
+    }
+
+    /// <summary>Names, on each input made by another workflow, that workflow and its output, where it still makes it and the organization can reach it.</summary>
+    private async Task<List<DocumentClassDto>> WithMadeByAsync(
+        List<DocumentClassDto> shown,
+        List<DocumentClass> documentClasses,
+        string organizationId,
+        CancellationToken cancellationToken)
+    {
+        List<DocumentClassDto> named = [];
+        foreach (DocumentClassDto documentClass in shown)
+        {
+            DocumentClass? input = documentClasses.FirstOrDefault(candidate => candidate.Key == documentClass.Key && candidate.IsMadeByAnotherWorkflow);
+            MadeByChoice? output = input is null
+                ? null
+                : await MadeByLinks.OutputReachableByAsync(_coreUnitOfWork, organizationId, input.MadeByWorkflowTypeId!, input.MadeByDocumentClassKey!, cancellationToken);
+            named.Add(output is null
+                ? documentClass
+                : documentClass with { MadeBy = new DocumentClassMadeByDto(output.WorkflowTypeId, output.WorkflowTypeName, output.DisplayName) });
+        }
+
+        return named;
     }
 }

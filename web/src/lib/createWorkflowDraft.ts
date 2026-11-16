@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { WorkflowReRunPrefill } from './workflowReRunPrefill'
+import type { CreateWorkflowPrefill } from './workflowReRunPrefill'
 
 const DRAFT_KEY = 'inia.createWorkflowDraft'
 
@@ -14,12 +14,12 @@ const draftSchema = z.object({
 })
 
 /** Keeps the new report form for this tab, so it comes back after the page is left for another site and reopened. */
-export function keepCreateWorkflowDraft(draft: WorkflowReRunPrefill): void {
+export function keepCreateWorkflowDraft(draft: CreateWorkflowPrefill): void {
   sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
 }
 
 /** The kept form, once: reading it forgets it. */
-export function takeCreateWorkflowDraft(): WorkflowReRunPrefill | null {
+export function takeCreateWorkflowDraft(): CreateWorkflowPrefill | null {
   const stored = sessionStorage.getItem(DRAFT_KEY)
   sessionStorage.removeItem(DRAFT_KEY)
   if (stored === null) {

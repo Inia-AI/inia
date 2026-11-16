@@ -18,7 +18,8 @@ const KEY_PREFIX = 'shared.runFailure'
 
 /**
  * Kinds whose fix is not running the same report again. A refusal at intake, documents with
- * nothing to read and documents with more text than the report reads need other documents; a
+ * nothing to read, documents with more text than the report reads and a document deleted before
+ * the report started need other documents; a
  * report whose final checks are set up wrong fails the same way every time. Every other kind,
  * and a failure this client cannot classify, is worth one more run.
  */
@@ -26,6 +27,7 @@ const ACTION_BY_KIND: Record<string, RunFailureAction | null> = {
   RejectedAtIntake: 'changeDocuments',
   NoReadableDocuments: 'changeDocuments',
   InputTooLarge: 'changeDocuments',
+  InputDocumentDeleted: 'changeDocuments',
   VerificationGroupShape: null,
   VerificationUnsatisfiable: null,
 }

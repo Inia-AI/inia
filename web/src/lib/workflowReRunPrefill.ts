@@ -1,11 +1,12 @@
-import type { WorkflowReport } from '@/api/workflowReports/schema'
+import type { NextWorkflow, WorkflowReport } from '@/api/workflowReports/schema'
 import type {
   ReRunDocumentClassNeedingInput,
   ReRunInputs,
   ReRunVariableChange,
   ReRunVariableNeedingInput,
 } from '@/api/workflowExecutions/schema'
-import { extractReRunInputs } from './workflowReRun'
+import { fullFileName } from './fileName'
+import { counterpartyIdOf, extractReRunInputs } from './workflowReRun'
 
 export interface ReRunChanges {
   variablesNeedingInput: ReRunVariableNeedingInput[]
@@ -15,7 +16,7 @@ export interface ReRunChanges {
   unavailableDocuments: string[]
 }
 
-export interface WorkflowReRunPrefillDocument {
+export interface CreateWorkflowPrefillDocument {
   fileId: string
   documentClass?: string
   name: string
@@ -30,13 +31,13 @@ export interface WorkflowReRunPrefillDocument {
  * `WorkflowReport` does not store them; a form kept across a visit to another
  * site carries them.
  */
-export interface WorkflowReRunPrefill {
+export interface CreateWorkflowPrefill {
   workflowId: string
   workflowTypeId: string
   counterpartyId?: string
   peerCompanyIds?: string[]
   variables: Record<string, unknown>
-  documents: WorkflowReRunPrefillDocument[]
+  documents: CreateWorkflowPrefillDocument[]
   /** The form step to open on; absent opens the first step. */
   startStep?: 'documents' | 'details' | 'review'
   reRunChanges?: ReRunChanges
@@ -44,7 +45,7 @@ export interface WorkflowReRunPrefill {
 
 export function reRunChangesOf(
   inputs: ReRunInputs,
-  documents: WorkflowReRunPrefillDocument[] = [],
+  documents: CreateWorkflowPrefillDocument[] = [],
 ): ReRunChanges | undefined {
   const changes: ReRunChanges = {
     variablesNeedingInput: inputs.variablesNeedingInput ?? [],
@@ -60,13 +61,13 @@ export function reRunChangesOf(
   return any ? changes : undefined
 }
 
-const fullName = (document: WorkflowReRunPrefillDocument) =>
+const fullName = (document: CreateWorkflowPrefillDocument) =>
   document.name.endsWith(document.extension) ? document.name : `${document.name}${document.extension}`
 
 export function withReRunInputs(
-  prefill: WorkflowReRunPrefill,
+  prefill: CreateWorkflowPrefill,
   inputs: ReRunInputs,
-): WorkflowReRunPrefill {
+): CreateWorkflowPrefill {
   const prefillKeysByLowercase = new Map(
     Object.keys(prefill.variables).map(key => [key.toLowerCase(), key]),
   )
@@ -101,7 +102,7 @@ export function withReRunInputs(
 export function buildReRunPrefill(
   execution: WorkflowReport,
   canonicalWorkflowId: string,
-): WorkflowReRunPrefill {
+): CreateWorkflowPrefill {
   const { inputDocuments, counterpartyId, variables } = extractReRunInputs(execution)
 
   return {
@@ -128,12 +129,38 @@ export function buildReRunPrefill(
 export function buildChangeDocumentsPrefill(
   execution: WorkflowReport,
   canonicalWorkflowId: string,
-): WorkflowReRunPrefill {
+): CreateWorkflowPrefill {
   const prefill = buildReRunPrefill(execution, canonicalWorkflowId)
+  const deleted = (execution.workflowExecutionDocuments ?? []).filter(d => d.isDeleted && !d.isOutputDocument)
 
   return {
     ...prefill,
     documents: prefill.documents.map(d => ({ ...d, documentClass: undefined })),
+    startStep: 'documents',
+    reRunChanges: deleted.length
+      ? {
+          variablesNeedingInput: [],
+          documentClassesNeedingInput: [],
+          removedVariables: [],
+          defaultedVariables: [],
+          unavailableDocuments: deleted.map(fullFileName),
+        }
+      : undefined,
+  }
+}
+
+/**
+ * The prefill for "Continue to" on a finished report: the next workflow's
+ * form opens on the documents step with the report's company and the
+ * documents the platform names for that workflow, each in the class it goes to.
+ */
+export function buildContinuePrefill(execution: WorkflowReport, next: NextWorkflow): CreateWorkflowPrefill {
+  return {
+    workflowId: next.workflowId,
+    workflowTypeId: next.workflowTypeId,
+    counterpartyId: counterpartyIdOf(execution),
+    variables: {},
+    documents: [...next.documents],
     startStep: 'documents',
   }
 }

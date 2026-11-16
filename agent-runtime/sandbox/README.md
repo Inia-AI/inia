@@ -11,8 +11,9 @@ derivative of the default profile — wired via `security_opt` in `compose.yaml`
 - `docker-default-seccomp.json` — pristine input: Docker's default profile, fetched from
   [moby/profiles](https://github.com/moby/profiles) `seccomp/default.json` at commit
   `f9bc03ec19b2dc4c091449b08e88f85c0caa9f0b` (2026-07-03).
-- `make-custom-profile.jq` — the three-rule transform (see its header for what each rule does and
-  why `clone3` is deliberately untouched).
+- `make-custom-profile.jq` — the transform: three rules that let bubblewrap run, and one that
+  keeps the uid calls to the uids the runtime uses (see its header for what each rule does and why
+  `clone3` is deliberately untouched).
 - `seccomp-bwrap.json` — generated output. Never edit by hand; regenerate.
 
 ## Regenerate
@@ -26,6 +27,16 @@ Run it through the container (jq 1.7 in the base image) so formatting is determi
 the committed output against a fresh transform and fails on drift. For the same reason `biome.json`
 excludes both JSON files: Biome's formatting differs from jq's, and the input stays byte for byte as
 fetched.
+
+## The supervisor cannot become uid 0
+
+The supervisor holds `CAP_SETUID` to drop each run to its own uid, so the profile allows the uid
+calls only for the uids the runtime uses; uid 0 is not one of them (ADR 0167, and the transform's
+header for why the rule is a list). `scripts/seccomp-uid-matrix.sh` proves it on the running kernel,
+in CI and inside a deployed container; its header has the three ways to run it. A run pool that
+moves outside 16384 to 32767 needs the range in the transform moved with it, and the script fails
+until then. The profile needs `no-new-privileges` on the container: without it the container does
+not start.
 
 ## Four independent controls, all four required
 

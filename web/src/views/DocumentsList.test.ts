@@ -14,6 +14,8 @@ const { isAdminRef, isOperatorRef } = vi.hoisted(() => ({
   isAdminRef: { value: true },
   isOperatorRef: { value: false },
 }))
+const { tenantsRef } = vi.hoisted(() => ({ tenantsRef: { value: null as unknown } }))
+const { toastMock, bulkDeleteMock } = vi.hoisted(() => ({ toastMock: vi.fn(), bulkDeleteMock: vi.fn() }))
 const { documentsRef, categoriesRef, usersRef } = vi.hoisted(() => {
   // The mocks are instantiated lazily inside the factory below so that
   // `await import('vue')` inside the factory is allowed by Vitest's hoisting.
@@ -29,6 +31,7 @@ vi.mock('@/api', async () => {
   documentsRef.value = vueRef(null)
   categoriesRef.value = vueRef([])
   usersRef.value = vueRef({ value: [] })
+  tenantsRef.value = vueRef(null)
 
   return {
     default: {
@@ -38,7 +41,7 @@ vi.mock('@/api', async () => {
           isLoading: vueRef(false),
         }),
         useBulkDeleteDocuments: () => ({
-          mutateAsync: vi.fn(),
+          mutateAsync: bulkDeleteMock,
           isPending: vueRef(false),
         }),
         service: { getDocument: vi.fn() },
@@ -48,6 +51,7 @@ vi.mock('@/api', async () => {
       },
       Users: {
         useGetUsers: () => ({ data: usersRef.value }),
+        useGetTenants: () => ({ data: tenantsRef.value, isPending: vueRef(false) }),
       },
       Files: {
         useGetFile: () => ({ mutateAsync: vi.fn() }),
@@ -75,7 +79,7 @@ vi.mock('vue-i18n', async importOriginal => {
 })
 
 vi.mock('@/components/ui/toast/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: toastMock }),
 }))
 
 vi.mock('@/composables/useCurrentUserRoles', () => ({
@@ -96,6 +100,9 @@ vi.mock('vue-router', async () => {
 
 // Import after all mocks are in place.
 import Documents from './DocumentsList.vue'
+import { DELETE_OWN_DOCUMENTS } from '@/constants/capabilities'
+import { makeCapabilitiesVary, resetCapabilities } from '@/test/helpers/capabilities'
+import { clearAuthToken, setAuthToken } from '@/test/helpers/jwt'
 
 // Stub the preview dialog so the test asserts wiring (open + props) rather than
 // the dialog's teleport/iframe internals.
@@ -117,15 +124,21 @@ const state = () => ({
   documents: documentsRef.value as { value: unknown },
   categories: categoriesRef.value as { value: unknown },
   users: usersRef.value as { value: unknown },
+  tenants: tenantsRef.value as { value: unknown },
 })
 
 beforeEach(() => {
   pushMock.mockReset()
+  toastMock.mockReset()
+  bulkDeleteMock.mockReset()
   isAdminRef.value = true
   isOperatorRef.value = false
   state().documents.value = null
   state().categories.value = []
   state().users.value = { value: [] }
+  state().tenants.value = null
+  resetCapabilities()
+  clearAuthToken()
 })
 
 const ONE_ROW = {
@@ -359,6 +372,115 @@ describe('Documents.vue', () => {
     expect(
       wrapper.find(actionButton('delete', 'invoice.pdf')).exists(),
     ).toBe(true)
+  })
+
+  const MINE_AND_THEIRS = {
+    ...ONE_ROW,
+    value: [
+      { ...ONE_ROW.value[0], id: 'mine', name: 'mine.pdf', userId: 'user-me' },
+      { ...ONE_ROW.value[0], id: 'theirs', name: 'theirs.pdf', userId: 'user-other' },
+    ],
+    count: 2,
+  }
+  const rowCheckbox = (name: string) => `[aria-label='page.documents.table.selectRow:${JSON.stringify({ name })}']`
+  const asUserOfAnOrganizationWith = (capabilities: string[]) => {
+    isAdminRef.value = false
+    setAuthToken({ role: 'User', sub: 'user-me' })
+    state().tenants.value = makeCapabilitiesVary(capabilities)
+    state().documents.value = MINE_AND_THEIRS
+  }
+
+  it('shows Delete on their own documents to a user whose organization lets users delete what they uploaded', async () => {
+    asUserOfAnOrganizationWith([DELETE_OWN_DOCUMENTS])
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find(actionButton('delete', 'mine.pdf')).exists()).toBe(true)
+    expect(wrapper.find(rowCheckbox('mine.pdf')).exists()).toBe(true)
+    expect(wrapper.find('[aria-label="page.documents.table.selectAll"]').exists()).toBe(true)
+    expect(wrapper.find(actionButton('delete', 'theirs.pdf')).exists()).toBe(false)
+    expect(wrapper.find(rowCheckbox('theirs.pdf')).exists()).toBe(false)
+  })
+
+  it('selects only the documents the user can delete with the select-all box', async () => {
+    asUserOfAnOrganizationWith([DELETE_OWN_DOCUMENTS])
+    const { wrapper } = await mountView()
+
+    await wrapper.find('[aria-label="page.documents.table.selectAll"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.bulk-selection-count').text()).toContain('"count":1')
+    expect(wrapper.find('[aria-label="page.documents.table.selectAll"]').attributes('data-state')).toBe('checked')
+  })
+
+  it('says why a document stayed when the platform refuses to delete it', async () => {
+    const reason = 'A report that is still running reads this document. Delete the document after the report finishes.'
+    bulkDeleteMock.mockResolvedValue({ deleted: [], failed: { d1: reason } })
+    state().documents.value = ONE_ROW
+    const { wrapper } = await mountView()
+
+    await wrapper.find(actionButton('delete', 'invoice.pdf')).trigger('click')
+    await flushPromises()
+    const confirm = [...document.body.querySelectorAll('button')].find(button => button.textContent?.includes('page.documents.delete.confirm'))
+    confirm?.click()
+    await flushPromises()
+
+    expect(bulkDeleteMock).toHaveBeenCalledWith(['d1'])
+    expect(toastMock.mock.calls.at(-1)?.[0].description).toContain(reason)
+  })
+
+  it('names each document that stayed after a bulk delete, with the platform\'s reason', async () => {
+    const reason = 'A report that is still running reads this document. Delete the document after the report finishes.'
+    bulkDeleteMock.mockResolvedValue({ deleted: ['mine'], failed: { theirs: reason } })
+    state().documents.value = MINE_AND_THEIRS
+    const { wrapper } = await mountView()
+
+    await wrapper.find('[aria-label="page.documents.table.selectAll"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('.bulk-action-row button').trigger('click')
+    await flushPromises()
+    const confirm = [...document.body.querySelectorAll('button')].find(button => button.textContent?.includes('page.documents.delete.confirm'))
+    confirm?.click()
+    await flushPromises()
+
+    expect(toastMock.mock.calls.at(-1)?.[0].description).toContain(`theirs.pdf: ${reason}`)
+  })
+
+  it('offers a user nothing to select on a page that holds only documents other people uploaded', async () => {
+    asUserOfAnOrganizationWith([DELETE_OWN_DOCUMENTS])
+    state().documents.value = { ...MINE_AND_THEIRS, value: [{ ...MINE_AND_THEIRS.value[1] }, { ...MINE_AND_THEIRS.value[1], id: 'nobody', name: 'ownerless.pdf', userId: null }], count: 2 }
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find('[aria-label="page.documents.table.selectAll"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find(actionButton('delete', 'ownerless.pdf')).exists()).toBe(false)
+    expect(wrapper.find(rowCheckbox('ownerless.pdf')).exists()).toBe(false)
+  })
+
+  it('shows no Delete to a user whose organization does not let users delete documents', async () => {
+    asUserOfAnOrganizationWith(['run', 'upload'])
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find(actionButton('delete', 'mine.pdf')).exists()).toBe(false)
+    expect(wrapper.find('[aria-label="page.documents.table.selectAll"]').exists()).toBe(false)
+  })
+
+  it('shows no Delete to a user without a staff role where organizations all hold the same features', async () => {
+    isAdminRef.value = false
+    setAuthToken({ role: 'User', sub: 'user-me' })
+    state().documents.value = MINE_AND_THEIRS
+    const { wrapper } = await mountView()
+
+    expect(wrapper.find(actionButton('delete', 'mine.pdf')).exists()).toBe(false)
+  })
+
+  it('shows Delete as soon as the organization\'s features arrive, on a table that is already up', async () => {
+    asUserOfAnOrganizationWith(['run', 'upload'])
+    const { wrapper } = await mountView()
+
+    state().tenants.value = makeCapabilitiesVary([DELETE_OWN_DOCUMENTS])
+    await flushPromises()
+
+    expect(wrapper.find(actionButton('delete', 'mine.pdf')).exists()).toBe(true)
+    expect(wrapper.find('[aria-label="page.documents.table.selectAll"]').exists()).toBe(true)
   })
 
   it('shows the selection column and per-row delete icon for admin users', async () => {

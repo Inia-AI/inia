@@ -23,20 +23,23 @@ export function parseFilenameFromContentDisposition(
 }
 
 // A blob-typed request wraps even the error body in a Blob, so the server's ProblemDetails
-// must be read back out of it before any message can be shown. Unwrapping the Blob is the
-// only work done here — the message pick is problemDetailsMessage, the same one every
-// non-blob call site goes through. A non-JSON body resolves to undefined and the caller's
-// localized fallback speaks instead.
-export async function readBlobProblemDetail(error: unknown): Promise<string | undefined> {
+// must be read back out of it. A non-JSON body resolves to undefined.
+export async function readBlobProblem(error: unknown): Promise<ProblemDetails | undefined> {
   const data = (error as { response?: { data?: unknown } } | null)?.response?.data
   if (!(data instanceof Blob)) {
     return undefined
   }
   try {
-    return problemDetailsMessage(JSON.parse(await data.text()) as ProblemDetails)
+    return JSON.parse(await data.text()) as ProblemDetails
   } catch {
     return undefined
   }
+}
+
+// The message pick is problemDetailsMessage, the same one every non-blob call site goes
+// through. Undefined lets the caller's localized fallback speak instead.
+export async function readBlobProblemDetail(error: unknown): Promise<string | undefined> {
+  return problemDetailsMessage(await readBlobProblem(error))
 }
 
 // The anchor must be in the document for Firefox to honor the click, and the object URL

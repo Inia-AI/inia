@@ -29,6 +29,7 @@ Each class has a few simple settings you choose in the editor:
 | **Requirement Level** | Whether a document of this class is mandatory, recommended, or optional (see below). |
 | **Limit to one document** | When on, users may upload only a single document of this class. |
 | **Is for output documents** | Marks a class the workflow *produces* rather than one users upload. Output classes accept no uploads. |
+| **Made by** | For a class users upload: the output of another workflow that a file of this class is, such as the spread an earlier workflow makes. Type part of a name to search the list. Empty means any file will do. An output class has no Made by. The open platform records the link and shows it in the editor; it does not check files against it. |
 
 ### Requirement levels
 
@@ -55,6 +56,7 @@ Each class has a few simple settings you choose in the editor:
    - Add a **Description for the model** when the platform's own models must tell this class apart from the others. Nobody outside the platform sees it. Write what qualifies a document as this class, the near-miss classes it is not (an interim report is not an annual report), and the cues on the page that decide it. Of the platform's own models, only the full edition's document intake screening reads it.
    - Pick a **Requirement Level** (Required, Suggested, or Optional).
    - Turn on **Limit to one document** if only one should be allowed.
+   - When files of this class come from another workflow, pick that workflow's output under **Made by**. The list holds the output classes of the current version of every other workflow type, without system types and retired ones.
    - Under **Page overview prompt**, give the class its own prompt for summarising its pages, or leave it empty to use the workflow's default. See [Page overview prompts](../page-overview-prompts.md).
 3. Click **Save**.
 
@@ -62,6 +64,10 @@ Each class has a few simple settings you choose in the editor:
 
 - Click the **Edit** (pencil) icon to change a class.
 - Click the **Remove** (trash) icon to delete one, and confirm.
+- An output class shows **Used by**: the input classes whose Made by names it, in the current version of each workflow type.
+- When the workflow or output an input is made by no longer exists, the dialog warns and keeps the link until you choose another output or clear the field.
+- When the step that makes that output does not stamp its file, the dialog warns: `The step that makes <workflow> · <output> does not stamp its file, so a run that checks this input refuses the file. Turn the stamp on in that step.`
+- The link travels with the workflow: in its exported file, in an import, in a workflow bundle to another deployment, and in its version history. It names the maker by its workflow type id, and a bundle imported from the editors list keeps that id. Until the maker reaches the other deployment, the dialog shows the warning that it no longer exists.
 
 > [!WARNING]
 > Deleting a document class also removes it from every block in the workflow that uses it.

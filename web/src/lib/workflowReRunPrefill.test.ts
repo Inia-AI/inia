@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildChangeDocumentsPrefill, buildReRunPrefill } from './workflowReRunPrefill'
+import { buildChangeDocumentsPrefill, buildContinuePrefill, buildReRunPrefill } from './workflowReRunPrefill'
 import { WorkflowState, WorkflowVariableTypes } from '@/enums'
 import type {
+  NextWorkflow,
   WorkflowExecutionVariableValue,
   WorkflowReport,
 } from '@/api/workflowReports/schema'
@@ -223,6 +224,21 @@ describe('buildChangeDocumentsPrefill', () => {
     expect(prefill.documents.map(d => d.fileId)).toEqual(['file-input-1', 'file-input-2'])
   })
 
+  it('leaves out a document deleted since the run, and names it as no longer available', () => {
+    const withDeleted: WorkflowReport = {
+      ...refused,
+      workflowExecutionDocuments: [
+        ...(refused.workflowExecutionDocuments ?? []),
+        { fileId: 'file-gone', name: 'old statement', extension: '.pdf', shouldBeDisplayedInOutput: true, isDeleted: true },
+      ],
+    }
+
+    const prefill = buildChangeDocumentsPrefill(withDeleted, CANONICAL_ID)
+
+    expect(prefill.documents.map(d => d.fileId)).toEqual(['file-input-1', 'file-input-2'])
+    expect(prefill.reRunChanges?.unavailableDocuments).toEqual(['old statement.pdf'])
+  })
+
   it('leaves every class to the platform, so a class it decided is not sent back as a hand-picked one', () => {
     const prefill = buildChangeDocumentsPrefill(refused, CANONICAL_ID)
 
@@ -234,5 +250,32 @@ describe('buildChangeDocumentsPrefill', () => {
 
     expect(prefill.counterpartyId).toBe('cp-9')
     expect(prefill.variables).toEqual({ revenue: 1000, region: 'NA' })
+  })
+})
+
+describe('buildContinuePrefill', () => {
+  const next: NextWorkflow = {
+    workflowId: 'wf-next',
+    workflowTypeId: 'type-next',
+    workflowTypeName: 'Next report',
+    creditCost: 40,
+    documents: [{ fileId: 'file-output-1', name: 'Spread', extension: '.xlsm', documentClass: 'Spread input' }],
+  }
+
+  it('opens the next workflow on its documents step with the documents the platform names and the company', () => {
+    expect(buildContinuePrefill(baseReport, next)).toEqual({
+      workflowId: 'wf-next',
+      workflowTypeId: 'type-next',
+      counterpartyId: 'cp-9',
+      variables: {},
+      documents: [{ fileId: 'file-output-1', documentClass: 'Spread input', name: 'Spread', extension: '.xlsm' }],
+      startStep: 'documents',
+    })
+  })
+
+  it('leaves the company unset for a report that has none, so the form asks for one', () => {
+    const withoutCompany = { ...baseReport, counterpartyId: null } as unknown as WorkflowReport
+
+    expect(buildContinuePrefill(withoutCompany, next).counterpartyId).toBeUndefined()
   })
 })

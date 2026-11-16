@@ -106,11 +106,10 @@ public static partial class StringExtensions
     /// <summary>
     /// Like <see cref="ReplacePlaceholders"/>, but percent-encodes each substituted value
     /// (<see cref="Uri.EscapeDataString(string)"/>) so it cannot break the URL structure the
-    /// template defines; the template's own literals stay raw. When the whole string is a
-    /// single placeholder, the value substitutes verbatim — the variable IS the URL. A
-    /// substituted value that itself contains input placeholders (a text input's value is a
-    /// template too) is first resolved with plain replacement, then encoded as one composed
-    /// value.
+    /// template defines; the template's own literals stay raw, and a string that is one
+    /// placeholder is encoded the same, so no value can carry a whole URL. A substituted value
+    /// that itself contains input placeholders (a text input's value is a template too) is
+    /// first resolved with plain replacement, then encoded as one composed value.
     /// </summary>
     public static string? ReplacePlaceholdersWithUrlEncodedValues(
         this string? str,
@@ -328,11 +327,6 @@ public static partial class StringExtensions
         if (str is null)
         {
             return null;
-        }
-
-        if (str.IsWholeStringSinglePlaceholder())
-        {
-            return str.ReplacePlaceholders(asPlaceHolder, inputs, stringComparison);
         }
 
         string? Resolve(string? value) =>

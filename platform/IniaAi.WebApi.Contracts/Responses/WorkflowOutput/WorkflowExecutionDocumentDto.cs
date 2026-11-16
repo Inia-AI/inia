@@ -75,4 +75,11 @@ public record WorkflowExecutionDocumentDto
     /// run used.
     /// </summary>
     public string? ExclusionReason { get; init; }
+
+    /// <summary>
+    /// Gets whether the document was deleted after the run read it. The report keeps what it took
+    /// from the document; the file can no longer be opened or downloaded. The entry leaves the
+    /// list when the deleted document's record is purged.
+    /// </summary>
+    public bool IsDeleted { get; init; }
 }

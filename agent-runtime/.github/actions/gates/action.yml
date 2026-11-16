@@ -41,6 +41,11 @@ runs:
       working-directory: ${{ inputs.tree }}
       run: ./scripts/seccomp-matrix.sh agent-runtime:dev
 
+    - name: The supervisor cannot become uid 0 under the profile
+      shell: bash
+      working-directory: ${{ inputs.tree }}
+      run: ./scripts/seccomp-uid-matrix.sh agent-runtime:dev
+
     - name: Quality gates (typecheck, lint, test)
       shell: bash
       working-directory: ${{ inputs.tree }}

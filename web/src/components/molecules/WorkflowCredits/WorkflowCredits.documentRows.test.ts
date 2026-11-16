@@ -160,4 +160,16 @@ describe('WorkflowCredits document rows for assistive technology', () => {
     expect(credits.emitted('preview')).toHaveLength(1)
     expect(credits.emitted('download')).toHaveLength(1)
   })
+
+  it('shows a deleted source document by its name as deleted, with nothing to open or download', async () => {
+    await mountCredits({ workflowExecutionDocuments: [sourcePdf({ isDeleted: true })] })
+    await openSection('source')
+
+    const row = document.querySelector<HTMLElement>('[data-testid="document-deleted-fSource"]')!
+    expect(row.textContent).toContain('Annual_Report_2025.pdf')
+    expect(row.textContent).toContain(DOCUMENTS.deleted)
+    expect(row.querySelector('button')).toBeNull()
+    expect(rowButton('fSource')).toBeNull()
+    expect(downloadButton('fSource')).toBeNull()
+  })
 })

@@ -45,4 +45,16 @@ public record DocumentClassDto
     /// and always null in the report type summary a run's reader gets.
     /// </summary>
     public string? LlmDescription { get; init; }
+
+    /// <summary>
+    /// The workflow and the output that make a file of this input class. Null when no workflow makes it or its
+    /// workflow no longer makes that output, and always null outside the report type summary read by type.
+    /// </summary>
+    public DocumentClassMadeByDto? MadeBy { get; init; }
 }
+
+/// <summary>The workflow type and the output of it that make a file of an input class.</summary>
+/// <param name="WorkflowTypeId">The identifier of the workflow type that makes the file.</param>
+/// <param name="WorkflowTypeName">The name of that workflow type.</param>
+/// <param name="OutputName">The display name of the output that the file is.</param>
+public sealed record DocumentClassMadeByDto(string WorkflowTypeId, string WorkflowTypeName, string OutputName);

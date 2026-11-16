@@ -134,7 +134,8 @@ public sealed class DocumentsController : ApiController
     /// from storage. Blob deletion failures are logged but do not roll back the
     /// database delete; the cleanup job handles orphan blobs. A user outside the
     /// admin and operator roles needs the <c>delete-own-documents</c> capability
-    /// and deletes only the documents they uploaded.
+    /// and deletes only the documents they uploaded. A document that a running
+    /// report reads is refused with 409 until the report finishes.
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = DOCUMENT_DELETE_ROLES)]
@@ -143,6 +144,7 @@ public sealed class DocumentsController : ApiController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteDocument(string id)
     {
@@ -156,6 +158,7 @@ public sealed class DocumentsController : ApiController
     /// independently; the response returns the deleted ids and a per-id failure
     /// map for ids that could not be removed. A user outside the admin and
     /// operator roles deletes only the documents they uploaded, as for one delete.
+    /// A document that a running report reads stays, with that reason in the map.
     /// </summary>
     [HttpPost("bulk-delete")]
     [Authorize(Roles = DOCUMENT_DELETE_ROLES)]

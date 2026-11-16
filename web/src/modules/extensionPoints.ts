@@ -73,6 +73,8 @@ export const extensionPoints = {
   reportActions: [] as Component[],
   reportMenuItems: [] as Component[],
   reportNotices: [] as Component[],
+  /** Pieces under a report's header that offer what to do next with it; each gets the report as `report`. */
+  reportNextSteps: [] as Component[],
   userMenuItems: [] as Component[],
   overlays: [] as Component[],
   /** Pieces among the header's actions, before the theme switch. */
@@ -85,6 +87,8 @@ export const extensionPoints = {
   capabilitiesVary: [] as (() => boolean)[],
   /** Pieces under a report type's name in the new report flow; each gets the type as `workflow`. */
   reportTypeDetails: [] as Component[],
+  /** Pieces after a document class's name on the new report flow's documents step; each gets the class as `documentClass` and whether no attached document has it as `empty`. */
+  documentClassNotes: [] as Component[],
   /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow` and the uploaded files as `documents`, each with `countedPages` as the pages the run reads from it, may emit `holds` with a reason that keeps Submit off, or null to release it, and may emit `submit-label` with Submit's name, such as one with the price, or null for the usual one. */
   reviewDetails: [] as Component[],
 }

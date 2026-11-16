@@ -10,6 +10,9 @@ namespace IniaAi.Domain.Entities.Workflows.Blocks.Properties;
 
 public class WebApiCallProperties : BlockProperties
 {
+    public const string URL_TEMPLATE_LABEL = "URL Template";
+    public const string COMPLETION_URL_TEMPLATE_LABEL = "On Completion: Fetch URL Template";
+
     /// <summary>
     /// Direct use of this property is not recommended as it is meant to be a
     /// template for the request URL. It can contain placeholders that get
@@ -178,5 +181,35 @@ public class WebApiCallProperties : BlockProperties
     public override void ClearExecutionState()
     {
         ExecutionState = null;
+    }
+
+    /// <summary>
+    /// What is wrong, in words for the block's author, with each address of the block whose host a
+    /// placeholder could choose: a value can come from a model's answer about a stranger's document.
+    /// </summary>
+    public IEnumerable<string> FixedHostProblems(string blockName)
+    {
+        return AddressTemplates()
+            .Select(address => FixedHostProblem(blockName, address.Label, address.Template))
+            .OfType<string>();
+    }
+
+    /// <summary>The block's address templates, each with its property name and the label its field shows.</summary>
+    public IEnumerable<(string Field, string Label, string? Template)> AddressTemplates()
+    {
+        yield return (nameof(UrlTemplate), URL_TEMPLATE_LABEL, UrlTemplate);
+        yield return (nameof(PollCompletionUrlTemplate), COMPLETION_URL_TEMPLATE_LABEL, PollCompletionUrlTemplate);
+    }
+
+    public static string? FixedHostProblem(string blockName, string label, string? template)
+    {
+        if (string.IsNullOrWhiteSpace(template) || WebAddressOrigin.Of(template) is not null)
+        {
+            return null;
+        }
+
+        return $"The {label} of block '{blockName}' must name its host directly, such as https://api.example.com/, "
+            + "because a placeholder cannot choose where the block sends its request. "
+            + "Write the host into the field, and put placeholders only after the first /, ? or #.";
     }
 }

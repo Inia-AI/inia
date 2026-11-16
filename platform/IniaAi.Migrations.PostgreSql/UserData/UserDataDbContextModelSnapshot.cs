@@ -2179,7 +2179,12 @@ namespace IniaAi.Migrations.PostgreSql.UserData
 
                     b.HasKey("OrganizationId");
 
-                    b.ToTable("CreditAccounts", "UserData");
+                    b.ToTable("CreditAccounts", "UserData", t =>
+                        {
+                            t.HasCheckConstraint("CK_CreditAccounts_DebtNotNegative", "\"Debt\" >= 0");
+
+                            t.HasCheckConstraint("CK_CreditAccounts_PendingNotNegative", "\"Pending\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.CreditEntry", b =>
@@ -2328,7 +2333,14 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.HasIndex("PaymentProvider", "ProviderInvoiceId")
                         .IsUnique();
 
-                    b.ToTable("CreditPacks", "UserData");
+                    b.ToTable("CreditPacks", "UserData", t =>
+                        {
+                            t.HasCheckConstraint("CK_CreditPacks_DebtRepaidWithinAmount", "\"DebtRepaid\" >= 0 AND \"DebtRepaid\" <= \"Amount\"");
+
+                            t.HasCheckConstraint("CK_CreditPacks_RemainingWithinAmount", "\"Remaining\" >= 0 AND \"Remaining\" <= \"Amount\"");
+
+                            t.HasCheckConstraint("CK_CreditPacks_ReversedWithinAmount", "\"Reversed\" >= 0 AND \"Reversed\" <= \"Amount\"");
+                        });
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.EmailCodeLockout", b =>
@@ -3224,8 +3236,8 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasColumnType("character varying(450)");
 
                     b.Property<string>("WorkflowTypeId")
-                        .HasMaxLength(36)
-                        .HasColumnType("character varying(36)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -3378,8 +3390,8 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasColumnType("character varying(450)");
 
                     b.Property<string>("WorkflowTypeId")
-                        .HasMaxLength(36)
-                        .HasColumnType("character varying(36)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -3447,8 +3459,8 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasColumnType("character varying(450)");
 
                     b.Property<string>("WorkflowTypeId")
-                        .HasMaxLength(36)
-                        .HasColumnType("character varying(36)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -5232,6 +5244,14 @@ namespace IniaAi.Migrations.PostgreSql.UserData
 
                     b.Property<string>("LlmDescription")
                         .HasColumnType("text");
+
+                    b.Property<string>("MadeByDocumentClassKey")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("MadeByWorkflowTypeId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PageOverviews")
                         .HasColumnType("text");

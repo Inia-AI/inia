@@ -45,10 +45,15 @@ function restoreDefinitionCasedVariableKeys(
   return restored
 }
 
+/** The report's company, or undefined when it has none, as the new report form expects an unset field. */
+export const counterpartyIdOf = (execution: WorkflowReport): string | undefined =>
+  execution.counterpartyId?.trim() ? execution.counterpartyId : undefined
+
 /**
  * Pulls the fields shared by every re-run flow off a `WorkflowReport`:
  *   - input documents (output documents are produced by the workflow, not
- *     consumed, so they're filtered out)
+ *     consumed, so they're filtered out, and so is a document deleted since
+ *     the run, which the platform would refuse)
  *   - whitespace-normalised counterpartyId / documentClass (empty strings
  *     and trim-only values become `undefined` so the start endpoint treats
  *     them as absent rather than as the literal string)
@@ -60,15 +65,13 @@ function restoreDefinitionCasedVariableKeys(
  */
 export function extractReRunInputs(execution: WorkflowReport) {
   const inputDocuments = (execution.workflowExecutionDocuments ?? [])
-    .filter(d => !d.isOutputDocument)
+    .filter(d => !d.isOutputDocument && !d.isDeleted)
     .map(d => ({
       ...d,
       documentClass: d.documentClass?.trim() ? d.documentClass : undefined,
     }))
 
-  const counterpartyId = execution.counterpartyId?.trim()
-    ? execution.counterpartyId
-    : undefined
+  const counterpartyId = counterpartyIdOf(execution)
 
   const dateTags = new Set(
     (execution.variableValues ?? [])

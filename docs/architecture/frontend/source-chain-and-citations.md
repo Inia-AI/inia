@@ -233,8 +233,8 @@ sequenceDiagram
 
 The panel keeps a `sourceChainStack` of `BlockCitationSource` and renders the **top** entry:
 
-- **Breadcrumbs** for every level (`blockTitle ?? blockId`); clicking one truncates the stack
-  back to that level.
+- **Breadcrumbs** for every level (`blockTitle`, or "prior analysis" when the report gives none); clicking one
+  truncates the stack back to that level.
 - The current block's **cited text**, with show-more/show-less when it overflows.
 - A **sources list** built from `aggregateSources(currentBlock.upstreamSources)`, titled
   "Text above was synthesized with". Document and URL rows behave as in the tooltip (image modal /

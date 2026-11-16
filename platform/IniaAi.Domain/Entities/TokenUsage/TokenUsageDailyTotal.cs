@@ -1,5 +1,6 @@
 using IniaAi.Domain.Abstractions;
 using IniaAi.Domain.Entities.TokenUsage.Enums;
+using IniaAi.Domain.Entities.Workflows;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
@@ -23,7 +24,7 @@ public class TokenUsageDailyTotal : TokenUsageTotal<TokenUsageDailyTotal>, IOrga
 
     public UsageType UsageType { get; set; }
 
-    [StringLength(36)]
+    [StringLength(WorkflowType.ID_MAX_LENGTH)]
     public string? WorkflowTypeId { get; set; }
 
     [StringLength(450)]

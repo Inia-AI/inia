@@ -96,14 +96,15 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
             return Reject(screening, storageFileName, request.OrganizationId);
         }
 
+        storageFileName = screening.MediaType.ServedFileName(storageFileName);
         byte[] fileBytes = screening.Bytes;
         FileUnlockResult? unlockResult = screening.Unlock;
         if (unlockResult is { Status: FileProtectionStatus.Decrypted })
         {
             _logger.LogInformation(
                 "Removed password protection at upload ({DecryptedSize} bytes, file name of {FileNameLength} characters).",
-                storageFileName.Length,
-                fileBytes.Length);
+                fileBytes.Length,
+                storageFileName.Length);
         }
 
         string hash = CalculateMD5(fileBytes);

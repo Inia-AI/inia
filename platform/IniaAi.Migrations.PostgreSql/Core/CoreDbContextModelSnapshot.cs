@@ -953,6 +953,14 @@ namespace IniaAi.Migrations.PostgreSql.Core
                     b.Property<string>("LlmDescription")
                         .HasColumnType("text");
 
+                    b.Property<string>("MadeByDocumentClassKey")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("MadeByWorkflowTypeId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("PageOverviews")
                         .HasColumnType("text");
 

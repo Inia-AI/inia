@@ -195,4 +195,12 @@ public record WorkflowExecutionDto
     /// running, and only when the stamped template version carries a script; null otherwise.
     /// </summary>
     public WorkflowActivityDto? WorkflowActivity { get; init; }
+
+    /// <summary>
+    /// The workflows this run leads to: each has an input made by this run's workflow, and the organization can run it
+    /// now. Populated only by the GET endpoint, and only for a run that finished (<see cref="WorkflowState.Draft"/>
+    /// or <see cref="WorkflowState.Confirmed"/>): empty when no workflow takes an output the run still has, null
+    /// for any other run.
+    /// </summary>
+    public List<NextWorkflowDto>? NextWorkflows { get; init; }
 }

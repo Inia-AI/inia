@@ -2,9 +2,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import useCreateWorkflowPrefillStore from './createWorkflowPrefill'
-import type { WorkflowReRunPrefill } from '@/lib/workflowReRunPrefill'
+import type { CreateWorkflowPrefill } from '@/lib/workflowReRunPrefill'
 
-const samplePrefill: WorkflowReRunPrefill = {
+const samplePrefill: CreateWorkflowPrefill = {
   workflowId: 'wf-1',
   workflowTypeId: 'type-1',
   counterpartyId: 'cp-1',

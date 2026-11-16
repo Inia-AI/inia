@@ -123,6 +123,25 @@ describe('SourceChainPanel header buttons', () => {
   })
 })
 
+describe('SourceChainPanel block names', () => {
+  it('names a block that comes without its title as prior analysis, never by its id', async () => {
+    wrapper = mountPanel()
+    const untitled: BlockCitationSource = { ...blockSource, blockTitle: undefined }
+    const upstream: BlockCitationSource = { ...untitled, blockId: 'block-peers', upstreamSources: [] }
+    window.dispatchEvent(new CustomEvent<SourceChainEventDetail>(SOURCE_CHAIN_EVENT, {
+      detail: { blockSource: { ...untitled, upstreamSources: [upstream] }, citedSourcesByBlock: [] },
+    }))
+    await nextTick()
+
+    expect(rows()[0]!.text()).toContain('prior analysis')
+    await rows()[0]!.trigger('click')
+
+    expect(wrapper.findAll('.source-chain-breadcrumb').map(crumb => crumb.text())).toEqual(['prior analysis', 'prior analysis'])
+    expect(wrapper.text()).not.toContain('block-peers')
+    expect(wrapper.text()).not.toContain(BLOCK_ID)
+  })
+})
+
 describe('SourceChainPanel keyboard access', () => {
   const page = (pageNumber: number): DocumentCitationSource => ({
     type: 'Document',

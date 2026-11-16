@@ -43,9 +43,11 @@ public class LoopAgentCopyCapTests : IClassFixture<WorkflowsFixture<LoopAgentCop
         return root;
     }
 
-    private async Task<Exception?> RunAsync(Workflow workflow, int cap)
+    private async Task<Exception?> RunAsync(Workflow workflow, int cap, int? maxLoopItems = null)
     {
-        _sp.GetRequiredService<IOptions<PlatformSettings>>().Value.AgentRuntime.MaxLoopAgentCopies = cap;
+        PlatformSettings settings = _sp.GetRequiredService<IOptions<PlatformSettings>>().Value;
+        settings.AgentRuntime.MaxLoopAgentCopies = cap;
+        settings.IniaAi.MaxLoopItems = maxLoopItems;
         using IServiceScope scope = _sp.GetRequiredService<IServiceScopeFactory>().CreateScope();
         IUserDataUnitOfWork uow = scope.ServiceProvider.GetRequiredService<IUserDataUnitOfWork>();
 
@@ -83,10 +85,32 @@ public class LoopAgentCopyCapTests : IClassFixture<WorkflowsFixture<LoopAgentCop
     }
 
     [Fact]
+    public async Task ALoopOverTheItemCap_FailsBeforeAnyBlockOfItRuns()
+    {
+        Workflow workflow = BuildAgentLoop("alpha\nbravo\ncharlie");
+
+        Exception? failure = await RunAsync(workflow, cap: 100, maxLoopItems: 2);
+
+        Assert.NotNull(failure);
+        Assert.Contains("runs over 3 items", failure.Message);
+        Assert.All(
+            workflow.GetAllBlocks().Where(block => block.Type == BlockTypes.Agent),
+            block => Assert.Null(((AgentProperties)block.Properties).ExecutionState?.RunPasses));
+    }
+
+    [Fact]
     public async Task ALoopAtTheCap_IsNotRefusedByIt()
     {
         Exception? failure = await RunAsync(BuildAgentLoop("alpha\nbravo"), cap: 2);
 
         Assert.DoesNotContain(nameof(AgentRuntimeSettings.MaxLoopAgentCopies), failure?.Message ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task ALoopAtTheItemCap_IsNotRefusedByIt()
+    {
+        Exception? failure = await RunAsync(BuildAgentLoop("alpha\nbravo"), cap: 100, maxLoopItems: 2);
+
+        Assert.DoesNotContain("one loop may run over", failure?.Message ?? string.Empty);
     }
 }

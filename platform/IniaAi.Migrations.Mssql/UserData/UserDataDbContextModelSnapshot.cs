@@ -2180,7 +2180,12 @@ namespace IniaAi.Migrations.Mssql.UserData
 
                     b.HasKey("OrganizationId");
 
-                    b.ToTable("CreditAccounts", "UserData");
+                    b.ToTable("CreditAccounts", "UserData", t =>
+                        {
+                            t.HasCheckConstraint("CK_CreditAccounts_DebtNotNegative", "[Debt] >= 0");
+
+                            t.HasCheckConstraint("CK_CreditAccounts_PendingNotNegative", "[Pending] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.CreditEntry", b =>
@@ -2330,7 +2335,14 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .IsUnique()
                         .HasFilter("[PaymentProvider] IS NOT NULL AND [ProviderInvoiceId] IS NOT NULL");
 
-                    b.ToTable("CreditPacks", "UserData");
+                    b.ToTable("CreditPacks", "UserData", t =>
+                        {
+                            t.HasCheckConstraint("CK_CreditPacks_DebtRepaidWithinAmount", "[DebtRepaid] >= 0 AND [DebtRepaid] <= [Amount]");
+
+                            t.HasCheckConstraint("CK_CreditPacks_RemainingWithinAmount", "[Remaining] >= 0 AND [Remaining] <= [Amount]");
+
+                            t.HasCheckConstraint("CK_CreditPacks_ReversedWithinAmount", "[Reversed] >= 0 AND [Reversed] <= [Amount]");
+                        });
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.EmailCodeLockout", b =>
@@ -3229,8 +3241,8 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("WorkflowTypeId")
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -3383,8 +3395,8 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("WorkflowTypeId")
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -3452,8 +3464,8 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("WorkflowTypeId")
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -5241,6 +5253,14 @@ namespace IniaAi.Migrations.Mssql.UserData
 
                     b.Property<string>("LlmDescription")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MadeByDocumentClassKey")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("MadeByWorkflowTypeId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PageOverviews")
                         .HasColumnType("nvarchar(max)");

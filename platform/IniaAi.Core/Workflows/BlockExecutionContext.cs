@@ -90,6 +90,12 @@ public class BlockExecutionContext
     public CookieContainer WebApiCookies { get; set; } = new();
 
     /// <summary>
+    /// The web addresses, each a scheme, host and port, that the run's Web API calls may reach, every
+    /// redirect included, or null when any public address may be reached.
+    /// </summary>
+    public IReadOnlySet<string>? AllowedWebOrigins { get; set; }
+
+    /// <summary>
     /// The verification leg this invocation runs under — the round axis
     /// <see cref="AgentRunIds.For"/> keys run identity by; a verification loop raises it when
     /// dispatching a redo leg.

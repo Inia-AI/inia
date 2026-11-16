@@ -1,4 +1,5 @@
 using IniaAi.Domain.Abstractions;
+using IniaAi.Domain.Entities.Workflows;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
@@ -20,7 +21,7 @@ public class TokenUsageExecutionTotal : TokenUsageTotal<TokenUsageExecutionTotal
     [StringLength(450)]
     public string OrganizationId { get; set; } = string.Empty;
 
-    [StringLength(36)]
+    [StringLength(WorkflowType.ID_MAX_LENGTH)]
     public string? WorkflowTypeId { get; set; }
 
     public DateTime FirstUsageAt { get; set; }

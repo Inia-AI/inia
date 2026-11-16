@@ -84,7 +84,7 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | @intlify/devtools-types | MIT |
 | @intlify/message-compiler | MIT |
 | @intlify/shared | MIT |
-| @isaacs/cliui | ISC |
+| @isaacs/nonrecursive-glob-match | BlueOak-1.0.0 |
 | @jridgewell/gen-mapping | MIT |
 | @jridgewell/remapping | MIT |
 | @jridgewell/resolve-uri | MIT |
@@ -97,7 +97,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | @nodelib/fs.walk | MIT |
 | @one-ini/wasm | MIT |
 | @oxc-project/types | MIT |
-| @pkgjs/parseargs | MIT |
 | @pkgr/core | MIT |
 | @rolldown/binding-android-arm-eabi | MIT |
 | @rolldown/binding-android-arm64 | MIT |
@@ -232,7 +231,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | agent-base | MIT |
 | ajv | MIT |
 | alien-signals | MIT |
-| ansi-regex | MIT |
 | ansi-styles | MIT |
 | aria-hidden | MIT |
 | aria-query | Apache-2.0 |
@@ -252,8 +250,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | chokidar | MIT |
 | class-variance-authority | Apache-2.0 |
 | clsx | MIT |
-| color-convert | MIT |
-| color-name | MIT |
 | combined-stream | MIT |
 | commander | MIT |
 | confbox | MIT |
@@ -274,10 +270,8 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | detect-libc | Apache-2.0 |
 | dompurify | (MPL-2.0 OR Apache-2.0) |
 | dunder-proto | MIT |
-| eastasianwidth | MIT |
 | echarts | Apache-2.0 |
 | editorconfig | MIT |
-| emoji-regex | MIT |
 | enhanced-resolve | MIT |
 | entities | BSD-2-Clause |
 | es-define-property | MIT |
@@ -314,13 +308,12 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | flat-cache | MIT |
 | flatted | ISC |
 | follow-redirects | MIT |
-| foreground-child | ISC |
 | form-data | MIT |
 | fsevents | MIT |
 | function-bind | MIT |
 | get-intrinsic | MIT |
 | get-proto | MIT |
-| glob | ISC |
+| glob | BlueOak-1.0.0 |
 | glob-parent | ISC |
 | globals | MIT |
 | gopd | MIT |
@@ -336,14 +329,12 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | imurmurhash | MIT |
 | ini | ISC |
 | is-extglob | MIT |
-| is-fullwidth-code-point | MIT |
 | is-glob | MIT |
 | is-number | MIT |
 | is-potential-custom-element-name | MIT |
 | is-what | MIT |
 | isexe | BlueOak-1.0.0 |
 | isexe | ISC |
-| jackspeak | BlueOak-1.0.0 |
 | jiti | MIT |
 | js-beautify | MIT |
 | js-cookie | MIT |
@@ -373,7 +364,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | local-pkg | MIT |
 | locate-path | MIT |
 | lru-cache | BlueOak-1.0.0 |
-| lru-cache | ISC |
 | magic-string | MIT |
 | magic-string-ast | MIT |
 | marked | MIT |
@@ -385,7 +375,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | mime-db | MIT |
 | mime-types | MIT |
 | minimatch | BlueOak-1.0.0 |
-| minimatch | ISC |
 | minipass | BlueOak-1.0.0 |
 | mitt | MIT |
 | mlly | MIT |
@@ -404,7 +393,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | orderedmap | MIT |
 | p-limit | MIT |
 | p-locate | MIT |
-| package-json-from-dist | BlueOak-1.0.0 |
 | parse5 | MIT |
 | path-browserify | MIT |
 | path-exists | MIT |
@@ -457,13 +445,10 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | shebang-regex | MIT |
 | shell-quote | MIT |
 | siginfo | ISC |
-| signal-exit | ISC |
 | source-map-js | BSD-3-Clause |
 | speakingurl | BSD-3-Clause |
 | stackback | MIT |
 | std-env | MIT |
-| string-width | MIT |
-| strip-ansi | MIT |
 | superjson | MIT |
 | supports-color | MIT |
 | symbol-tree | MIT |
@@ -516,7 +501,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | which | ISC |
 | why-is-node-running | MIT |
 | word-wrap | MIT |
-| wrap-ansi | MIT |
 | xml-name-validator | Apache-2.0 |
 | xmlchars | MIT |
 | yaml | ISC |

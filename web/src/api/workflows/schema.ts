@@ -90,6 +90,14 @@ export interface DocumentClass {
   shouldBeSingular: boolean
   isOutputDocument: boolean
   documentCategoryId?: string
+  /** The workflow and the output that make a file of this input class; absent when no workflow makes it. */
+  madeBy?: DocumentClassMadeBy | null
+}
+
+export interface DocumentClassMadeBy {
+  workflowTypeId: string
+  workflowTypeName: string
+  outputName: string
 }
 
 export interface Workflow {

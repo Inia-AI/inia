@@ -292,6 +292,22 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
             AgentRunSessionBundleOwnerCheck.NAME,
             AgentRunSessionBundleOwnerCheck.Sql(Database.IsSqlServer())));
 
+        // The same exception for the credit ledger: the code keeps a pack's counts within what it
+        // granted and an account's pending credits and debt at zero or more, and the database refuses
+        // a row that breaks those bounds whatever wrote it.
+        bool isSqlServer = Database.IsSqlServer();
+        _ = modelBuilder.Entity<CreditPack>().ToTable(table =>
+        {
+            _ = table.HasCheckConstraint("CK_CreditPacks_RemainingWithinAmount", CreditLedgerBoundsChecks.WithinAmount(nameof(CreditPack.Remaining), isSqlServer));
+            _ = table.HasCheckConstraint("CK_CreditPacks_ReversedWithinAmount", CreditLedgerBoundsChecks.WithinAmount(nameof(CreditPack.Reversed), isSqlServer));
+            _ = table.HasCheckConstraint("CK_CreditPacks_DebtRepaidWithinAmount", CreditLedgerBoundsChecks.WithinAmount(nameof(CreditPack.DebtRepaid), isSqlServer));
+        });
+        _ = modelBuilder.Entity<CreditAccount>().ToTable(table =>
+        {
+            _ = table.HasCheckConstraint("CK_CreditAccounts_PendingNotNegative", CreditLedgerBoundsChecks.NotNegative(nameof(CreditAccount.Pending), isSqlServer));
+            _ = table.HasCheckConstraint("CK_CreditAccounts_DebtNotNegative", CreditLedgerBoundsChecks.NotNegative(nameof(CreditAccount.Debt), isSqlServer));
+        });
+
         _ = modelBuilder.Entity<ReportSection>(entity =>
         {
             string? providerName = Database.ProviderName?.ToLower();
@@ -844,9 +860,36 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
 }
 
 /// <summary>
-/// The exactly-one-owner rule of <see cref="AgentRunSessionBundle"/> as SQL. SQL Server quotes
-/// identifiers with brackets; PostgreSQL and SQLite with double quotes, which PostgreSQL needs
-/// because the columns are mixed case.
+/// Quotes a column for a check constraint's SQL. SQL Server quotes identifiers with brackets;
+/// PostgreSQL and SQLite with double quotes, which PostgreSQL needs because the columns are mixed case.
+/// </summary>
+internal static class CheckConstraintSql
+{
+    public static string Quote(string column, bool isSqlServer)
+    {
+        return isSqlServer ? $"[{column}]" : $"\"{column}\"";
+    }
+}
+
+/// <summary>
+/// The credit ledger's bounds as SQL.
+/// </summary>
+internal static class CreditLedgerBoundsChecks
+{
+    public static string WithinAmount(string column, bool isSqlServer)
+    {
+        string quoted = CheckConstraintSql.Quote(column, isSqlServer);
+        return $"{quoted} >= 0 AND {quoted} <= {CheckConstraintSql.Quote(nameof(CreditPack.Amount), isSqlServer)}";
+    }
+
+    public static string NotNegative(string column, bool isSqlServer)
+    {
+        return $"{CheckConstraintSql.Quote(column, isSqlServer)} >= 0";
+    }
+}
+
+/// <summary>
+/// The exactly-one-owner rule of <see cref="AgentRunSessionBundle"/> as SQL.
 /// </summary>
 internal static class AgentRunSessionBundleOwnerCheck
 {
@@ -854,14 +897,9 @@ internal static class AgentRunSessionBundleOwnerCheck
 
     public static string Sql(bool isSqlServer)
     {
-        string block = Quote(nameof(AgentRunSessionBundle.BlockId), isSqlServer);
-        string conversation = Quote(nameof(AgentRunSessionBundle.ConversationId), isSqlServer);
+        string block = CheckConstraintSql.Quote(nameof(AgentRunSessionBundle.BlockId), isSqlServer);
+        string conversation = CheckConstraintSql.Quote(nameof(AgentRunSessionBundle.ConversationId), isSqlServer);
 
         return $"({block} IS NOT NULL AND {conversation} IS NULL) OR ({block} IS NULL AND {conversation} IS NOT NULL)";
-    }
-
-    private static string Quote(string column, bool isSqlServer)
-    {
-        return isSqlServer ? $"[{column}]" : $"\"{column}\"";
     }
 }

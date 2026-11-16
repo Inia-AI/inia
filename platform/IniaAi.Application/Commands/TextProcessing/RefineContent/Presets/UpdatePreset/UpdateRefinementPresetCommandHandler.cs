@@ -2,6 +2,7 @@ using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Common.Text;
 using IniaAi.Domain.Entities.Tools;
+using IniaAi.Domain.Specifications.Common;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.WebApi.Models.Responses.ContentRefinement;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,8 @@ public class UpdateRefinementPresetCommandHandler
     {
         RefinementPreset? preset = await _unitOfWork.Repository<RefinementPreset>()
             .GetAll()
-            .Where(p => p.Id == request.Id && p.OrganizationId == request.OrganizationId && !p.IsDeleted)
+            .Where(RefinementPresetExpressions.VisibleTo(request.OrganizationId, request.UserId))
+            .Where(p => p.Id == request.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (preset is null)

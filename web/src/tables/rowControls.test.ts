@@ -77,8 +77,8 @@ const TABLES: Record<string, TableCase> = {
     ],
   },
   './documents.ts': {
-    table: () =>
-      useDocumentsTable({
+    table: () => ({
+      columns: useDocumentsTable({
         selection: ref(new Set<string>()),
         allSelected: computed(() => 'off' as const),
         onToggleRow: vi.fn(),
@@ -87,8 +87,11 @@ const TABLES: Record<string, TableCase> = {
         onDownload: vi.fn(),
         onEdit: vi.fn(),
         onDelete: vi.fn(),
-        canDelete: true,
-      }) as TableSetup,
+        canDeleteDocuments: ref(true),
+        canSelectAny: ref(true),
+        canDelete: () => true,
+      }).columns.value,
+    }) as TableSetup,
     rows: [
       document('d1', 'annual-report-2025.pdf', '2026-10-01T09:00:00Z'),
       document('d2', 'fund-letter.pdf', '2026-10-02T09:00:00Z'),

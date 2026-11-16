@@ -61,7 +61,7 @@ stateDiagram-v2
     Processed --> Queued: POST /api/v1/documents/{id}/process
 ```
 
-`DELETE /api/v1/documents/{id}` and `POST /api/v1/documents/bulk-delete` soft-delete the document in any state; it is then hidden from every read, and its blob is deleted best-effort in the same request ([Blob Cleanup](#blob-cleanup)).
+`DELETE /api/v1/documents/{id}` and `POST /api/v1/documents/bulk-delete` soft-delete the document in any state, except while a report that is still running reads it ([Delete Document](#delete-document)); it is then hidden from every read, and its blob is deleted best-effort in the same request ([Blob Cleanup](#blob-cleanup)). A finished report that read the document stays readable ([After a delete](#after-a-delete)).
 
 ## Request Flow
 
@@ -361,7 +361,17 @@ Soft-deletes a single document. The DB change commits first; the backing blob
 is then deleted from storage best-effort. A blob-delete failure is logged but
 does not roll back the DB delete — the `SoftDeleteCleanupService` reaps
 orphan blobs later. Undelete is not supported through this API. Requires
-Admin, SuperAdmin, or Operator (`Roles.ADMIN_AND_OPERATOR_ROLES`).
+Admin, SuperAdmin, or Operator (`Roles.ADMIN_AND_OPERATOR_ROLES`), or the
+`delete-own-documents` capability for a document the caller uploaded
+([Authentication](#authentication)).
+
+A document that is run input of a report still queued, processing documents or
+running is not deleted: the answer is `409 Conflict` with the code
+`Document.ReadByRunningReport` and "A report that is still running reads this
+document. Delete the document after the report finishes." Nothing changes, so
+the report never loses its input. A document that a stage took out of the run
+does not count, and neither does a report that finished, failed or was
+cancelled.
 
 **Path Parameters:**
 
@@ -390,7 +400,8 @@ Soft-deletes many documents in a single call. Each id is processed
 independently so the client receives per-id outcomes rather than an
 all-or-nothing failure. DB mutations are committed once after the loop; blob
 deletions are attempted after the commit. Requires Admin, SuperAdmin, or
-Operator (`Roles.ADMIN_AND_OPERATOR_ROLES`).
+Operator (`Roles.ADMIN_AND_OPERATOR_ROLES`), or the `delete-own-documents`
+capability, as for one delete.
 
 **Request Body (`BulkDeleteDocumentsRequest`):**
 
@@ -433,7 +444,10 @@ curl -X POST "https://api.example.com/api/v1/documents/bulk-delete" \
 - `deleted` — ids that were soft-deleted (DB committed).
 - `failed` — map of id → human-readable reason. The reason is
   `"Document not found."`, for an unknown id and for another organization's
-  document alike (`doc-def456` above belongs to another organization).
+  document alike (`doc-def456` above belongs to another organization), or
+  "A report that is still running reads this document. Delete the document
+  after the report finishes." for a document a running report reads. The
+  other ids of the call are still deleted.
 
 The status code is always `200 OK` once the command reaches the handler, even
 if every id failed. Callers must inspect the body. `400` is returned only
@@ -624,6 +638,7 @@ keyed by field code.
 | 403    | A delete by a caller without the role, a request whose `X-Tenant-Id` names no organization the caller belongs to, an organization without the capability, or pasted text past the storage quota. |
 | 404    | Requested id does not exist, or it belongs to another organization.                   |
 | 409    | `Document.ProcessingAlreadyQueued` from `POST /documents/{id}/process`.               |
+| 409    | `Document.ReadByRunningReport` from `DELETE /documents/{id}`: a report that is still running reads the document. |
 | 429    | `File.Refused.TooManyUploads` from `POST /documents/text`, past the hourly upload rate. |
 | 500    | Unexpected server error.                                                              |
 
@@ -661,6 +676,30 @@ endpoints filter soft-deleted rows out through the EF Core global query
 filter (`ApplySoftDeleteFilter`), so the
 client never sees them after a successful delete. There is no undelete
 endpoint.
+
+### After a delete
+
+A report keeps what it took from a document, so a finished report stays
+readable after its documents are deleted:
+
+- The report read (`GET /workflow-reports/{id}`) still lists the document in
+  `workflowExecutionDocuments`, by its name, with `isDeleted: true`
+  ([Reports API](reports.md)). The file can no longer be opened or
+  downloaded. When the deleted record is purged, the entry leaves the list.
+- A citation into the document keeps its text. The page it points at answers
+  `404 Not Found` with the code `Document.Deleted` and "The document was
+  deleted, so its pages can no longer be shown." ([Page Image API](page-image.md)).
+- A report that is still running keeps its documents: the delete is refused
+  until it finishes ([Delete Document](#delete-document)).
+- A delete and a submission that arrive at the same moment can both go
+  through. The run then stops when it starts, before anything is read, as
+  `Failed` with the kind `InputDocumentDeleted` and a detail that names the
+  document. In a self-serve organization that run is free and does not count
+  toward the daily pause.
+
+In the Vue app, the report's **Source Documents** list shows the document's
+name with **Deleted** under it, without the preview and download actions, and
+the page preview of a citation shows the platform's sentence.
 
 ### Blob Cleanup
 

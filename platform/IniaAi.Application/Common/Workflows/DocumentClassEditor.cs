@@ -71,6 +71,17 @@ public class DocumentClassEditor : IDocumentClassEditor
             target.PageOverviews = edit.PageOverviews.WithoutBlankPrompts();
         }
 
+        if (edit.IsOutputDocument)
+        {
+            target.MadeByWorkflowTypeId = null;
+            target.MadeByDocumentClassKey = null;
+        }
+        else if (edit.MadeBy is { } madeBy)
+        {
+            target.MadeByWorkflowTypeId = madeBy.WorkflowTypeId.NullIfWhiteSpace();
+            target.MadeByDocumentClassKey = madeBy.DocumentClassKey.NullIfWhiteSpace();
+        }
+
         return target;
     }
 

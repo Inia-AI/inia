@@ -782,6 +782,12 @@ const onReRun = async () => {
             v-for="(notice, index) in extensionPoints.reportNotices"
             :key="index"
           />
+          <component
+            :is="step"
+            v-for="(step, index) in extensionPoints.reportNextSteps"
+            :key="index"
+            :report="executionData"
+          />
           <RunFailureNotice
             v-if="runFailed"
             class="run-failure"

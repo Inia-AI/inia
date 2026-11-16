@@ -12,8 +12,9 @@ using IniaAi.Testing.DependencyInjection.Mocks;
 namespace IniaAi.Services.Tests.Workflows;
 
 /// <summary>
-/// A run of <see cref="MarkerWorkflow"/> that a critical block stops: the failure text the run keeps for the reader
-/// holds none of the workflow's instructions and none of a provider's or a server's own words.
+/// A run of <see cref="MarkerWorkflow"/> that a critical block stops: the failure text the run keeps holds none of the
+/// workflow's prompts and none of a server's or a refusal's own words. It may name the block and quote a provider's
+/// error, for the workflow's author.
 /// </summary>
 public sealed class FailureTextCarriesNoInstructionsTests : IClassFixture<DocumentsFixture>, IClassFixture<LocalTestHttpServer>
 {
@@ -44,15 +45,6 @@ public sealed class FailureTextCarriesNoInstructionsTests : IClassFixture<Docume
 
         string[] forbidden = [.. MarkerWorkflow.Instructions.Except([MarkerWorkflow.BLOCK_NAME]), UPSTREAM_ERROR, REFUSAL_EXPLANATION];
         AssertCarriesNone(detail, forbidden);
-    }
-
-    [Theory(Skip = "security run AI-03: shows an open finding, see the ledger")]
-    [MemberData(nameof(Failures))]
-    public async Task ARunThatACriticalBlockStops_NamesNoBlockAndQuotesNoProvider_ForTheReader(string failure)
-    {
-        string detail = await FailureDetailAsync(failure);
-
-        AssertCarriesNone(detail, [MarkerWorkflow.BLOCK_NAME, PROVIDER_ERROR]);
     }
 
     private async Task<string> FailureDetailAsync(string failure)

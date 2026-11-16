@@ -123,7 +123,7 @@ download endpoint resolves files by document id, not by `fileMetadataId`). The
 | Field       | Type               | Notes                                                                                 |
 | ----------- | ------------------ | ------------------------------------------------------------------------------------- |
 | `id`        | `string`           | Id of the created document.                                                            |
-| `filename`  | `string`           | The document's name: the uploaded file name without its extension (`report.pdf` reads `report`, `note.eml` reads `note`). A control character in the name, such as a line break or a tab, is stored as a space. |
+| `filename`  | `string`           | The document's name: the uploaded file name without its extension (`report.pdf` reads `report`, `note.eml` reads `note`). When the extension does not name the type the intake gate detected, the type's extension replaces it, so a PDF uploaded as `report.exe` also reads `report`. A control character in the name, such as a line break or a tab, is stored as a space. |
 | `mediaType` | `string`           | The detected type, serialized as a `MediaType` member name (`ApplicationPdf`, `ImageJpeg`, `ImagePng`, `TextCsv`, `ApplicationVndMsExcel`, …), never a MIME string. |
 | `warnings`  | `string[] \| null` | Non-fatal upload warnings; `null`/absent when there are none (see below).              |
 | `created`   | `boolean`          | `true` when this upload created the document; `false` when the organization already held a document of the same name and size and the upload reused it (see [Deduplication](#deduplication)). |
@@ -188,7 +188,7 @@ curl -X GET "https://api.example.com/api/v1/files/file-abc123" \
 
 **Response (200 OK):**
 
-File content is returned with appropriate headers. `Content-Type` is the media type the intake gate detected when the file was stored, not the file's extension, so a PDF uploaded as `statement.dat` downloads as `application/pdf`. The file name is the stored name with its extension. With `disposition=preview` the response carries `Content-Disposition: inline`, no file name and `Content-Security-Policy: sandbox`: the API shares the web app's origin, so a file opened from it in a browser runs nothing there. Every file response carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. A download's name is encoded per RFC 6266 (`filename*=UTF-8''…` beside an ASCII `filename`); intake has already turned any control character in the uploaded name into a space.
+File content is returned with appropriate headers. `Content-Type` is the media type the intake gate detected when the file was stored, not the file's extension, so a PDF uploaded as `statement.dat` downloads as `application/pdf`, named `statement.pdf`. The file name is the stored name with the extension of the detected type. With `disposition=preview` the response carries `Content-Disposition: inline`, no file name and `Content-Security-Policy: sandbox`: the API shares the web app's origin, so a file opened from it in a browser runs nothing there. Every file response carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. A download's name is encoded per RFC 6266 (`filename*=UTF-8''…` beside an ASCII `filename`); intake has already turned any control character in the uploaded name into a space.
 
 ```http
 HTTP/1.1 200 OK

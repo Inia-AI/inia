@@ -103,7 +103,8 @@ A validation failure (400) returns the validation-problem shape instead, with an
 | 401    | Missing or invalid authentication token            | (Standard auth error)           |
 | 403    | `X-Tenant-Id` names no organization the caller belongs to | (Standard tenant error)    |
 | 404    | Page does not exist, or its document belongs to another organization | "Page not found." |
-| 404    | Page's parent document not found                   | "Document not found."           |
+| 404    | The page's document was deleted, and the caller is in its organization. Code `Document.Deleted` | "The document was deleted, so its pages can no longer be shown." |
+| 404    | The page's document is gone for any other caller  | "Page not found."               |
 | 404    | Document's file metadata not found                 | "File metadata not found."      |
 | 404    | File storage path is missing                       | "File storage path not found."  |
 | 500    | Error during image generation (PDF rendering, etc.)| "Error generating page image."  |
@@ -193,7 +194,7 @@ Since the response can be either binary image data or text, check the `Content-T
 
 | Error | Recommended UX                                                    |
 |-------|-------------------------------------------------------------------|
-| 404   | "This page is no longer available" or fall back to showing text from workflow execution data |
+| 404   | The platform's own sentence when the code is `Document.Deleted`; otherwise "This page is no longer available" or fall back to showing text from workflow execution data |
 | 500   | "Unable to load page preview. Please try again later."            |
 
 ### Performance Considerations

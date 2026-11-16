@@ -13,6 +13,9 @@
     "NoReadableDocuments": {
       "label": "The report found nothing to read"
     },
+    "InputDocumentDeleted": {
+      "label": "A document was deleted before the report started"
+    },
     "InputTooLarge": {
       "label": "The documents hold too much text for this report"
     },

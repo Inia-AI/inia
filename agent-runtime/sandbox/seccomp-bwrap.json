@@ -334,8 +334,6 @@
         "sendto",
         "setfsgid",
         "setfsgid32",
-        "setfsuid",
-        "setfsuid32",
         "setgid",
         "setgid32",
         "setgroups",
@@ -347,18 +345,12 @@
         "setregid32",
         "setresgid",
         "setresgid32",
-        "setresuid",
-        "setresuid32",
-        "setreuid",
-        "setreuid32",
         "setrlimit",
         "set_robust_list",
         "setsid",
         "setsockopt",
         "set_thread_area",
         "set_tid_address",
-        "setuid",
-        "setuid32",
         "setxattr",
         "setxattrat",
         "shmat",
@@ -867,6 +859,1798 @@
         "pivot_root"
       ],
       "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": [
+        "setuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setfsuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setfsuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setfsuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setfsuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setfsuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setfsuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setreuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 1000,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_MASKED_EQ",
+          "value": 18446744073709535232,
+          "valueTwo": 16384,
+          "index": 2
+        }
+      ]
+    },
+    {
+      "names": [
+        "setresuid32"
+      ],
+      "action": "SCMP_ACT_ALLOW",
+      "args": [
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 0
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 1
+        },
+        {
+          "op": "SCMP_CMP_EQ",
+          "value": 4294967295,
+          "index": 2
+        }
+      ]
     }
   ]
 }

@@ -1,8 +1,10 @@
 using ErrorOr;
 using IniaAi.Application.Commands.Documents.BulkDeleteDocuments;
+using IniaAi.Application.Errors;
 using IniaAi.Common.Enums;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Domain.Entities.Documents;
+using IniaAi.Domain.Entities.WorkflowExecutions;
 using IniaAi.Domain.UserData.Interfaces;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Testing.DependencyInjection;
@@ -85,6 +87,29 @@ public class BulkDeleteDocumentsCommandHandlerTests : IDisposable
 
         Assert.False(result.IsError);
         Assert.Single(result.Value.Deleted);
+    }
+
+    [Fact]
+    public async Task Handle_DocumentAnUnfinishedReportReads_StaysWithItsReasonAndTheOthersGo()
+    {
+        Document inUse = await SeedDocumentAsync(ORG_ID, "In Use");
+        Document free = await SeedDocumentAsync(ORG_ID, "Free");
+        string jobId = Guid.NewGuid().ToString();
+        _ = await _context.WorkflowExecutions.AddAsync(
+            new WorkflowExecution { OrganizationId = ORG_ID, JobId = jobId, Title = "Report", WorkflowState = WorkflowState.Running },
+            TestContext.Current.CancellationToken);
+        _ = await _context.DocumentInfos.AddAsync(new DocumentInfo(inUse.Id) { JobId = jobId }, TestContext.Current.CancellationToken);
+        _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        ErrorOr<BulkDeleteDocumentsResultDto> result = await _handler.Handle(
+            new BulkDeleteDocumentsCommand(ORG_ID, USER_ID, [inUse.Id, free.Id]),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal([free.Id], result.Value.Deleted);
+        Assert.Equal(DocumentErrorFactory.READ_BY_RUNNING_REPORT_MESSAGE, result.Value.Failed[inUse.Id]);
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == inUse.Id, TestContext.Current.CancellationToken));
+        Assert.False(await _context.Documents.AnyAsync(d => d.Id == free.Id, TestContext.Current.CancellationToken));
     }
 
     private async Task<Document> SeedDocumentAsync(string organizationId, string name)

@@ -78,6 +78,22 @@ public class DocumentClass : Entity<DocumentClass>
         return PageOverviews is { IsEmpty: false };
     }
 
+    /// <summary>
+    /// The workflow type whose output a file of this class is, with <see cref="MadeByDocumentClassKey"/>: Part 2's
+    /// spread input is made by Part 1's spread output. Empty when any file of the class will do.
+    /// </summary>
+    [StringLength(100)]
+    [JsonProperty(nameof(MadeByWorkflowTypeId), NullValueHandling = NullValueHandling.Ignore)]
+    public string? MadeByWorkflowTypeId { get; set; }
+
+    /// <summary>The output class of <see cref="MadeByWorkflowTypeId"/> that a file of this class is.</summary>
+    [StringLength(450)]
+    [JsonProperty(nameof(MadeByDocumentClassKey), NullValueHandling = NullValueHandling.Ignore)]
+    public string? MadeByDocumentClassKey { get; set; }
+
+    [JsonIgnore]
+    public bool IsMadeByAnotherWorkflow => !IsOutputDocument && !string.IsNullOrWhiteSpace(MadeByWorkflowTypeId) && !string.IsNullOrWhiteSpace(MadeByDocumentClassKey);
+
     [JsonConstructor]
     internal DocumentClass()
     {
