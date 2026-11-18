@@ -1,0 +1,402 @@
+{
+  "about": "Shared cases for workflow variable input rules. The same file lives in IniaAi.Platform (IniaAi.Domain.Tests/InputRules/Fixtures) and IniaAi.Web (src/lib/inputRules). Change both copies together and update the pinned hash in both tests.",
+  "names": [
+    { "displayName": "2. Interim Period", "shown": "Interim Period" },
+    { "displayName": "3.1 Fees", "shown": "Fees" },
+    { "displayName": "4) Notes", "shown": "Notes" },
+    { "displayName": "2024 Revenue", "shown": "2024 Revenue" },
+    { "displayName": "  Country Name ", "shown": "Country Name" },
+    { "displayName": "1.", "shown": "1." },
+    { "displayName": "٢. Interim Period", "shown": "٢. Interim Period" }
+  ],
+  "workflows": {
+    "interim": {
+      "documentClasses": [
+        { "key": "AnnualReport", "displayName": "1. Annual Report" },
+        { "key": "QuarterlyStandard", "displayName": "Quarterly Report (Standard Format)" },
+        { "key": "QuarterlyFocus", "displayName": "Quarterly Report (Focus Report Format)" }
+      ],
+      "variables": [
+        {
+          "replacementTag": "InterimPeriod",
+          "displayName": "2. Interim Period",
+          "type": "Dropdown",
+          "isRequired": true,
+          "defaultValue": "NA",
+          "options": { "NA": "NA", "3": "3 months", "6": "6 months", "9": "9 months" },
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["QuarterlyStandard", "QuarterlyFocus"] }],
+              "requirement": { "operator": "NotEqualTo", "value": "NA" }
+            },
+            {
+              "conditions": [{ "operator": "NoneAttached", "documentClassKeys": ["QuarterlyStandard", "QuarterlyFocus"] }],
+              "requirement": { "operator": "EqualTo", "value": "NA" }
+            }
+          ]
+        }
+      ]
+    },
+    "parent": {
+      "documentClasses": [],
+      "variables": [
+        {
+          "replacementTag": "HasParent",
+          "displayName": "Does the Counterparty have a Parent?",
+          "type": "Dropdown",
+          "isRequired": true,
+          "defaultValue": "N",
+          "options": { "Y": "Yes", "N": "No" },
+          "inputRules": []
+        },
+        {
+          "replacementTag": "ParentName",
+          "displayName": "Parent Company Name",
+          "type": "String",
+          "isRequired": false,
+          "defaultValue": "Unknown",
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "EqualTo", "variable": "HasParent", "value": "Y" }],
+              "requirement": { "operator": "NotEqualTo", "value": "Unknown" }
+            }
+          ]
+        }
+      ]
+    },
+    "scope": {
+      "documentClasses": [{ "key": "AnnualReport", "displayName": "Annual Report" }],
+      "variables": [
+        {
+          "replacementTag": "ReportScope",
+          "displayName": "Report scope",
+          "type": "Dropdown",
+          "isRequired": true,
+          "defaultValue": "spread",
+          "options": { "spread": "Spread only", "full": "Spread and credit report" },
+          "inputRules": []
+        },
+        {
+          "replacementTag": "CountryName",
+          "displayName": "Country Name",
+          "type": "String",
+          "isRequired": false,
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "EqualTo", "variable": "ReportScope", "value": "full" }],
+              "requirement": { "operator": "NotEmpty" }
+            },
+            {
+              "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["AnnualReport"] }],
+              "requirement": { "operator": "NotEqualTo", "value": "Unknown" }
+            }
+          ]
+        },
+        {
+          "replacementTag": "AuditorName",
+          "displayName": "5. Auditor Name",
+          "type": "String",
+          "isRequired": false,
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [
+                { "operator": "AnyAttached", "documentClassKeys": ["AnnualReport"] },
+                { "operator": "NotEqualTo", "variable": "ReportScope", "value": "spread" }
+              ],
+              "requirement": { "operator": "NotEmpty" }
+            }
+          ]
+        }
+      ]
+    },
+    "emptiness": {
+      "documentClasses": [],
+      "variables": [
+        { "replacementTag": "Employees", "displayName": "Employees", "type": "Number", "isRequired": false, "options": {}, "inputRules": [] },
+        { "replacementTag": "ReviewDate", "displayName": "Review Date", "type": "DateTime", "isRequired": false, "options": {}, "inputRules": [] },
+        { "replacementTag": "Peers", "displayName": "Peers", "type": "List", "isRequired": false, "options": {}, "inputRules": [] },
+        {
+          "replacementTag": "Website",
+          "displayName": "Website",
+          "type": "String",
+          "isRequired": false,
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "IsEmpty", "variable": "Employees" }],
+              "requirement": { "operator": "NotEmpty" }
+            }
+          ]
+        },
+        {
+          "replacementTag": "ReviewNote",
+          "displayName": "Review Note",
+          "type": "String",
+          "isRequired": false,
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "IsNotEmpty", "variable": "ReviewDate" }],
+              "requirement": { "operator": "NotEmpty" }
+            }
+          ]
+        },
+        {
+          "replacementTag": "PeerNote",
+          "displayName": "Peer Note",
+          "type": "String",
+          "isRequired": false,
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "IsNotEmpty", "variable": "Peers" }],
+              "requirement": { "operator": "NotEmpty" }
+            }
+          ]
+        }
+      ]
+    },
+    "stale": {
+      "documentClasses": [{ "key": "QuarterlyStandard", "displayName": "Quarterly Report (Standard Format)" }],
+      "variables": [
+        {
+          "replacementTag": "InterimPeriod",
+          "displayName": "2. Interim Period",
+          "type": "Dropdown",
+          "isRequired": true,
+          "defaultValue": "NA",
+          "options": { "NA": "NA", "6": "6 months" },
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["QuarterlyStandard", "QuarterlyOld"] }],
+              "requirement": { "operator": "NotEqualTo", "value": "NA" }
+            },
+            {
+              "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["QuarterlyStandard"] }],
+              "requirement": { "operator": "NotEqualTo", "value": "12" }
+            },
+            {
+              "conditions": [{ "operator": "EqualTo", "variable": "OldField", "value": "Yes" }],
+              "requirement": { "operator": "NotEmpty" }
+            },
+            {
+              "conditions": [{ "operator": "EqualTo", "variable": "Employees", "value": "10" }],
+              "requirement": { "operator": "NotEqualTo", "value": "NA" }
+            },
+            {
+              "conditions": [],
+              "requirement": { "operator": "NotEqualTo", "value": "NA" }
+            },
+            {
+              "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["QuarterlyStandard"] }],
+              "requirement": { "operator": "NotEqualTo", "value": "NA" }
+            }
+          ]
+        },
+        { "replacementTag": "Employees", "displayName": "Employees", "type": "Number", "isRequired": false, "options": {}, "inputRules": [] },
+        {
+          "replacementTag": "Notes",
+          "displayName": "Notes",
+          "type": "List",
+          "isRequired": false,
+          "options": {},
+          "inputRules": [
+            {
+              "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["QuarterlyStandard"] }],
+              "requirement": { "operator": "EqualTo", "value": "None" }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "A quarterly report attached and the interim period left at NA is refused",
+      "workflow": "interim",
+      "attached": ["AnnualReport", "QuarterlyFocus"],
+      "values": { "InterimPeriod": "NA" },
+      "violations": [
+        { "variable": "InterimPeriod", "message": "\"Interim Period\" cannot be \"NA\" because \"Quarterly Report (Standard Format)\" or \"Quarterly Report (Focus Report Format)\" is attached." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "No quarterly report attached and an interim period of 6 months is refused by the reverse rule",
+      "workflow": "interim",
+      "attached": ["AnnualReport"],
+      "values": { "InterimPeriod": "6" },
+      "violations": [
+        { "variable": "InterimPeriod", "message": "\"Interim Period\" must be \"NA\" because no \"Quarterly Report (Standard Format)\" or \"Quarterly Report (Focus Report Format)\" is attached." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "A quarterly report attached and an interim period of 6 months passes",
+      "workflow": "interim",
+      "attached": ["QuarterlyStandard"],
+      "values": { "InterimPeriod": "6" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "No quarterly report attached and the interim period at NA passes",
+      "workflow": "interim",
+      "attached": [],
+      "values": { "InterimPeriod": "NA" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "A value left out takes its default, so a quarterly report with no interim period is refused",
+      "workflow": "interim",
+      "attached": ["QuarterlyStandard"],
+      "values": {},
+      "violations": [
+        { "variable": "InterimPeriod", "message": "\"Interim Period\" cannot be \"NA\" because \"Quarterly Report (Standard Format)\" or \"Quarterly Report (Focus Report Format)\" is attached." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "Values compare ignoring case and surrounding spaces when the rule says cannot be",
+      "workflow": "interim",
+      "attached": ["QuarterlyStandard"],
+      "values": { "InterimPeriod": "  na " },
+      "violations": [
+        { "variable": "InterimPeriod", "message": "\"Interim Period\" cannot be \"NA\" because \"Quarterly Report (Standard Format)\" or \"Quarterly Report (Focus Report Format)\" is attached." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "Values compare ignoring case and surrounding spaces when the rule says must be",
+      "workflow": "interim",
+      "attached": [],
+      "values": { "InterimPeriod": " Na" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "A variable condition that holds refuses the dependent value",
+      "workflow": "parent",
+      "attached": [],
+      "values": { "HasParent": "Y", "ParentName": "Unknown" },
+      "violations": [
+        { "variable": "ParentName", "message": "\"Parent Company Name\" cannot be \"Unknown\" because \"Does the Counterparty have a Parent?\" is \"Yes\"." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "A variable condition reads the default of a variable left out",
+      "workflow": "parent",
+      "attached": [],
+      "values": { "HasParent": "y" },
+      "violations": [
+        { "variable": "ParentName", "message": "\"Parent Company Name\" cannot be \"Unknown\" because \"Does the Counterparty have a Parent?\" is \"Yes\"." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "A variable condition that does not hold leaves the value alone",
+      "workflow": "parent",
+      "attached": [],
+      "values": { "HasParent": "N", "ParentName": "Unknown" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "A dropdown compares its stored option value, not its label",
+      "workflow": "parent",
+      "attached": [],
+      "values": { "HasParent": "Yes", "ParentName": "Unknown" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "A variable condition that holds and a filled value passes",
+      "workflow": "parent",
+      "attached": [],
+      "values": { "HasParent": "Y", "ParentName": "Example Holdings" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "Must not be empty refuses a blank value",
+      "workflow": "scope",
+      "attached": [],
+      "values": { "ReportScope": "full", "CountryName": "   ", "AuditorName": "" },
+      "violations": [
+        { "variable": "CountryName", "message": "Choose a value for \"Country Name\" because \"Report scope\" is \"Spread and credit report\"." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "Several rules on one variable are each checked",
+      "workflow": "scope",
+      "attached": ["AnnualReport"],
+      "values": { "ReportScope": "spread", "CountryName": "unknown" },
+      "violations": [
+        { "variable": "CountryName", "message": "\"Country Name\" cannot be \"Unknown\" because \"Annual Report\" is attached." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "A rule with two conditions applies when both hold",
+      "workflow": "scope",
+      "attached": ["AnnualReport"],
+      "values": { "ReportScope": "full", "CountryName": "Example Country", "AuditorName": "" },
+      "violations": [
+        { "variable": "AuditorName", "message": "Choose a value for \"Auditor Name\" because \"Annual Report\" is attached and \"Report scope\" is not \"Spread only\"." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "A rule with two conditions does not apply when one fails",
+      "workflow": "scope",
+      "attached": [],
+      "values": { "ReportScope": "full", "CountryName": "Example Country", "AuditorName": "" },
+      "violations": [],
+      "skipped": []
+    },
+    {
+      "name": "Is empty and has a value work for number, date and list fields",
+      "workflow": "emptiness",
+      "attached": [],
+      "values": { "ReviewDate": "2026-06-30T00:00", "Peers": [], "Website": "", "ReviewNote": " " },
+      "violations": [
+        { "variable": "Website", "message": "Choose a value for \"Website\" because \"Employees\" is empty." },
+        { "variable": "ReviewNote", "message": "Choose a value for \"Review Note\" because \"Review Date\" has a value." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "A number of zero and a list with items count as values",
+      "workflow": "emptiness",
+      "attached": [],
+      "values": { "Employees": 0, "Peers": ["Example Peer"], "PeerNote": "" },
+      "violations": [
+        { "variable": "PeerNote", "message": "Choose a value for \"Peer Note\" because \"Peers\" has a value." }
+      ],
+      "skipped": []
+    },
+    {
+      "name": "Stale rules are skipped with their reason, and the sound rule beside them is still checked",
+      "workflow": "stale",
+      "attached": ["QuarterlyStandard"],
+      "values": { "InterimPeriod": "NA", "Employees": 10 },
+      "violations": [
+        { "variable": "InterimPeriod", "message": "\"Interim Period\" cannot be \"NA\" because \"Quarterly Report (Standard Format)\" is attached." }
+      ],
+      "skipped": [
+        { "variable": "InterimPeriod", "kind": "MissingDocumentClass", "reason": "it names the document class \"QuarterlyOld\", which this workflow does not have" },
+        { "variable": "InterimPeriod", "kind": "NotAnOption", "reason": "\"12\" is not an option of \"Interim Period\"" },
+        { "variable": "InterimPeriod", "kind": "MissingVariable", "reason": "it names the field \"OldField\", which this workflow does not have" },
+        { "variable": "InterimPeriod", "kind": "NotComparable", "reason": "\"Employees\" is not a text or dropdown field, so it cannot be compared with a value" },
+        { "variable": "InterimPeriod", "kind": "Incomplete", "reason": "it has no condition" },
+        { "variable": "Notes", "kind": "NotComparable", "reason": "\"Notes\" is not a text or dropdown field, so it cannot be compared with a value" }
+      ]
+    }
+  ]
+}

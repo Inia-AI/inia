@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Common.Interfaces.Services.AgentRuntime;
 using IniaAi.Common.Serialization;
 using IniaAi.Configuration.Platform;
@@ -95,12 +96,14 @@ public sealed class EditorAgentReports
 
     private readonly IUserDataUnitOfWork _userData;
     private readonly ICoreUnitOfWork _core;
+    private readonly WorkflowTypeAccess _access;
     private readonly EditorAgentSettings _settings;
 
-    public EditorAgentReports(IUserDataUnitOfWork userData, ICoreUnitOfWork core, IOptions<EditorAgentSettings> settings)
+    public EditorAgentReports(IUserDataUnitOfWork userData, ICoreUnitOfWork core, WorkflowTypeAccess access, IOptions<EditorAgentSettings> settings)
     {
         _userData = userData;
         _core = core;
+        _access = access;
         _settings = settings.Value;
     }
 
@@ -196,25 +199,19 @@ public sealed class EditorAgentReports
 
     /// <summary>
     /// The workflow types whose reports the organization may use as examples beside the open
-    /// one: the open type first, then every type the organization has access to, by name.
+    /// one: the open type first, then every type the organization reaches, by name.
     /// </summary>
     public async Task<IReadOnlyList<EditorAgentWorkflowTypeOption>> AccessibleTypesAsync(
         string organizationId,
         string openWorkflowTypeId,
         CancellationToken cancellationToken)
     {
-        List<string> granted = await _core.Repository<WorkflowTypeOrganizationAccess>()
-            .GetAll()
-            .AsNoTracking()
-            .Where(access => access.OrganizationId == organizationId)
-            .Select(static access => access.WorkflowTypeId)
-            .ToListAsync(cancellationToken);
-        granted.Add(openWorkflowTypeId);
+        List<string> reachable = [.. await _access.TypeIdsAsync(organizationId, cancellationToken), openWorkflowTypeId];
 
         List<EditorAgentWorkflowTypeOption> types = await _core.Repository<WorkflowType>()
             .GetAll()
             .AsNoTracking()
-            .Where(type => granted.Contains(type.Id))
+            .Where(type => reachable.Contains(type.Id))
             .Where(WorkflowType.UserFacing)
             .Select(static type => new EditorAgentWorkflowTypeOption(type.Id, type.Name))
             .ToListAsync(cancellationToken);

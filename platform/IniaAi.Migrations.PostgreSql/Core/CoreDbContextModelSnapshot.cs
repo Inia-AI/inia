@@ -2116,6 +2116,9 @@ namespace IniaAi.Migrations.PostgreSql.Core
                                 .HasMaxLength(1000)
                                 .HasColumnType("character varying(1000)");
 
+                            b1.Property<string>("InputRules")
+                                .HasColumnType("jsonb");
+
                             b1.Property<bool>("IsConfidential")
                                 .HasColumnType("boolean");
 

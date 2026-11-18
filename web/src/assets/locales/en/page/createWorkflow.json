@@ -50,7 +50,8 @@
   },
   "detailsStep": {
     "title": "Configure the details",
-    "lead": "Set the @:{'terms.company'}, peers and any parameters this report needs."
+    "lead": "Set the @:{'terms.company'}, peers and any parameters this report needs.",
+    "inputRulesHeld": "Change the fields marked on this step before you continue."
   },
   "reviewStep": {
     "title": "Review & generate",

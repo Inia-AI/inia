@@ -136,7 +136,7 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
     public DbSet<CreditAccount> CreditAccounts { get; set; } = default!;
     public DbSet<CreditPack> CreditPacks { get; set; } = default!;
     public DbSet<CreditEntry> CreditEntries { get; set; } = default!;
-    public DbSet<Subscription> Subscriptions { get; set; } = default!;
+    public DbSet<PaymentCustomer> PaymentCustomers { get; set; } = default!;
     public DbSet<PaymentEvent> PaymentEvents { get; set; } = default!;
     public DbSet<Consent> Consents { get; set; } = default!;
     public DbSet<HelpRequest> HelpRequests { get; set; } = default!;
@@ -746,6 +746,8 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
                     c => JsonSerializer.Serialize(c, JsonDefaults.OptionsWithOriginalKeys).GetHashCode(),
                     c => JsonSerializer.Deserialize<Dictionary<string, string>>(
                         JsonSerializer.Serialize(c, JsonDefaults.OptionsWithOriginalKeys), JsonDefaults.OptionsWithOriginalKeys)!));
+
+            VariableInputRulesColumn.Apply(entity.Property(e => e.InputRules), providerName);
         });
 
         _ = modelBuilder.Entity<WorkflowExecutionCounterparty>()
@@ -772,7 +774,7 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
         _ = modelBuilder.ApplyConfiguration(new FileConfiguration());
         _ = modelBuilder.ApplyConfiguration(new FileMetadataConfiguration());
         _ = modelBuilder.ApplyConfiguration(new Json2XlsxTemplateConfiguration());
-        _ = modelBuilder.ApplyConfiguration(new ConversionTypeConfiguration());
+        _ = modelBuilder.ApplyConfiguration(new ConversionTypeConfiguration(Database));
         _ = modelBuilder.ApplyConfiguration(new UserConfiguration());
         _ = modelBuilder.ApplyConfiguration(new UserOrganizationConfiguration(this));
 

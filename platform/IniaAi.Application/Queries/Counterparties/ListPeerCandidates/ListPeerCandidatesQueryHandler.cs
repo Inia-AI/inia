@@ -22,15 +22,18 @@ public class ListPeerCandidatesQueryHandler
 {
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IPeerCandidateJudge _judge;
 
     public ListPeerCandidatesQueryHandler(
         IUserDataUnitOfWork userDataUnitOfWork,
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IPeerCandidateJudge judge)
     {
         _userDataUnitOfWork = userDataUnitOfWork ?? throw new ArgumentNullException(nameof(userDataUnitOfWork));
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _judge = judge ?? throw new ArgumentNullException(nameof(judge));
     }
 
@@ -124,8 +127,7 @@ public class ListPeerCandidatesQueryHandler
         string workflowTypeId,
         CancellationToken cancellationToken)
     {
-        bool hasAccess = await WorkflowTypeAccessGuard.HasAccessAsync(
-            _coreUnitOfWork, organizationId, workflowTypeId, cancellationToken);
+        bool hasAccess = await _access.CanReachAsync(organizationId, workflowTypeId, cancellationToken);
 
         if (!hasAccess)
         {

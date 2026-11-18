@@ -42,6 +42,7 @@ const mountForm = async (props: { busy?: boolean } = {}, at = '/login') => {
 
 const PASSWORD = { name: 'password', displayName: 'Email' }
 const GOOGLE = { name: 'google', displayName: 'Google', clientId: 'client-id' }
+const GOOGLE_SCRIPT = 'https://accounts.google.com/gsi/client'
 const SAMPLE = { name: 'sample-method', displayName: 'Sample method' }
 
 const SampleForm = defineComponent({
@@ -235,11 +236,18 @@ describe('LoginForm with Google', () => {
 
   afterEach(() => {
     delete window.google
+    document.head.querySelectorAll(`script[src="${GOOGLE_SCRIPT}"]`).forEach(script => script.remove())
   })
+
+  const chooseGoogle = async (wrapper: Awaited<ReturnType<typeof mountForm>>) => {
+    await wrapper.get('[data-testid="google-choose"]').trigger('click')
+    await flushPromises()
+  }
 
   const signInWithGoogle = async (tokenAnswer: Answer) => {
     answerAuthentication({ [PROVIDERS_URL]: providers(GOOGLE, SAMPLE), [TOKEN_URL]: tokenAnswer })
     const wrapper = await mountForm()
+    await chooseGoogle(wrapper)
     await googleCallback({ credential: 'google-credential' })
     await flushPromises()
     return wrapper
@@ -252,7 +260,7 @@ describe('LoginForm with Google', () => {
     localStorage.setItem('theme', theme)
     answerAuthentication({ [PROVIDERS_URL]: providers(GOOGLE) })
 
-    await mountForm()
+    await chooseGoogle(await mountForm())
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ theme: buttonTheme, text: 'continue_with' }))
 
     useThemeStore().toggleTheme()
@@ -260,6 +268,41 @@ describe('LoginForm with Google', () => {
 
     expect(renderButton).toHaveBeenCalledTimes(2)
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ theme: otherTheme }))
+  })
+
+  it('loads nothing from Google until the user chooses Google', async () => {
+    delete window.google
+    answerAuthentication({ [PROVIDERS_URL]: providers(GOOGLE) })
+
+    const wrapper = await mountForm()
+
+    expect(document.head.querySelector(`script[src="${GOOGLE_SCRIPT}"]`)).toBeNull()
+    expect(wrapper.get('[data-testid="google-choose"]').text()).toBe('page.login.form.continueWithGoogle')
+  })
+
+  it('puts Google\'s own button in place of ours at the first click', async () => {
+    answerAuthentication({ [PROVIDERS_URL]: providers(GOOGLE) })
+    const wrapper = await mountForm()
+    expect(renderButton).not.toHaveBeenCalled()
+
+    await chooseGoogle(wrapper)
+
+    expect(renderButton).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="google-choose"]').exists()).toBe(false)
+    expect(wrapper.find('#google-signin-button').isVisible()).toBe(true)
+  })
+
+  it('brings our button back with a message when Google cannot be reached', async () => {
+    delete window.google
+    answerAuthentication({ [PROVIDERS_URL]: providers(GOOGLE) })
+    const wrapper = await mountForm()
+
+    await wrapper.get('[data-testid="google-choose"]').trigger('click')
+    document.head.querySelector(`script[src="${GOOGLE_SCRIPT}"]`)!.dispatchEvent(new Event('error'))
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="google-choose"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="google-error"]').text()).toBe('page.login.errors.googleFailed')
   })
 
   it('hands on the tokens of the listed method', async () => {

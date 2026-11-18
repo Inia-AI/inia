@@ -159,6 +159,7 @@ Variables provide dynamic user input at workflow execution time.
 | **Confidential** | The value still reaches the prompts, but a finished run masks it and a re-run does not carry it over ([Confidential Variables](../../architecture/workflow-engine/variable-system.md#confidential-variables)) |
 | **Default Value** | Pre-filled value |
 | **Options** | For Dropdown/MultiSelect types |
+| **Input rules** | Rules on the value that depend on the attached documents or on another variable ([Adding Input Rules](#adding-input-rules)) |
 
 ### Variable Types
 
@@ -208,6 +209,20 @@ Variables provide dynamic user input at workflow execution time.
 - Use descriptive display names
 - Keep internal values lowercase and simple
 - Provide at least 2 options
+
+### Adding Input Rules
+
+An input rule stops a run from starting when the variable's value does not fit the documents or the other values of the run. For example: an interim period cannot stay at "NA" when a quarterly report is attached. The person starting the run sees a message written from the rule, such as `"Interim Period" cannot be "NA" because "Quarterly Report" is attached.` How rules are evaluated is on [Input Rules](../../architecture/workflow-engine/variable-system.md#input-rules).
+
+1. Open the variable's dialog and find the **Input rules** panel below the options.
+2. Click **Add rule**. A rule starts with one condition, **Any of these documents is attached**, and the requirement **must have a value**.
+3. For each condition, choose what it checks: **Any of these documents is attached**, **None of these documents is attached**, **A field is**, **A field is not**, **A field is empty** or **A field has a value**. Pick the document classes, or the field and, for "is" and "is not", its value. Add more conditions with **Add condition**: a rule applies only when all of them hold.
+4. Under **Then this field**, choose **must have a value**, **must be** or **cannot be**, and for the last two pick the value. **must be** and **cannot be** are offered only for text and dropdown fields.
+5. Click **Save** on the dialog, then save the workflow.
+
+The panel says on screen how values are compared: capital letters are ignored, and so are spaces at the start or end; "is", "is not", "must be" and "cannot be" work only for text and dropdown fields, and a dropdown compares the option's value, not its display name; "attached" covers every document on the run, whether uploaded, picked from the company's documents or made by another workflow.
+
+The dialog refuses to close on a rule with a missing class, field or value, and names the rule. A saved rule that names a document class, field or option the workflow no longer has saves with a warning, and runs skip it until you fix it. Renaming a document class key, a variable's tag or an option value carries the new name into the rules.
 
 ## Editing Existing Workflows
 

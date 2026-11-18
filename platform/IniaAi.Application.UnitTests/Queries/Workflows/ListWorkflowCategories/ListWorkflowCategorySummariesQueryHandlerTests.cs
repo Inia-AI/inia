@@ -1,6 +1,7 @@
 using ErrorOr;
 using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.RunLimits;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.Workflows.ListWorkflowCategories;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.UserManagement;
@@ -39,6 +40,7 @@ public class ListWorkflowCategorySummariesQueryHandlerTests : IDisposable
         _handler = new ListWorkflowCategorySummariesQueryHandler(
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
+            _serviceProvider.GetRequiredService<WorkflowTypeAccess>(),
             new NoCreditCost(),
             new NoPageLimit());
 

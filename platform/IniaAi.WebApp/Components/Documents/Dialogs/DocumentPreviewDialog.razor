@@ -7,23 +7,6 @@
 @inject IFileStorageManager FileStorageManager
 @inject ILogger<DocumentPreviewDialog> Logger
 
-<script type="text/javascript">
-    function embedPDF(bytes, elementID, uuid)
-    {
-        // create a File object from the byte array
-        const file = new File([bytes], uuid, { type: 'application/pdf' });
-
-        // using the File object, create an ObjectURL
-        const objectURL = URL.createObjectURL(file);
-
-        // embed the PDF in a integrated browser-based PDF viewer, using the ObjectURL
-        PDFObject.embed(objectURL, elementID, { page: 1, view: 'FitW' });
-
-        // finally, revoke the ObjectURL to clean up memory
-        URL.revokeObjectURL(objectURL);
-    }
-</script>
-
 <MudDialog DefaultFocus="DefaultFocus.FirstChild">
     <DialogContent>
         <MudElement HtmlTag="div" id="document-preview" Style="height: 1280px; border: 1px solid var(--mud-palette-lines-inputs);" />

@@ -1,4 +1,5 @@
 using ErrorOr;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.Signatures.GetSignatureHistory;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Signatures;
@@ -37,6 +38,7 @@ public class GetSignatureHistoryQueryHandlerTests : IDisposable
         ICoreUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<ICoreUnitOfWork>();
         _handler = new GetSignatureHistoryQueryHandler(
             unitOfWork,
+            _serviceProvider.GetRequiredService<WorkflowTypeAccess>(),
             NullLogger<GetSignatureHistoryQueryHandler>.Instance);
     }
 

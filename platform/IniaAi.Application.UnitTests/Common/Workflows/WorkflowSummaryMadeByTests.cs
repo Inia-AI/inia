@@ -1,5 +1,6 @@
 using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.RunLimits;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.Workflows.ListWorkflowCategories;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Infrastructure.Persistence.Core.Contexts;
@@ -38,7 +39,7 @@ public sealed class WorkflowSummaryMadeByTests : IDisposable
             _ = new DocumentClass(workflow, "Annual Report");
         });
 
-        WorkflowDto summary = (await new GetWorkflowSummaryByTypeQueryHandler(_core.UnitOfWork, new NoCreditCost(), new NoPageLimit())
+        WorkflowDto summary = (await new GetWorkflowSummaryByTypeQueryHandler(_core.UnitOfWork, new WorkflowTypeAccess(_core.UnitOfWork, new AccessRowsDecideReach()), new NoCreditCost(), new NoPageLimit())
             .Handle(new GetWorkflowSummaryByTypeQuery(ORG, PART_2), TestContext.Current.CancellationToken)).Value;
 
         Dictionary<string, DocumentClassMadeByDto?> madeBy = summary.DocumentClasses.ToDictionary(documentClass => documentClass.Key, documentClass => documentClass.MadeBy);
@@ -55,7 +56,7 @@ public sealed class WorkflowSummaryMadeByTests : IDisposable
         Seed(PART_2, "INIA Corporate Analysis - Part 2", workflow =>
             _ = new DocumentClass(workflow, "CorporateFinancialModel") { MadeByWorkflowTypeId = PART_1, MadeByDocumentClassKey = "Financial Spread Output" });
 
-        WorkflowDto summary = (await new GetWorkflowSummaryByTypeQueryHandler(_core.UnitOfWork, new NoCreditCost(), new NoPageLimit())
+        WorkflowDto summary = (await new GetWorkflowSummaryByTypeQueryHandler(_core.UnitOfWork, new WorkflowTypeAccess(_core.UnitOfWork, new AccessRowsDecideReach()), new NoCreditCost(), new NoPageLimit())
             .Handle(new GetWorkflowSummaryByTypeQuery(ORG, PART_2), TestContext.Current.CancellationToken)).Value;
 
         Assert.Null(Assert.Single(summary.DocumentClasses).MadeBy);

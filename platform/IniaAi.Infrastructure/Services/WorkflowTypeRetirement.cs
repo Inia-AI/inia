@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Errors;
 using IniaAi.Domain.Common;
 using IniaAi.Domain.Entities.Documents;
@@ -23,17 +24,20 @@ public sealed class WorkflowTypeRetirement : IWorkflowTypeRetirement
 {
     private readonly CoreDbContext _core;
     private readonly UserDataDbContext _userData;
+    private readonly WorkflowTypeAccess _access;
     private readonly ModuleWorkflowTypes _moduleWorkflowTypes;
     private readonly ILogger<WorkflowTypeRetirement> _logger;
 
     public WorkflowTypeRetirement(
         CoreDbContext core,
         UserDataDbContext userData,
+        WorkflowTypeAccess access,
         ModuleWorkflowTypes moduleWorkflowTypes,
         ILogger<WorkflowTypeRetirement> logger)
     {
         _core = core;
         _userData = userData;
+        _access = access;
         _moduleWorkflowTypes = moduleWorkflowTypes;
         _logger = logger;
     }
@@ -45,16 +49,13 @@ public sealed class WorkflowTypeRetirement : IWorkflowTypeRetirement
             return WorkflowTypeErrorFactory.Reserved(workflowTypeId);
         }
 
-        List<string> reachingOrganizations = await _core.WorkflowTypeOrganizationAccess
-            .Where(access => access.WorkflowTypeId == workflowTypeId && access.WorkflowType.RetiredAt == null)
-            .Select(access => access.OrganizationId)
-            .ToListAsync(ct);
-        if (!reachingOrganizations.Contains(organizationId))
+        bool retired = await _core.WorkflowTypes.AnyAsync(type => type.Id == workflowTypeId && type.RetiredAt != null, ct);
+        if (retired || !await _access.CanReachAsync(organizationId, workflowTypeId, ct))
         {
             return WorkflowTypeErrorFactory.NotFound(workflowTypeId);
         }
 
-        if (reachingOrganizations.Exists(reaching => reaching != organizationId))
+        if (await _access.IsReachedByAnotherAsync(organizationId, workflowTypeId, ct))
         {
             return WorkflowTypeErrorFactory.Shared(workflowTypeId);
         }

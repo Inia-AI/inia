@@ -94,13 +94,7 @@ public class BulkDeleteDocumentsCommandHandlerTests : IDisposable
     {
         Document inUse = await SeedDocumentAsync(ORG_ID, "In Use");
         Document free = await SeedDocumentAsync(ORG_ID, "Free");
-        string jobId = Guid.NewGuid().ToString();
-        _ = await _context.WorkflowExecutions.AddAsync(
-            new WorkflowExecution { OrganizationId = ORG_ID, JobId = jobId, Title = "Report", WorkflowState = WorkflowState.Running },
-            TestContext.Current.CancellationToken);
-        _ = await _context.DocumentInfos.AddAsync(new DocumentInfo(inUse.Id) { JobId = jobId }, TestContext.Current.CancellationToken);
-        _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
-        _context.ChangeTracker.Clear();
+        await SeedRunningReportReadingAsync(inUse);
 
         ErrorOr<BulkDeleteDocumentsResultDto> result = await _handler.Handle(
             new BulkDeleteDocumentsCommand(ORG_ID, USER_ID, [inUse.Id, free.Id]),
@@ -112,7 +106,53 @@ public class BulkDeleteDocumentsCommandHandlerTests : IDisposable
         Assert.False(await _context.Documents.AnyAsync(d => d.Id == free.Id, TestContext.Current.CancellationToken));
     }
 
-    private async Task<Document> SeedDocumentAsync(string organizationId, string name)
+    [Fact]
+    public async Task Handle_DeletesTheCopiesOfEachDeletedDocument_AndKeepsADocumentWhoseCopyAnUnfinishedReportReads()
+    {
+        Document deleted = await SeedDocumentAsync(ORG_ID, "Deleted");
+        Document deletedCopy = await SeedDocumentAsync(ORG_ID, "Deleted-anon", madeFrom: deleted.Id);
+        Document kept = await SeedDocumentAsync(ORG_ID, "Kept");
+        Document keptCopy = await SeedDocumentAsync(ORG_ID, "Kept-anon", madeFrom: kept.Id);
+        await SeedRunningReportReadingAsync(keptCopy);
+
+        ErrorOr<BulkDeleteDocumentsResultDto> result = await _handler.Handle(
+            new BulkDeleteDocumentsCommand(ORG_ID, USER_ID, [deleted.Id, kept.Id]),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal([deleted.Id], result.Value.Deleted);
+        Assert.Equal(DocumentErrorFactory.READ_BY_RUNNING_REPORT_MESSAGE, result.Value.Failed[kept.Id]);
+        Assert.False(await _context.Documents.AnyAsync(d => d.Id == deletedCopy.Id, TestContext.Current.CancellationToken));
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == kept.Id, TestContext.Current.CancellationToken));
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == keptCopy.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Handle_ARequestThatNamesACopyAndItsOriginal_DeletesBoth()
+    {
+        Document original = await SeedDocumentAsync(ORG_ID, "Original");
+        Document copy = await SeedDocumentAsync(ORG_ID, "Original-anon", madeFrom: original.Id);
+
+        ErrorOr<BulkDeleteDocumentsResultDto> result = await _handler.Handle(
+            new BulkDeleteDocumentsCommand(ORG_ID, USER_ID, [copy.Id, original.Id]),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal([copy.Id, original.Id], result.Value.Deleted);
+        Assert.Empty(result.Value.Failed);
+        Assert.False(await _context.Documents.AnyAsync(d => d.Id == copy.Id || d.Id == original.Id, TestContext.Current.CancellationToken));
+    }
+
+    private async Task SeedRunningReportReadingAsync(Document document)
+    {
+        string jobId = Guid.NewGuid().ToString();
+        _ = await _context.WorkflowExecutions.AddAsync(
+            new WorkflowExecution { OrganizationId = ORG_ID, JobId = jobId, Title = "Report", WorkflowState = WorkflowState.Running },
+            TestContext.Current.CancellationToken);
+        _ = await _context.DocumentInfos.AddAsync(new DocumentInfo(document.Id) { JobId = jobId }, TestContext.Current.CancellationToken);
+        _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+    }
+
+    private async Task<Document> SeedDocumentAsync(string organizationId, string name, string? madeFrom = null)
     {
         var fileMetadata = new FileMetadata(
             organizationId,
@@ -126,6 +166,7 @@ public class BulkDeleteDocumentsCommandHandlerTests : IDisposable
         {
             OrganizationId = organizationId,
             Name = name,
+            MadeFromDocumentId = madeFrom,
         };
         _ = await _context.Documents.AddAsync(document, TestContext.Current.CancellationToken);
         _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);

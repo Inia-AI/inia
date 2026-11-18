@@ -106,9 +106,10 @@ Some access rules live in the handler, not in a role attribute:
 
 ### Workflow type access
 
-Workflow templates are shared across organizations, and `WorkflowTypeOrganizationAccess` (`platform/IniaAi.Domain/Entities/Workflows/WorkflowTypeOrganizationAccess.cs`) says which organizations may use a type; `Workflow.OrganizationId` is a "who last saved" stamp, not an ownership key. The join is checked where a type is listed or described: the category listings, `GET /workflow-templates/{workflowTypeId}/summary`, the re-run check, the peer candidates and the signature reads (`WorkflowTypeAccessGuard.HasAccessAsync` or an equivalent query).
+Workflow templates are shared across organizations, and `WorkflowTypeOrganizationAccess` (`platform/IniaAi.Domain/Entities/Workflows/WorkflowTypeOrganizationAccess.cs`) says which organizations may use a type; `Workflow.OrganizationId` is a "who last saved" stamp, not an ownership key. The join is checked where a type is listed, described or run: the category listings, `GET /workflow-templates/{workflowTypeId}/summary`, run start, the re-run check, the documents check, the peer candidates, the signature reads and the usage summary. Each asks `WorkflowTypeAccess`, which asks the open seam `IWorkflowTypeReach` first: a closed module may decide an organization's types itself, and the open default leaves every organization to its rows.
 
-**Starting a run does not check it.** `POST /workflow-executions` and `POST /workflow-executions/submit` start any workflow type whose workflow exists, even a type the organization's listings leave out ([Submit Workflow Execution](../../reference/api/submit-workflow-execution.md#system-user-requirements)). The template endpoints are deliberately not gated by it either: templates are authored deployment-wide by the editor roles.
+
+**Starting a run checks it too.** `POST /workflow-executions` and `POST /workflow-executions/submit` answer `404` with `Workflow not found.` for a type the organization does not reach, the same answer as for an unknown type ([Submit Workflow Execution](../../reference/api/submit-workflow-execution.md#system-user-requirements)). The template endpoints are deliberately not gated by it: templates are authored deployment-wide by the editor roles.
 
 ## Object ids per endpoint
 
@@ -166,17 +167,17 @@ Rules for writes:
 | `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `CancelPendingSignatureOverrideCommandHandler` |
 | `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes` | `pendingOverrideId` | Other | pending override read by id and organization, `CastSignatureOverrideVoteCommandHandler` |
 | `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `CastSignatureOverrideVoteCommandHandler` |
-| `GET api/v1/workflow-types/{workflowTypeId}/signatures/history` | `workflowTypeId` | WorkflowType | the organization's access row for the type is required, `GetSignatureHistoryQueryHandler` |
-| `GET api/v1/workflow-types/{workflowTypeId}/signatures` | `workflowTypeId` | WorkflowType | the organization's access row for the type is required, `GetWorkflowSignaturesQueryHandler` |
-| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending` | `workflowTypeId` | WorkflowType | the organization's access row for the type is required, `SubmitPendingSignatureOverrideCommandHandler` |
+| `GET api/v1/workflow-types/{workflowTypeId}/signatures/history` | `workflowTypeId` | WorkflowType | the organization must reach the type, `GetSignatureHistoryQueryHandler` |
+| `GET api/v1/workflow-types/{workflowTypeId}/signatures` | `workflowTypeId` | WorkflowType | the organization must reach the type, `GetWorkflowSignaturesQueryHandler` |
+| `POST api/v1/workflow-types/{workflowTypeId}/signatures/pending` | `workflowTypeId` | WorkflowType | the organization must reach the type, `SubmitPendingSignatureOverrideCommandHandler` |
 | `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes/mine` | `pendingOverrideId` | Other | pending override read by id and organization, `WithdrawSignatureOverrideVoteCommandHandler` |
 | `DELETE api/v1/workflow-types/{workflowTypeId}/signatures/pending/{pendingOverrideId}/votes/mine` | `workflowTypeId` | WorkflowType | not part of the read; the pending override is read by id and organization, `WithdrawSignatureOverrideVoteCommandHandler` |
 | `DELETE api/v1/tenant-model-settings/{id}` | `id` | Other | operator roles only, staff; settings of every organization by design, `TenantModelSettingsController` |
 | `GET api/v1/tenant-model-settings/{id}` | `id` | Other | operator roles only, staff; settings of every organization by design, `TenantModelSettingsController` |
 | `PUT api/v1/tenant-model-settings/{id}` | `id` | Other | operator roles only, staff; settings of every organization by design, `TenantModelSettingsController` |
-| `GET api/v1/token-usage/workflow-type/{workflowTypeId}` | `workflowTypeId` | WorkflowType | the type is named only with the organization's access row or its own usage of it, `GetWorkflowTypeUsageSummaryQueryHandler` |
+| `GET api/v1/token-usage/workflow-type/{workflowTypeId}` | `workflowTypeId` | WorkflowType | the type is named only where the organization reaches it or has used it, `GetWorkflowTypeUsageSummaryQueryHandler` |
 | `DELETE api/v1/auth/2fa/trusted-devices/{deviceId}` | `deviceId` | Other | a trusted device read by id and the caller's user, `RemoveTrustedDeviceCommandHandler` |
-| `GET api/v1/workflow-categories/{id}/validate-documents` | `id` | WorkflowType | the workflow's type must have the organization's access row, `ValidateDocumentClassesQueryHandler` |
+| `GET api/v1/workflow-categories/{id}/validate-documents` | `id` | WorkflowType | the organization must reach the workflow's type, `ValidateDocumentClassesQueryHandler` |
 | `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/file` | `blockId` | Block | trace files filtered by organization and the run's workflow, `GetExecutionAgentRunFileQueryHandler` |
 | `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/file` | `id` | Report | run resolved by id and organization, `RunEvidenceAccess` |
 | `GET api/v1/workflow-executions/{id}/agent-runs/{blockId}/trace` | `blockId` | Block | trace files filtered by organization and the run's workflow, `GetExecutionAgentRunFileQueryHandler` |
@@ -227,7 +228,7 @@ Rules for writes:
 | `GET api/v1/workflow-templates/{workflowTypeId}/content` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
 | `GET api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `key` | NotAnId | a document class key inside the type; editor roles only, staff, `WorkflowTemplatesController` |
 | `GET api/v1/workflow-templates/{workflowTypeId}/document-classes/{key}` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
-| `GET api/v1/workflow-templates/{workflowTypeId}/summary` | `workflowTypeId` | WorkflowType | type read only through the organization's access row, `GetWorkflowSummaryByTypeQueryHandler` |
+| `GET api/v1/workflow-templates/{workflowTypeId}/summary` | `workflowTypeId` | WorkflowType | type read only where the organization reaches it, `GetWorkflowSummaryByTypeQueryHandler` |
 | `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/changes` | `versionId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
 | `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/changes` | `workflowTypeId` | WorkflowType | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |
 | `GET api/v1/workflow-templates/{workflowTypeId}/versions/{versionId}/content` | `versionId` | Other | editor roles only, staff; authoring reads every organization's templates by design, `WorkflowTemplatesController` |

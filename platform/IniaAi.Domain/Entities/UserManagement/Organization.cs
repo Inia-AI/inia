@@ -22,8 +22,8 @@ public class Organization : Entity<Organization>
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// Whether customers signed this organization up themselves and pay by subscription, rather than
-    /// under an enterprise contract.
+    /// Whether customers signed this organization up themselves and pay with a prepaid balance, rather
+    /// than under an enterprise contract.
     /// </summary>
     public bool IsSelfServe { get; set; }
 

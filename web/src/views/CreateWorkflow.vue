@@ -37,6 +37,7 @@ import {
   requiredClassesToChoose,
   singularClassViolations,
 } from '@/lib/documentRequirements'
+import { checkInputRules } from '@/lib/inputRules/variableInputRuleCheck'
 
 import {
   FormItem,
@@ -147,6 +148,14 @@ const reRunVariablesStillNeeded = computed(() => {
 
 const reRunReasonByField = computed(
   () => new Map(reRunVariablesStillNeeded.value.map(variable => [variable.replacementTag, variable.reason])),
+)
+
+const reRunMessageByField = computed(
+  () => new Map(
+    reRunVariablesStillNeeded.value
+      .filter(variable => variable.reason === 'InvalidValue')
+      .map(variable => [variable.replacementTag, variable.message]),
+  ),
 )
 
 const outputClassKeys = computed(
@@ -800,6 +809,57 @@ const singularViolations = computed(() =>
   ),
 )
 
+const withoutRulesTouchingHiddenVariables = (definitions: WorkflowVariable[]): WorkflowVariable[] => {
+  const hiddenTags = new Set(definitions.filter(variable => variable.isHidden).map(variable => variable.replacementTag.toLowerCase()))
+  const namesHidden = (tag: string | null | undefined) => !!tag && hiddenTags.has(tag.trim().toLowerCase())
+  return definitions.map(variable => ({
+    ...variable,
+    inputRules: variable.isHidden
+      ? []
+      : (variable.inputRules ?? []).filter(rule => !rule.conditions.some(condition => namesHidden(condition.variable))),
+  }))
+}
+
+const inputRuleViolations = computed(() => {
+  const workflow = selectedWorkflow.value
+  if (!workflow) return []
+  const definitions = workflow.variables ?? []
+  const submitted = submittableVariables((form.values.variables ?? {}) as Record<string, unknown>, definitions)
+  const attachedClasses = (formData.value.documents ?? []).map(document => document.class?.trim() || undefined)
+  return checkInputRules(
+    { variables: withoutRulesTouchingHiddenVariables(definitions), documentClasses: workflow.documentClasses },
+    submitted,
+    attachedClasses,
+  ).violations
+})
+
+const inputRuleMessagesByField = computed(() => {
+  const messages = new Map<string, string[]>()
+  for (const violation of inputRuleViolations.value) {
+    messages.set(violation.replacementTag, [...(messages.get(violation.replacementTag) ?? []), violation.message])
+  }
+  return messages
+})
+
+const shownFieldNames = computed(
+  () => new Set([...variableFieldDefinitions.value, ...parentCompanyVariableFieldDefinitions.value].map(field => field.name)),
+)
+
+const inputRuleMessagesWithoutField = computed(() =>
+  inputRuleViolations.value.filter(violation => !shownFieldNames.value.has(violation.replacementTag)).map(violation => violation.message),
+)
+
+const inputRulesHold = computed(() => inputRuleViolations.value.length > 0)
+
+const fieldMessageId = (fieldName: string) => `field-notes-${fieldName}`
+
+const fieldNotesOf = (fieldName: string) => [
+  ...new Set([
+    ...(inputRuleMessagesByField.value.get(fieldName) ?? []),
+    ...(reRunMessageByField.value.has(fieldName) ? [reRunMessageByField.value.get(fieldName)!] : []),
+  ]),
+]
+
 const canContinue = computed(() => {
   switch (currentStepKey.value) {
     case 'type':
@@ -811,6 +871,8 @@ const canContinue = computed(() => {
         singularViolations.value.length === 0 &&
         reRunOutputClassConflicts.value.length === 0
       )
+    case 'details':
+      return !inputRulesHold.value
     default:
       return true
   }
@@ -1227,6 +1289,8 @@ const reviewVariables = computed(() => {
                         :name="`variables.${field.name}`"
                         :header="field.componentProps?.header"
                         :description="field.description"
+                        :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
+                        :invalid="fieldNotesOf(field.name).length > 0"
                       />
 
                       <FormField
@@ -1250,7 +1314,10 @@ const reviewVariables = computed(() => {
                               </TooltipProvider>
                             </div>
                           </FormLabel>
-                          <FormControl>
+                          <FormControl
+                            :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
+                            :invalid="fieldNotesOf(field.name).length > 0"
+                          >
                             <component
                               v-if="formData.variables"
                               :is="field.component"
@@ -1260,6 +1327,23 @@ const reviewVariables = computed(() => {
                           <FormMessage />
                         </FormItem>
                       </FormField>
+                      <ul
+                        v-if="fieldNotesOf(field.name).length"
+                        :id="fieldMessageId(field.name)"
+                        class="field-rule-messages"
+                        data-testid="field-rule-messages"
+                      >
+                        <li v-for="message in fieldNotesOf(field.name)" :key="message">{{ message }}</li>
+                      </ul>
+                    </div>
+
+                    <div id="input-rules-held" role="status" class="field-rule-held" data-testid="input-rules-held">
+                      <template v-if="inputRulesHold">
+                        <p>{{ $t('page.createWorkflow.detailsStep.inputRulesHeld') }}</p>
+                        <ul v-if="inputRuleMessagesWithoutField.length">
+                          <li v-for="message in inputRuleMessagesWithoutField" :key="message">{{ message }}</li>
+                        </ul>
+                      </template>
                     </div>
                   </div>
 
@@ -1279,6 +1363,8 @@ const reviewVariables = computed(() => {
                             :name="`variables.${field.name}`"
                             :header="field.componentProps?.header"
                             :description="field.description"
+                            :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
+                            :invalid="fieldNotesOf(field.name).length > 0"
                           />
 
                           <FormField
@@ -1302,7 +1388,10 @@ const reviewVariables = computed(() => {
                                   </TooltipProvider>
                                 </div>
                               </FormLabel>
-                              <FormControl>
+                              <FormControl
+                                :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
+                                :invalid="fieldNotesOf(field.name).length > 0"
+                              >
                                 <component
                                   v-if="formData.variables"
                                   :is="field.component"
@@ -1312,6 +1401,14 @@ const reviewVariables = computed(() => {
                               <FormMessage />
                             </FormItem>
                           </FormField>
+                          <ul
+                            v-if="fieldNotesOf(field.name).length"
+                            :id="fieldMessageId(field.name)"
+                            class="field-rule-messages"
+                            data-testid="field-rule-messages"
+                          >
+                            <li v-for="message in fieldNotesOf(field.name)" :key="message">{{ message }}</li>
+                          </ul>
                         </div>
                       </div>
                     </div>
@@ -1411,6 +1508,7 @@ const reviewVariables = computed(() => {
             fontSize="lg"
             class="btn-gradient-primary"
             :disabled="!canContinue"
+            :aria-describedby="currentStepKey === 'details' && inputRulesHold ? 'input-rules-held' : undefined"
             @click="goNext"
           >
             {{ $t('page.createWorkflow.continue') }}
@@ -2015,6 +2113,17 @@ button.step-rail-entry:enabled {
 }
 
 .inline-error-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-error);
+}
+
+.field-rule-messages,
+.field-rule-held {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
   font-size: 13px;
   font-weight: 600;
   color: var(--accent-error);

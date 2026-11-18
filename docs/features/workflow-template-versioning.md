@@ -122,6 +122,8 @@ The REST surface for reading and saving template content is `WorkflowTemplatesCo
 
 The version routes are read-only. There is no version-creation POST and **no restore endpoint**: versioning happens as a side effect of the normal save path, and a restore is an ordinary save of old content (see [Restoring over the API](#restoring-over-the-api)).
 
+The content JSON carries each variable's `InputRules` when it has any, and a PUT followed by a GET returns them unchanged. A PUT refuses an input rule that cannot be evaluated (no condition, or a condition or requirement without its class, field or value) with a `400` at `Variables[<tag>].InputRules[<index>]`, and saves a rule that names something the workflow does not have with a `warnings[]` entry at `Variables[<tag>].InputRules`. The shape, the operators and the exact texts are on [Input Rules](../architecture/workflow-engine/variable-system.md#input-rules); the agent guide (`platform/IniaAi.WebApi/Resources/WorkflowTemplatesAgentGuide.md`) gives agents the same contract.
+
 ### Optimistic Concurrency
 
 `PUT .../content` enforces optimistic concurrency on `baseVersionId`:

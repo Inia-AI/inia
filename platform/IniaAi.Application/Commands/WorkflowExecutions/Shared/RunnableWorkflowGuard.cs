@@ -1,7 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Workflows;
 using IniaAi.Common.Text;
-using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Workflows;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +18,7 @@ public static class RunnableWorkflowGuard
     public static async Task<ErrorOr<Workflow>> RunnableAsync(
         Workflow? workflow,
         string organizationId,
-        ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -29,7 +28,7 @@ public static class RunnableWorkflowGuard
         }
 
         if (string.IsNullOrEmpty(workflow.WorkflowTypeId)
-            || !await WorkflowTypeAccessGuard.HasAccessAsync(coreUnitOfWork, organizationId, workflow.WorkflowTypeId, cancellationToken))
+            || !await access.CanReachAsync(organizationId, workflow.WorkflowTypeId, cancellationToken))
         {
             logger.LogWarning(
                 "Organization {OrganizationId} asked to run workflow type {WorkflowTypeId}, which it has no access to",

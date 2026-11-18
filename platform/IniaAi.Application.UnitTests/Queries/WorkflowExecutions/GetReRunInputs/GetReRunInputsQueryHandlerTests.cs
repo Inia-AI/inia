@@ -1,5 +1,6 @@
 using System.Text;
 using ErrorOr;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.WorkflowExecutions.GetReRunInputs;
 using IniaAi.Application.Workflows.Services;
 using IniaAi.Common.Enums;
@@ -49,6 +50,7 @@ public class GetReRunInputsQueryHandlerTests : IDisposable
         _handler = new GetReRunInputsQueryHandler(
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
+            _serviceProvider.GetRequiredService<WorkflowTypeAccess>(),
             new WorkflowVariableValidationService(),
             new DocumentClassValidationService(NullLogger<DocumentClassValidationService>.Instance),
             NullLogger<GetReRunInputsQueryHandler>.Instance);

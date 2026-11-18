@@ -21,6 +21,9 @@ public sealed class DailyAllowanceFilter : IAsyncResourceFilter
     /// <summary>The refusal's error code.</summary>
     public const string EXHAUSTED_CODE = "DailyAllowance.Exhausted";
 
+    /// <summary>The word that starts the warning when the count cannot be read and the request goes through.</summary>
+    public const string UNREADABLE_LOG_MARKER = "DailyAllowanceUnreadable";
+
     private const int WINDOW_SECONDS = 86400;
 
     private readonly DailyAllowanceKind _kind;
@@ -115,7 +118,7 @@ public sealed class DailyAllowanceFilter : IAsyncResourceFilter
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "The daily {Kind} allowance of user {UserId} could not be read; the request goes through", _kind, LogSanitizer.ForLog(userId));
+            _logger.LogWarning(ex, UNREADABLE_LOG_MARKER + ": The daily {Kind} allowance of user {UserId} could not be read; the request goes through", _kind, LogSanitizer.ForLog(userId));
             return null;
         }
     }

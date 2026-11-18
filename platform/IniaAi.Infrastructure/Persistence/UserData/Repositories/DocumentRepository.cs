@@ -25,15 +25,6 @@ public class DocumentRepository : RepositoryBase<Document>, IDocumentRepository
             .FirstOrDefaultAsync(d => d.Id == id.ToString() && !d.IsDeleted, cancellationToken: cancellationToken);
     }
 
-    public async Task<Document?> GetDocumentByFileMetadataIdAsync(string fileMetadataId)
-    {
-        return await Entities
-            .Include(d => d.Pages)
-                .ThenInclude(p => p.EmbeddingVector)
-            .Include(d => d.FileMetadata)
-            .FirstOrDefaultAsync(d => !d.IsDeleted && d.FileMetadataId == fileMetadataId);
-    }
-
     public async Task<Document?> GetDocumentByFileNameAndSize(string fileName, int sizeBytes, string organizationId)
     {
         return await Entities
@@ -221,10 +212,14 @@ public class DocumentRepository : RepositoryBase<Document>, IDocumentRepository
             .Where(WorkflowExecutionExpressions.IsInActiveState)
             .Select(execution => execution.JobId);
 
-        return await Context.Set<DocumentInfo>()
-            .Where(DocumentInfo.IsRunInputOfAny(unfinishedJobIds))
+        IQueryable<DocumentInfo> unfinishedInput = Context.Set<DocumentInfo>().Where(DocumentInfo.IsRunInputOfAny(unfinishedJobIds));
+
+        return await unfinishedInput
             .Where(info => documentIds.Contains(info.DocumentId))
             .Select(info => info.DocumentId)
+            .Union(unfinishedInput
+                .Where(info => info.Document!.MadeFromDocumentId != null && documentIds.Contains(info.Document.MadeFromDocumentId!))
+                .Select(info => info.Document!.MadeFromDocumentId!))
             .ToHashSetAsync(cancellationToken);
     }
 

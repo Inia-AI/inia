@@ -1,0 +1,327 @@
+@using IniaAi.Domain.Entities.Workflows
+@using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.Workflows.InputRules
+
+<MudPaper Outlined="true" Class="pa-4" data-testid="input-rules-editor">
+    <MudStack Spacing="3">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle1">Input rules</MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                When every condition of a rule holds, this field must meet the rule's requirement, or the run does not start. The person starting the run sees a message made from the rule.
+            </MudText>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary" data-testid="input-rules-comparison-help">
+                How values are compared: capital letters are ignored, and so are spaces at the start or end. "is", "is not", "must be" and "cannot be" work only for text and dropdown fields, and a dropdown compares the option's value, not its display name. "Attached" covers every document on the run: uploaded, picked from the company's documents, or made by another workflow.
+            </MudText>
+        </MudStack>
+
+        @for (int ruleIndex = 0; ruleIndex < Rules.Count; ruleIndex++)
+        {
+            int ruleNumber = ruleIndex + 1;
+            VariableInputRule rule = Rules[ruleIndex];
+
+            <MudPaper Outlined="true" Class="pa-3" data-testid="@($"input-rule-{ruleNumber}")">
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body1">Rule @ruleNumber: when all of these hold</MudText>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Class="editor-soft-button"
+                                   StartIcon="@Icons.Material.Outlined.Delete"
+                                   aria-label="@($"Remove rule {ruleNumber}")"
+                                   OnClick="() => RemoveRule(rule)">
+                            Remove rule
+                        </MudButton>
+                    </MudStack>
+
+                    @for (int conditionIndex = 0; conditionIndex < rule.Conditions.Count; conditionIndex++)
+                    {
+                        int conditionNumber = conditionIndex + 1;
+                        InputRuleCondition condition = rule.Conditions[conditionIndex];
+
+                        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudSelect T="InputRuleConditionOperator"
+                                       Label="@($"Condition {conditionNumber}")"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       Style="min-width: 16rem"
+                                       Value="@condition.Operator"
+                                       ValueChanged="operatorValue => ChangeConditionOperator(condition, operatorValue)">
+                                @foreach ((InputRuleConditionOperator operatorValue, string label) in _conditionLabels)
+                                {
+                                    <MudSelectItem T="InputRuleConditionOperator" Value="@operatorValue">@label</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            @if (condition.IsOnDocuments())
+                            {
+                                <MudSelect T="string"
+                                           Label="Document classes"
+                                           Variant="Variant.Outlined"
+                                           Dense="true"
+                                           MultiSelection="true"
+                                           Style="min-width: 16rem"
+                                           SelectedValues="@(condition.DocumentClassKeys ?? [])"
+                                           SelectedValuesChanged="keys => condition.DocumentClassKeys = [.. keys]"
+                                           ToStringFunc="DocumentClassName">
+                                    @foreach (DocumentClass documentClass in InputClasses)
+                                    {
+                                        <MudSelectItem T="string" Value="@documentClass.Key">@DocumentClassName(documentClass.Key)</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                            else
+                            {
+                                <MudSelect T="string"
+                                           Label="Field"
+                                           Variant="Variant.Outlined"
+                                           Dense="true"
+                                           Style="min-width: 14rem"
+                                           Value="@condition.Variable"
+                                           ValueChanged="tag => ChangeConditionVariable(condition, tag)"
+                                           ToStringFunc="VariableName">
+                                    @foreach (WorkflowVariable other in FieldsFor(condition))
+                                    {
+                                        <MudSelectItem T="string" Value="@other.ReplacementTag">@VariableName(other.ReplacementTag)</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                @if (condition.ComparesValue())
+                                {
+                                    WorkflowVariable? compared = FindVariable(condition.Variable);
+                                    @if (compared is { Type: WorkflowVariableTypes.Dropdown })
+                                    {
+                                        <MudSelect T="string"
+                                                   Label="Value"
+                                                   Variant="Variant.Outlined"
+                                                   Dense="true"
+                                                   Style="min-width: 12rem"
+                                                   @bind-Value="condition.Value"
+                                                   ToStringFunc="value => OptionLabel(compared.Options, value)">
+                                            @foreach (KeyValuePair<string, string> option in compared.Options)
+                                            {
+                                                <MudSelectItem T="string" Value="@option.Key">@option.Value</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else
+                                    {
+                                        <MudTextField T="string"
+                                                      Label="Value"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      @bind-Value="condition.Value" />
+                                    }
+                                }
+                            }
+
+                            <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                                           Size="Size.Small"
+                                           Class="editor-soft-button"
+                                           aria-label="@($"Remove condition {conditionNumber} of rule {ruleNumber}")"
+                                           OnClick="() => rule.Conditions.Remove(condition)" />
+                        </MudStack>
+                    }
+
+                    <div>
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   Class="editor-soft-button"
+                                   StartIcon="@Icons.Material.Outlined.Add"
+                                   aria-label="@($"Add a condition to rule {ruleNumber}")"
+                                   OnClick="() => AddCondition(rule)">
+                            Add condition
+                        </MudButton>
+                    </div>
+
+                    <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudSelect T="InputRuleRequirementOperator"
+                                   Label="Then this field"
+                                   Variant="Variant.Outlined"
+                                   Dense="true"
+                                   Style="min-width: 14rem"
+                                   Value="@rule.Requirement.Operator"
+                                   ValueChanged="operatorValue => ChangeRequirementOperator(rule.Requirement, operatorValue)">
+                            @foreach ((InputRuleRequirementOperator operatorValue, string label) in _requirementLabels)
+                            {
+                                <MudSelectItem T="InputRuleRequirementOperator"
+                                               Value="@operatorValue"
+                                               Disabled="@(operatorValue is not InputRuleRequirementOperator.NotEmpty && !VariableInputRuleCheck.ComparesWithValue(OwnerType))">
+                                    @label
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if (rule.Requirement.ComparesValue())
+                        {
+                            @if (OwnerType is WorkflowVariableTypes.Dropdown)
+                            {
+                                <MudSelect T="string"
+                                           Label="Value"
+                                           Variant="Variant.Outlined"
+                                           Dense="true"
+                                           Style="min-width: 12rem"
+                                           @bind-Value="rule.Requirement.Value"
+                                           ToStringFunc="value => OptionLabel(OwnerOptions, value)">
+                                    @foreach (KeyValuePair<string, string> option in OwnerOptions)
+                                    {
+                                        <MudSelectItem T="string" Value="@option.Key">@option.Value</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                            else
+                            {
+                                <MudTextField T="string"
+                                              Label="Value"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              @bind-Value="rule.Requirement.Value" />
+                            }
+                        }
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+
+        <div>
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       Class="editor-soft-button"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="AddRule">
+                Add rule
+            </MudButton>
+        </div>
+    </MudStack>
+</MudPaper>
+
+@code {
+    private static readonly (InputRuleConditionOperator Operator, string Label)[] _conditionLabels =
+    [
+        (InputRuleConditionOperator.AnyAttached, "Any of these documents is attached"),
+        (InputRuleConditionOperator.NoneAttached, "None of these documents is attached"),
+        (InputRuleConditionOperator.EqualTo, "A field is"),
+        (InputRuleConditionOperator.NotEqualTo, "A field is not"),
+        (InputRuleConditionOperator.IsEmpty, "A field is empty"),
+        (InputRuleConditionOperator.IsNotEmpty, "A field has a value"),
+    ];
+
+    private static readonly (InputRuleRequirementOperator Operator, string Label)[] _requirementLabels =
+    [
+        (InputRuleRequirementOperator.NotEmpty, "must have a value"),
+        (InputRuleRequirementOperator.EqualTo, "must be"),
+        (InputRuleRequirementOperator.NotEqualTo, "cannot be"),
+    ];
+
+    /// <summary>The rules being edited. The dialog owns the list and writes it to the variable on save.</summary>
+    [Parameter, EditorRequired]
+    public List<VariableInputRule> Rules { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Workflow Workflow { get; set; } = default!;
+
+    /// <summary>The replacement tag of the variable the rules belong to, which a condition cannot name.</summary>
+    [Parameter]
+    public string OwnerTag { get; set; } = string.Empty;
+
+    [Parameter]
+    public WorkflowVariableTypes OwnerType { get; set; }
+
+    [Parameter]
+    public IReadOnlyDictionary<string, string> OwnerOptions { get; set; } = new Dictionary<string, string>();
+
+    private IEnumerable<DocumentClass> InputClasses => Workflow.DocumentClasses.Where(documentClass => !documentClass.IsOutputDocument);
+
+    private void AddRule()
+    {
+        Rules.Add(new VariableInputRule
+        {
+            Conditions = [new InputRuleCondition { Operator = InputRuleConditionOperator.AnyAttached, DocumentClassKeys = [] }],
+            Requirement = new InputRuleRequirement { Operator = InputRuleRequirementOperator.NotEmpty },
+        });
+    }
+
+    private void RemoveRule(VariableInputRule rule)
+    {
+        Rules.Remove(rule);
+    }
+
+    private static void AddCondition(VariableInputRule rule)
+    {
+        rule.Conditions.Add(new InputRuleCondition { Operator = InputRuleConditionOperator.AnyAttached, DocumentClassKeys = [] });
+    }
+
+    private void ChangeConditionOperator(InputRuleCondition condition, InputRuleConditionOperator operatorValue)
+    {
+        bool wasOnDocuments = condition.IsOnDocuments();
+        condition.Operator = operatorValue;
+
+        if (condition.IsOnDocuments())
+        {
+            condition.Variable = null;
+            condition.Value = null;
+            condition.DocumentClassKeys = wasOnDocuments ? condition.DocumentClassKeys : [];
+            return;
+        }
+
+        condition.DocumentClassKeys = null;
+        if (!condition.ComparesValue())
+        {
+            condition.Value = null;
+        }
+        else if (FindVariable(condition.Variable) is { } compared && !VariableInputRuleCheck.ComparesWithValue(compared.Type))
+        {
+            condition.Variable = null;
+            condition.Value = null;
+        }
+    }
+
+    private static void ChangeConditionVariable(InputRuleCondition condition, string tag)
+    {
+        if (condition.Variable != tag)
+        {
+            condition.Value = null;
+        }
+
+        condition.Variable = tag;
+    }
+
+    private static void ChangeRequirementOperator(InputRuleRequirement requirement, InputRuleRequirementOperator operatorValue)
+    {
+        requirement.Operator = operatorValue;
+        if (!requirement.ComparesValue())
+        {
+            requirement.Value = null;
+        }
+    }
+
+    private IEnumerable<WorkflowVariable> FieldsFor(InputRuleCondition condition)
+    {
+        return Workflow.Variables.Where(variable =>
+            !string.Equals(variable.ReplacementTag, OwnerTag, StringComparison.OrdinalIgnoreCase)
+            && (!condition.ComparesValue() || VariableInputRuleCheck.ComparesWithValue(variable.Type)));
+    }
+
+    private WorkflowVariable? FindVariable(string? tag)
+    {
+        return Workflow.Variables.FirstOrDefault(variable => string.Equals(variable.ReplacementTag, tag, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string VariableName(string? tag)
+    {
+        return FindVariable(tag) is { } variable ? VariableInputRuleCheck.NameOf(variable) : tag ?? string.Empty;
+    }
+
+    private string DocumentClassName(string? key)
+    {
+        DocumentClass? documentClass = Workflow.DocumentClasses.FirstOrDefault(candidate => candidate.Key == key);
+        return documentClass is null || string.IsNullOrWhiteSpace(documentClass.DisplayName) ? key ?? string.Empty : documentClass.DisplayName;
+    }
+
+    private static string OptionLabel(IReadOnlyDictionary<string, string> options, string? value)
+    {
+        return value is not null && options.TryGetValue(value, out string? label) ? label : value ?? string.Empty;
+    }
+}

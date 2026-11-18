@@ -51,7 +51,7 @@ public class GetWorkflowExecutionQueryHandlerExcludedDocumentsTests : IDisposabl
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
             new NoBaselineReader(),
-            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), new EveryWorkflowAvailable(), new NoCreditCost()),
+            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), _serviceProvider.GetRequiredService<WorkflowTypeAccess>(), new EveryWorkflowAvailable(), new NoCreditCost()),
             new SilentAgentRunActivityFeed());
     }
 

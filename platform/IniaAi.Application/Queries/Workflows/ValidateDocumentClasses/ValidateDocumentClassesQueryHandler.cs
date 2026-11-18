@@ -22,17 +22,20 @@ public sealed class ValidateDocumentClassesQueryHandler
     private readonly ILogger<ValidateDocumentClassesQueryHandler> _logger;
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IDocumentClassValidationService _validationService;
 
     public ValidateDocumentClassesQueryHandler(
         ILogger<ValidateDocumentClassesQueryHandler> logger,
         IUserDataUnitOfWork userDataUnitOfWork,
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IDocumentClassValidationService validationService)
     {
         _logger = logger;
         _userDataUnitOfWork = userDataUnitOfWork;
         _coreUnitOfWork = coreUnitOfWork;
+        _access = access;
         _validationService = validationService;
     }
 
@@ -44,7 +47,7 @@ public sealed class ValidateDocumentClassesQueryHandler
         Workflow? workflow = await _coreUnitOfWork.Workflows.GetByIdAsync(request.WorkflowId);
 
         if (workflow?.WorkflowTypeId is null
-            || !await WorkflowTypeAccessGuard.HasAccessAsync(_coreUnitOfWork, request.OrganizationId, workflow.WorkflowTypeId, cancellationToken))
+            || !await _access.CanReachAsync(request.OrganizationId, workflow.WorkflowTypeId, cancellationToken))
         {
             _logger.LogWarning(
                 "Workflow {WorkflowId} not found for organization {OrganizationId}",

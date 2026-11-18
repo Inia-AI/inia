@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Commands.Signatures.SubmitPendingSignatureOverride;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Signatures;
 using IniaAi.Domain.Entities.Workflows;
@@ -38,6 +39,7 @@ public class SubmitPendingSignatureOverrideCommandHandlerTests : IDisposable
         ICoreUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<ICoreUnitOfWork>();
         _handler = new SubmitPendingSignatureOverrideCommandHandler(
             unitOfWork,
+            _serviceProvider.GetRequiredService<WorkflowTypeAccess>(),
             NullLogger<SubmitPendingSignatureOverrideCommandHandler>.Instance);
     }
 

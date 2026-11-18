@@ -21,8 +21,9 @@ public sealed class FilesController : ApiController
 {
     private const string INLINE_DISPOSITION = "inline";
 
-    // The API shares the web app's origin, so a file opened from it in a browser must run nothing there.
-    private const string SANDBOX_POLICY = "sandbox";
+    // The API shares the web app's origin, so a file opened from it in a browser must run nothing there, embed no
+    // plugin and point no relative link elsewhere.
+    private const string SANDBOX_POLICY = "sandbox; object-src 'none'; base-uri 'none'";
 
     private readonly ILogger<FilesController> _logger;
     private readonly ISender _sender;

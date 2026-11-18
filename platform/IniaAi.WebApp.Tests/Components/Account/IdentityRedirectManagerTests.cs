@@ -1,4 +1,5 @@
 using IniaAi.WebApp.Components.Account;
+using IniaAi.WebApp.Configuration;
 using Microsoft.AspNetCore.Components;
 
 namespace IniaAi.WebApp.Tests.Components.Account;
@@ -42,6 +43,6 @@ public sealed class IdentityRedirectManagerTests
 
     private static void RedirectTo(string returnUrl)
     {
-        new IdentityRedirectManager(new StaticRenderNavigationManager(ADMIN_BASE_URL)).RedirectTo(returnUrl);
+        new IdentityRedirectManager(new StaticRenderNavigationManager(ADMIN_BASE_URL), new AdminCookies(httpsOnly: true)).RedirectTo(returnUrl);
     }
 }

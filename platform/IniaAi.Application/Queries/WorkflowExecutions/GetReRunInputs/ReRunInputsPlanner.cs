@@ -6,6 +6,7 @@ using IniaAi.Application.Workflows.Services;
 using IniaAi.Core.Services.Abstraction;
 using IniaAi.Core.Services.DocumentClassValidation;
 using IniaAi.Domain.Entities.Workflows;
+using IniaAi.Domain.Entities.Workflows.InputRules;
 using IniaAi.Domain.Specifications.WorkflowExecutions;
 using IniaAi.WebApi.Contracts.Enums;
 using IniaAi.WebApi.Contracts.Responses.WorkflowExecutions;
@@ -14,8 +15,8 @@ namespace IniaAi.Application.Queries.WorkflowExecutions.GetReRunInputs;
 
 /// <summary>
 /// Compares a run's inputs with its workflow's current template and works out what a re-run
-/// submits. It checks the inputs with the same variable and document class rules a submission is
-/// checked with, so a plan it calls ready passes those rules on submission. Rules about the
+/// submits. It checks the inputs with the same variable, input rule and document class rules a
+/// submission is checked with, so a plan it calls ready passes those rules on submission. Rules about the
 /// template itself, such as an Agent block the deployment cannot run, are not part of the plan.
 /// </summary>
 public sealed class ReRunInputsPlanner
@@ -83,7 +84,8 @@ public sealed class ReRunInputsPlanner
             }
         }
 
-        List<ReRunVariableNeedingInputDto> needingInput = NeedingInput(template, values, runValuesByTag, withheldTags);
+        List<string?> attachedClasses = [.. inputDocuments.Where(document => document.IsAvailable).Select(document => (string?)document.DocumentClass)];
+        List<ReRunVariableNeedingInputDto> needingInput = NeedingInput(template, values, runValuesByTag, withheldTags, attachedClasses);
 
         foreach (ReRunVariableNeedingInputDto variable in needingInput)
         {
@@ -111,9 +113,7 @@ public sealed class ReRunInputsPlanner
             });
         }
 
-        List<ReRunDocumentClassNeedingInputDto> documentClassesNeedingInput = DocumentClassesNeedingInput(
-            template,
-            [.. inputDocuments.Where(document => document.IsAvailable).Select(document => (string?)document.DocumentClass)]);
+        List<ReRunDocumentClassNeedingInputDto> documentClassesNeedingInput = DocumentClassesNeedingInput(template, attachedClasses);
         List<ReRunUnavailableDocumentDto> unavailableDocuments = [.. inputDocuments
             .Where(document => !document.IsAvailable)
             .Select(document => new ReRunUnavailableDocumentDto { DocumentId = document.DocumentId, FileName = document.FileName })];
@@ -136,7 +136,8 @@ public sealed class ReRunInputsPlanner
         Workflow template,
         Dictionary<string, JsonElement> values,
         Dictionary<string, JsonElement> runValuesByTag,
-        HashSet<string> withheldTags)
+        HashSet<string> withheldTags,
+        IReadOnlyCollection<string?> attachedClasses)
     {
         Dictionary<string, WorkflowVariable> variablesByTag = template.Variables
             .GroupBy(variable => variable.ReplacementTag, StringComparer.Ordinal)
@@ -144,7 +145,13 @@ public sealed class ReRunInputsPlanner
 
         List<ReRunVariableNeedingInputDto> needingInput = [];
 
-        foreach (Error error in _variableValidation.ValidateVariables(template, values))
+        // A value that breaks an input rule needs input like any other invalid value, with the rule's own message.
+        List<Error> errors = [
+            .. _variableValidation.ValidateVariables(template, values),
+            .. VariableInputRuleErrors.Of(VariableInputRuleCheck.Check(template, values, attachedClasses)),
+        ];
+
+        foreach (Error error in errors)
         {
             if (error.Metadata?.GetValueOrDefault(WorkflowVariableValidationService.REPLACEMENT_TAG_METADATA_KEY) is not string tag
                 || !variablesByTag.TryGetValue(tag, out WorkflowVariable? variable)

@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Common.Text;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Signatures;
@@ -35,13 +36,16 @@ public class SubmitPendingSignatureOverrideCommandHandler
     private const string ERROR_SIGNATURES_UNKNOWN_FIELD = "Signatures.UnknownField";
 
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly ILogger<SubmitPendingSignatureOverrideCommandHandler> _logger;
 
     public SubmitPendingSignatureOverrideCommandHandler(
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         ILogger<SubmitPendingSignatureOverrideCommandHandler> logger)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -49,13 +53,7 @@ public class SubmitPendingSignatureOverrideCommandHandler
         SubmitPendingSignatureOverrideCommand request,
         CancellationToken cancellationToken)
     {
-        bool hasAccess = await _coreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
-            .GetAll()
-            .AsNoTracking()
-            .AnyAsync(
-                a => a.WorkflowTypeId == request.WorkflowTypeId
-                    && a.OrganizationId == request.OrganizationId,
-                cancellationToken);
+        bool hasAccess = await _access.CanReachAsync(request.OrganizationId, request.WorkflowTypeId, cancellationToken);
 
         if (!hasAccess)
         {
@@ -65,7 +63,7 @@ public class SubmitPendingSignatureOverrideCommandHandler
         }
 
         // Workflow definition is shared across tenants — access is gated above via
-        // WorkflowTypeOrganizationAccess. Per-tenant scoping for overrides is enforced
+        // WorkflowTypeAccess. Per-tenant scoping for overrides is enforced
         // separately on the PendingSignatureOverride / SignatureFieldOverride rows.
         // Spec applies OrderByDescending(CreatedAt) so we always resolve the same
         // canonical row that the workflow execution path uses.

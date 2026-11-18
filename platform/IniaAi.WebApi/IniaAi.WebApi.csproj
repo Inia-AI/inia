@@ -17,14 +17,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Amazon.AspNetCore.DataProtection.SSM" />
         <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
         <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
         <PackageReference Include="AspNetCore.HealthChecks.Uris" />
         <PackageReference Include="AWSSDK.SimpleSystemsManagement" />
         <PackageReference Include="AWSSDK.SSO" />
         <PackageReference Include="AWSSDK.SSOOIDC" />
-        <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Keys" />
         <PackageReference Include="Finbuckle.MultiTenant.AspNetCore" />
         <PackageReference Include="Google.Apis.Auth" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />

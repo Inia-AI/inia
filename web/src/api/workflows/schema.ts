@@ -80,6 +80,28 @@ export interface WorkflowVariable {
   isConfidential?: boolean
   defaultValue?: string
   options?: Record<string, string>
+  inputRules?: VariableInputRule[]
+}
+
+export type InputRuleConditionOperator = 'AnyAttached' | 'NoneAttached' | 'EqualTo' | 'NotEqualTo' | 'IsEmpty' | 'IsNotEmpty'
+
+export type InputRuleRequirementOperator = 'NotEmpty' | 'EqualTo' | 'NotEqualTo'
+
+export interface InputRuleCondition {
+  operator: InputRuleConditionOperator
+  documentClassKeys?: string[] | null
+  variable?: string | null
+  value?: string | null
+}
+
+export interface InputRuleRequirement {
+  operator: InputRuleRequirementOperator
+  value?: string | null
+}
+
+export interface VariableInputRule {
+  conditions: InputRuleCondition[]
+  requirement: InputRuleRequirement
 }
 
 export interface DocumentClass {

@@ -1,12 +1,12 @@
 ---
 type: explanation
 status: current
-description: "Documents the WorkflowVariable entity, the reserved, variable and block replacement tags and how each is substituted, duplicate-tag handling, run-time value validation, and confidential variables. Read when you add a variable, write a {tag} in a prompt, see a duplicate-tag warning, or a run is refused for a variable value."
+description: "Documents the WorkflowVariable entity, the reserved, variable and block replacement tags and how each is substituted, duplicate-tag handling, run-time value validation, input rules, and confidential variables. Read when you add a variable, write a {tag} in a prompt, see a duplicate-tag warning, write an input rule, or a run is refused for a variable value."
 ---
 
 # Variable System
 
-**On this page:** WorkflowVariable Entity · Replacement Tag System · Variable Validation · Variable Usage in Execution · JSON Serialization · Best Practices · Related Documentation
+**On this page:** WorkflowVariable Entity · Replacement Tag System · Variable Validation · Input Rules · Variable Usage in Execution · JSON Serialization · Best Practices · Related Documentation
 
 The workflow variable system provides dynamic, user-configurable input parameters that enable workflows to be reusable templates with runtime-specified values.
 
@@ -31,6 +31,7 @@ The workflow variable system provides dynamic, user-configurable input parameter
 | `IsConfidential` | bool | Masks the value wherever a finished run is shown and withholds it from a re-run (see [Confidential Variables](#confidential-variables)) |
 | `DefaultValue` | string? | Optional preset value (nullable; omitted from JSON when null) |
 | `Options` | Dictionary<string, string> | Available choices for Dropdown/MultiSelect (non-nullable, defaults to empty dictionary) |
+| `InputRules` | `List<VariableInputRule>` | Rules on the value that refuse a run (see [Input Rules](#input-rules)); empty by default, omitted from JSON when empty, stored as a nullable JSON column |
 
 ### Variable Types
 
@@ -194,6 +195,90 @@ When a workflow **template** is saved, `platform/IniaAi.Application/Common/Workf
 - **Duplicate block tags** are warnings, within a section and across sections; only a tag longer than 100 characters is an error (see [Block Replacement Tags](#block-replacement-tags)). Variable tags are not checked.
 - **Unresolved-reference detection** (`CollectPlaceholderWarnings`): plain identifier tags referenced in templates that match no known block `ReplacementTag`, workflow variable `ReplacementTag`, or document class are surfaced as warnings. Detection is conservative — only simple identifier tags are checked, since the full tag grammar (nested parameterized tags, loop list titles) cannot be resolved statically.
 - Negative or duplicate `Order` values produce warnings (orders are normalized on save).
+
+## Input Rules
+
+An input rule is a rule on a variable's value that depends on which documents are attached to the run or on the value of another variable: "when all these conditions hold, this variable must meet a requirement". A submission that breaks a rule is refused before any run exists. `WorkflowVariable.InputRules` holds a variable's rules, and `VariableInputRuleCheck` in `platform/IniaAi.Domain/Entities/Workflows/InputRules/VariableInputRuleCheck.cs` evaluates them and writes their messages.
+
+### Rule shape
+
+A variable can carry several rules. Within a rule every condition must hold for the rule to apply, and each rule is checked on its own. There is no nesting and no "or" between conditions. In the template JSON (`WorkflowVariable` serialises the key only when the variable has rules):
+
+```json
+"InputRules": [
+  {
+    "Conditions": [ { "Operator": "AnyAttached", "DocumentClassKeys": ["QuarterlyStandard", "QuarterlyFocus"] } ],
+    "Requirement": { "Operator": "NotEqualTo", "Value": "NA" }
+  },
+  {
+    "Conditions": [ { "Operator": "NoneAttached", "DocumentClassKeys": ["QuarterlyStandard", "QuarterlyFocus"] } ],
+    "Requirement": { "Operator": "EqualTo", "Value": "NA" }
+  }
+]
+```
+
+| Part | Operator | Other fields | Holds when |
+|---|---|---|---|
+| Condition | `AnyAttached` | `DocumentClassKeys` | a document of any named class is attached |
+| Condition | `NoneAttached` | `DocumentClassKeys` | no document of any named class is attached |
+| Condition | `EqualTo` | `Variable`, `Value` | the other variable's value equals `Value` |
+| Condition | `NotEqualTo` | `Variable`, `Value` | the other variable's value does not equal `Value` (an empty value counts as not equal) |
+| Condition | `IsEmpty` | `Variable` | the other variable has no value |
+| Condition | `IsNotEmpty` | `Variable` | the other variable has a value |
+| Requirement | `NotEmpty` | none | this variable has a value |
+| Requirement | `EqualTo` | `Value` | this variable's value equals `Value` |
+| Requirement | `NotEqualTo` | `Value` | this variable's value does not equal `Value` (an empty value passes) |
+
+`DocumentClassKeys` names document class `Key`s. `Variable` names another variable's `ReplacementTag`, matched ignoring case.
+
+### How values are compared
+
+- **Attached** means any document of that class on the run at submission, however it got there: uploaded in the run form, picked from the company's existing documents, or produced by another workflow.
+- `EqualTo` and `NotEqualTo` compare text, ignoring case and surrounding spaces. They work only on `String` and `Dropdown` variables. A dropdown compares its stored option value (the `Options` key), never the label.
+- `IsEmpty`, `IsNotEmpty` and `NotEmpty` work on every type. A value is empty when it is missing, null, text of only spaces, or an empty list. A number, zero included, is never empty.
+- A variable the submission leaves out takes its `DefaultValue`, as the run does, so a rule reads the value the run would use.
+
+### Messages
+
+The message is written from the rule; a rule has no custom text. It names variables and document classes by their display names with any leading numbering removed ("2. Interim Period" becomes "Interim Period"), shows a dropdown value by its option label, and puts names and values in double quotes. Examples:
+
+- `"Interim Period" cannot be "NA" because "Quarterly Report (Standard Format)" or "Quarterly Report (Focus Report Format)" is attached.`
+- `"Interim Period" must be "NA" because no "Quarterly Report (Standard Format)" or "Quarterly Report (Focus Report Format)" is attached.`
+- `"Parent Company Name" cannot be "Unknown" because "Does the Counterparty have a Parent?" is "Yes".`
+- `Choose a value for "Country Name" because "Report scope" is "Spread and credit report".`
+
+Several conditions join with "and"; the other condition clauses read `"X" is not "Y"`, `"X" is empty` and `"X" has a value`.
+
+### Where rules are enforced
+
+- **Submission.** `WorkflowExecutionOrchestrator` checks the rules after the document class checks, against the submitted values and the class of every document on the run. Each broken rule returns a validation error with the code `WorkflowVariable.InputRule`, the message as its description, and the variable's tag in the `replacementTag` metadata key (`VariableInputRuleErrors`). No run starts and nothing is charged.
+- **Run form.** The web app evaluates the same rules on the Details step, see [Run form](#run-form).
+- **Re-run of an old report.** `ReRunInputsPlanner` adds each broken rule to the variables that need input ("Needs your input"), with the rule's message and the reason `InvalidValue` or `NoValue`.
+- **Regression re-run of a baseline.** `StartWorkflowRegressionRunCommandHandler` checks the rules against the baseline's stored inputs before it records a regression run, and refuses a baseline that breaks one with the rule's message.
+
+### Stale rules
+
+A rule is stale when it names a document class or a variable the workflow does not have, when a dropdown value it compares with is not an option, or when it compares a value on a variable that is neither `String` nor `Dropdown`. A run skips a stale rule instead of enforcing it. The five skip kinds (`InputRuleProblem`) and their reasons:
+
+| Kind | Reason |
+|---|---|
+| `Incomplete` | `it has no condition`, `it has no requirement`, `a condition has no operator`, or a condition or the requirement lacks its class, field or value |
+| `MissingDocumentClass` | `it names the document class "<key>", which this workflow does not have` |
+| `MissingVariable` | `it names the field "<tag>", which this workflow does not have` |
+| `NotAnOption` | `"<value>" is not an option of "<variable>"` |
+| `NotComparable` | `"<variable>" is not a text or dropdown field, so it cannot be compared with a value` |
+
+- **On save**, `WorkflowTemplateStructuralValidator` refuses an incomplete rule with an error at `Variables[<tag>].InputRules[<index>]` (`A rule on "<variable>" cannot be saved because <reason>. Complete the rule or remove it.`). It saves every other stale rule with a warning at `Variables[<tag>].InputRules`: `A rule on "<variable>" will not be checked because <reason>. Fix the rule or remove it.`
+- **On a run**, the orchestrator writes one log row per skipped rule, in the section `Run inputs` with the status `Skipped`: `The rule on "<variable>" was not checked because <reason>. Fix the rule on this field in the workflow editor.`
+- Renaming a document class key, a variable's tag or a dropdown option value in the editor renames it inside the rules too, so a rename does not make a rule stale. Deleting one does.
+
+### Run form
+
+The run form's Details step comes after the Documents step, so the attached classes are known when it opens. It evaluates the rules as soon as the step opens and on every change, shows each message on the failing field and keeps Continue disabled while a rule is broken. It never clears or changes a field's default value. It skips stale rules without a message; the server writes the log line. The summary withholds a hidden variable's default, so the form also skips any rule on a hidden variable or with a condition that names one; the server still checks those rules at submission and refuses a run that breaks them. The form's evaluator is `src/lib/inputRules/variableInputRuleCheck.ts` in the web app, and its wiring is on [Forms, Tables & Composables](../frontend/forms-tables-and-composables.md).
+
+### One set of cases for server and form
+
+The server and the run form must refuse with the same words. Both test suites run the cases in `variable-input-rule-cases.json`, kept in both repositories (`platform/IniaAi.Domain.Tests/InputRules/Fixtures/` in the platform, `src/lib/inputRules/` in the web app). Each test pins the file's SHA-256 and compares it with the other repository's copy when a checkout sits beside it, so the two copies change together.
 
 ## Variable Usage in Execution
 

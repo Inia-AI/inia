@@ -6,6 +6,7 @@ using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Entities.Workflows.Blocks;
 using IniaAi.Domain.Entities.Workflows.Blocks.Properties;
 using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions;
+using IniaAi.Domain.Entities.Workflows.InputRules;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 
@@ -24,8 +25,9 @@ public class WorkflowTemplateStructuralValidator : IWorkflowTemplateStructuralVa
     private const string REGRESSION_SCHEMA_PROPERTY = "RegressionSchema";
     private const string SIGNATURE_FIELDS_PROPERTY = "SignatureFields";
     private const string DOCUMENT_CLASSES_PROPERTY = "DocumentClasses";
+    private const string VARIABLES_PROPERTY = "Variables";
 
-    private static readonly string[] _rootCollectionProperties = ["Sections", "Variables", DOCUMENT_CLASSES_PROPERTY];
+    private static readonly string[] _rootCollectionProperties = ["Sections", VARIABLES_PROPERTY, DOCUMENT_CLASSES_PROPERTY];
     private static readonly string[] _blockCollectionProperties = ["RagSettings", "TextInputs", "SupportedDocumentClasses"];
 
     private const string SHARED_COMPONENT_ID_PROPERTY = "SharedComponentId";
@@ -132,6 +134,7 @@ public class WorkflowTemplateStructuralValidator : IWorkflowTemplateStructuralVa
         ValidateDataOutputNames(workflow, errors, warnings);
         ValidateRegressionSchemas(workflow, errors);
         ValidateSignatureFields(workflow, errors, warnings);
+        ValidateInputRules(workflow, errors, warnings);
 
         // Placeholder collection walks Block.Properties; a null Properties would NRE there,
         // so only run it once every block is known to have non-null Properties.
@@ -723,6 +726,58 @@ public class WorkflowTemplateStructuralValidator : IWorkflowTemplateStructuralVa
     {
         return error.Code.Contains(REGRESSION_FIELDS_PROPERTY, StringComparison.Ordinal)
             || error.Code.Contains(REGRESSION_SCHEMA_PROPERTY, StringComparison.Ordinal);
+    }
+
+    /// <summary>True for the error about a rule that cannot be evaluated at all.</summary>
+    public static bool IsInputRuleError(Error error)
+    {
+        return error.Code.Contains($".{nameof(WorkflowVariable.InputRules)}[", StringComparison.Ordinal);
+    }
+
+    /// <summary>True for the warning about a rule that runs will skip.</summary>
+    public static bool IsInputRuleWarning(WorkflowStructuralValidationWarning warning)
+    {
+        return warning.Path.EndsWith($".{nameof(WorkflowVariable.InputRules)}", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A rule that cannot be evaluated at all blocks the save. A rule that names something the
+    /// workflow does not have saves with a warning, and runs skip it until it is fixed.
+    /// </summary>
+    private static void ValidateInputRules(
+        Workflow workflow,
+        List<Error> errors,
+        List<WorkflowStructuralValidationWarning> warnings)
+    {
+        foreach (WorkflowVariable variable in workflow.Variables)
+        {
+            for (int index = 0; index < variable.InputRules.Count; index++)
+            {
+                if (VariableInputRuleCheck.IncompletenessOf(variable.InputRules[index]) is string incomplete)
+                {
+                    errors.Add(Error.Validation(
+                        InputRulePath(variable, index),
+                        $"A rule on \"{VariableInputRuleCheck.NameOf(variable)}\" cannot be saved because {incomplete}. Complete the rule or remove it."));
+                }
+            }
+        }
+
+        foreach (SkippedInputRule stale in VariableInputRuleCheck.FindStale(workflow))
+        {
+            if (stale.Kind is InputRuleProblem.Incomplete)
+            {
+                continue;
+            }
+
+            warnings.Add(new WorkflowStructuralValidationWarning(
+                $"{VARIABLES_PROPERTY}[{stale.ReplacementTag}].{nameof(WorkflowVariable.InputRules)}",
+                VariableInputRuleCheck.SaveWarningOf(stale)));
+        }
+    }
+
+    private static string InputRulePath(WorkflowVariable variable, int index)
+    {
+        return $"{VARIABLES_PROPERTY}[{variable.ReplacementTag}].{nameof(WorkflowVariable.InputRules)}[{index}]";
     }
 
     /// <summary>

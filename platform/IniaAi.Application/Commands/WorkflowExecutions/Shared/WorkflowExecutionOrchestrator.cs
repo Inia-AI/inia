@@ -7,6 +7,7 @@ using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.WorkflowExecutions;
 using IniaAi.Application.Workflows.Interfaces;
+using IniaAi.Application.Workflows.Services;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Platform;
 using IniaAi.Common.Constants;
@@ -27,6 +28,7 @@ using IniaAi.Domain.Entities.WorkflowExecutions;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Entities.Workflows.Blocks.Properties.Abstractions;
 using IniaAi.Domain.Entities.Workflows.Enums;
+using IniaAi.Domain.Entities.Workflows.InputRules;
 using IniaAi.Domain.Replay;
 using IniaAi.Domain.Serialization;
 using IniaAi.Domain.Specifications.Workflows;
@@ -57,6 +59,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
     private readonly IJobsService _jobsService;
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly WorkflowCanonicalizer _canonicalizer;
     private readonly IWorkflowVariableValidationService _variableValidationService;
     private readonly IDocumentClassValidationService _documentClassValidationService;
@@ -86,7 +89,8 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         IOptions<PlatformSettings>? platformSettings = null,
         IServiceProviderIsService? registrations = null,
         IRunAdmission? runAdmission = null,
-        RunIntake? runIntake = null)
+        RunIntake? runIntake = null,
+        WorkflowTypeAccess? access = null)
     {
         _logger = logger;
         _jobsService = jobsService;
@@ -104,6 +108,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         _anonymises = registrations?.IsService(typeof(IConfidentialDocumentAnonymiser)) == true;
         _runAdmission = runAdmission ?? new AdmitEveryRun();
         _runIntake = runIntake ?? new RunIntake();
+        _access = access ?? new WorkflowTypeAccess(coreUnitOfWork, new AccessRowsDecideReach());
     }
 
     /// <inheritdoc />
@@ -127,7 +132,7 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
         string? emailAttachmentsClass = null,
         bool isRerun = false)
     {
-        ErrorOr<Workflow> runnable = await RunnableWorkflowGuard.RunnableAsync(workflow, organizationId, _coreUnitOfWork, _logger, ct);
+        ErrorOr<Workflow> runnable = await RunnableWorkflowGuard.RunnableAsync(workflow, organizationId, _access, _logger, ct);
         if (runnable.IsError)
         {
             return runnable.Errors;
@@ -294,6 +299,20 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
             }
         }
 
+        InputRuleOutcome inputRules = VariableInputRuleCheck.Check(
+            workflow,
+            variables,
+            documentsWithClasses.Select(document => (string?)document.Class));
+
+        if (inputRules.Violations.Count > 0)
+        {
+            _logger.LogInformation(
+                "Refused submission of workflow {WorkflowTypeId}: {Count} variable input rules not met",
+                workflow.WorkflowTypeId,
+                inputRules.Violations.Count);
+            return VariableInputRuleErrors.Of(inputRules);
+        }
+
         if (!string.IsNullOrEmpty(emailAttachmentsClass)
             && workflow.DocumentClasses.Any(dc => dc.IsOutputDocument
                 && string.Equals(dc.Key, emailAttachmentsClass, StringComparison.Ordinal)))
@@ -367,6 +386,12 @@ public class WorkflowExecutionOrchestrator : IWorkflowExecutionOrchestrator
                 }
 
                 job.WorkflowExecutionId = workflowExecution.Id;
+
+                foreach (WorkflowExecutionLog skippedRule in VariableInputRuleErrors.LogRowsOf(inputRules, workflowExecution.Id))
+                {
+                    await _userDataUnitOfWork.Repository<WorkflowExecutionLog>().AddAsync(skippedRule);
+                }
+
                 _ = await _userDataUnitOfWork.CompleteAsync(token);
 
                 ErrorOr<Success> admission = await _runAdmission.AdmitAsync(

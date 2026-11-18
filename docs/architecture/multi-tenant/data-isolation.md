@@ -268,13 +268,11 @@ The editor's other parameterized pages admit the editor roles only. `/library/{C
 
 **Challenge**: Workflow templates are shared across the organizations that have access to a given workflow type.
 
-**Solution**: The `WorkflowTypeOrganizationAccess` join table (in the `Core` schema), **not** a query filter. A `WorkflowType` is reachable by the *set* of organizations that have an access row; among them the live template content is one shared `Workflow` row per type. The isolation boundary is "does the caller's org have an access row for this type?" — `Workflow.OrganizationId` is only a "who last saved" stamp and is **not** used to scope template reads.
+**Solution**: The `WorkflowTypeOrganizationAccess` join table (in the `Core` schema), **not** a query filter. A `WorkflowType` is reachable by the *set* of organizations that have an access row; among them the live template content is one shared `Workflow` row per type. The isolation boundary is "does the caller's org reach this type?" — `Workflow.OrganizationId` is only a "who last saved" stamp and is **not** used to scope template reads. `WorkflowTypeAccess` is the one place that answers it: by the access rows, unless a closed module decides the organization's types through `IWorkflowTypeReach`. A guard test fails on any other product file that reads the rows.
 
 ```csharp
-// Gate template access by the join table, not by Workflow.OrganizationId
-var hasAccess = await _coreUnitOfWork.WorkflowTypeOrganizationAccess
-    .AnyAsync(a => a.WorkflowTypeId == workflowTypeId
-                && a.OrganizationId == request.OrganizationId, ct);
+// Gate template access through WorkflowTypeAccess, not the join table or Workflow.OrganizationId
+bool hasAccess = await _workflowTypeAccess.CanReachAsync(request.OrganizationId, workflowTypeId, ct);
 ```
 
 ---

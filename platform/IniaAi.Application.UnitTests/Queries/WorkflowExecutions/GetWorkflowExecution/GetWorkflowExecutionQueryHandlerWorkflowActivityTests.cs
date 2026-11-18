@@ -44,7 +44,7 @@ public class GetWorkflowExecutionQueryHandlerWorkflowActivityTests : IDisposable
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
             new NoBaselineReader(),
-            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), new EveryWorkflowAvailable(), new NoCreditCost()));
+            new NextWorkflows(_serviceProvider.GetRequiredService<ICoreUnitOfWork>(), _serviceProvider.GetRequiredService<WorkflowTypeAccess>(), new EveryWorkflowAvailable(), new NoCreditCost()));
     }
 
     private const string FIRST_BLOCK_STABLE_ID = "stablefirst0000000000000000000001";

@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations;
 namespace IniaAi.Domain.Entities.SelfServe;
 
 /// <summary>
-/// One consent a user gave at checkout, for a plan or a top-up, kept as evidence for the
-/// confirmation email and for a dispute.
+/// One consent a user gave at checkout, for a top-up or, until 12 November 2026, the monthly plan,
+/// kept as evidence for the confirmation email and for a dispute.
 /// </summary>
 [Index(nameof(OrganizationId))]
 [Index(nameof(UserId))]

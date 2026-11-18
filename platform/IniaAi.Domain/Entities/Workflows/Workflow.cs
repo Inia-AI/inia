@@ -499,6 +499,11 @@ public class Workflow : Entity<Workflow>, ITemplatable
         {
             RenameSectionVariantDocumentClassReferences(section, oldKey, newKey);
         }
+
+        foreach (WorkflowVariable variable in Variables)
+        {
+            variable.RenameInputRuleDocumentClass(oldKey, newKey);
+        }
     }
 
     public void RemoveDocumentClass(DocumentClass documentClass)

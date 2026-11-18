@@ -5,8 +5,8 @@ namespace IniaAi.Domain.Specifications.Workflows;
 
 /// <summary>
 /// Specification for the WorkflowTypeOrganizationAccess row granting an organization access to a
-/// workflow type. The presence of a row is the tenant-isolation boundary for templates, so callers
-/// use this to gate any operation resolved from a caller-supplied WorkflowTypeId.
+/// workflow type. WorkflowTypeAccess reads it for an organization whose access rows decide the types it
+/// reaches; every other caller asks WorkflowTypeAccess.
 /// </summary>
 public sealed class WorkflowTypeAccessByOrgSpec
     : Specification<WorkflowTypeOrganizationAccess>, ISingleResultSpecification<WorkflowTypeOrganizationAccess>

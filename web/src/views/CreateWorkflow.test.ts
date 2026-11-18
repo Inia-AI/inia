@@ -42,7 +42,59 @@ vi.mock('@/api', async () => {
             { replacementTag: 'Limit', displayName: 'Limit', type: 'Number', isRequired: true, options: {} },
             { replacementTag: 'Weighting', displayName: 'Weighting', type: 'Number', isRequired: false, isHidden: true, defaultValue: '3', options: {} },
           ]
-        : []
+        : typeId === 'interim-report'
+          ? [
+              {
+                replacementTag: 'InterimPeriod',
+                displayName: '2. Interim Period',
+                type: 'Dropdown',
+                isRequired: true,
+                defaultValue: 'NA',
+                options: { NA: 'NA', '6': '6 months' },
+                inputRules: [
+                  {
+                    conditions: [{ operator: 'AnyAttached', documentClassKeys: ['QuarterlyReport'] }],
+                    requirement: { operator: 'NotEqualTo', value: 'NA' },
+                  },
+                  {
+                    conditions: [{ operator: 'NoneAttached', documentClassKeys: ['QuarterlyReport'] }],
+                    requirement: { operator: 'EqualTo', value: 'NA' },
+                  },
+                ],
+              },
+              {
+                replacementTag: 'Reviewer',
+                displayName: 'Reviewer',
+                type: 'String',
+                isRequired: false,
+                isHidden: true,
+                options: {},
+                inputRules: [
+                  {
+                    conditions: [{ operator: 'AnyAttached', documentClassKeys: ['QuarterlyReport'] }],
+                    requirement: { operator: 'NotEmpty' },
+                  },
+                ],
+              },
+              {
+                replacementTag: 'Comment',
+                displayName: 'Comment',
+                type: 'String',
+                isRequired: false,
+                options: {},
+                inputRules: [
+                  {
+                    conditions: [{ operator: 'IsEmpty', variable: 'reviewer' }],
+                    requirement: { operator: 'NotEmpty' },
+                  },
+                ],
+              },
+            ]
+          : []
+  const documentClassesOf = (typeId: string) =>
+    typeId === 'interim-report'
+      ? [{ key: 'QuarterlyReport', displayName: 'Quarterly Report', description: '', requirement: 'Optional', shouldBeSingular: false, isOutputDocument: false }]
+      : []
   const workflow = (id: string, workflowTypeName: string) => ({ id, workflowTypeId: id, workflowTypeName, isAvailable: true })
   return {
     default: {
@@ -50,7 +102,7 @@ vi.mock('@/api', async () => {
         useGetWorkflowCategorySummaries: () => ({
           data: vueRef([
             { id: 'monitoring', name: 'Monitoring', workflows: [workflow('hf-monthly', 'Hedge Fund Monthly'), workflow('pe-quarterly', 'PE Quarterly')] },
-            { id: 'credit', name: 'Credit', workflows: [workflow('credit-memo', 'Credit Memo'), workflow('loan-check', 'Loan Check'), workflow('company-report', 'Company Report')] },
+            { id: 'credit', name: 'Credit', workflows: [workflow('credit-memo', 'Credit Memo'), workflow('loan-check', 'Loan Check'), workflow('company-report', 'Company Report'), workflow('interim-report', 'Interim Report')] },
           ]),
           isError: vueRef(false),
           refetch: vi.fn(),
@@ -64,7 +116,7 @@ vi.mock('@/api', async () => {
                   workflowTypeId: typeId.value,
                   isAvailable: true,
                   isCounterpartyRequired: typeId.value === 'company-report',
-                  documentClasses: [],
+                  documentClasses: documentClassesOf(typeId.value),
                   variables: variablesOf(typeId.value),
                 }
               : null,
@@ -192,8 +244,9 @@ describe('CreateWorkflow report type step', () => {
       'credit-memo',
       'loan-check',
       'company-report',
+      'interim-report',
     ])
-    expect(wrapper!.findAll('input[type="radio"]')).toHaveLength(5)
+    expect(wrapper!.findAll('input[type="radio"]')).toHaveLength(6)
   })
 
   it('still selects a report type when its radio is chosen', async () => {
@@ -334,6 +387,31 @@ describe('CreateWorkflow after a re-run found the workflow changed', () => {
     expect((wrapper!.get('input[name="variables.ApiKey"]').element as HTMLInputElement).value).toBe('')
     expect(wrapper!.get('[data-rerun-field="ApiKey"]').text()).toContain('Enter again')
     expect(wrapper!.get('[data-testid="rerun-changes"]').text()).toContain('Needs your input: Account Holder, API key')
+  })
+})
+
+describe('CreateWorkflow re-run whose value breaks a rule the workflow gained', () => {
+  it('shows the message the server gave under the field to enter again', async () => {
+    const message = '"Company name" cannot be "Unknown" because "Annual Report" is attached.'
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'credit-memo',
+      workflowTypeId: 'credit-memo',
+      variables: { CompanyName: 'Unknown', account_holder_type: 'Company' },
+      documents: [],
+      startStep: 'details',
+      reRunChanges: {
+        variablesNeedingInput: [{ replacementTag: 'CompanyName', displayName: 'Company name', reason: 'InvalidValue', message }],
+        documentClassesNeedingInput: [],
+        removedVariables: [],
+        defaultedVariables: [],
+        unavailableDocuments: [],
+      },
+    })
+    await mountPage()
+
+    const notes = wrapper!.get('[data-rerun-field="CompanyName"] [data-testid="field-rule-messages"]')
+    expect(notes.text()).toBe(message)
+    expect(wrapper!.get('input[name="variables.CompanyName"]').attributes('aria-describedby')).toContain(notes.attributes('id'))
   })
 })
 
@@ -587,5 +665,73 @@ describe('CreateWorkflow review piece that names Submit', () => {
     await vi.waitFor(() => expect(wrapper!.get('[aria-current="step"]').text()).toContain('Review'))
 
     expect(wrapper!.get('button[type="submit"]').text()).toBe('Run report · $75')
+  })
+})
+
+describe('CreateWorkflow input rules on the details step', () => {
+  const openDetailsWith = async (documentClasses: string[], variables: Record<string, unknown> = {}) => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'interim-report',
+      workflowTypeId: 'interim-report',
+      variables,
+      documents: documentClasses.map((documentClass, index) => ({ fileId: `file-${index}`, documentClass, name: `document-${index}`, extension: '.pdf' })),
+      startStep: 'details',
+    })
+    await mountPage()
+  }
+
+  const continueButton = () => wrapper!.findAll('button').find(candidate => candidate.text() === 'Continue')!
+
+  it('shows the rule message on the field as the step opens, turns Continue off, and keeps the default', async () => {
+    await openDetailsWith(['QuarterlyReport'])
+
+    const message = '"Interim Period" cannot be "NA" because "Quarterly Report" is attached.'
+    const notes = wrapper!.get('[data-testid="field-rule-messages"]')
+    expect(notes.text()).toBe(message)
+    const control = wrapper!.get(`[aria-describedby~="${notes.attributes('id')}"]`)
+    expect(control.attributes('aria-invalid')).toBe('true')
+    expect(control.text()).toContain('NA')
+    expect(continueButton().attributes('disabled')).toBeDefined()
+    expect(continueButton().attributes('aria-describedby')).toBe('input-rules-held')
+    expect(wrapper!.get('#input-rules-held').attributes('role')).toBe('status')
+    expect(wrapper!.get('#input-rules-held').text()).toContain('Change the fields marked on this step before you continue.')
+  })
+
+  it('refuses an interim period when no quarterly report is attached', async () => {
+    await openDetailsWith([], { InterimPeriod: '6' })
+
+    expect(wrapper!.get('[data-testid="field-rule-messages"]').text()).toBe(
+      '"Interim Period" must be "NA" because no "Quarterly Report" is attached.',
+    )
+    expect(continueButton().attributes('disabled')).toBeDefined()
+  })
+
+  it('clears the message and turns Continue on when the user changes the value', async () => {
+    await openDetailsWith(['QuarterlyReport'])
+    expect(continueButton().attributes('disabled')).toBeDefined()
+
+    wrapper!.findComponent({ name: 'IniaSelect' }).vm.$emit('update:modelValue', '6')
+    await flushPromises()
+
+    expect(wrapper!.find('[data-testid="field-rule-messages"]').exists()).toBe(false)
+    expect(wrapper!.get('#input-rules-held').text()).toBe('')
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+  })
+
+  it('leaves to the server a rule on a hidden field and a rule that names one, since the form cannot see its default', async () => {
+    await openDetailsWith(['QuarterlyReport'], { InterimPeriod: '6' })
+
+    expect(wrapper!.text()).not.toContain('Reviewer')
+    expect(wrapper!.text()).not.toContain('Choose a value for')
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+  })
+
+  it('lets the user continue when the value meets the rules', async () => {
+    await openDetailsWith(['QuarterlyReport'], { InterimPeriod: '6' })
+
+    expect(wrapper!.find('[data-testid="field-rule-messages"]').exists()).toBe(false)
+    expect(wrapper!.get('#input-rules-held').text()).toBe('')
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+    expect(continueButton().attributes('aria-describedby')).toBeUndefined()
   })
 })

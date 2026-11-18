@@ -313,7 +313,7 @@ There is **no** `/block-templates` or `/template-categories` endpoint. Both were
 | `GET` | `/meta/build` | Build metadata (anonymous) |
 | `GET` | `/meta/uptime` | Process uptime (anonymous) |
 
-Outside `/api/v1`, the API maps only `GET /health` and `GET /readiness` (health checks, anonymous; they also answer `HEAD` and refuse every other method with 405), and the Swagger UI in development (see [OpenAPI/Swagger Documentation](#openapiswagger-documentation)). There is no SignalR hub: `POST /hubs/execution/negotiate` answers `404`, and run progress is read by polling ([Realtime and polling](../../architecture/frontend/realtime-and-polling.md)).
+Outside `/api/v1`, the API maps only `GET /health` and `GET /readiness` (health checks without sign-in; `/readiness` writes its full report only for a caller on the API's own host, and every other caller gets the same status code with the overall status alone; both also answer `HEAD` and refuse every other method with 405), and the Swagger UI in development (see [OpenAPI/Swagger Documentation](#openapiswagger-documentation)). There is no SignalR hub: `POST /hubs/execution/negotiate` answers `404`, and run progress is read by polling ([Realtime and polling](../../architecture/frontend/realtime-and-polling.md)).
 
 ## Error Handling
 

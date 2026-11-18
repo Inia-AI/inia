@@ -59,12 +59,13 @@ The entity exposes the platform's reserved type ids as constants, `GENERIC` (`Ge
 
 ### Where access is checked
 
-The access boundary is "does the caller's organization have a `WorkflowTypeOrganizationAccess` row for this type?" — never `Workflow.OrganizationId`.
+The access boundary is "does the caller's organization have a `WorkflowTypeOrganizationAccess` row for this type?" — never `Workflow.OrganizationId`. `WorkflowTypeAccess` is the one place that answers it. It asks the open seam `IWorkflowTypeReach` first: the default answers for no organization, and a closed module may decide the types of some organizations itself, in which case their rows count for nothing. A guard test (`WorkflowTypeAccessGuardTests`) fails on any other product file that reads the rows, except the files on its list, each of which writes, maps or cleans up the rows, or finds the organization that owns a type.
 
 - **Browsing.** The category and summary queries behind `GET /workflow-categories`, `GET /workflow-categories/summaries` and `GET /workflow-templates/{workflowTypeId}/summary` return only types the caller's organization can access, so the run page lists only those.
-- **Reading and re-running past work.** `WorkflowTypeAccessGuard.HasAccessAsync` gates the re-run inputs of an execution, peer candidates, and the editor agent for a non-SuperAdmin; the version-history queries filter by the same rows.
+- **Reading and re-running past work.** `WorkflowTypeAccess.CanReachAsync` gates the re-run inputs of an execution, peer candidates, the documents check, the signature reads, the usage summary, and the editor agent for a non-SuperAdmin.
 - **Not the template-editing API.** `GET /workflow-templates`, `GET` and `PUT /workflow-templates/{workflowTypeId}/content` are deliberately not gated by access rows (`ListWorkflowTemplatesQuery`, `GetWorkflowTemplateContentQuery`): templates are authored deployment-wide, and the `WorkflowEditor`/`SuperAdmin` role gate is the authoring boundary.
-- **Not run submission.** `SubmitWorkflowExecutionCommandHandler` and `StartWorkflowExecutionCommandHandler` load the template by type id (`GetWorkflowAsync`) and check no access row, and neither does `WorkflowExecutionOrchestrator`: a caller that knows a type id can submit a run of it whether or not its organization has been granted the type.
+- **Run submission.** `SubmitWorkflowExecutionCommandHandler`, `StartWorkflowExecutionCommandHandler` and `WorkflowExecutionOrchestrator` start a run only for a type the organization reaches (`RunnableWorkflowGuard`); any other type answers `404` with `Workflow not found.`, as an unknown one does.
+- **Retiring a type.** `WorkflowTypeRetirement` retires a type only for an organization that reaches it and only while no other organization does (`WorkflowTypeAccess.IsReachedByAnotherAsync`), so a type a closed module gives to its organizations counts as shared.
 
 
 ## Management Interface
@@ -87,7 +88,7 @@ The Workflow Type Management page is a Blazor Server page (`WorkflowTypeManageme
 
 ### Tenant dialog (Manage Tenants)
 
-`WorkflowTypeTenantAssignmentDialog` shows the type's **Current Tenants**, each with a **Remove** button, and an **Add Tenant** picker listing the active organizations not yet granted. Changes are staged — the dialog lists each pending `+ Add` and `- Remove` — and **Save Changes** applies the diff: an `AddAsync` of a new access row per added organization, a `HardRemove` of the existing row per removed one, and one `CompleteAsync`. Grants left unchanged are never touched. There is no API endpoint for tenant assignment.
+`WorkflowTypeTenantAssignmentDialog` shows the type's **Current Tenants**, each with a **Remove** button, and an **Add Tenant** picker listing the active organizations not yet granted. Both leave out the organizations closed to every staff user (`IOrganizationsClosedToStaff`), as every list across organizations in the admin app does. Changes are staged — the dialog lists each pending `+ Add` and `- Remove` — and **Save Changes** applies the diff: an `AddAsync` of a new access row per added organization, a `HardRemove` of the existing row per removed one, and one `CompleteAsync`. Grants left unchanged are never touched. There is no API endpoint for tenant assignment.
 
 ## Creating, Duplicating and Deleting Types
 

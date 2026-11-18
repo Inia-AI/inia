@@ -789,12 +789,13 @@
         // The editor sends SaveWorkflowCommand directly (bypassing the API's structural validation),
         // so the regression-field, signature-field and web address rules are gated here. Only errors
         // with those codes block the save; other structural rules stay API-only for the editor path.
-        List<Error> fieldErrors = StructuralValidator
-            .Validate(EditorContext.Workflow)
+        WorkflowStructuralValidationResult structure = StructuralValidator.Validate(EditorContext.Workflow);
+        List<Error> fieldErrors = structure
             .Errors
             .Where(e => WorkflowTemplateStructuralValidator.IsRegressionError(e)
                 || WorkflowTemplateStructuralValidator.IsSignatureError(e)
-                || WorkflowTemplateStructuralValidator.IsWebAddressError(e))
+                || WorkflowTemplateStructuralValidator.IsWebAddressError(e)
+                || WorkflowTemplateStructuralValidator.IsInputRuleError(e))
             .ToList();
 
         if (fieldErrors.Count > 0)
@@ -806,7 +807,9 @@
                     ? "A web address does not name its host"
                     : fieldErrors.Any(WorkflowTemplateStructuralValidator.IsWebAddressError)
                         ? "Some block fields are misconfigured"
-                        : "Regression or signature fields are misconfigured",
+                        : fieldErrors.All(WorkflowTemplateStructuralValidator.IsInputRuleError)
+                            ? "An input rule is not complete"
+                            : "Regression or signature fields are misconfigured",
                 Message = details,
                 YesText = "OK",
             };
@@ -820,6 +823,14 @@
         }
 
         bool saved = await SendVersionedSaveAsync(_baseVersionId, allowConflictRecovery: true);
+
+        if (saved)
+        {
+            foreach (WorkflowStructuralValidationWarning staleRule in structure.Warnings.Where(WorkflowTemplateStructuralValidator.IsInputRuleWarning))
+            {
+                AppState.Notify(staleRule.Message, Severity.Warning);
+            }
+        }
 
         // The warning says the workflow was saved, so it waits for the save to succeed.
         if (saved && blocksWithInvalidTags.Count > 0)

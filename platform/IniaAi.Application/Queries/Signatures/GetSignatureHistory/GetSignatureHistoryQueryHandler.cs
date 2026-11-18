@@ -1,9 +1,9 @@
 using ErrorOr;
 using IniaAi.Application.Commands.Signatures;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Signatures;
-using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Persistence.UserData.Repositories;
 using IniaAi.Domain.Specifications.Signatures;
 using IniaAi.WebApi.Contracts.Responses.Signatures;
@@ -24,13 +24,16 @@ public class GetSignatureHistoryQueryHandler
     private const string ERROR_NOT_FOUND = "Workflow.NotFound";
 
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly ILogger<GetSignatureHistoryQueryHandler> _logger;
 
     public GetSignatureHistoryQueryHandler(
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         ILogger<GetSignatureHistoryQueryHandler> logger)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -38,13 +41,7 @@ public class GetSignatureHistoryQueryHandler
         GetSignatureHistoryQuery request,
         CancellationToken cancellationToken)
     {
-        bool hasAccess = await _coreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
-            .GetAll()
-            .AsNoTracking()
-            .AnyAsync(
-                a => a.WorkflowTypeId == request.WorkflowTypeId
-                    && a.OrganizationId == request.OrganizationId,
-                cancellationToken);
+        bool hasAccess = await _access.CanReachAsync(request.OrganizationId, request.WorkflowTypeId, cancellationToken);
 
         if (!hasAccess)
         {

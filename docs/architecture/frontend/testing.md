@@ -35,7 +35,7 @@ test: {
 `pool: 'threads'` runs test files on worker threads. `css.include` lets a test import a stylesheet as text with `?raw`, as the contrast guard does for `main.css` (`src/test/helpers/themeColors.ts`).
 
 
-`globals: true` means `describe` / `it` / `expect` / `beforeEach` are available without imports (most files import them anyway for clarity). The Vue plugin runs under Vitest, so `.vue` SFCs compile in tests exactly as they do in the app. The `mkcert` dev-cert plugin is skipped when `process.env.VITEST` is set, because its trust-install step needs sudo and is irrelevant to tests.
+`globals: true` means `describe` / `it` / `expect` / `beforeEach` are available without imports (most files import them anyway for clarity). The Vue plugin runs under Vitest, so `.vue` SFCs compile in tests exactly as they do in the app. The `mkcert` dev-cert plugin is skipped when `process.env.VITEST` is set, because its trust-install step needs sudo and is irrelevant to tests. Tests read no `.env` file either: `envDir` is `false` when `process.env.VITEST` is set, as in CI, so a developer's local API address cannot change what a test expects. The app build still reads `.env`.
 
 Run commands:
 

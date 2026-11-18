@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Signatures;
 using IniaAi.Domain.Entities.UserManagement;
@@ -33,13 +34,16 @@ public partial class GetWorkflowSignaturesQueryHandler
     private const int FALLBACK_REVIEW_THRESHOLD = 2;
 
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
 
     public GetWorkflowSignaturesQueryHandler(
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IUserDataUnitOfWork userDataUnitOfWork)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _userDataUnitOfWork = userDataUnitOfWork ?? throw new ArgumentNullException(nameof(userDataUnitOfWork));
     }
 
@@ -47,13 +51,7 @@ public partial class GetWorkflowSignaturesQueryHandler
         GetWorkflowSignaturesQuery request,
         CancellationToken cancellationToken)
     {
-        bool hasAccess = await _coreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
-            .GetAll()
-            .AsNoTracking()
-            .AnyAsync(
-                a => a.WorkflowTypeId == request.WorkflowTypeId
-                    && a.OrganizationId == request.OrganizationId,
-                cancellationToken);
+        bool hasAccess = await _access.CanReachAsync(request.OrganizationId, request.WorkflowTypeId, cancellationToken);
 
         if (!hasAccess)
         {

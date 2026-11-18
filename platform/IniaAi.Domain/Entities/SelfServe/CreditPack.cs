@@ -66,9 +66,9 @@ public class CreditPack
     [StringLength(STATE_MAX_LENGTH)]
     public string? BillingState { get; set; }
 
-    /// <summary>The payment provider's fingerprint of the card that paid for a pack with a welcome bonus, which tells a second bonus on the same card.</summary>
+    /// <summary>The payment provider's fingerprint of the payment method that paid for a pack with a welcome bonus, which shows a second bonus paid the same way.</summary>
     [StringLength(PROVIDER_ID_MAX_LENGTH)]
-    public string? CardFingerprint { get; set; }
+    public string? PaymentMethodFingerprint { get; set; }
 
     [StringLength(450)]
     public string? GrantedByUserId { get; set; }

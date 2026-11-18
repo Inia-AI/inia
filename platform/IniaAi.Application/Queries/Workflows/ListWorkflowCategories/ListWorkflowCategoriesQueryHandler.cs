@@ -1,6 +1,7 @@
 ﻿using ErrorOr;
 using IniaAi.Application.Common.CreditCosts;
 using IniaAi.Application.Common.RunLimits;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Workflows;
@@ -16,6 +17,7 @@ public class ListWorkflowCategoriesQueryHandler
     : IRequestHandler<ListWorkflowCategoriesQuery, ErrorOr<List<WorkflowCategoryDto>>>
 {
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IWorkflowCreditCost _creditCost;
     private readonly IWorkflowPageLimit _pageLimit;
 
@@ -23,15 +25,18 @@ public class ListWorkflowCategoriesQueryHandler
     /// Initializes a new instance of the <see cref="ListWorkflowCategoriesQueryHandler"/> class.
     /// </summary>
     /// <param name="coreUnitOfWork">The unit of work for core repository access.</param>
+    /// <param name="access">Decides which workflow types the organization reaches.</param>
     /// <param name="creditCost">Reads the credit cost of each workflow type.</param>
     /// <param name="pageLimit">Reads the page limit of each workflow type.</param>
     /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
     public ListWorkflowCategoriesQueryHandler(
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IWorkflowCreditCost creditCost,
         IWorkflowPageLimit pageLimit)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _creditCost = creditCost ?? throw new ArgumentNullException(nameof(creditCost));
         _pageLimit = pageLimit ?? throw new ArgumentNullException(nameof(pageLimit));
     }
@@ -44,10 +49,11 @@ public class ListWorkflowCategoriesQueryHandler
     /// <returns>The categories in display order.</returns>
     public async Task<ErrorOr<List<WorkflowCategoryDto>>> Handle(ListWorkflowCategoriesQuery request, CancellationToken cancellationToken)
     {
+        IReadOnlyCollection<string> reachable = await _access.TypeIdsAsync(request.OrganizationId, cancellationToken);
         IQueryable<WorkflowTypeCategory> categories = _coreUnitOfWork.Repository<WorkflowTypeCategory>()
             .GetAll()
             .AsNoTracking()
-            .Where(category => category.WorkflowTypes.Any(type => type.OrganizationAccess.Any(access => access.OrganizationId == request.OrganizationId)))
+            .Where(category => category.WorkflowTypes.Any(type => reachable.Contains(type.Id)))
             .OrderBy(category => category.DisplayOrder);
 
         if (!request.IncludeWorkflows)
@@ -64,7 +70,7 @@ public class ListWorkflowCategoriesQueryHandler
                 category.Name,
                 category.Description,
                 category.WorkflowTypes
-                    .Where(type => type.OrganizationAccess.Any(access => access.OrganizationId == request.OrganizationId))
+                    .Where(type => reachable.Contains(type.Id))
                     .SelectMany(type => type.Workflows)
                     .AsQueryable()
                     .Select(WorkflowSummaryProjections.ToParts)

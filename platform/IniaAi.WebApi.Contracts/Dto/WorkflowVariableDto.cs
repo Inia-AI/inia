@@ -59,4 +59,10 @@ public sealed class WorkflowVariableDto
     /// </summary>
     [JsonConverter(typeof(WorkflowVariableOptionsConverter))]
     public Dictionary<string, string> Options { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the rules on the variable's value that depend on the attached documents or on
+    /// another variable. A submission that breaks one is refused.
+    /// </summary>
+    public List<WorkflowVariableInputRuleDto> InputRules { get; set; } = [];
 }

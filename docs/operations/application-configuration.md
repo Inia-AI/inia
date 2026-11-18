@@ -6,7 +6,7 @@ description: "Reference of the runtime configuration keys of the API and admin a
 
 # Application Configuration Reference
 
-**On this page:** How configuration is layered · Connection strings · PlatformSettings · Minimal Bedrock configuration · Authentication and SSO · JWT · File storage · Email · Data protection · Logging (Serilog) · CORS · Response headers of the API · Other keys · Related
+**On this page:** How configuration is layered · Connection strings · PlatformSettings · Minimal Bedrock configuration · Authentication and SSO · JWT · File storage · Email · Data protection · Logging (Serilog) · CORS · Response headers of the API · Response headers and cookies of the admin app · Other keys · Related
 
 This is the public reference for the runtime configuration the platform reads from `appsettings.json` (and its environment-specific overlays). It lists the keys that matter for a deployment, each with a **placeholder value** and a one-line description.
 
@@ -583,12 +583,12 @@ These keys turn on outbound mail: the second-factor code by email, the password-
 
 ## Data protection
 
-ASP.NET Data Protection keys can be stored in the database (default), Azure Key Vault, or AWS SSM Parameter Store.
+ASP.NET Data Protection keys are stored in the database (default) or in AWS SSM Parameter Store. In the database, an Azure Key Vault key can encrypt them. The API and the admin app read the same settings and share one key ring: a key the admin app stores decrypts in the API. Set them for both apps. Moving the ring to another provider starts a new ring once: every admin session, open export link and stored organization key made with the old ring stops working.
 
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
 | `DataProtection:Provider` | `database` | `database`, `azurekeyvault` (or `azure`), or `awsssm` (or `aws`), case-insensitive. |
-| `DataProtection:AzureKeyVault:KeyUri` | `<https://your-vault.vault.azure.net/keys/...>` | Key Vault key URI. |
+| `DataProtection:AzureKeyVault:KeyUri` | `<https://your-vault.vault.azure.net/keys/...>` | The Key Vault key that encrypts the keys in the database. The `azure` provider requires it; with `database`, it is optional. |
 | `DataProtection:AwsSsm:ParameterPath` | `/iniaai/dataprotection/keys` | SSM parameter path prefix. |
 | `DataProtection:AwsSsm:KmsKeyId` | `<kms-key-id>` | KMS key used to encrypt the protection keys. |
 
@@ -616,10 +616,18 @@ The API sets these headers on every answer, including a refusal, a rate-limit an
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`. An answer that sets its own policy keeps it: a file preview sends `sandbox`. The Swagger UI, served on a developer machine only, gets none. |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`. An answer that sets its own policy keeps it: a file preview sends `sandbox; object-src 'none'; base-uri 'none'`. The Swagger UI, served on a developer machine only, gets none. |
 | `Cache-Control` | `no-store`, unless the answer sets its own rule: a page image sends `private, max-age=3600`. |
 
 The API sends no `X-XSS-Protection` header: the OWASP HTTP Headers Cheat Sheet advises against it. Behind the web app's nginx, the API's answers also carry nginx's own policy; a browser applies both.
+
+## Response headers and cookies of the admin app
+
+The admin app sets `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and `X-Frame-Options: SAMEORIGIN` on every answer, and a content policy on every page (`AdminSecurityHeadersConfiguration`). No setting changes the headers. The policy runs only the app's own script files, embeds no plugin, and takes styles inline and from Google Fonts, because MudBlazor writes its theme into a style element. Its `form-action` adds the sign-in page of each external sign-in the deployment turns on, `https://accounts.google.com` for Google and the issuer's origin for OIDC, because their sign-in starts from a form. An answer that sets its own policy or frame rule keeps it.
+
+| Key | Default | Description |
+|---|---|---|
+| `AdminApp:HttpsOnlyCookies` | `false` | Admin app only. `true` when every browser reaches the admin app over HTTPS: each admin app cookie is then `Secure` and carries a `__Host-` name (sign-in, second factor, antiforgery, status message) or a `__Secure-` name (the Google and OIDC sign-in cookies), so no page on plain HTTP or on another host can set or read it. Keep it `false` while any path to the admin app is plain HTTP, `http://localhost` included: a browser refuses a `__Host-` cookie there, and the antiforgery check refuses every plain-HTTP request once its cookie must be `Secure`. Behind a proxy that ends TLS, the admin app needs the forwarded scheme (`ASPNETCORE_FORWARDEDHEADERS_ENABLED`) to see the request as HTTPS. |
 
 ## Other keys
 

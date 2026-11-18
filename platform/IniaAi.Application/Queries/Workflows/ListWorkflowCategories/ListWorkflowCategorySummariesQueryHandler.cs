@@ -21,17 +21,20 @@ public class ListWorkflowCategorySummariesQueryHandler
 {
     private readonly ICoreUnitOfWork _coreUnitOfWork;
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IWorkflowCreditCost _creditCost;
     private readonly IWorkflowPageLimit _pageLimit;
 
     public ListWorkflowCategorySummariesQueryHandler(
         ICoreUnitOfWork coreUnitOfWork,
         IUserDataUnitOfWork userDataUnitOfWork,
+        WorkflowTypeAccess access,
         IWorkflowCreditCost creditCost,
         IWorkflowPageLimit pageLimit)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
         _userDataUnitOfWork = userDataUnitOfWork ?? throw new ArgumentNullException(nameof(userDataUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _creditCost = creditCost ?? throw new ArgumentNullException(nameof(creditCost));
         _pageLimit = pageLimit ?? throw new ArgumentNullException(nameof(pageLimit));
     }
@@ -44,13 +47,14 @@ public class ListWorkflowCategorySummariesQueryHandler
             _userDataUnitOfWork, request.UserId, cancellationToken);
 
         bool hasChosenTypes = chosenTypeIds.Count > 0;
+        IReadOnlyCollection<string> reachable = await _access.TypeIdsAsync(request.OrganizationId, cancellationToken);
 
         // Exclude the internal-only workflow types (Generic, TestWorkflowType)
         List<CategoryRow> rows = await _coreUnitOfWork.Repository<WorkflowTypeCategory>()
             .GetAll()
             .AsNoTracking()
             .Where(c => c.WorkflowTypes!.Any(wt =>
-                wt.OrganizationAccess.Any(oa => oa.OrganizationId == request.OrganizationId)
+                reachable.Contains(wt.Id)
                 && (!hasChosenTypes || chosenTypeIds.Contains(wt.Id))))
             .OrderBy(c => c.DisplayOrder)
             .Select(c => new CategoryRow
@@ -60,7 +64,7 @@ public class ListWorkflowCategorySummariesQueryHandler
                 Description = c.Description,
                 DisplayOrder = c.DisplayOrder,
                 Workflows = c.WorkflowTypes!
-                    .Where(wt => wt.OrganizationAccess.Any(oa => oa.OrganizationId == request.OrganizationId)
+                    .Where(wt => reachable.Contains(wt.Id)
                         && (!hasChosenTypes || chosenTypeIds.Contains(wt.Id)))
                     .SelectMany(wt => wt.Workflows)
                     .Where(w => w.WorkflowTypeId != WorkflowType.GENERIC &&

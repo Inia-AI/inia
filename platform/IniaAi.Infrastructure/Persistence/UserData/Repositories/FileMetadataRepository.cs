@@ -19,28 +19,6 @@ public class FileMetadataRepository : RepositoryBase<FileMetadata>, IFileMetadat
         return await Entities.AnyAsync(f => f.Id == id);
     }
 
-    public async Task<bool> ExistsByNameAndSizeAsync(string organizationId, string name, long size)
-    {
-        return await Entities.AnyAsync(f => f.OrganizationId == organizationId && f.Name == name && f.SizeBytes == size);
-    }
-
-    public async Task<bool> ExistsByNameAndSizeAsync(string name, long size)
-    {
-        return await Entities.AnyAsync(f => f.Name == name && f.SizeBytes == size);
-    }
-
-    public async Task<FileMetadata?> GetFileByNameAndSizeAsync(string name, long size)
-    {
-        return await Entities
-            .FirstOrDefaultAsync(f => f.Name == name && f.SizeBytes == size);
-    }
-
-    public async Task<FileMetadata?> GetFileByNameAndSizeAsync(string organizationId, string name, long size)
-    {
-        return await Entities
-            .FirstOrDefaultAsync(f => f.OrganizationId == organizationId && f.Name == name && f.SizeBytes == size);
-    }
-
     public async Task<FileMetadata?> GetByIdWithoutBytesAsync(string id)
     {
         // FileMetadata doesn't have bytes, so this is just a regular GetById

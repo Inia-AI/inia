@@ -6,6 +6,7 @@ using IniaAi.Testing;
 using IniaAi.Testing.DependencyInjection.Mocks;
 using IniaAi.WebApp.Components.Account;
 using IniaAi.WebApp.Components.Account.Pages;
+using IniaAi.WebApp.Configuration;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -38,6 +39,7 @@ public sealed class AccountMailRecipientTests : SignedInRenderTest
         _ = Services.AddSingleton<IOutgoingMail>(_mail);
         _ = Services.AddSingleton<IEmailSender<User>, IdentityMailSender>();
         _ = Services.AddSingleton<AccountLinks>();
+        _ = Services.AddSingleton(new AdminCookies(httpsOnly: false));
         _ = Services.AddScoped<IdentityRedirectManager>();
         _ = Services.AddSingleton<NavigationManager>(new StaticRenderNavigationManager(ADMIN_BASE_URL));
     }

@@ -36,6 +36,7 @@ const passwordReset = ref(false)
 const loadingProviders = ref(true)
 const providersFailed = ref(false)
 const googleLoading = ref(false)
+const googleChosen = ref(false)
 const googleError = ref<string | null>(null)
 const oidcLoading = ref(false)
 const oidcError = ref<string | null>(null)
@@ -97,14 +98,13 @@ const loadScript = (src: string, checkLoaded: () => boolean): Promise<void> => {
   return promise
 }
 
-// Initialize Google Sign-In
-const initializeGoogleSignIn = async (clientId: string) => {
+const initializeGoogleSignIn = async (clientId: string): Promise<boolean> => {
   try {
     await loadScript('https://accounts.google.com/gsi/client', () => !!window.google?.accounts)
 
     if (!window.google?.accounts?.id) {
       console.error('Google Sign-In SDK not loaded properly')
-      return
+      return false
     }
 
     window.google.accounts.id.initialize({
@@ -116,8 +116,24 @@ const initializeGoogleSignIn = async (clientId: string) => {
 
     await nextTick()
     renderGoogleButton()
+    return true
   } catch (error) {
     console.error('Failed to initialize Google Sign-In:', error)
+    return false
+  }
+}
+
+// Google's script reads Google's cookies, so it loads only once the user chooses Google.
+const chooseGoogle = async () => {
+  const clientId = googleProvider.value?.clientId
+  if (!clientId) {
+    return
+  }
+  googleError.value = null
+  googleChosen.value = true
+  if (!(await initializeGoogleSignIn(clientId))) {
+    googleChosen.value = false
+    googleError.value = $t('page.login.errors.googleFailed')
   }
 }
 
@@ -197,10 +213,6 @@ onMounted(async () => {
   } finally {
     loadingProviders.value = false
   }
-
-  if (googleProvider.value?.clientId) {
-    await initializeGoogleSignIn(googleProvider.value.clientId)
-  }
 })
 
 </script>
@@ -254,7 +266,17 @@ onMounted(async () => {
           <span class="loading-spinner"></span>
           <span>{{ $t('page.login.form.signingIn') }}</span>
         </div>
-        <div v-show="!googleLoading && !props.busy" id="google-signin-button" class="google-button-wrapper"></div>
+        <Button
+          v-else-if="!googleChosen"
+          type="button"
+          variant="outline"
+          class="oidc-signin-button"
+          data-testid="google-choose"
+          @click="chooseGoogle"
+        >
+          {{ $t('page.login.form.continueWithGoogle') }}
+        </Button>
+        <div v-show="googleChosen && !googleLoading && !props.busy" id="google-signin-button" class="google-button-wrapper"></div>
         <p v-if="googleError" class="google-error" role="alert" data-testid="google-error">{{ googleError }}</p>
       </div>
 

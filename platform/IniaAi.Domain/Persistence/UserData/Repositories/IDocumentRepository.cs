@@ -8,7 +8,6 @@ namespace IniaAi.Domain.Persistence.UserData.Repositories;
 /// </summary>
 public interface IDocumentRepository : IRepository<Document>
 {
-    Task<Document?> GetDocumentByFileMetadataIdAsync(string id);
     Task<Document?> GetDocumentByFileNameAndSize(string fileName, int sizeBytes, string organizationId);
     Task<IEnumerable<Document>> FindByCounterpartyIdAsync(string counterpartyId);
     /// <summary>The organization's live document of this name and size, which an upload of the same file reuses instead of storing it again.</summary>
@@ -32,7 +31,7 @@ public interface IDocumentRepository : IRepository<Document>
     Task<IEnumerable<DocumentInfo>> GetDocumentInfosByJobIdOrWorkTypeIdAsync(string jobId, string organizationId, string? workflowTypeId = null);
     Task AddDocumentInfoAsync(DocumentInfo documentInfo);
     void RemoveDocumentInfo(DocumentInfo documentInfo);
-    /// <summary>Of these documents, the ones that are run input of a report of the organization that has not finished.</summary>
+    /// <summary>Of these documents, the ones that a report of the organization that has not finished reads, itself or through a copy made from it.</summary>
     Task<HashSet<string>> GetIdsReadByUnfinishedReportsAsync(IReadOnlyCollection<string> documentIds, string organizationId, CancellationToken cancellationToken);
 
     /// <summary>The file names of the job's run input documents that were deleted since the job was sent them.</summary>

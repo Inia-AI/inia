@@ -2116,6 +2116,9 @@ namespace IniaAi.Migrations.Mssql.Core
                                 .HasMaxLength(1000)
                                 .HasColumnType("nvarchar(1000)");
 
+                            b1.Property<string>("InputRules")
+                                .HasColumnType("nvarchar(max)");
+
                             b1.Property<bool>("IsConfidential")
                                 .HasColumnType("bit");
 

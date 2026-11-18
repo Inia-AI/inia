@@ -3,9 +3,7 @@ using IniaAi.Configuration.Extensions;
 using IniaAi.Infrastructure;
 using IniaAi.Infrastructure.Hosting;
 using IniaAi.Infrastructure.Persistence.Setup;
-using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.WebApp;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Features;
 using Serilog;
 
@@ -48,10 +46,7 @@ builder.Services.AddServerSideBlazor()
         options.MaximumReceiveMessageSize = 5242880;
     });
 
-// Add Data Protection
-builder.Services.AddDataProtection()
-    .SetApplicationName("IniaAi")
-    .PersistKeysToDbContext<UserDataDbContext>();
+builder.Services.AddIniaAiDataProtection(builder.Configuration);
 
 WebApplication app = builder.Build();
 

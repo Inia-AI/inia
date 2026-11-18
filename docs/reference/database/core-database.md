@@ -120,6 +120,7 @@ erDiagram
         bool IsConfidential
         string DefaultValue
         jsonb Options
+        jsonb InputRules
     }
 
     TextInput {
@@ -266,6 +267,7 @@ erDiagram
 | `IsRequired` / `IsHidden` / `IsConfidential` | boolean | Run-form flags |
 | `DefaultValue` | text (nullable) | Default value |
 | `Options` | jsonb | Option key → label, for `Dropdown` and `MultiSelect` |
+| `InputRules` | jsonb on PostgreSQL, nvarchar(max) on SQL Server, nullable | The variable's [input rules](../../architecture/workflow-engine/variable-system.md#input-rules) as a JSON array (`VariableInputRulesColumn`); null when the variable has none. Added by the migration `VariableInputRules` |
 
 #### WorkflowSignatureField
 **Purpose**: A signature field defined on the workflow. A block uses the field by carrying the `{Name}` token in its templates; nothing is stored on the block, so one field can serve many blocks and survives block restructuring. Client values live in `SignatureFieldOverrides`, keyed by `Name` ([Signature field overrides](../../features/signature-overrides.md)).

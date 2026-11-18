@@ -16,8 +16,9 @@ namespace IniaAi.Application.Commands.Documents.BulkDeleteDocuments;
 /// id in turn, collecting per-id outcomes into a
 /// <see cref="BulkDeleteDocumentsResultDto"/>. DB mutations are batched and
 /// committed once at the end; blob deletions are attempted after the commit so a
-/// storage failure does not block the DB side of the operation. A document that a running
-/// report reads stays, with that reason, as for one delete.
+/// storage failure does not block the DB side of the operation. The copies made from each deleted
+/// document go with it. A document that a running report reads, itself or through a copy, stays,
+/// with that reason, as for one delete.
 /// </summary>
 public class BulkDeleteDocumentsCommandHandler
     : IRequestHandler<BulkDeleteDocumentsCommand, ErrorOr<BulkDeleteDocumentsResultDto>>
@@ -41,7 +42,7 @@ public class BulkDeleteDocumentsCommandHandler
         CancellationToken cancellationToken)
     {
         var result = new BulkDeleteDocumentsResultDto();
-        var blobsToDelete = new List<(string Provider, string Path)>();
+        var blobsToDelete = new HashSet<(string Provider, string Path)>();
 
         List<string> uniqueIds = [.. request.DocumentIds.Distinct()];
 
@@ -49,6 +50,10 @@ public class BulkDeleteDocumentsCommandHandler
         IList<Document> loaded = await _unitOfWork.Documents
             .GetAllAsync(new DocumentsByIdsTrackingSpec(uniqueIds), cancellationToken);
         var documentsById = loaded.ToDictionary(d => d.Id);
+
+        IList<Document> copies = await _unitOfWork.Documents
+            .GetAllAsync(new DocumentCopiesTrackingSpec(uniqueIds, request.OrganizationId), cancellationToken);
+        ILookup<string, Document> copiesByOriginal = copies.ToLookup(copy => copy.MadeFromDocumentId!);
 
         HashSet<string> readByUnfinishedReports = await _unitOfWork.Documents
             .GetIdsReadByUnfinishedReportsAsync(uniqueIds, request.OrganizationId, cancellationToken);
@@ -89,17 +94,20 @@ public class BulkDeleteDocumentsCommandHandler
                 continue;
             }
 
-            FileMetadata? fileMetadata = document.FileMetadata;
-            if (fileMetadata is not null
-                && !string.IsNullOrEmpty(fileMetadata.ExternalStoragePath))
+            foreach (Document each in copiesByOriginal[id].Prepend(document))
             {
-                blobsToDelete.Add((fileMetadata.StorageProvider.ToString(), fileMetadata.ExternalStoragePath));
-            }
+                FileMetadata? fileMetadata = each.FileMetadata;
+                if (fileMetadata is not null
+                    && !string.IsNullOrEmpty(fileMetadata.ExternalStoragePath))
+                {
+                    _ = blobsToDelete.Add((fileMetadata.StorageProvider.ToString(), fileMetadata.ExternalStoragePath));
+                }
 
-            _unitOfWork.Documents.Remove(document);
-            if (fileMetadata is not null)
-            {
-                _unitOfWork.FileMetadata.Remove(fileMetadata);
+                _unitOfWork.Documents.Remove(each);
+                if (fileMetadata is not null)
+                {
+                    _unitOfWork.FileMetadata.Remove(fileMetadata);
+                }
             }
 
             result.Deleted.Add(id);

@@ -4,6 +4,7 @@ using IniaAi.Application.Commands.Files.UploadFile;
 using IniaAi.Application.Commands.WorkflowExecutions.Shared;
 using IniaAi.Application.Common.Dispatching;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Documents;
 using IniaAi.Application.Workflows.Services;
 using IniaAi.Common.Text;
@@ -39,6 +40,7 @@ public class SubmitWorkflowExecutionCommandHandler
 {
     private readonly ILogger<SubmitWorkflowExecutionCommandHandler> _logger;
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly ISender _sender;
     private readonly IWorkflowExecutionOrchestrator _orchestrator;
@@ -50,6 +52,7 @@ public class SubmitWorkflowExecutionCommandHandler
     public SubmitWorkflowExecutionCommandHandler(
         ILogger<SubmitWorkflowExecutionCommandHandler> logger,
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IUserDataUnitOfWork userDataUnitOfWork,
         ISender sender,
         IWorkflowExecutionOrchestrator orchestrator,
@@ -60,6 +63,7 @@ public class SubmitWorkflowExecutionCommandHandler
     {
         _logger = logger;
         _coreUnitOfWork = coreUnitOfWork;
+        _access = access;
         _userDataUnitOfWork = userDataUnitOfWork;
         _sender = sender;
         _orchestrator = orchestrator;
@@ -82,7 +86,7 @@ public class SubmitWorkflowExecutionCommandHandler
 
         // 1. Fetch workflow
         ErrorOr<Workflow> runnable = await RunnableWorkflowGuard.RunnableAsync(
-            await GetWorkflowAsync(request.Metadata.WorkflowTypeId, request.OrganizationId), request.OrganizationId, _coreUnitOfWork, _logger, cancellationToken);
+            await GetWorkflowAsync(request.Metadata.WorkflowTypeId, request.OrganizationId), request.OrganizationId, _access, _logger, cancellationToken);
         if (runnable.IsError)
         {
             return runnable.Errors;

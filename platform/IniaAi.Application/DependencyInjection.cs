@@ -103,6 +103,8 @@ public static class DependencyInjection
         services.TryAddSingleton<IWorkbookOutputStamps, NoWorkbookOutputStamps>();
         services.TryAddSingleton<IWebCallAddresses, AnyPublicWebAddress>();
         services.TryAddSingleton<IWorkflowAvailability, EveryWorkflowAvailable>();
+        services.TryAddSingleton<IWorkflowTypeReach, AccessRowsDecideReach>();
+        services.TryAddScoped<WorkflowTypeAccess>();
         services.TryAddScoped<NextWorkflows>();
         services.TryAddSingleton<RunIntake>();
         services.TryAddTransient<IRunSettlement, NoRunSettlement>();

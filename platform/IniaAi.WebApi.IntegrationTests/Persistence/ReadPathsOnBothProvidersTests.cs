@@ -18,6 +18,7 @@ using IniaAi.Domain.Entities.WorkflowExecutions;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Entities.Workflows.Blocks;
 using IniaAi.Domain.Entities.Workflows.Enums;
+using IniaAi.Domain.Entities.Workflows.InputRules;
 using IniaAi.Domain.Enums;
 using IniaAi.Infrastructure.Persistence.Core.Contexts;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
@@ -121,6 +122,10 @@ public abstract class ReadPathsOnBothProvidersTests
         Assert.Equal(["type-corporation"], summary.CounterpartyTypeMappings);
         Assert.Equal(["AnnualReport", "Statement"], summary.DocumentClassKeys);
         Assert.Equal("2025", Assert.Single(summary.Variables, variable => variable.ReplacementTag == "ReviewYear").Options["2025"]);
+        WorkflowVariableInputRuleDto rule = Assert.Single(Assert.Single(summary.Variables, variable => variable.ReplacementTag == "ReviewYear").InputRules);
+        Assert.Equal(["Statement"], Assert.Single(rule.Conditions).DocumentClassKeys);
+        Assert.Equal("2025", rule.Requirement.Value);
+        Assert.Empty(Assert.Single(summary.Variables, variable => variable.ReplacementTag == "Analyst").InputRules);
 
         List<WorkflowCategoryDto> categories = await BothProvidersHandlers.HandleAsync<ListWorkflowCategoriesQueryHandler, List<WorkflowCategoryDto>>(
             services, handler => handler.Handle(new ListWorkflowCategoriesQuery(ORGANIZATION_ID, USER_ID, IncludeWorkflows: true), cancellationToken));
@@ -145,11 +150,13 @@ public abstract class ReadPathsOnBothProvidersTests
         await using (AsyncServiceScope scope = services.CreateAsyncScope())
         {
             ICoreUnitOfWork core = scope.ServiceProvider.GetRequiredService<ICoreUnitOfWork>();
-            MadeByReader reader = Assert.Single(await MadeByLinks.ReadersOfAsync(core, WORKFLOW_TYPE_ID, ["Spread", "Another output"], ORGANIZATION_ID, cancellationToken));
+            WorkflowTypeAccess access = scope.ServiceProvider.GetRequiredService<WorkflowTypeAccess>();
+            IReadOnlyCollection<string> reachable = await access.TypeIdsAsync(ORGANIZATION_ID, cancellationToken);
+            MadeByReader reader = Assert.Single(await MadeByLinks.ReadersOfAsync(core, WORKFLOW_TYPE_ID, ["Spread", "Another output"], reachable, cancellationToken));
             Assert.Equal("Read Paths Type", reader.WorkflowTypeName);
             Assert.Equal(["AnnualReport", "Statement"], reader.Inputs.Select(input => input.Key).Order());
-            Assert.Empty(await MadeByLinks.ReadersOfAsync(core, WORKFLOW_TYPE_ID, ["Spread"], "another-organization", cancellationToken));
-            Assert.Null(await MadeByLinks.OutputReachableByAsync(core, ORGANIZATION_ID, WORKFLOW_TYPE_ID, "Spread", cancellationToken));
+            Assert.Empty(await MadeByLinks.ReadersOfAsync(core, WORKFLOW_TYPE_ID, ["Spread"], await access.TypeIdsAsync("another-organization", cancellationToken), cancellationToken));
+            Assert.Null(await MadeByLinks.OutputAsync(core, WORKFLOW_TYPE_ID, "Spread", cancellationToken));
         }
 
         DocumentDetailDto document = await BothProvidersHandlers.HandleAsync<GetDocumentQueryHandler, DocumentDetailDto>(
@@ -298,7 +305,16 @@ public abstract class ReadPathsOnBothProvidersTests
             DisplayName = "Review year",
             Type = WorkflowVariableTypes.Dropdown,
             Options = new Dictionary<string, string> { ["2024"] = "2024", ["2025"] = "2025" },
+            InputRules =
+            [
+                new VariableInputRule
+                {
+                    Conditions = [new InputRuleCondition { Operator = InputRuleConditionOperator.AnyAttached, DocumentClassKeys = ["Statement"] }],
+                    Requirement = new InputRuleRequirement { Operator = InputRuleRequirementOperator.EqualTo, Value = "2025" },
+                },
+            ],
         };
+        _ = new WorkflowVariable(workflow, "Analyst") { DisplayName = "Analyst" };
         return workflow;
     }
 

@@ -1,4 +1,5 @@
 using ErrorOr;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.Signatures.GetWorkflowSignatures;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Signatures;
@@ -42,7 +43,7 @@ public class GetWorkflowSignaturesQueryHandlerTests : IDisposable
 
         ICoreUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<ICoreUnitOfWork>();
         IUserDataUnitOfWork userDataUnitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
-        _handler = new GetWorkflowSignaturesQueryHandler(unitOfWork, userDataUnitOfWork);
+        _handler = new GetWorkflowSignaturesQueryHandler(unitOfWork, _serviceProvider.GetRequiredService<WorkflowTypeAccess>(), userDataUnitOfWork);
     }
 
     public void Dispose()

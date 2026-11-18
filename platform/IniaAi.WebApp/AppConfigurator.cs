@@ -1,5 +1,6 @@
 ﻿using IniaAi.Infrastructure.Hosting;
 using IniaAi.WebApp.Components.Account;
+using IniaAi.WebApp.Configuration;
 
 namespace IniaAi.WebApp;
 
@@ -19,6 +20,8 @@ public class AppConfigurator
 
     public void SetupBlazorWebApp(WebApplication app)
     {
+        _ = app.UseAdminSecurityHeaders();
+
         if (app.Environment.IsDevelopment())
         {
             _ = app.UseMigrationsEndPoint();
@@ -37,8 +40,9 @@ public class AppConfigurator
         _ = app.UseAntiforgery();
         _ = app.UseRateLimiter();
 
+        // The page policy carries frame-ancestors with the rest, so the framework's policy of its own stays off.
         _ = app.MapRazorComponents<Components.App>()
-            .AddInteractiveServerRenderMode();
+            .AddInteractiveServerRenderMode(options => options.ContentSecurityFrameAncestorsPolicy = null);
 
         _ = app.MapAdditionalIdentityEndpoints();
 

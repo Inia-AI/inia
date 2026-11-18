@@ -1,3 +1,4 @@
+@using IniaAi.Application.Common.Workflows
 @using IniaAi.Domain.Core.Interfaces
 @using IniaAi.Domain.Entities.UserManagement
 @using IniaAi.Domain.Entities.Workflows
@@ -6,6 +7,7 @@
 
 @inject IUserDataUnitOfWork UserDataUnitOfWork
 @inject ICoreUnitOfWork CoreUnitOfWork
+@inject IServiceScopeFactory ScopeFactory
 @inject ISnackbar Snackbar
 @inject ILogger<UserWorkflowTypeVisibilityDialog> Logger
 
@@ -175,10 +177,15 @@
             _ = organizationIds.Add(User.OrganizationId);
         }
 
-        var accessibleTypeIds = (await CoreUnitOfWork.Repository<WorkflowTypeOrganizationAccess>()
-            .FindAsync(a => organizationIds.Contains(a.OrganizationId)))
-            .Select(a => a.WorkflowTypeId)
-            .ToHashSet();
+        var accessibleTypeIds = new HashSet<string>();
+        await using (AsyncServiceScope scope = ScopeFactory.CreateAsyncScope())
+        {
+            WorkflowTypeAccess access = scope.ServiceProvider.GetRequiredService<WorkflowTypeAccess>();
+            foreach (string organizationId in organizationIds)
+            {
+                accessibleTypeIds.UnionWith(await access.TypeIdsAsync(organizationId, CancellationToken.None));
+            }
+        }
 
         _accessibleTypes = await CoreUnitOfWork.Repository<WorkflowType>()
             .GetAll()

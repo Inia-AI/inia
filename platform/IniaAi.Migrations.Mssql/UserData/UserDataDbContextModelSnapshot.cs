@@ -1100,6 +1100,10 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("MadeFromDocumentId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int>("MediaType")
                         .HasColumnType("int");
 
@@ -1157,6 +1161,8 @@ namespace IniaAi.Migrations.Mssql.UserData
 
                     b.HasIndex("FileMetadataId")
                         .IsUnique();
+
+                    b.HasIndex("MadeFromDocumentId");
 
                     b.HasIndex("OrganizationId");
 
@@ -2274,10 +2280,6 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("CardFingerprint")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
                     b.Property<int>("DebtRepaid")
                         .HasColumnType("int");
 
@@ -2302,6 +2304,10 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PaymentMethodFingerprint")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("PaymentProvider")
                         .HasMaxLength(50)
@@ -2485,6 +2491,37 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.ToTable("HelpRequestReplies", "UserData");
                 });
 
+            modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.PaymentCustomer", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PaymentProvider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ProviderCustomerId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("PaymentCustomers", "UserData");
+                });
+
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.PaymentEvent", b =>
                 {
                     b.Property<string>("Id")
@@ -2543,86 +2580,6 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.HasIndex("ProcessedAt", "ReceivedAt");
 
                     b.ToTable("PaymentEvents", "UserData");
-                });
-
-            modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.Subscription", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("CancelAtPeriodEnd")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("CanceledAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("CurrentPeriodEnd")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("EndNoticeAttempts")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("EndNoticeLastAttemptAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EndNoticeLastError")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("EndNoticeSentAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("EndsAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LiveOrganizationId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("OrganizationId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("PaymentProvider")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ProviderCustomerId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("ProviderSubscriptionId")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("EndNoticeSentAt", "CanceledAt");
-
-                    b.HasIndex("PaymentProvider", "LiveOrganizationId")
-                        .IsUnique()
-                        .HasFilter("[LiveOrganizationId] IS NOT NULL");
-
-                    b.HasIndex("PaymentProvider", "ProviderSubscriptionId")
-                        .IsUnique()
-                        .HasFilter("[ProviderSubscriptionId] IS NOT NULL");
-
-                    b.ToTable("Subscriptions", "UserData");
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.SupportAccess", b =>
@@ -3517,8 +3474,9 @@ namespace IniaAi.Migrations.Mssql.UserData
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrganizationId", "Name", "IsDeleted")
-                        .IsUnique();
+                    b.HasIndex("OrganizationId", "Name")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("ConversionTypes", "UserData");
                 });
@@ -5959,6 +5917,9 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("InputRules")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsConfidential")
                         .HasColumnType("bit");

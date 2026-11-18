@@ -1,5 +1,6 @@
 using Bunit;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Domain.Entities.UserManagement;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
@@ -32,6 +33,7 @@ public sealed class WorkflowTypeDeleteTests : SignedInRenderTest
         _ = Services.AddScoped<IWorkflowTypeRetirement>(provider => new WorkflowTypeRetirement(
             _core.Context,
             provider.GetRequiredService<UserDataDbContext>(),
+            new WorkflowTypeAccess(_core.UnitOfWork, new AccessRowsDecideReach()),
             new ModuleWorkflowTypes([]),
             NullLogger<WorkflowTypeRetirement>.Instance));
     }

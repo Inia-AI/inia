@@ -28,6 +28,9 @@ namespace IniaAi.Application.Commands.Files.UploadFile;
 /// </summary>
 public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, ErrorOr<FileDto>>
 {
+    /// <summary>The word that starts the warning when the upload limits cannot be read and the upload goes through.</summary>
+    public const string UNREADABLE_LIMITS_LOG_MARKER = "UploadLimitsUnreadable";
+
     private const string PASSWORD_REQUIRED_CODE = "File.Password.Required";
     private const string PASSWORD_INCORRECT_CODE = "File.Password.Incorrect";
     private const string PASSWORD_UNSUPPORTED_CODE = "File.Password.Unsupported";
@@ -317,7 +320,7 @@ public class UploadFileCommandHandler : IRequestHandler<UploadFileCommand, Error
 
     private void LogUnreadableLimits(Exception ex, UploadFileCommand request)
     {
-        _logger.LogWarning(ex, "The upload limits of organization {OrgId} could not be read; the upload goes through", request.OrganizationId);
+        _logger.LogWarning(ex, UNREADABLE_LIMITS_LOG_MARKER + ": The upload limits of organization {OrgId} could not be read; the upload goes through", request.OrganizationId);
     }
 
     private async Task WriteUnlockAuditAsync(

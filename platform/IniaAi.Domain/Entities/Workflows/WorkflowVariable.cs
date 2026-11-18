@@ -1,9 +1,11 @@
 using IniaAi.Common.Reflection;
 using IniaAi.Common.Serialization;
 using IniaAi.Domain.Entities.Workflows.Enums;
+using IniaAi.Domain.Entities.Workflows.InputRules;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using JsonElement = System.Text.Json.JsonElement;
@@ -61,6 +63,65 @@ public class WorkflowVariable : JsonSerializable<WorkflowVariable>
 
     [JsonProperty(nameof(Options))]
     public Dictionary<string, string> Options { get; set; } = [];
+
+    /// <summary>
+    /// Rules on this variable's value that depend on the attached documents or on another
+    /// variable. A broken rule refuses the run; see <see cref="VariableInputRuleCheck"/>.
+    /// </summary>
+    [JsonProperty(nameof(InputRules), ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    [CloneIgnore]
+    [AllowNull]
+    public List<VariableInputRule> InputRules
+    {
+        get;
+        set => field = value is null ? [] : [.. value.OfType<VariableInputRule>()];
+    } = [];
+
+    public bool ShouldSerializeInputRules()
+    {
+        return InputRules is { Count: > 0 };
+    }
+
+    /// <summary>Points this variable's rule conditions that name <paramref name="oldKey"/> at <paramref name="newKey"/>.</summary>
+    public void RenameInputRuleDocumentClass(string oldKey, string newKey)
+    {
+        foreach (InputRuleCondition condition in InputRules.SelectMany(rule => rule.Conditions))
+        {
+            if (condition.DocumentClassKeys is { } keys)
+            {
+                condition.DocumentClassKeys = [.. keys.Select(key => key.Trim() == oldKey ? newKey : key)];
+            }
+        }
+    }
+
+    /// <summary>Points this variable's rule conditions that name the variable <paramref name="oldTag"/> at <paramref name="newTag"/>.</summary>
+    public void RenameInputRuleVariable(string oldTag, string newTag)
+    {
+        foreach (InputRuleCondition condition in InputRules.SelectMany(rule => rule.Conditions))
+        {
+            if (string.Equals(condition.Variable, oldTag, StringComparison.OrdinalIgnoreCase))
+            {
+                condition.Variable = newTag;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Points the rule conditions that compare the variable <paramref name="tag"/> with a renamed
+    /// option value at its new value. All renames apply at once, so swapped values stay swapped.
+    /// </summary>
+    public void RenameInputRuleOptions(string tag, IReadOnlyDictionary<string, string> renames)
+    {
+        foreach (InputRuleCondition condition in InputRules.SelectMany(rule => rule.Conditions))
+        {
+            if (string.Equals(condition.Variable, tag, StringComparison.OrdinalIgnoreCase)
+                && condition.Value is string value
+                && renames.TryGetValue(value.Trim(), out string? renamed))
+            {
+                condition.Value = renamed;
+            }
+        }
+    }
 
     /// <summary>
     /// The default in the shape a submitted value of this type takes. Null when the variable
@@ -181,6 +242,7 @@ public class WorkflowVariable : JsonSerializable<WorkflowVariable>
     {
         var clone = new WorkflowVariable(workflow, ReplacementTag);
         CloneHelper.CopyScalars(this, clone);
+        clone.InputRules = [.. InputRules.Select(rule => rule.Clone())];
         return clone;
     }
 }

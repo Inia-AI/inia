@@ -12,12 +12,14 @@ namespace IniaAi.Application.Common.Workflows;
 public sealed class NextWorkflows
 {
     private readonly ICoreUnitOfWork _core;
+    private readonly WorkflowTypeAccess _access;
     private readonly IWorkflowAvailability _availability;
     private readonly IWorkflowCreditCost _creditCost;
 
-    public NextWorkflows(ICoreUnitOfWork core, IWorkflowAvailability availability, IWorkflowCreditCost creditCost)
+    public NextWorkflows(ICoreUnitOfWork core, WorkflowTypeAccess access, IWorkflowAvailability availability, IWorkflowCreditCost creditCost)
     {
         _core = core;
+        _access = access;
         _availability = availability;
         _creditCost = creditCost;
     }
@@ -35,8 +37,9 @@ public sealed class NextWorkflows
             return [];
         }
 
+        IReadOnlyCollection<string> reachable = await _access.TypeIdsAsync(organizationId, cancellationToken);
         List<NextWorkflowDto> next = [];
-        foreach (MadeByReader reader in await MadeByLinks.ReadersOfAsync(_core, makerWorkflowTypeId, outputKeys, organizationId, cancellationToken))
+        foreach (MadeByReader reader in await MadeByLinks.ReadersOfAsync(_core, makerWorkflowTypeId, outputKeys, reachable, cancellationToken))
         {
             List<MadeByReaderInput> madeInputs = [.. reader.Inputs.Where(input => input.IsMadeBy(makerWorkflowTypeId)).DistinctBy(input => input.Key, StringComparer.Ordinal)];
             List<NextWorkflowDocumentDto> made = [.. madeInputs.SelectMany(input => MadeFor(input, documents))];

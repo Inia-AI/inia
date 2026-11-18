@@ -1,4 +1,7 @@
-﻿@if (!string.IsNullOrEmpty(DisplayMessage))
+﻿@using IniaAi.WebApp.Configuration
+@inject AdminCookies Cookies
+
+@if (!string.IsNullOrEmpty(DisplayMessage))
 {
     var statusMessageClass = DisplayMessage.StartsWith("Error") ? "danger" : "success";
     <div class="alert alert-@statusMessageClass" role="alert">
@@ -19,11 +22,11 @@
 
     protected override void OnInitialized()
     {
-        messageFromCookie = HttpContext.Request.Cookies[IdentityRedirectManager.STATUS_COOKIE_NAME];
+        messageFromCookie = HttpContext.Request.Cookies[Cookies.StatusMessage];
 
         if (messageFromCookie is not null)
         {
-            HttpContext.Response.Cookies.Delete(IdentityRedirectManager.STATUS_COOKIE_NAME);
+            HttpContext.Response.Cookies.Delete(Cookies.StatusMessage, Cookies.StatusMessageCookie.Build(HttpContext));
         }
     }
 }

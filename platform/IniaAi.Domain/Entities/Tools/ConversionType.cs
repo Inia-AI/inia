@@ -1,5 +1,4 @@
 using IniaAi.Domain.Common;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace IniaAi.Domain.Entities.Tools;
@@ -8,7 +7,6 @@ namespace IniaAi.Domain.Entities.Tools;
 /// A JSON-to-Excel conversion type: the name under which an organization stores the
 /// template that a Json2Xlsx block fills.
 /// </summary>
-[Index(nameof(OrganizationId), nameof(Name), nameof(IsDeleted), IsUnique = true)]
 public class ConversionType : Entity<ConversionType>
 {
     /// <summary>

@@ -47,6 +47,8 @@ public class WorkflowConfiguration : IEntityTypeConfiguration<Workflow>
                     c => JsonSerializer.Serialize(c, JsonDefaults.OptionsWithOriginalKeys).GetHashCode(),
                     c => JsonSerializer.Deserialize<Dictionary<string, string>>(
                         JsonSerializer.Serialize(c, JsonDefaults.OptionsWithOriginalKeys), JsonDefaults.OptionsWithOriginalKeys)!));
+
+            VariableInputRulesColumn.Apply(variableBuilder.Property(v => v.InputRules), providerName);
         });
 
         _ = builder.HasMany(w => w.DocumentClasses)

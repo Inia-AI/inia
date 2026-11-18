@@ -140,7 +140,8 @@ curl -X GET "$BASE_URL/api/v1/workflow-templates/CorporatesCreditReport/summary"
       "isHidden": false,
       "isConfidential": false,
       "defaultValue": null,
-      "options": {}
+      "options": {},
+      "inputRules": []
     },
     {
       "id": "var-2",
@@ -149,7 +150,13 @@ curl -X GET "$BASE_URL/api/v1/workflow-templates/CorporatesCreditReport/summary"
       "type": "Dropdown",
       "isRequired": true,
       "defaultValue": "USD",
-      "options": { "USD": "US Dollar", "EUR": "Euro" }
+      "options": { "USD": "US Dollar", "EUR": "Euro" },
+      "inputRules": [
+        {
+          "conditions": [{ "operator": "AnyAttached", "documentClassKeys": ["FinancialStatements"] }],
+          "requirement": { "operator": "NotEqualTo", "value": "EUR" }
+        }
+      ]
     }
   ]
 }
@@ -167,7 +174,7 @@ Two flags are derived from the template, never configured:
 
 A `404` with `code: "Workflow.NotFound"` and `title: "Workflow for type '{workflowTypeId}' was not found or is not accessible."` means the workflow type does not exist, the tenant has no access to it, or it is one of the internal types `Generic` and `TestWorkflowType`.
 
-> Source: `WorkflowTemplatesController.GetSummary` (`[HttpGet("{workflowTypeId}/summary")]`), `WorkflowDto`, `DocumentClassDto`, `WorkflowVariableDto`.
+> Source: `WorkflowTemplatesController.GetSummary` (`[HttpGet("{workflowTypeId}/summary")]`), `WorkflowDto`, `DocumentClassDto`, `WorkflowVariableDto`, `WorkflowVariableInputRuleDto`.
 
 ### How these fields feed `submit`
 
@@ -198,6 +205,8 @@ So the workflow type above submits as:
 `AnnualReport` is required, so a file tagged with it must be present; `FinancialStatements` is only *suggested*, so it may be omitted. `currency` is omitted because its default `USD` is acceptable; `reportingPeriod` is required and has no default, so it must be supplied. See [Submit Workflow Execution](submit-workflow-execution.md#document-classes) for the multipart request that carries this metadata alongside the binary files.
 
 `madeBy` names the workflow and the output that make a file of an input class: `workflowTypeId`, `workflowTypeName` and `outputName`, such as the spread an earlier workflow makes. It is `null` for a class that no workflow makes, when the named workflow no longer makes that output, and when the organization has no access to that workflow type. Only this summary fills it; `/workflow-categories?includeWorkflows=true` always answers `null`.
+
+`inputRules` lists the variable's input rules, empty when it has none: when every condition holds, the value must meet the requirement, or the submit is refused with `WorkflowVariable.InputRule`. A client that builds a run form evaluates them before it submits, against the classes of the files it attaches and the values it sends; the operators, the comparison rules and the exact message text are on [Input Rules](../../architecture/workflow-engine/variable-system.md#input-rules).
 
 `llmDescription` is always `null` here: the class description written for a model stays with the template, and the template editing API returns it to editors ([document classes](../../guides/workflows/document-classes.md)). A consumer building an upload UI shows `description`. A hidden variable (`isHidden: true`) carries no `defaultValue` here either; leave it out of a run, and the run fills it with the template's default on the server. A run's own reads leave hidden variables out too: the submit answer's `variables`, the report's `variables` and `variableValues`, and the re-run inputs.
 

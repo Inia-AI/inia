@@ -15,10 +15,7 @@ public class AdminEndpointGateTests
 {
     private const string CONTROLLER_SUFFIX = "Controller";
 
-    private static readonly Dictionary<string, string> _open = new(StringComparer.Ordinal)
-    {
-        ["Culture.Set"] = "Sets the interface language cookie before sign-in; reads and writes nothing else, and redirects only to a local address.",
-    };
+    private static readonly Dictionary<string, string> _open = new(StringComparer.Ordinal);
 
     [Fact]
     public void EveryAction_HasAGate_OrIsOpenForAStatedReason()

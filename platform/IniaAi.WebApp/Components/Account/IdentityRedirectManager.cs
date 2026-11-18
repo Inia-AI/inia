@@ -1,24 +1,13 @@
 using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
+using IniaAi.WebApp.Configuration;
 
 namespace IniaAi.WebApp.Components.Account;
 
 # pragma warning disable CA1812
-internal sealed class IdentityRedirectManager(NavigationManager navigationManager)
+internal sealed class IdentityRedirectManager(NavigationManager navigationManager, AdminCookies cookies)
 # pragma warning restore CA1812
 {
-    public const string STATUS_COOKIE_NAME = "Identity.StatusMessage";
-
-    private static readonly CookieBuilder _statusCookieBuilder = new()
-    {
-        // Strict is withheld on the redirect that follows an external-IdP callback
-        // (the chain originates cross-site), silently dropping login status messages.
-        SameSite = SameSiteMode.Lax,
-        HttpOnly = true,
-        IsEssential = true,
-        MaxAge = TimeSpan.FromSeconds(5),
-    };
-
     [DoesNotReturn]
     public void RedirectTo(string? uri)
     {
@@ -51,7 +40,7 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
     [DoesNotReturn]
     public void RedirectToWithStatus(string uri, string message, HttpContext context)
     {
-        context.Response.Cookies.Append(STATUS_COOKIE_NAME, message, _statusCookieBuilder.Build(context));
+        context.Response.Cookies.Append(cookies.StatusMessage, message, cookies.StatusMessageCookie.Build(context));
         RedirectTo(uri);
     }
 

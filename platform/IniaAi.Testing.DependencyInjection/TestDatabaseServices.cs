@@ -1,5 +1,6 @@
 using IniaAi.Application.Common.Interfaces.Contexts;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Counterparties;
 using IniaAi.Domain.Entities.UserManagement;
@@ -19,6 +20,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace IniaAi.Testing.DependencyInjection;
 
@@ -107,6 +109,10 @@ public static class TestDatabaseServices
         // Add Unit of Work patterns
         _ = services.AddScoped<IUserDataUnitOfWork, UserDataUnitOfWork>();
         _ = services.AddScoped<ICoreUnitOfWork, CoreUnitOfWork>();
+
+        // Add the reader of the workflow type access rows, with the rows deciding unless a module registers its reach
+        services.TryAddScoped<WorkflowTypeAccess>();
+        services.TryAddSingleton<IWorkflowTypeReach, AccessRowsDecideReach>();
 
         // Add context accessor
         _ = services.AddScoped<IUserDataDbContextAccessor, UserDataDbContextAccessor>();

@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.WebApi.Contracts.Responses.TokenUsage;
 using Microsoft.EntityFrameworkCore;
@@ -14,14 +15,16 @@ public class GetWorkflowTypeUsageSummaryQueryHandler
 {
     private readonly IUserDataDbContext _userDataDbContext;
     private readonly ICoreDbContext _coreDbContext;
+    private readonly WorkflowTypeAccess _access;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GetWorkflowTypeUsageSummaryQueryHandler"/> class.
     /// </summary>
-    public GetWorkflowTypeUsageSummaryQueryHandler(IUserDataDbContext userDataDbContext, ICoreDbContext coreDbContext)
+    public GetWorkflowTypeUsageSummaryQueryHandler(IUserDataDbContext userDataDbContext, ICoreDbContext coreDbContext, WorkflowTypeAccess access)
     {
         _userDataDbContext = userDataDbContext;
         _coreDbContext = coreDbContext;
+        _access = access;
     }
 
     /// <inheritdoc/>
@@ -30,16 +33,17 @@ public class GetWorkflowTypeUsageSummaryQueryHandler
         CancellationToken cancellationToken)
     {
         // Get workflow type name from CoreDbContext
-        var workflowType = await _coreDbContext.WorkflowTypes
+        string? workflowTypeName = await _coreDbContext.WorkflowTypes
             .Where(wt => wt.Id == request.WorkflowTypeId)
-            .Select(wt => new { wt.Name, Granted = wt.OrganizationAccess.Any(access => access.OrganizationId == request.OrganizationId) })
+            .Select(wt => wt.Name)
             .FirstOrDefaultAsync(cancellationToken);
 
         IQueryable<UsageDaySlice> slices = TokenUsageSlices.ByDay(_userDataDbContext, request.OrganizationId)
             .Where(s => s.WorkflowTypeId == request.WorkflowTypeId);
 
         // A type the organization lost access to keeps its history; one it never had stays unnamed
-        if (workflowType is null || (!workflowType.Granted && !await slices.AnyAsync(cancellationToken)))
+        if (workflowTypeName is null
+            || (!await _access.CanReachAsync(request.OrganizationId, request.WorkflowTypeId, cancellationToken) && !await slices.AnyAsync(cancellationToken)))
         {
             return Error.NotFound("WorkflowType.NotFound", $"Workflow type {request.WorkflowTypeId} not found.");
         }
@@ -79,7 +83,7 @@ public class GetWorkflowTypeUsageSummaryQueryHandler
         return new WorkflowTypeUsageSummaryDto
         {
             WorkflowTypeId = request.WorkflowTypeId,
-            WorkflowTypeName = workflowType.Name,
+            WorkflowTypeName = workflowTypeName,
             TotalInputTokens = totals.TotalInputTokens,
             TotalOutputTokens = totals.TotalOutputTokens,
             TotalTokens = totals.TotalTokens,

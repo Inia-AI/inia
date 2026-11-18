@@ -197,6 +197,38 @@ Data flow: blocks reference other blocks' outputs via placeholders like
 `ReplacementTag`, a variable `ReplacementTag`, a document class `Key`, or a reserved input
 (`Counterparty`, `Organization`, `ReportDate`, ...). Unknown references come back as warnings.
 
+### Variable input rules
+
+A variable may carry `"InputRules"`: rules on its value that depend on the attached documents or
+on another variable. A submission that breaks a rule is refused with a message the server writes
+from the rule; there is no custom message. A variable without rules has no `InputRules` key.
+
+```
+"InputRules": [
+  {
+    "Conditions": [ { "Operator": "AnyAttached", "DocumentClassKeys": ["QuarterlyReport"] } ],
+    "Requirement": { "Operator": "NotEqualTo", "Value": "NA" }
+  }
+]
+```
+
+- A rule applies when **all** its `Conditions` hold; each rule is checked on its own. No nesting,
+  no `or` between conditions.
+- Condition operators: `AnyAttached` / `NoneAttached` with `DocumentClassKeys` (document class
+  `Key`s; "attached" means any document of that class on the run, however it got there), and
+  `EqualTo` / `NotEqualTo` / `IsEmpty` / `IsNotEmpty` with `Variable` (another variable's
+  `ReplacementTag`) and, for the first two, `Value`.
+- Requirement operators: `NotEmpty`, `EqualTo` and `NotEqualTo` (the last two with `Value`).
+- `EqualTo` and `NotEqualTo` compare text, ignoring case and surrounding spaces, and only work on
+  `String` and `Dropdown` variables. A dropdown compares its stored option value (the `Options`
+  key), never the label. `IsEmpty`, `IsNotEmpty` and `NotEmpty` work on every type.
+- A rule with no condition, a document condition with no class, a variable condition with no
+  variable, or a comparison with no value is rejected with a 400 at
+  `Variables[<tag>].InputRules[<index>]`.
+- A rule that names a document class or variable the workflow does not have, a dropdown value that
+  is not an option, or a comparison on a type that cannot compare saves with a warning at
+  `Variables[<tag>].InputRules`. Runs skip such a rule and write a line to the run's log.
+
 ### The `Agent` block (gated)
 
 `"Type": "Agent"` runs a skill-driven agent on the external agent runtime. The type is

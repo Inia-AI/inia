@@ -148,6 +148,7 @@ erDiagram
         bool IsConfidential
         string DefaultValue
         jsonb Options
+        jsonb InputRules
     }
 
     WorkflowExecution {
@@ -370,7 +371,7 @@ erDiagram
 | `FmpApiKey` | string | Replaced the same way (nullable) |
 | `SignatureReviewThreshold` | integer | Signature review threshold (default 2) |
 | `EditorAgentDailySpendBatchUsd` | decimal(18,2) (nullable) | The organization's daily batch of workflow agent spend in USD; null uses `PlatformSettings:EditorAgent:DailySpendBatchUsd` |
-| `IsSelfServe` | boolean | The organization signed itself up and pays by subscription ([Self-serve](#self-serve)); false for every enterprise organization (default false) |
+| `IsSelfServe` | boolean | The organization signed itself up and pays by prepaid top-ups ([Self-serve](#self-serve)); false for every enterprise organization (default false) |
 | `CreatedAt` | datetime | Creation timestamp (from `Entity<T>` base) |
 | `IsDeleted` | boolean | Soft-delete flag (from `Entity<T>` base) |
 
@@ -569,6 +570,7 @@ Audit columns: `CreatedAt`, `DeletedAt`, `DeletedByUserId`, `IsDeleted`, `Update
 | `IsHidden` | boolean |  |
 | `IsRequired` | boolean |  |
 | `Options` | jsonb | Dropdown options, key to label |
+| `InputRules` | jsonb on PostgreSQL, nvarchar(max) on SQL Server, nullable | The variable's [input rules](../../architecture/workflow-engine/variable-system.md#input-rules) copied from the template, as a JSON array (`VariableInputRulesColumn`); null when the variable has none. Added by the migration `VariableInputRules` |
 | `ReplacementTag` | string (≤450) |  |
 | `Type` | integer | The variable type, as on the template |
 | `WorkflowId` | string | (nullable) |
@@ -705,6 +707,7 @@ Without it EF compares by reference and in-place edits never reach the database.
 | `Topics` | string | Extracted topics (nullable) |
 | `TableOfContents` | string | Extracted table of contents (nullable) |
 | `Sources` | text[] | Source references |
+| `MadeFromDocumentId` | string (≤450) | The document this one is a copy of: the copy with the confidential values replaced that each confidential run makes of a PDF names the document it was first made from. Deleting that document deletes its copies ([Delete Document](../api/documents.md#delete-document)). A plain id with no foreign key (indexed, nullable); copies made by an earlier release hold no value |
 | `WasPasswordProtected` | boolean | True when the stored copy came from a password-protected upload decrypted at ingest (default `false`) |
 | `ProcessingRequestedAt` | datetime | When standalone processing was last requested; the concurrency token of the standalone path (nullable) |
 | `ProcessedAt` | datetime | When the processing pipeline last completed a pass over the document, on any path (nullable) |
@@ -1388,7 +1391,7 @@ Audit columns: `CreatedAt`, `DeletedAt`, `DeletedByUserId`, `IsDeleted`, `Update
 
 ## Self-serve
 
-Tables of the full edition's self-serve module: `CreditAccounts`, `CreditPacks`, `CreditEntries`, `Subscriptions`, `PaymentEvents`, `Consents`, `HelpRequests`, `HelpRequestReplies`, `SupportGrants`, `SupportAccesses`, `EmailCodeRequests`, `EmailCodeLockouts` and `DailyAllowanceUses`. They are kept schema: they exist, empty, on every deployment of the open build.
+Tables of the full edition's self-serve module: `CreditAccounts`, `CreditPacks`, `CreditEntries`, `PaymentCustomers`, `PaymentEvents`, `Consents`, `HelpRequests`, `HelpRequestReplies`, `SupportGrants`, `SupportAccesses`, `EmailCodeRequests`, `EmailCodeLockouts` and `DailyAllowanceUses`. They are kept schema: they exist, empty, on every deployment of the open build.
 
 
 ## Framework Tables

@@ -13,11 +13,12 @@ namespace IniaAi.Application.Commands.Documents.DeleteDocument;
 
 /// <summary>
 /// Handler for <see cref="DeleteDocumentCommand"/>. Removes the document and its
-/// FileMetadata in a single DB transaction, then attempts to delete the blob
+/// FileMetadata in a single DB transaction, then attempts to delete each blob
 /// from external storage. Blob deletion failures are logged but do not roll back
 /// the DB removal — an orphan blob is preferable to an undeletable document, and
-/// existing cleanup jobs (<c>SoftDeleteCleanupService</c>) handle orphans. A document that a running
-/// report reads is refused, so the report never loses its input.
+/// existing cleanup jobs (<c>SoftDeleteCleanupService</c>) handle orphans. The copies made from the
+/// document go with it. A document that a running report reads, itself or through a copy, is refused,
+/// so the report never loses its input.
 /// </summary>
 public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentCommand, ErrorOr<Deleted>>
 {
@@ -76,37 +77,24 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
             return DocumentErrorFactory.ReadByRunningReport();
         }
 
-        FileMetadata? fileMetadata = document.FileMetadata;
-        string? storageProvider = fileMetadata?.StorageProvider.ToString();
-        string? storagePath = fileMetadata?.ExternalStoragePath;
+        IList<Document> copies = await _unitOfWork.Documents
+            .GetAllAsync(new DocumentCopiesTrackingSpec([document.Id], request.OrganizationId), cancellationToken);
+        List<Document> removed = [document, .. copies];
 
-        _unitOfWork.Documents.Remove(document);
-        if (fileMetadata is not null)
+        foreach (Document each in removed)
         {
-            _unitOfWork.FileMetadata.Remove(fileMetadata);
+            _unitOfWork.Documents.Remove(each);
+            if (each.FileMetadata is not null)
+            {
+                _unitOfWork.FileMetadata.Remove(each.FileMetadata);
+            }
         }
 
         _ = await _unitOfWork.CompleteAsync(cancellationToken);
 
-        if (!string.IsNullOrEmpty(storageProvider) && !string.IsNullOrEmpty(storagePath))
+        foreach (Document each in removed)
         {
-            try
-            {
-                await _fileStorageManager.DeleteFileAsync(
-                    storageProvider,
-                    request.OrganizationId,
-                    StorageCategories.Documents,
-                    storagePath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(
-                    ex,
-                    "Failed to delete blob for document {DocumentId} at {StorageProvider}:{StoragePath}. Orphan will be reaped by the cleanup job.",
-                    document.Id,
-                    storageProvider,
-                    storagePath);
-            }
+            await DeleteBlobAsync(each, request.OrganizationId);
         }
 
         _logger.LogInformation(
@@ -116,5 +104,33 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
             request.OrganizationId);
 
         return Result.Deleted;
+    }
+
+    private async Task DeleteBlobAsync(Document document, string organizationId)
+    {
+        string? storageProvider = document.FileMetadata?.StorageProvider.ToString();
+        string? storagePath = document.FileMetadata?.ExternalStoragePath;
+        if (string.IsNullOrEmpty(storageProvider) || string.IsNullOrEmpty(storagePath))
+        {
+            return;
+        }
+
+        try
+        {
+            await _fileStorageManager.DeleteFileAsync(
+                storageProvider,
+                organizationId,
+                StorageCategories.Documents,
+                storagePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to delete blob for document {DocumentId} at {StorageProvider}:{StoragePath}. Orphan will be reaped by the cleanup job.",
+                document.Id,
+                storageProvider,
+                storagePath);
+        }
     }
 }

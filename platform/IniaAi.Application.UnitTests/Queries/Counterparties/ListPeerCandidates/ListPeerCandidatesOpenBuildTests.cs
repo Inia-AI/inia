@@ -1,4 +1,5 @@
 using ErrorOr;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Queries.Counterparties.ListPeerCandidates;
 using IniaAi.Domain.Core.Interfaces;
 using IniaAi.Domain.Entities.Counterparties;
@@ -72,6 +73,7 @@ public class ListPeerCandidatesOpenBuildTests : IDisposable
         var handler = new ListPeerCandidatesQueryHandler(
             _serviceProvider.GetRequiredService<IUserDataUnitOfWork>(),
             _serviceProvider.GetRequiredService<ICoreUnitOfWork>(),
+            _serviceProvider.GetRequiredService<WorkflowTypeAccess>(),
             _serviceProvider.GetRequiredService<IPeerCandidateJudge>());
 
         ErrorOr<List<PeerCandidateDto>> result = await handler.Handle(

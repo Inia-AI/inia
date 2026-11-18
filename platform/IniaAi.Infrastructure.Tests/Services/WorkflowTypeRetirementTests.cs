@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Interfaces.Services;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Errors;
 using IniaAi.Common.Enums;
 using IniaAi.Domain.Entities.Documents;
@@ -56,6 +57,7 @@ public sealed class WorkflowTypeRetirementTests : IDisposable
         _retirement = new WorkflowTypeRetirement(
             _core,
             _userData,
+            new WorkflowTypeAccess(_coreDatabase.UnitOfWork, new AccessRowsDecideReach()),
             new ModuleWorkflowTypes([new ModuleWorkflowType(MODULE_TYPE, MODULE_TYPE, () => new Workflow(MODULE_TYPE))]),
             NullLogger<WorkflowTypeRetirement>.Instance);
     }

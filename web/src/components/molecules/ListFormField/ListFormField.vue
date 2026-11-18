@@ -57,6 +57,16 @@ const props = defineProps({
     required: false,
     default: 0,
   },
+  describedBy: {
+    type: String,
+    required: false,
+    default: undefined,
+  },
+  invalid: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
 })
 
 const { fields, push, remove } = useFieldArray<string>(props.name)
@@ -110,6 +120,7 @@ const onAdd = () => {
           :disabled="isAtLimit"
           @click="onAdd"
           :aria-label="$t('shared.components.listFormField.addItem', { list: header })"
+          :aria-describedby="describedBy"
         >
           <IniaIcon name="plus" />
         </button>
@@ -130,7 +141,7 @@ const onAdd = () => {
             >{{ label }} {{ index + 1 }}</FormLabel
           >
           <div class="flex items-center space-x-4">
-            <FormControl>
+            <FormControl :described-by="describedBy" :invalid="invalid">
               <Input v-bind="componentField" :placeholder="placeholder" />
             </FormControl>
 

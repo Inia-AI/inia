@@ -39,7 +39,7 @@ public static class AuthenticationConfiguration
         });
         _ = authBuilder.AddIdentityCookies();
 
-        if (googleSettings.Enabled && !string.IsNullOrEmpty(googleSettings.ClientId) && !string.IsNullOrEmpty(googleSettings.ClientSecret))
+        if (RegistersGoogle(googleSettings))
         {
             _ = authBuilder.AddGoogle(ExternalLoginProviders.GOOGLE, options =>
             {
@@ -51,7 +51,7 @@ public static class AuthenticationConfiguration
             });
         }
 
-        if (oidcSettings.Enabled && !string.IsNullOrEmpty(oidcSettings.Issuer) && !string.IsNullOrEmpty(oidcSettings.ClientId))
+        if (RegistersOidc(oidcSettings))
         {
             _ = authBuilder.AddOpenIdConnect(ExternalLoginProviders.OIDC, oidcSettings.DisplayName, options =>
             {
@@ -81,5 +81,17 @@ public static class AuthenticationConfiguration
             .AddDefaultTokenProviders();
 
         return services;
+    }
+
+    /// <summary>Whether the Google sign-in is turned on and fully configured, so its scheme is registered.</summary>
+    internal static bool RegistersGoogle(GoogleAuthSettings settings)
+    {
+        return settings.Enabled && !string.IsNullOrEmpty(settings.ClientId) && !string.IsNullOrEmpty(settings.ClientSecret);
+    }
+
+    /// <summary>Whether the OIDC sign-in is turned on and fully configured, so its scheme is registered.</summary>
+    internal static bool RegistersOidc(OidcAuthSettings settings)
+    {
+        return settings.Enabled && !string.IsNullOrEmpty(settings.Issuer) && !string.IsNullOrEmpty(settings.ClientId);
     }
 }

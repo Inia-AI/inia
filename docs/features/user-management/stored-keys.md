@@ -59,9 +59,6 @@ When the organization has no key by that name, the block uses the deployment's o
 
 The keys live in `Core.OrganizationStoredKeys`, one row per organization and name. `ProtectedValue` holds the value encrypted by ASP.NET Core Data Protection, with the purpose `IniaAi.StoredKeys.v1`. The admin app encrypts and the API, which runs the workflows, decrypts, so both apps must use one key ring.
 
-Both apps use the key ring in the UserData database today: the admin app always does, and the API does with its default `DataProtection:Provider` of `database`. Two limits follow:
-
-- A copy of both databases holds the encrypted keys and the key ring together, so the app can decrypt the keys from that copy.
-- A deployment that moves the API's key ring to AWS or Azure with `DataProtection:Provider` breaks stored keys, because the admin app keeps its ring in the database. Move both apps together.
+Both apps read the key ring from the same `DataProtection` settings ("Data protection" in [application configuration](../../operations/application-configuration.md), which also says what a move of the ring ends). With the default `database` provider and no Key Vault key, the ring sits unencrypted in the UserData database, so a copy of both databases holds the encrypted keys and the ring together, and the keys decrypt from that copy. Count the rows of `Core.OrganizationStoredKeys` before a move: each one is a key that its organization enters again.
 
 Run records written before stored keys still hold the values that the run filled in at the time.

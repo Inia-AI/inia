@@ -15,6 +15,7 @@ namespace IniaAi.Domain.Entities.Documents;
 /// <summary>
 /// Represents a document entity.
 /// </summary>
+[Index(nameof(MadeFromDocumentId))]
 public class Document : Entity<Document>
 {
     public const int MAX_NAME_LENGTH = 250;
@@ -53,6 +54,13 @@ public class Document : Entity<Document>
     public string? Description { get; set; }
 
     public List<string> Sources { get; set; } = [];
+
+    /// <summary>
+    /// The document this one was made from, when it is a copy, such as the copy with the confidential values replaced that
+    /// a confidential run reads. Deleting that document deletes its copies.
+    /// </summary>
+    [StringLength(450)]
+    public string? MadeFromDocumentId { get; set; }
 
     public string? Topics { get; set; }
 

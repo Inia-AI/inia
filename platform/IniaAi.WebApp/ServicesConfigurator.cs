@@ -103,6 +103,7 @@ public class ServicesConfigurator
         _ = _services.AddScoped<CallerOrganizations>();
 
         _ = _services.AddWebAppAuthentication(_configuration);
+        _ = _services.AddAdminCookieProtection(_configuration);
         _ = _services.AddForwardedHosts(_configuration);
         _ = _services.AddTrustedProxies(_configuration);
         if (ForwardedHostConfiguration.ForwardedHeadersEnabled(_configuration) && TrustedProxies.From(_configuration).IsEmpty)

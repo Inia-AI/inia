@@ -101,7 +101,7 @@ The calling service authenticates as a **system user** (`User.IsSystem = true`),
 
 Submitting an execution needs only authentication and that tenant access. `POST /workflow-executions/submit` carries no role restriction, so the system user does **not** need `Admin` or any other role to run a workflow. An ordinary signed-in user of the organization can call it too. Some other endpoints do check roles, for example signature-prompt testing. See [System Users](system-users.md) for how roles are granted.
 
-The endpoint checks the organization's access list for the workflow type (`WorkflowTypeOrganizationAccess`, granted on Manage Tenants or when a template save or Add Workflow Type creates the type). A type the organization has no access to answers `404` with `Workflow not found.`, the same answer as an unknown id, so the response does not tell whether the type exists elsewhere. No execution row and no file is stored. The check holds whether `workflowTypeId` names the type or the id of its workflow record.
+The endpoint checks the organization's access list for the workflow type (`WorkflowTypeOrganizationAccess`, granted on Manage Tenants or when a template save or Add Workflow Type creates the type), through `WorkflowTypeAccess`; a closed module may decide an organization's types instead (`IWorkflowTypeReach`). A type the organization has no access to answers `404` with `Workflow not found.`, the same answer as an unknown id, so the response does not tell whether the type exists elsewhere. No execution row and no file is stored. The check holds whether `workflowTypeId` names the type or the id of its workflow record.
 
 System users authenticate only with client credentials. They cannot perform interactive login.
 
@@ -353,6 +353,7 @@ Validation errors use the standard `errors` map: the key is the error code, the 
 | 400 | `Files`: no file was sent (`At least one file must be provided.`), or `metadata.files` has more entries than there are files |
 | 400 | `Metadata.PeerCompanyIds` (more than 3 peers), `Metadata.CounterpartyId` (the counterparty is also a peer) |
 | 400 | `WorkflowVariable.Required`, `WorkflowVariable.InvalidOption`, `WorkflowVariable.InvalidType`, `WorkflowVariable.InvalidDateTime`, `WorkflowVariable.InvalidList`: a required variable is empty, or a value is not one of the variable's options or not of its type. A workflow default counts as a value, so a default that is not a valid option fails too. |
+| 400 | `WorkflowVariable.InputRule`: a variable's value breaks one of its [input rules](../../architecture/workflow-engine/variable-system.md#input-rules), for example `"Interim Period" cannot be "NA" because "Quarterly Report" is attached.` One message per broken rule; each error's metadata names the variable under `replacementTag`. A value left out is checked as its default. Change the value or the attached files, then submit again. |
 | 400 | `DocumentClasses`: a required document class has no file (`Required document class 'Annual Report' is missing`), a class that allows one file has several, or a file names a class the workflow produces. See [Document Classes](#document-classes). |
 | 400 | `files[<index>]`: the file at that index was refused by the [intake gate](files.md#400-bad-request--refused-by-the-intake-gate), or is password-protected; one entry per failed file, each naming the file and the reason. Every document the request created is deleted; see [Per-file errors](#per-file-errors) |
 | 400 | `General.Validation`: `These output-document blocks need a document class selected: ...`, a problem in the workflow definition, not in the request |
@@ -382,7 +383,7 @@ Validation errors use the standard `errors` map: the key is the error code, the 
 
 ### What a refused submission leaves behind
 
-The files are uploaded before the variables, the document classes, the freeze source and the Agent block guard are checked. A submission refused by one of those checks keeps the documents its upload created; they belong to no run. Only a per-file upload error deletes the documents the request created.
+The files are uploaded before the variables, the document classes, the input rules, the freeze source and the Agent block guard are checked. A submission refused by one of those checks keeps the documents its upload created; they belong to no run. Only a per-file upload error deletes the documents the request created.
 
 
 ### Per-file errors

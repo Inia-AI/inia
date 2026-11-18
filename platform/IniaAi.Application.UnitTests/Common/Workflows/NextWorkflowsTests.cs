@@ -132,7 +132,7 @@ public sealed class NextWorkflowsTests : IDisposable
 
     private Task<List<NextWorkflowDto>> OfAsync(params NextWorkflows.RunDocument[] documents)
     {
-        return new NextWorkflows(_core.UnitOfWork, new EveryWorkflowAvailable(), new NoCreditCost())
+        return new NextWorkflows(_core.UnitOfWork, new WorkflowTypeAccess(_core.UnitOfWork, new AccessRowsDecideReach()), new EveryWorkflowAvailable(), new NoCreditCost())
             .OfAsync(ORG, PART_1, documents, TestContext.Current.CancellationToken);
     }
 

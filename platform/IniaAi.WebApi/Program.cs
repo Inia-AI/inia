@@ -105,8 +105,7 @@ public class Program
 
         _ = app.MapReadOnlyHealthChecks("/health");
 
-        //HealthCheck Middleware
-        _ = app.MapReadOnlyHealthChecks("/readiness", new HealthCheckOptions()
+        _ = app.MapHealthChecksWithHostOnlyReport("/readiness", new HealthCheckOptions()
         {
             Predicate = _ => true,
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse

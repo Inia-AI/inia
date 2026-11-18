@@ -173,7 +173,7 @@ If your service needs a ready-to-send file rather than JSON, export the report t
 
 ## Stuck?
 
-A `401` means the token is missing/expired (step 2). A `403` means the token is valid but the tenant is wrong or the system user has no access to it (step 1). A `404` on submit (`Workflow not found.`) means no workflow template exists for that workflow type id: check the id against discovery (step 3). Submit does not check whether your tenant was granted the type ([where access is checked](../../architecture/workflow-engine/workflow-types.md#where-access-is-checked)), so use only the ids discovery returns. A `400` on submit means metadata validation failed — usually a missing required document class. If you need a base URL, tenant id, or a system user provisioned, ask whoever runs your deployment.
+A `401` means the token is missing/expired (step 2). A `403` means the token is valid but the tenant is wrong or the system user has no access to it (step 1). A `404` on submit (`Workflow not found.`) means no workflow template exists for that workflow type id, or your tenant does not reach the type ([where access is checked](../../architecture/workflow-engine/workflow-types.md#where-access-is-checked)): use only the ids discovery returns (step 3). A `400` on submit means metadata validation failed — usually a missing required document class. If you need a base URL, tenant id, or a system user provisioned, ask whoever runs your deployment.
 
 
 ## Related pages

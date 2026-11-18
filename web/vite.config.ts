@@ -7,6 +7,8 @@ import mkcert from 'vite-plugin-mkcert'
 import { thirdPartyNotices } from './vite.notices'
 
 export default defineConfig({
+  // Tests read no .env file, as in CI, so a developer's local API address cannot change what a test expects.
+  envDir: process.env.VITEST ? false : undefined,
   test: {
     environment: 'jsdom',
     pool: 'threads',

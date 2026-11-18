@@ -28,18 +28,21 @@ public sealed class GetReRunInputsQueryHandler : IRequestHandler<GetReRunInputsQ
 
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly ReRunInputsPlanner _planner;
     private readonly ILogger<GetReRunInputsQueryHandler> _logger;
 
     public GetReRunInputsQueryHandler(
         IUserDataUnitOfWork userDataUnitOfWork,
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IWorkflowVariableValidationService variableValidation,
         IDocumentClassValidationService documentClassValidation,
         ILogger<GetReRunInputsQueryHandler> logger)
     {
         _userDataUnitOfWork = userDataUnitOfWork;
         _coreUnitOfWork = coreUnitOfWork;
+        _access = access;
         _planner = new ReRunInputsPlanner(variableValidation, documentClassValidation);
         _logger = logger;
     }
@@ -61,7 +64,7 @@ public sealed class GetReRunInputsQueryHandler : IRequestHandler<GetReRunInputsQ
 
         if (string.IsNullOrEmpty(execution.WorkflowTypeId)
             || !Workflow.GetAvailability(execution.WorkflowTypeId)
-            || !await WorkflowTypeAccessGuard.HasAccessAsync(_coreUnitOfWork, request.OrganizationId, execution.WorkflowTypeId, cancellationToken))
+            || !await _access.CanReachAsync(request.OrganizationId, execution.WorkflowTypeId, cancellationToken))
         {
             return WorkflowNotAvailable();
         }

@@ -43,7 +43,7 @@ Settings come from `appsettings.json` (mounted into each container), environment
 
 ## Monitoring and Observability
 
-Logging uses **Serilog**. There is no Prometheus `/metrics` endpoint in the application. Health is exposed through two endpoints mapped in `Program.cs`: `/health` (basic liveness) and `/readiness` (full report via the health-check UI response writer). Both bypass tenant and authentication middleware (see [API Architecture → Excluded Paths](api-architecture.md#excluded-paths)), so probes need no `X-Tenant-Id` or token.
+Logging uses **Serilog**. There is no Prometheus `/metrics` endpoint in the application. Health is exposed through two endpoints mapped in `Program.cs`: `/health` (basic liveness) and `/readiness` (full report via the health-check UI response writer). Both bypass tenant and authentication middleware (see [API Architecture → Excluded Paths](api-architecture.md#excluded-paths)), so probes need no `X-Tenant-Id` or token. `/health` answers every caller. The readiness report lists every internal check and a failing check's error, so only a caller on the API's own host, such as `curl` inside the container, reads it (`MapHealthChecksWithHostOnlyReport`). Any other caller, such as a load balancer or a Kubernetes probe, gets the same status code with the overall status alone (`Healthy`, `Degraded` or `Unhealthy`), whatever case it writes the path in.
 
 ### Health checks
 

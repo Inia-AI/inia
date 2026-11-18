@@ -40,20 +40,6 @@ public static class MadeByLinks
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// <see cref="OutputAsync"/> for a reader in the organization: null as well when the organization cannot reach the
-    /// type that makes the output, so a type it never had stays unnamed.
-    /// </summary>
-    public static Task<MadeByChoice?> OutputReachableByAsync(ICoreUnitOfWork core, string organizationId, string workflowTypeId, string outputClassKey, CancellationToken cancellationToken)
-    {
-        return Choices(
-                core,
-                workflow => workflow.WorkflowTypeId == workflowTypeId
-                    && workflow.WorkflowType!.OrganizationAccess.Any(access => access.OrganizationId == organizationId),
-                documentClass => documentClass.IsOutputDocument && documentClass.Key == outputClassKey)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
     /// <summary>The inputs of user-facing types' current workflows that name this output as Made by.</summary>
     public static Task<List<MadeByChoice>> UsersOfAsync(ICoreUnitOfWork core, string workflowTypeId, string outputClassKey, CancellationToken cancellationToken)
     {
@@ -67,19 +53,19 @@ public static class MadeByLinks
     }
 
     /// <summary>
-    /// The current workflows of user-facing types the organization can reach that have an input made by one of these
-    /// outputs of the workflow type, ordered by type name.
+    /// The current workflows of user-facing types among <paramref name="reachableTypeIds"/> that have an input made by
+    /// one of these outputs of the workflow type, ordered by type name.
     /// </summary>
     public static Task<List<MadeByReader>> ReadersOfAsync(
         ICoreUnitOfWork core,
         string workflowTypeId,
         IReadOnlyCollection<string> outputClassKeys,
-        string organizationId,
+        IReadOnlyCollection<string> reachableTypeIds,
         CancellationToken cancellationToken)
     {
-        return (from workflow in CurrentWorkflows(core)
+        return (from workflow in core.Repository<Workflow>().GetAll().CurrentOfEachType()
                 join type in core.Repository<WorkflowType>().GetAll().Where(WorkflowType.UserFacing) on workflow.WorkflowTypeId equals type.Id
-                where type.OrganizationAccess.Any(access => access.OrganizationId == organizationId)
+                where reachableTypeIds.Contains(type.Id)
                     && workflow.DocumentClasses.Any(documentClass => !documentClass.IsOutputDocument
                         && documentClass.MadeByWorkflowTypeId == workflowTypeId
                         && outputClassKeys.Contains(documentClass.MadeByDocumentClassKey))
@@ -102,22 +88,10 @@ public static class MadeByLinks
         Expression<Func<Workflow, bool>> ofWorkflows,
         Expression<Func<DocumentClass, bool>> ofClasses)
     {
-        return from workflow in CurrentWorkflows(core).Where(ofWorkflows)
+        return from workflow in core.Repository<Workflow>().GetAll().CurrentOfEachType().Where(ofWorkflows)
                join type in core.Repository<WorkflowType>().GetAll().Where(WorkflowType.UserFacing) on workflow.WorkflowTypeId equals type.Id
                from documentClass in workflow.DocumentClasses.AsQueryable().Where(ofClasses)
                orderby type.Name, documentClass.DisplayName
                select new MadeByChoice(type.Id, type.Name, documentClass.Key, documentClass.DisplayName);
-    }
-
-    /// <summary>The newest workflow of each type, one per type, as the run paths pick a type's workflow.</summary>
-    private static IQueryable<Workflow> CurrentWorkflows(ICoreUnitOfWork core)
-    {
-        IQueryable<Workflow> workflows = core.Repository<Workflow>().GetAll();
-        return workflows.Where(workflow => workflow.WorkflowTypeId != null
-            && workflow.Id == workflows
-                .Where(other => other.WorkflowTypeId == workflow.WorkflowTypeId)
-                .OrderByDescending(other => other.CreatedAt)
-                .Select(other => other.Id)
-                .First());
     }
 }

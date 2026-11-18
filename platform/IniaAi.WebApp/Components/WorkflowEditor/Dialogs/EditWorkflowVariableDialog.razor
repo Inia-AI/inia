@@ -2,6 +2,8 @@
 @using IniaAi.Domain.Core.Interfaces
 @using IniaAi.Domain.Entities.Workflows
 @using IniaAi.Domain.Entities.Workflows.Enums
+@using IniaAi.Domain.Entities.Workflows.InputRules
+@using IniaAi.WebApp.Components.WorkflowEditor.Components
 @using IniaAi.Domain.UserData.Interfaces
 
 <MudDialog DefaultFocus="DefaultFocus.FirstChild">
@@ -191,6 +193,12 @@
                 </MudPaper>
             }
 
+            <VariableInputRulesEditor Rules="_inputRules"
+                                      Workflow="Workflow"
+                                      OwnerTag="@_originalReplacementTag"
+                                      OwnerType="_variableType"
+                                      OwnerOptions="_options" />
+
             @if (!string.IsNullOrEmpty(_errorMessage))
             {
                 <MudAlert Severity="Severity.Error">
@@ -228,6 +236,8 @@
     private string? _defaultValue;
     private HashSet<string> _defaultValueSelections = [];
     private Dictionary<string, string> _options = [];
+    private List<VariableInputRule> _inputRules = [];
+    private readonly Dictionary<string, string> _optionRenames = [];
     private string _errorMessage = string.Empty;
     private string _originalReplacementTag = string.Empty;
 
@@ -254,6 +264,7 @@
             _isConfidential = WorkflowVariable.IsConfidential;
             _defaultValue = WorkflowVariable.DefaultValue;
             _options = new Dictionary<string, string>(WorkflowVariable.Options);
+            _inputRules = [.. WorkflowVariable.InputRules.Select(rule => rule.Clone())];
 
             if (_variableType is WorkflowVariableTypes.MultiSelect)
             {
@@ -330,6 +341,15 @@
             return;
         }
 
+        for (int index = 0; index < _inputRules.Count; index++)
+        {
+            if (VariableInputRuleCheck.IncompletenessOf(_inputRules[index]) is string incomplete)
+            {
+                _errorMessage = $"Rule {index + 1} is not complete: {incomplete}. Complete it or remove it.";
+                return;
+            }
+        }
+
         try
         {
             if (WorkflowVariable is not null)
@@ -348,6 +368,9 @@
                 {
                     WorkflowVariable.Options.Add(option.Key, option.Value);
                 }
+
+                WorkflowVariable.InputRules = _inputRules;
+                CarryRenamesIntoRules(WorkflowVariable);
 
                 MudDialog?.Close(DialogResult.Ok(WorkflowVariable));
 
@@ -370,6 +393,8 @@
                 newVariable.Options.Add(option.Key, option.Value);
             }
 
+            newVariable.InputRules = _inputRules;
+
             MudDialog?.Close(DialogResult.Ok(newVariable));
         }
         catch (Exception ex)
@@ -379,6 +404,33 @@
                 : "Error creating variable";
             _errorMessage = $"{errorMessage}: {ex.Message}";
         }
+    }
+
+    private void CarryRenamesIntoRules(WorkflowVariable variable)
+    {
+        foreach (WorkflowVariable other in Workflow.Variables)
+        {
+            if (_replacementTag != _originalReplacementTag)
+            {
+                other.RenameInputRuleVariable(_originalReplacementTag, _replacementTag);
+            }
+
+            other.RenameInputRuleOptions(variable.ReplacementTag, _optionRenames);
+        }
+
+        foreach (VariableInputRule rule in variable.InputRules)
+        {
+            if (rule.Requirement.Value is string value && _optionRenames.TryGetValue(value.Trim(), out string? renamed))
+            {
+                rule.Requirement.Value = renamed;
+            }
+        }
+    }
+
+    private void TrackOptionRename(string oldKey, string newKey)
+    {
+        string original = _optionRenames.Where(entry => entry.Value == oldKey).Select(entry => entry.Key).FirstOrDefault() ?? oldKey;
+        _optionRenames[original] = newKey;
     }
 
     private void AddOption()
@@ -419,6 +471,7 @@
         var displayName = _options[oldKey];
         _options.Remove(oldKey);
         _options.Add(newValue, displayName);
+        TrackOptionRename(oldKey, newValue);
 
         if (_variableType is WorkflowVariableTypes.Dropdown
             && _defaultValue == oldKey)

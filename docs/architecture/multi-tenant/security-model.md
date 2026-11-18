@@ -165,7 +165,7 @@ Every pull request runs these HTTP-level isolation tests against a real PostgreS
 
 Every id an endpoint's route takes is classified. `EndpointIds` in `IniaAi.WebApi.UnitTests` names, for each route parameter of every API action, the kind of object it names and the check that keeps it to the caller's organization, ending with that check's `file:line`. `EndpointIdTests` fails on a route parameter that is not on the list, on an entry whose endpoint is gone, and on a rule that names no line, so a new id is classified before it ships.
 
-A workflow or a workflow type taken by id reaches an organization only through its `WorkflowTypeOrganizationAccess` row. `WorkflowTypeAccessReadTests` checks that the document check of `GET /workflow-categories/{id}/validate-documents` and the usage summary of `GET /token-usage/workflow-type/{workflowTypeId}` answer `NotFound` for a type the organization was not given, as for one that does not exist. The usage summary still names a type the organization has used, so its history stays readable after its access is taken away.
+A workflow or a workflow type taken by id reaches an organization only where `WorkflowTypeAccess` says it does: through its `WorkflowTypeOrganizationAccess` row, unless a closed module decides the organization's types (`IWorkflowTypeReach`). `WorkflowTypeAccessReadTests` checks that the document check of `GET /workflow-categories/{id}/validate-documents` and the usage summary of `GET /token-usage/workflow-type/{workflowTypeId}` answer `NotFound` for a type the organization was not given, as for one that does not exist. The usage summary still names a type the organization has used, so its history stays readable after its access is taken away.
 
 ## Data Encryption
 
@@ -186,7 +186,7 @@ Compliance posture (GDPR/HIPAA/SOX/ISO 27001 and similar) depends on how the cus
 ## Security Best Practices
 
 ### Development Guidelines
-1. **Scope every UserData query** by `OrganizationId`; gate every template read on `WorkflowTypeOrganizationAccess` — never rely on an implicit tenant filter.
+1. **Scope every UserData query** by `OrganizationId`; gate every template read on `WorkflowTypeAccess` — never rely on an implicit tenant filter.
 2. **Defense in depth**: keep the pipeline checks *and* the handler-level scoping; neither alone is sufficient.
 3. **Fail secure**: default to deny when tenant resolution or membership is uncertain.
 4. **Input validation**: validate at API boundaries via FluentValidation (`OrganizationId` and `UserId` first).

@@ -20,6 +20,7 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
     private const string ORG_ID = "org-test";
     private const string OTHER_ORG_ID = "org-other";
     private const string USER_ID = "user-test";
+    private const string READ_BY_RUNNING_REPORT = "Document.ReadByRunningReport";
 
     private readonly Microsoft.Extensions.DependencyInjection.ServiceProvider _serviceProvider;
     private readonly UserDataDbContext _context;
@@ -130,7 +131,7 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
         ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorType.Conflict, result.FirstError.Type);
-        Assert.Equal("Document.ReadByRunningReport", result.FirstError.Code);
+        Assert.Equal(READ_BY_RUNNING_REPORT, result.FirstError.Code);
         Assert.Equal(DocumentErrorFactory.READ_BY_RUNNING_REPORT_MESSAGE, result.FirstError.Description);
         Assert.True(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
         Assert.NotNull(_fileStorageService.GetTestFile(ORG_ID, StorageCategories.Documents, storagePath));
@@ -163,6 +164,48 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
         Assert.False(result.IsError);
     }
 
+    [Fact]
+    public async Task Handle_OwnOnly_DeletesTheCopiesMadeFromTheDocument_WithTheirFiles()
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Annual report", uploadedBy: USER_ID);
+        Document copy = await SeedDocumentAsync(ORG_ID, "Annual report-anon", madeFrom: document.Id);
+        string copyPath = copy.FileMetadata!.ExternalStoragePath!;
+        _fileStorageService.AddTestFile(ORG_ID, StorageCategories.Documents, copyPath, [0x01]);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id, OwnOnly: true), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsError);
+        Assert.False(await _context.Documents.AnyAsync(d => d.Id == copy.Id, TestContext.Current.CancellationToken));
+        Assert.False(await _context.FileMetadata.AnyAsync(f => f.Id == copy.FileMetadataId, TestContext.Current.CancellationToken));
+        Assert.Null(_fileStorageService.GetTestFile(ORG_ID, StorageCategories.Documents, copyPath));
+    }
+
+    [Fact]
+    public async Task Handle_ACopyAnUnfinishedReportReads_IsRefusedAndBothStay()
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Annual report");
+        Document copy = await SeedDocumentAsync(ORG_ID, "Annual report-anon", madeFrom: document.Id);
+        await SeedReportReadingAsync(copy, WorkflowState.Running);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
+
+        Assert.Equal(READ_BY_RUNNING_REPORT, result.FirstError.Code);
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken));
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == copy.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Handle_LeavesADocumentOfAnotherOrganization_ThatNamesTheDocumentAsItsOriginal()
+    {
+        Document document = await SeedDocumentAsync(ORG_ID, "Annual report");
+        Document elsewhere = await SeedDocumentAsync(OTHER_ORG_ID, "Annual report-anon", madeFrom: document.Id);
+
+        ErrorOr<Deleted> result = await _handler.Handle(new DeleteDocumentCommand(ORG_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsError);
+        Assert.True(await _context.Documents.AnyAsync(d => d.Id == elsewhere.Id, TestContext.Current.CancellationToken));
+    }
+
     private async Task SeedReportReadingAsync(Document document, WorkflowState state, bool excluded = false)
     {
         string jobId = Guid.NewGuid().ToString();
@@ -180,7 +223,7 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
         _context.ChangeTracker.Clear();
     }
 
-    private async Task<Document> SeedDocumentAsync(string organizationId, string name, string? uploadedBy = null)
+    private async Task<Document> SeedDocumentAsync(string organizationId, string name, string? uploadedBy = null, string? madeFrom = null)
     {
         var fileMetadata = new FileMetadata(
             organizationId,
@@ -195,6 +238,7 @@ public class DeleteDocumentCommandHandlerTests : IDisposable
             OrganizationId = organizationId,
             Name = name,
             UserId = uploadedBy,
+            MadeFromDocumentId = madeFrom,
         };
         _ = await _context.Documents.AddAsync(document, TestContext.Current.CancellationToken);
         _ = await _context.SaveChangesAsync(TestContext.Current.CancellationToken);

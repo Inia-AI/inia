@@ -1,0 +1,248 @@
+/* The account pages render without a live connection, so they use the scaffold's form markup instead of
+   MudBlazor inputs. These rules give that markup the app's palette. */
+.account-page {
+    max-width: 1040px;
+    padding: 32px 40px;
+    color: var(--mud-palette-text-primary);
+}
+
+.account-page ::deep h1 {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px 0;
+}
+
+.account-page ::deep h2 {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--mud-palette-text-secondary);
+    margin: 0 0 16px 0;
+}
+
+.account-page ::deep h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+}
+
+.account-page ::deep h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 24px 0 8px 0;
+}
+
+.account-page ::deep hr {
+    border: none;
+    border-top: 1px solid var(--mud-palette-lines-default);
+    margin: 0 0 24px 0;
+}
+
+.account-page ::deep p {
+    max-width: 70ch;
+    margin: 0 0 12px 0;
+}
+
+.account-page ::deep a {
+    color: var(--mud-palette-primary);
+}
+
+.account-page ::deep form {
+    margin-bottom: 12px;
+}
+
+.account-page ::deep .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+}
+
+.account-page ::deep .col-md-3 {
+    flex: 0 0 220px;
+}
+
+.account-page ::deep .col-md-9 {
+    flex: 1 1 0;
+    min-width: 280px;
+}
+
+.account-page ::deep .col-md-6 {
+    flex: 0 1 480px;
+    min-width: 0;
+}
+
+.account-page ::deep .col-md-4 {
+    flex: 0 1 360px;
+    min-width: 0;
+}
+
+.account-page ::deep .nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.account-page ::deep .nav-link {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+}
+
+.account-page ::deep .nav-link:hover {
+    background: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
+
+.account-page ::deep .nav-link.active {
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+    color: var(--mud-palette-primary);
+    font-weight: 600;
+}
+
+.account-page ::deep .mb-3 {
+    margin-bottom: 20px;
+}
+
+.account-page ::deep .form-floating {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.account-page ::deep .form-floating > label,
+.account-page ::deep .form-label {
+    order: -1;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+.account-page ::deep .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--mud-palette-text-primary);
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-inputs);
+    border-radius: 8px;
+}
+
+.account-page ::deep .form-control:focus {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 0;
+    border-color: var(--mud-palette-primary);
+}
+
+.account-page ::deep .form-control:disabled {
+    color: var(--mud-palette-text-disabled);
+    background: var(--mud-palette-action-disabled-background);
+}
+
+.account-page ::deep .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.account-page ::deep .btn-lg {
+    padding: 12px 24px;
+    font-size: 15px;
+}
+
+.account-page ::deep .btn-primary {
+    color: var(--mud-palette-primary-text);
+    background: var(--mud-palette-primary);
+}
+
+.account-page ::deep .btn-primary:hover {
+    background: var(--mud-palette-primary-darken);
+}
+
+.account-page ::deep .btn-danger {
+    color: var(--mud-palette-error-text);
+    background: var(--mud-palette-error);
+}
+
+.account-page ::deep .btn-danger:hover {
+    background: var(--mud-palette-error-darken);
+}
+
+.account-page ::deep .w-100 {
+    width: 100%;
+}
+
+.account-page ::deep .alert {
+    max-width: 70ch;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    border: 1px solid;
+    border-radius: 8px;
+}
+
+.account-page ::deep .alert-success {
+    color: var(--mud-palette-success);
+    background: color-mix(in srgb, var(--mud-palette-success) 12%, transparent);
+}
+
+.account-page ::deep .alert-danger {
+    color: var(--mud-palette-error);
+    background: color-mix(in srgb, var(--mud-palette-error) 12%, transparent);
+}
+
+.account-page ::deep .alert-warning {
+    color: var(--mud-palette-warning);
+    background: color-mix(in srgb, var(--mud-palette-warning) 12%, transparent);
+}
+
+.account-page ::deep .text-danger {
+    color: var(--mud-palette-error);
+    font-size: 13px;
+}
+
+.account-page ::deep ul.text-danger {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px 0;
+}
+
+.account-page ::deep .text-success {
+    color: var(--mud-palette-success);
+}
+
+.account-page ::deep .text-info {
+    color: var(--mud-palette-info);
+}
+
+.account-page ::deep .table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.account-page ::deep .table td,
+.account-page ::deep .table th {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.account-page ::deep kbd,
+.account-page ::deep code {
+    font-family: ui-monospace, monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--mud-palette-background-gray);
+}

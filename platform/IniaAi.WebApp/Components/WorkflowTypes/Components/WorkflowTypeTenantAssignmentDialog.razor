@@ -4,6 +4,7 @@
 @using IniaAi.Domain.UserData.Interfaces
 
 @inject IUserDataUnitOfWork UserDataUnitOfWork
+@inject AppState AppState
 @inject ISnackbar Snackbar
 @inject ILogger<WorkflowTypeTenantAssignmentDialog> Logger
 
@@ -147,8 +148,8 @@
 
         var assignedOrgIds = _existingAccess.Select(a => a.OrganizationId).ToHashSet();
 
-        // Load all active organizations
-        var allOrganizations = (await UserDataUnitOfWork.Organizations.FindAsync(o => o.IsActive)).ToList();
+        IReadOnlySet<string> closed = await AppState.ClosedOrganizationsAsync();
+        var allOrganizations = (await UserDataUnitOfWork.Organizations.FindAsync(o => o.IsActive)).Where(o => !closed.Contains(o.Id)).ToList();
 
         _currentTenants = allOrganizations.Where(o => assignedOrgIds.Contains(o.Id)).ToList();
         _availableOrganizations = allOrganizations.Where(o => !assignedOrgIds.Contains(o.Id)).ToList();

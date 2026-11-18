@@ -2,6 +2,7 @@ using System.Text.Json;
 using ErrorOr;
 using IniaAi.Application.Commands.WorkflowExecutions.Shared;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Workflows;
 using IniaAi.Application.Workflows.Services;
 using IniaAi.Common.Constants;
 using IniaAi.Domain.Core.Interfaces;
@@ -21,6 +22,7 @@ public class StartWorkflowExecutionCommandHandler
 {
     private readonly IUserDataUnitOfWork _userDataUnitOfWork;
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IWorkflowExecutionOrchestrator _orchestrator;
     private readonly ILogger<StartWorkflowExecutionCommandHandler> _logger;
 
@@ -29,16 +31,19 @@ public class StartWorkflowExecutionCommandHandler
     /// </summary>
     /// <param name="userDataUnitOfWork">Unit of work for user data operations.</param>
     /// <param name="coreUnitOfWork">Unit of work for core operations.</param>
+    /// <param name="access">Decides whether the organization reaches the workflow's type.</param>
     /// <param name="orchestrator">The shared workflow execution orchestrator.</param>
     /// <param name="logger">Logger for operational diagnostics.</param>
     public StartWorkflowExecutionCommandHandler(
         IUserDataUnitOfWork userDataUnitOfWork,
         ICoreUnitOfWork coreUnitOfWork,
+        WorkflowTypeAccess access,
         IWorkflowExecutionOrchestrator orchestrator,
         ILogger<StartWorkflowExecutionCommandHandler> logger)
     {
         _userDataUnitOfWork = userDataUnitOfWork;
         _coreUnitOfWork = coreUnitOfWork;
+        _access = access;
         _orchestrator = orchestrator;
         _logger = logger;
     }
@@ -57,7 +62,7 @@ public class StartWorkflowExecutionCommandHandler
         CancellationToken cancellationToken)
     {
         ErrorOr<Workflow> runnable = await RunnableWorkflowGuard.RunnableAsync(
-            await GetWorkflowAsync(request.Request.WorkflowId, request.OrganizationId), request.OrganizationId, _coreUnitOfWork, _logger, cancellationToken);
+            await GetWorkflowAsync(request.Request.WorkflowId, request.OrganizationId), request.OrganizationId, _access, _logger, cancellationToken);
         if (runnable.IsError)
         {
             return runnable.Errors;

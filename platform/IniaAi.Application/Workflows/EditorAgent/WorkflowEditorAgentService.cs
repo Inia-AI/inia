@@ -1343,7 +1343,7 @@ public sealed class WorkflowEditorAgentService : IWorkflowEditorAgentService, ID
             return EditorAgentErrors.Forbidden;
         }
 
-        if (!superAdmin && !await WorkflowTypeAccessGuard.HasAccessAsync(core, organizationId, workflowTypeId, cancellationToken))
+        if (!superAdmin && !await services.GetRequiredService<WorkflowTypeAccess>().CanReachAsync(organizationId, workflowTypeId, cancellationToken))
         {
             return EditorAgentErrors.Forbidden;
         }

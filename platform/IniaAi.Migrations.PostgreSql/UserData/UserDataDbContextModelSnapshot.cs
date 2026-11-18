@@ -1099,6 +1099,10 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("MadeFromDocumentId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
                     b.Property<int>("MediaType")
                         .HasColumnType("integer");
 
@@ -1156,6 +1160,8 @@ namespace IniaAi.Migrations.PostgreSql.UserData
 
                     b.HasIndex("FileMetadataId")
                         .IsUnique();
+
+                    b.HasIndex("MadeFromDocumentId");
 
                     b.HasIndex("OrganizationId");
 
@@ -2273,10 +2279,6 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("CardFingerprint")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
                     b.Property<int>("DebtRepaid")
                         .HasColumnType("integer");
 
@@ -2301,6 +2303,10 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
+
+                    b.Property<string>("PaymentMethodFingerprint")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("PaymentProvider")
                         .HasMaxLength(50)
@@ -2483,6 +2489,37 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.ToTable("HelpRequestReplies", "UserData");
                 });
 
+            modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.PaymentCustomer", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("PaymentProvider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ProviderCustomerId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("PaymentCustomers", "UserData");
+                });
+
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.PaymentEvent", b =>
                 {
                     b.Property<string>("Id")
@@ -2541,84 +2578,6 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.HasIndex("ProcessedAt", "ReceivedAt");
 
                     b.ToTable("PaymentEvents", "UserData");
-                });
-
-            modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.Subscription", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<bool>("CancelAtPeriodEnd")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("CanceledAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("CurrentPeriodEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("EndNoticeAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("EndNoticeLastAttemptAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EndNoticeLastError")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("EndNoticeSentAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("EndsAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LiveOrganizationId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("OrganizationId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("PaymentProvider")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("ProviderCustomerId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("ProviderSubscriptionId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("EndNoticeSentAt", "CanceledAt");
-
-                    b.HasIndex("PaymentProvider", "LiveOrganizationId")
-                        .IsUnique();
-
-                    b.HasIndex("PaymentProvider", "ProviderSubscriptionId")
-                        .IsUnique();
-
-                    b.ToTable("Subscriptions", "UserData");
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.SelfServe.SupportAccess", b =>
@@ -3512,8 +3471,9 @@ namespace IniaAi.Migrations.PostgreSql.UserData
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrganizationId", "Name", "IsDeleted")
-                        .IsUnique();
+                    b.HasIndex("OrganizationId", "Name")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("ConversionTypes", "UserData");
                 });
@@ -5949,6 +5909,9 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("InputRules")
+                        .HasColumnType("jsonb");
 
                     b.Property<bool>("IsConfidential")
                         .HasColumnType("boolean");

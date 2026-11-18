@@ -35,12 +35,14 @@ public class GetWorkflowSummaryByTypeQueryHandler
     private const string PEER_COMPANIES_PLACEHOLDER_SEARCH = "{" + SharedInputKeys.PEER_COMPANIES;
 
     private readonly ICoreUnitOfWork _coreUnitOfWork;
+    private readonly WorkflowTypeAccess _access;
     private readonly IWorkflowCreditCost _creditCost;
     private readonly IWorkflowPageLimit _pageLimit;
 
-    public GetWorkflowSummaryByTypeQueryHandler(ICoreUnitOfWork coreUnitOfWork, IWorkflowCreditCost creditCost, IWorkflowPageLimit pageLimit)
+    public GetWorkflowSummaryByTypeQueryHandler(ICoreUnitOfWork coreUnitOfWork, WorkflowTypeAccess access, IWorkflowCreditCost creditCost, IWorkflowPageLimit pageLimit)
     {
         _coreUnitOfWork = coreUnitOfWork ?? throw new ArgumentNullException(nameof(coreUnitOfWork));
+        _access = access ?? throw new ArgumentNullException(nameof(access));
         _creditCost = creditCost ?? throw new ArgumentNullException(nameof(creditCost));
         _pageLimit = pageLimit ?? throw new ArgumentNullException(nameof(pageLimit));
     }
@@ -49,17 +51,18 @@ public class GetWorkflowSummaryByTypeQueryHandler
         GetWorkflowSummaryByTypeQuery request,
         CancellationToken cancellationToken)
     {
-        WorkflowSummaryProjections.WorkflowParts? workflow = await _coreUnitOfWork.Repository<Workflow>()
-            .GetAll()
-            .AsNoTracking()
-            .Where(w =>
-                w.WorkflowTypeId == request.WorkflowTypeId &&
-                w.WorkflowType != null &&
-                w.WorkflowType.OrganizationAccess.Any(oa => oa.OrganizationId == request.OrganizationId) &&
-                w.WorkflowTypeId != WorkflowType.GENERIC &&
-                w.WorkflowTypeId != WorkflowType.TEST_WORKFLOW_TYPE)
-            .Select(WorkflowSummaryProjections.ToParts)
-            .FirstOrDefaultAsync(cancellationToken);
+        WorkflowSummaryProjections.WorkflowParts? workflow = await _access.CanReachAsync(request.OrganizationId, request.WorkflowTypeId, cancellationToken)
+            ? await _coreUnitOfWork.Repository<Workflow>()
+                .GetAll()
+                .AsNoTracking()
+                .Where(w =>
+                    w.WorkflowTypeId == request.WorkflowTypeId &&
+                    w.WorkflowType != null &&
+                    w.WorkflowTypeId != WorkflowType.GENERIC &&
+                    w.WorkflowTypeId != WorkflowType.TEST_WORKFLOW_TYPE)
+                .Select(WorkflowSummaryProjections.ToParts)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         if (workflow is null)
         {
@@ -102,13 +105,19 @@ public class GetWorkflowSummaryByTypeQueryHandler
         string organizationId,
         CancellationToken cancellationToken)
     {
+        if (!documentClasses.Any(documentClass => documentClass.IsMadeByAnotherWorkflow))
+        {
+            return shown;
+        }
+
+        IReadOnlyCollection<string> reachable = await _access.TypeIdsAsync(organizationId, cancellationToken);
         List<DocumentClassDto> named = [];
         foreach (DocumentClassDto documentClass in shown)
         {
             DocumentClass? input = documentClasses.FirstOrDefault(candidate => candidate.Key == documentClass.Key && candidate.IsMadeByAnotherWorkflow);
-            MadeByChoice? output = input is null
+            MadeByChoice? output = input is null || !reachable.Contains(input.MadeByWorkflowTypeId!, StringComparer.Ordinal)
                 ? null
-                : await MadeByLinks.OutputReachableByAsync(_coreUnitOfWork, organizationId, input.MadeByWorkflowTypeId!, input.MadeByDocumentClassKey!, cancellationToken);
+                : await MadeByLinks.OutputAsync(_coreUnitOfWork, input.MadeByWorkflowTypeId!, input.MadeByDocumentClassKey!, cancellationToken);
             named.Add(output is null
                 ? documentClass
                 : documentClass with { MadeBy = new DocumentClassMadeByDto(output.WorkflowTypeId, output.WorkflowTypeName, output.DisplayName) });

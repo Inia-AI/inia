@@ -373,6 +373,15 @@ the report never loses its input. A document that a stage took out of the run
 does not count, and neither does a report that finished, failed or was
 cancelled.
 
+The copies made from the document go with it, with their blobs. Each
+confidential run makes its own copy of each PDF with the confidential values
+replaced, and the copy names the document it was made from
+(`MadeFromDocumentId`). A copy that a report still running reads keeps the
+document too, with the same `409`. A copy has no uploader of its own, so a
+caller with only `delete-own-documents` removes it through its original.
+Copies made by an earlier release name no original and stay until they are
+deleted on their own.
+
 **Path Parameters:**
 
 | Parameter | Type   | Required | Description                              |
@@ -401,7 +410,9 @@ independently so the client receives per-id outcomes rather than an
 all-or-nothing failure. DB mutations are committed once after the loop; blob
 deletions are attempted after the commit. Requires Admin, SuperAdmin, or
 Operator (`Roles.ADMIN_AND_OPERATOR_ROLES`), or the `delete-own-documents`
-capability, as for one delete.
+capability, as for one delete. The copies of each deleted document go with
+it, and a document whose copy a report still running reads stays, with the
+reason of one delete ([Delete Document](#delete-document)).
 
 **Request Body (`BulkDeleteDocumentsRequest`):**
 

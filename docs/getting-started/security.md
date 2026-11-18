@@ -29,6 +29,9 @@ reads them from its settings.
 Also, before other machines reach the install:
 
 - Put a TLS proxy in front of it. The one-command stack serves plain HTTP on 127.0.0.1 only.
+- Once every path to the admin app is HTTPS, set `AdminApp:HttpsOnlyCookies` to `true`, so its
+  sign-in cookies are `Secure` and bound to its host ("Response headers and cookies of the admin
+  app" in [application configuration](../operations/application-configuration.md)).
 - Sign in as the first admin, and change the password in the profile.
 - Turn on two-factor sign-in for every admin.
 
