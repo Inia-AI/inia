@@ -58,7 +58,7 @@ A minimal policy covering the default tiers (`AdvancedModel = UsAwsSonnet5`, `Ba
 }
 ```
 
-A cross-region inference profile (`us.` / `global.`) fans out to the underlying foundation models, which is why each statement also allows the matching `foundation-model/*` ARNs. The default embeddings model is `global.cohere.embed-v4:0` (`AiModel.AwsEmbedV40`); a deployment pinned to the US profile uses `us.cohere.embed-v4:0` (`UsAwsEmbedV40`) instead — match the ARN to the [enum value the deployment configures](../architecture/ai-integration/providers.md#valid-aimodel-enum-values).
+A cross-region inference profile (`us.` / `eu.` / `global.`) fans out to the underlying foundation models, which is why each statement also allows the matching `foundation-model/*` ARNs. The default embeddings model is `global.cohere.embed-v4:0` (`AiModel.AwsEmbedV40`); a deployment pinned to the US profile uses `us.cohere.embed-v4:0` (`UsAwsEmbedV40`), and one pinned to the EU profile `eu.cohere.embed-v4:0` (`EuAwsEmbedV40`) — match the ARN to the [enum value the deployment configures](../architecture/ai-integration/providers.md#valid-aimodel-enum-values).
 
 #### Apply the policy and attach it to the host
 

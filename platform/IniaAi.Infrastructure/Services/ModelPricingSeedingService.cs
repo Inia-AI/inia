@@ -448,7 +448,11 @@ public class ModelPricingSeedingService : BackgroundService
                 "Cohere Embed Multilingual v3 (AWS Bedrock)", "Cohere", effectiveFrom, 0.10m),
 
             CreateEmbeddingPricing(ModelProviders.AWS_BEDROCK, "global.cohere.embed-v4:0", "cohere.embed-v4",
-                "Cohere Embed v4 (AWS Bedrock)", "Cohere", effectiveFrom, 0.10m),
+                "Cohere Embed v4 (AWS Bedrock)", "Cohere", effectiveFrom, 0.12m),
+
+            // https://prices.azure.com/api/retail/prices, "Embed v4 Txt Glbl": $0.00012 per 1K tokens
+            CreateEmbeddingPricing(ModelProviders.AZURE_FOUNDRY, "embed-v4.0", null,
+                "Cohere Embed v4 (Azure AI Foundry)", "Cohere", effectiveFrom, 0.12m),
 
         ];
     }

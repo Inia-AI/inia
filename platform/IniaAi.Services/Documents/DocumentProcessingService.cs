@@ -10,6 +10,7 @@ using IniaAi.Common.Interfaces.Services;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Storage;
 using IniaAi.Core.Services;
+using IniaAi.Core.Services.TokenUsage;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.Documents.Enums;
 using IniaAi.Domain.Entities.TokenUsage.Enums;
@@ -1364,15 +1365,12 @@ public class DocumentProcessingService : IDocumentProcessingService
 
             var batch = texts.Skip(i).Take(pagesInBatch).ToList();
 
-            // Track tokens before the call
-            int tokensBefore = _embeddingsConnector.TotalTokens;
-
-            List<double[]> batchEmbeddings;
+            EmbeddingsAnswer answer;
 
             try
             {
-                batchEmbeddings = await _embeddingsConnector
-                    .GetResponseAsync(batch, cancellationToken)
+                answer = await _embeddingsConnector
+                    .EmbedAsync(batch, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (ApiKeyNotSetException e)
@@ -1383,12 +1381,16 @@ public class DocumentProcessingService : IDocumentProcessingService
                 break;
             }
 
-            // Calculate tokens consumed in this batch
-            int tokensAfter = _embeddingsConnector.TotalTokens;
-            int batchTokens = tokensAfter - tokensBefore;
-            totalTokensConsumed += batchTokens;
+            if (answer.IsUncounted)
+            {
+                _logger.LogWarning(
+                    EmbeddingsAnswer.UNCOUNTED_LOG_MARKER + ": The embeddings model answered {VectorCount} vectors for document {DocumentId} and counted no tokens, so no usage is recorded",
+                    answer.Vectors.Count,
+                    document.Id);
+            }
 
-            allEmbeddings.AddRange(batchEmbeddings);
+            totalTokensConsumed += answer.InputTokens;
+            allEmbeddings.AddRange(answer.Vectors);
         }
 
         // Record embedding token usage (fire-and-forget)
@@ -1721,8 +1723,9 @@ public class DocumentProcessingService : IDocumentProcessingService
     }
 
     /// <summary>
-    /// Stores the repaired PDF as a new blob and updates FileMetadata to point to it.
-    /// The original corrupted file is kept in storage for debugging/tracing purposes.
+    /// Stores the repaired PDF as a new blob and updates FileMetadata to point to it. No row points
+    /// at the original corrupted file any more, so the stored file sweep removes it a day after its
+    /// upload; until then it stays for tracing.
     /// </summary>
     private async Task PersistRepairedPdfAsync(
         FileMetadata fileMetadata,
@@ -1732,7 +1735,6 @@ public class DocumentProcessingService : IDocumentProcessingService
         string originalKey = fileMetadata.ExternalStoragePath
             ?? throw new InvalidOperationException("ExternalStoragePath is null");
 
-        // Store repaired file with a new key; the original corrupted blob is preserved at originalKey
         string repairedKey = Guid.NewGuid().ToString();
 
         _logger.LogInformation(
@@ -1756,33 +1758,16 @@ public class DocumentProcessingService : IDocumentProcessingService
 
         _logger.LogInformation(
             "FileMetadata updated to use repaired PDF at {RepairedKey}. " +
-            "Original corrupted file preserved at {OriginalKey}.",
+            "Original corrupted file stays at {OriginalKey} until the stored file sweep removes it.",
             repairedKey, originalKey);
     }
 
     /// <summary>
-    /// Helper method to get file stream using IFileStorageManager - avoids wasteful byte[] conversion
+    /// The file as a stream over its bytes, read once at the stored size and kept on the metadata
     /// </summary>
     private async Task<Stream> GetFileStreamAsync(FileMetadata fileMetadata)
     {
-        if (fileMetadata.AreBytesLoaded)
-        {
-            return new MemoryStream(fileMetadata.Bytes);
-        }
-
-        // Load and cache the bytes for future use
-        using Stream stream = await _fileStorageManager.RetrieveFileAsync(
-            fileMetadata.StorageProvider.ToString(),
-            fileMetadata.OrganizationId,
-            StorageCategories.Documents,
-            fileMetadata.ExternalStoragePath ?? throw new InvalidOperationException("ExternalStoragePath is null"));
-
-        using var ms = new MemoryStream();
-        await stream.CopyToAsync(ms);
-        byte[] bytes = ms.ToArray();
-
-        fileMetadata.LoadBytes(bytes); // Cache for next time
-        return new MemoryStream(bytes);
+        return new MemoryStream(await GetFileBytesAsync(fileMetadata));
     }
 
     /// <summary>
@@ -1818,34 +1803,20 @@ public class DocumentProcessingService : IDocumentProcessingService
             return;
         }
 
-        // Extract provider from model name (format: "Provider: ModelId")
-        string modelName = _embeddingsConnector.ModelName;
-        string provider = "Unknown";
-        string modelId = modelName;
-
-        int colonIndex = modelName.IndexOf(':');
-        if (colonIndex > 0)
+        EmbeddingUsageRecord record = EmbeddingUsageRecordFactory.For(
+            _embeddingsConnector,
+            inputTokens,
+            document.OrganizationId,
+            UsageType.EmbeddingPage,
+            _currentWorkflowExecutionId is not null
+                ? TokenExecutionContext.WorkflowExecution
+                : TokenExecutionContext.DocumentUpload,
+            $"Page embeddings for document '{document.Name}'") with
         {
-            provider = modelName[..colonIndex].Trim();
-            modelId = modelName[(colonIndex + 1)..].Trim();
-        }
-
-        var record = new EmbeddingUsageRecord
-        {
-            OrganizationId = document.OrganizationId,
             UserId = _currentUserId,
             DocumentId = document.Id,
             WorkflowTypeId = _currentWorkflowTypeId,
-            WorkflowExecutionId = _currentWorkflowExecutionId,
-            UsageType = UsageType.EmbeddingPage,
-            ExecutionContext = _currentWorkflowExecutionId is not null
-                ? TokenExecutionContext.WorkflowExecution
-                : TokenExecutionContext.DocumentUpload,
-            Provider = provider,
-            Family = ModelIdNormalizer.GetFamily(modelId),
-            ModelId = modelId,
-            Components = UsageComponentHelper.ForEmbedding(inputTokens),
-            Description = $"Page embeddings for document '{document.Name}'"
+            WorkflowExecutionId = _currentWorkflowExecutionId
         };
 
         // Fire-and-forget - don't await to avoid blocking document processing

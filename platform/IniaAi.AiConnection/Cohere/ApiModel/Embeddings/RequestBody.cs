@@ -35,9 +35,4 @@ internal class RequestBody : JsonSerializable<RequestBody>
     {
         Texts = [.. texts];
     }
-
-    public RequestBody(string text)
-        : this([text])
-    {
-    }
 }

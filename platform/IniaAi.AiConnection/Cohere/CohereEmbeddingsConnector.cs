@@ -1,5 +1,6 @@
 ﻿using IniaAi.AiConnection.Abstractions;
 using IniaAi.AiConnection.Cohere.ApiModel.Embeddings;
+using IniaAi.AiConnection.Common;
 using IniaAi.AiConnection.HttpHandling;
 using IniaAi.Common.Extensions;
 using IniaAi.Configuration;
@@ -21,23 +22,22 @@ public class CohereEmbeddingsConnector : IEmbeddingsConnector
     private readonly HttpClient _httpClient;
     private readonly ILogger<IEmbeddingsConnector> _logger;
     private readonly PlatformSettings _platformSettings;
+    private readonly AiModel _embeddingsModel;
 
-    public int TotalTokens { get; private set; }
+    public string Provider => ModelProviders.COHERE_API;
 
     public string? MissingSetting => string.IsNullOrEmpty(_apiKey) ? API_KEY_SETTING : null;
 
-    public string ModelName => $"Cohere: {GetEmbeddingsModel()}";
+    public string ModelName => $"Cohere: {_embeddingsModel}";
 
-    public string ModelId =>
-        // Return the actual API model ID (EnumMember value) for pricing lookup
-        GetEmbeddingsModel().GetEnumMember()
-                ?? GetEmbeddingsModel().ToString();
+    public string ModelId => _embeddingsModel.GetEnumMember();
 
     public CohereEmbeddingsConnector(
         ILogger<IEmbeddingsConnector> logger,
         IOptions<PlatformSettings> options)
     {
         _platformSettings = options.Value;
+        _embeddingsModel = CohereEmbeddingsRoute.CohereApiForm(_platformSettings.Cohere.EmbeddingsModel);
         _logger = logger;
         _apiUrl = options.Value.Cohere.EmbeddingsApiUrl
             ?? throw new InvalidOperationException("Cohere embeddings API URL not set.");
@@ -47,31 +47,19 @@ public class CohereEmbeddingsConnector : IEmbeddingsConnector
         _httpClient = CreateHttpClient();
     }
 
-    public async Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default)
-    {
-        var requestBody = new RequestBody(document)
-        {
-            Model = GetEmbeddingsModel(),
-            OutputDimension = _platformSettings.Cohere.EmbeddingsOutputDimension,
-            EmbeddingTypes = ["float"]
-        };
-
-        return await GetResponseAsync(requestBody, cancellationToken);
-    }
-
-    public Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default)
+    public Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default)
     {
         var requestBody = new RequestBody(documents)
         {
-            Model = GetEmbeddingsModel(),
+            Model = _embeddingsModel,
             OutputDimension = _platformSettings.Cohere.EmbeddingsOutputDimension,
             EmbeddingTypes = ["float"]
         };
 
-        return GetResponseAsync(requestBody, cancellationToken);
+        return EmbedAsync(requestBody, cancellationToken);
     }
 
-    private async Task<List<double[]>> GetResponseAsync(
+    private async Task<EmbeddingsAnswer> EmbedAsync(
         RequestBody requestBody,
         CancellationToken cancellationToken = default)
     {
@@ -112,41 +100,23 @@ public class CohereEmbeddingsConnector : IEmbeddingsConnector
                 "Error response from Cohere embeddings API. Status code: {statusCode}, Response: {error}",
                 response.StatusCode, response.IsSuccessStatusCode ? $"{responseJson.Length} characters" : responseJson);
 
-            return [];
+            return EmbeddingsAnswer.Empty;
         }
 
         // Use BilledUnits for v2 API (primary), with Tokens as fallback for older API versions
         int inputTokens = successResponse.Meta.BilledUnits.InputTokens > 0
             ? successResponse.Meta.BilledUnits.InputTokens
             : successResponse.Meta.Tokens.InputTokens;
-        int outputTokens = successResponse.Meta.BilledUnits.OutputTokens > 0
-            ? successResponse.Meta.BilledUnits.OutputTokens
-            : successResponse.Meta.Tokens.OutputTokens;
-        TotalTokens += inputTokens + outputTokens;
 
         _logger.LogDebug(
-            "Cohere embeddings API usage. Total tokens: {totalTokens} (input: {inputTokens}, output: {outputTokens})",
-            TotalTokens, inputTokens, outputTokens);
+            "Cohere embeddings API usage. Input tokens: {inputTokens}",
+            inputTokens);
 
         _logger.LogDebug(
             "Cohere embeddings generated: {num}",
             successResponse.Embeddings.Length);
 
-        return [.. successResponse.Embeddings];
-    }
-
-    private AiModel GetEmbeddingsModel()
-    {
-        return _platformSettings.Cohere.EmbeddingsModel switch
-        {
-            AiModel.AwsEmbedEnglishV30 when !PlatformSettings.IsRunningInAws => AiModel.EmbedEnglishV30,
-            AiModel.AwsEmbedMultilingualV30 when !PlatformSettings.IsRunningInAws => AiModel.EmbedMultilingualV30,
-            AiModel.AwsEmbedV40 when !PlatformSettings.IsRunningInAws => AiModel.EmbedV40,
-            AiModel.EmbedEnglishV30 when PlatformSettings.IsRunningInAws => AiModel.AwsEmbedEnglishV30,
-            AiModel.EmbedMultilingualV30 when PlatformSettings.IsRunningInAws => AiModel.AwsEmbedMultilingualV30,
-            AiModel.EmbedV40 when PlatformSettings.IsRunningInAws => AiModel.AwsEmbedV40,
-            _ => _platformSettings.Cohere.EmbeddingsModel,
-        };
+        return new EmbeddingsAnswer([.. successResponse.Embeddings], inputTokens);
     }
 
     private HttpClient CreateHttpClient()

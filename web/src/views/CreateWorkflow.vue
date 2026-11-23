@@ -198,6 +198,11 @@ const selectedWorkflow = computed<Workflow | undefined>(() => {
 
 const platformClassifies = computed(() => selectedWorkflow.value?.classifiesDocuments === true)
 
+const modulesAskingForAClass = extensionPoints.documentsNeedAClass.map(asks => asks())
+const everyDocumentNeedsAClass = computed(
+  () => !platformClassifies.value && modulesAskingForAClass.some(asks => asks.value),
+)
+
 const counterpartyParams = computed(() => {
   const wf = selectedWorkflow.value as Workflow & {
     counterpartyTypeMappings?: string[]
@@ -392,7 +397,7 @@ const documentClassOptions = computed(() => {
     .filter(item => item.label != null)
     .sort((a, b) => a.label.localeCompare(b.label))
 
-  if (documentClassList.length) {
+  if (documentClassList.length && !everyDocumentNeedsAClass.value) {
     documentClassList.unshift({
       label: platformClassifies.value
         ? $t('page.createWorkflow.documentsStep.letUsDecide')
@@ -809,6 +814,19 @@ const singularViolations = computed(() =>
   ),
 )
 
+const acceptedDocumentTypes = computed(() =>
+  (selectedWorkflow.value?.documentClasses ?? [])
+    .filter(documentClass => !documentClass.isOutputDocument && documentClass.displayName)
+    .map(documentClass => documentClass.displayName)
+    .join(', '),
+)
+
+const documentsWithoutAClass = computed(() =>
+  everyDocumentNeedsAClass.value
+    ? (formData.value.documents ?? []).filter(document => !document.class?.trim())
+    : [],
+)
+
 const withoutRulesTouchingHiddenVariables = (definitions: WorkflowVariable[]): WorkflowVariable[] => {
   const hiddenTags = new Set(definitions.filter(variable => variable.isHidden).map(variable => variable.replacementTag.toLowerCase()))
   const namesHidden = (tag: string | null | undefined) => !!tag && hiddenTags.has(tag.trim().toLowerCase())
@@ -869,7 +887,8 @@ const canContinue = computed(() => {
         !uploaderUploading.value &&
         requiredDocumentsSatisfied.value &&
         singularViolations.value.length === 0 &&
-        reRunOutputClassConflicts.value.length === 0
+        reRunOutputClassConflicts.value.length === 0 &&
+        documentsWithoutAClass.value.length === 0
       )
     case 'details':
       return !inputRulesHold.value
@@ -1125,12 +1144,15 @@ const reviewVariables = computed(() => {
 
               <section v-else-if="currentStep.key === 'documents'" class="step-section">
                 <header class="step-heading">
-                  <h2 class="step-title">{{ $t('page.createWorkflow.documentsStep.title') }}</h2>
-                  <p class="step-lead">{{ $t('page.createWorkflow.documentsStep.lead', { name: selectedTypeMeta?.name }) }}</p>
+                  <h2 class="step-title">{{ $t(everyDocumentNeedsAClass ? 'page.createWorkflow.documentsStep.labelTitle' : 'page.createWorkflow.documentsStep.title') }}</h2>
+                  <p class="step-lead">{{ $t(everyDocumentNeedsAClass ? 'page.createWorkflow.documentsStep.labelLead' : 'page.createWorkflow.documentsStep.lead', { name: selectedTypeMeta?.name }) }}</p>
+                  <p v-if="everyDocumentNeedsAClass && acceptedDocumentTypes" class="step-lead" data-testid="accepted-document-types">
+                    {{ $t('page.createWorkflow.documentsStep.acceptedTypes', { types: acceptedDocumentTypes }) }}
+                  </p>
                 </header>
 
                 <div
-                  v-if="requiredDocuments.length > 0 || suggestedDocuments.length > 0 || optionalDocuments.length > 0"
+                  v-if="requiredDocuments.length > 0 || suggestedDocuments.length > 0 || (optionalDocuments.length > 0 && !everyDocumentNeedsAClass)"
                   class="doc-requirements"
                 >
                   <div v-if="requiredDocuments.length > 0" class="doc-req-group">
@@ -1156,7 +1178,7 @@ const reviewVariables = computed(() => {
                     </div>
                   </div>
 
-                  <div v-if="optionalDocuments.length > 0" class="doc-req-group">
+                  <div v-if="optionalDocuments.length > 0 && !everyDocumentNeedsAClass" class="doc-req-group">
                     <button
                       type="button"
                       class="doc-req-toggle"
@@ -1190,6 +1212,7 @@ const reviewVariables = computed(() => {
                         :name="'documents'"
                         :model-value="formData.documents"
                         :document-class-options="documentClassOptions"
+                        :every-document-needs-a-class="everyDocumentNeedsAClass"
                         v-model:request-fields="uploadRequestFields"
                         @update:model-value="onDocumentUpload"
                         @update:uploading="uploaderUploading = $event"
@@ -1212,6 +1235,11 @@ const reviewVariables = computed(() => {
                     </template>
                   </i18n-t>
                   <span v-else>{{ $t('page.createWorkflow.documentsStep.classOptionalNote') }}</span>
+                </div>
+
+                <div v-if="documentsWithoutAClass.length" class="doc-gate-note" data-testid="documents-without-a-class">
+                  <IniaIcon name="circle-info" />
+                  <span>{{ $t('page.createWorkflow.documentsStep.unlabelledNote') }}</span>
                 </div>
 
                 <div v-if="missingRequiredDocuments.length" class="doc-gate-note">

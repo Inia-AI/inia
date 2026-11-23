@@ -1,10 +1,8 @@
 namespace IniaAi.Configuration.Storage;
 
 /// <summary>
-/// Well-known file storage category names.
-/// Categories determine the bucket/container suffix: bucket name = {orgId}-{category}.
-/// When <see cref="MinioStorageSettings.BucketName"/> is set (on-premise mode), all
-/// categories share a single fixed bucket and this suffix convention is bypassed.
+/// Well-known file storage category names. Only a MinIO store without a fixed bucket uses them for a
+/// location (bucket name = {orgId}-{category}); every other store finds a file by its key alone.
 /// </summary>
 public static class StorageCategories
 {
@@ -106,10 +104,16 @@ public class MinioStorageSettings
 }
 
 /// <summary>
-/// AWS S3 storage provider settings
+/// AWS S3 storage provider settings. The provider exists only when <see cref="BucketName"/> is set.
 /// </summary>
 public class S3StorageSettings
 {
+    /// <summary>
+    /// The bucket every file is stored in, under its organization's prefix. The stack creates it;
+    /// the platform never creates a bucket.
+    /// </summary>
+    public string? BucketName { get; set; }
+
     /// <summary>
     /// AWS region for S3 buckets
     /// </summary>
@@ -126,7 +130,8 @@ public class S3StorageSettings
     public string? SecretAccessKey { get; set; }
 
     /// <summary>
-    /// S3 service URL (for S3-compatible services)
+    /// S3 service URL, for an S3-compatible store instead of Amazon S3. With it the client uses
+    /// path-style addresses and sends checksums only where an operation requires one.
     /// </summary>
     public string? ServiceUrl { get; set; }
 }

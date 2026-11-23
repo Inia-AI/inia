@@ -42,6 +42,27 @@ public class TestTimeCeilingTests
     }
 
     [Fact]
+    public void OnCi_ATestThatStartsWithTheProcess_AlsoGetsTheProcessStart()
+    {
+        TimeSpan pastTheCeilingInsideTheAllowance = TestTimeCeilingAttribute.Ceiling + (TestTimeCeilingAttribute.StartupAllowance / 2);
+
+        Assert.Null(TestTimeCeilingAttribute.Violation(pastTheCeilingInsideTheAllowance, Method(typeof(Samples), nameof(Samples.Unmarked)), onCi: true, startedCold: true));
+        Assert.NotNull(TestTimeCeilingAttribute.Violation(pastTheCeilingInsideTheAllowance, Method(typeof(Samples), nameof(Samples.Unmarked)), onCi: true, startedCold: false));
+    }
+
+    [Fact]
+    public void OnCi_ATestThatStartsWithTheProcess_StillFailsPastTheAllowance_AndSaysSo()
+    {
+        TimeSpan pastTheAllowance = TestTimeCeilingAttribute.Ceiling + TestTimeCeilingAttribute.StartupAllowance + TimeSpan.FromSeconds(1);
+
+        string? violation = TestTimeCeilingAttribute.Violation(pastTheAllowance, Method(typeof(Samples), nameof(Samples.Unmarked)), onCi: true, startedCold: true);
+
+        Assert.NotNull(violation);
+        Assert.Contains("start of the test process", violation);
+        Assert.Contains("[SlowTest(", violation);
+    }
+
+    [Fact]
     public void OffCi_NoTestFailsForItsTime()
     {
         Assert.Null(TestTimeCeilingAttribute.Violation(_overTheCeiling, Method(typeof(Samples), nameof(Samples.Unmarked)), onCi: false));

@@ -230,7 +230,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | Asp.Versioning.Mvc.ApiExplorer | MIT |
 | AspNetCore.HealthChecks.UI.Client | Apache-2.0 |
 | AspNetCore.HealthChecks.UI.Core | Apache-2.0 |
-| AspNetCore.HealthChecks.Uris | Apache-2.0 |
 | AutoFixture | MIT |
 | AWSSDK.AppConfigData | Apache-2.0 |
 | AWSSDK.BedrockRuntime | Apache-2.0 |
@@ -263,7 +262,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | ClosedXML | MIT |
 | ClosedXML.Parser | MIT |
 | CodeBeam.MudBlazor.Extensions | MIT |
-| CommunityToolkit.HighPerformance | MIT |
 | Corvus.Regex.Ecma262 | Apache-2.0 |
 | Corvus.Text.Json | Apache-2.0 |
 | Corvus.Text.Json.Validator | Apache-2.0 |
@@ -422,7 +420,6 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | Microsoft.VisualStudio.SolutionPersistence | MIT |
 | Microsoft.Win32.Registry | MIT |
 | MimeKit | MIT |
-| Minio | Apache-2.0 |
 | Mono.TextTemplating | MIT |
 | Moq | BSD-3-Clause |
 | MudBlazor | MIT |
@@ -499,12 +496,10 @@ writes this list, and CI fails when it is out of date or a licence is outside th
 | System.Diagnostics.EventLog | MIT |
 | System.Formats.Cbor | MIT |
 | System.IdentityModel.Tokens.Jwt | MIT |
-| System.IO.Hashing | MIT |
 | System.IO.Packaging | MIT |
 | System.Management | MIT |
 | System.Memory.Data | MIT |
 | System.Numerics.Tensors | MIT |
-| System.Reactive | MIT |
 | System.Runtime.Caching | MIT |
 | System.Security.Cryptography.Pkcs | MIT |
 | System.Security.Cryptography.ProtectedData | MIT |

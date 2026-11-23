@@ -1,700 +1,134 @@
 ---
 type: explanation
 status: current
-description: "The file storage layer: the Database and MinIO providers (S3 implemented, not registered), bucket naming and the fixed-bucket on-premise mode, provider resolution and its fallback, the FileMetadata and Files rows, storage categories, the Database-to-MinIO migration, blob deletion, and the MinIO proxy issue. Read when you configure where a deployment stores files, move files between providers, or debug a file that cannot be read back."
+description: "Where the platform keeps the files customers upload and runs produce: the Database, S3 and MinIO stores, where each puts a file, the startup check that refuses a store not set up, streamed reads and writes, the move of the database's files into another store, deletes with their retries, the daily sweep of files no row points at, and the health checks. Read when you configure where a deployment stores files, move files between stores, or debug a file that cannot be read back or was not deleted."
 ---
 
-# File Storage Architecture
+# File Storage
 
-**On this page:** Overview · Storage Providers · Fixed Bucket Mode (On-Premise) · Multi-Tenant Architecture · Database Schema · Service Interfaces · Service Registration · Storage Categories · Migration Strategy · Performance Considerations · Security · Future Enhancements · Known Issues · Related Documentation
+**On this page:** The stores · Choosing the store · Where a file lives · Streaming · Moving files out of the database · Deleting files · Health checks · Configuration · Database tables · Known issues · Related documentation
 
-The IniaAi Platform implements a flexible, multi-tenant file storage system with support for multiple storage providers. This architecture allows organizations to choose their preferred storage backend while maintaining consistent API interfaces and data isolation.
+Every stored file has a row, `FileMetadata`, that names its store (`StorageProvider`) and its key in that store (`ExternalStoragePath`). A session bundle of a finished agent run has its own row with the same two fields ([Agent Runtime Integration](../services/infrastructure/agent-runtime-integration.md)). Code reaches a store only through `IFileStorageManager`, which picks the store by the name the row records.
 
-## Overview
+## The stores
 
-The file storage system uses a **Strategy Pattern** with provider abstraction, enabling seamless switching between different storage backends:
+| Store | Name in a row and in settings | Where the bytes live | Set up when |
+|---|---|---|---|
+| Database | `Database` | the `Files` table of the UserData database | always |
+| S3 | `S3` | one bucket that the stack creates, under each organization's prefix | `FileStorage:S3:BucketName` is set |
+| MinIO | `Minio` (any letter case) | a MinIO server, in a fixed bucket or a bucket per organization | `FileStorage:MinIO:Endpoint` is set |
 
-```mermaid
-graph TB
-    subgraph "Application Layer"
-        APP[Application Commands/Queries]
-    end
+The S3 and MinIO stores are the same code, `ObjectStorageService`, on the AWS SDK. MinIO speaks the S3 API, so the client only needs its address, path-style addresses and the checksum setting under [Known issues](#known-issues). The same code works with any other S3-compatible server through `FileStorage:S3:ServiceUrl`.
 
-    subgraph "Storage Abstraction"
-        RESOLVER[FileStorageResolver]
-        INTERFACE[IFileStorageService]
-    end
+## Choosing the store
 
-    subgraph "Storage Providers"
-        DB[DatabaseStorageService]
-        MINIO[MinioStorageService]
-        S3[S3StorageService<br/>Disabled]
-    end
+A new file goes to the store `FileStorageManager.GetProviderForTenant` names: the organization's entry in `FileStorage:TenantOverrides`, or else `FileStorage:DefaultProvider`. The file's row records that store, and every later read and delete uses it, so files in several stores work side by side.
 
-    subgraph "Storage Targets"
-        DBTABLE[(Files Table)]
-        MINIOSTORAGE[MinIO Buckets]
-        S3STORAGE[Amazon S3 Buckets]
-    end
+Startup stops when the default store or an override names a store that the platform does not know, or one the deployment does not set up (`FileStorageProviders.ThrowIfMisconfigured`). It also stops when the S3 store has a bucket but no `FileStorage:S3:Region` and no service URL. The message names the missing setting, for example `FileStorage:S3:BucketName`. A row that names a store the deployment does not set up fails its read with *"This file is stored in S3, which this deployment does not set up."* No store falls back to another: a fallback would write a file to one store while its row named a different one.
 
-    subgraph "Metadata Layer"
-        METADATA[(FileMetadata Table)]
-    end
+## Where a file lives
 
-    APP --> RESOLVER
-    RESOLVER --> INTERFACE
-    INTERFACE --> DB
-    INTERFACE --> MINIO
-    INTERFACE --> S3
+A file's key is unique on its own: the id of its `FileMetadata` row, or a generated key for a session bundle. A store that leaves the category out of the location can never misplace a file whose caller names the wrong category.
 
-    DB --> DBTABLE
-    MINIO --> MINIOSTORAGE
-    S3 --> S3STORAGE
+| Store | Bucket | Object key | Category used |
+|---|---|---|---|
+| S3 | the stack's bucket | `{organizationId}/{key}` | no |
+| MinIO with `FileStorage:MinIO:BucketName` | that bucket | `{key}` | no |
+| MinIO without a fixed bucket | `{organizationId}-{category}`, lower-cased, `_` and `.` as `-`, created on the first upload | `{key}` | yes |
 
-    APP --> METADATA
-    DB --> METADATA
-    MINIO --> METADATA
-    S3 --> METADATA
-```
+The bucket per organization stays only so that the files already stored that way remain readable. The categories are the constants in `StorageCategories` (`documents`, `json2xlsx-templates`, `agent-session-bundles`), and a caller can name the wrong one: the cleanup job deletes every file as `documents`, and the move out of the database stores every file as `documents`. So in that layout a read tries the named category's bucket first and then the bucket of each other category, and a delete clears the key in all of them. A self-serve or other multi-tenant deployment uses S3: the platform never creates a bucket there, so its role needs no right to create one.
 
-## Storage Providers
+## Streaming
 
-### 1. Database Storage (Legacy)
+Stores and downloads pass a file as a stream; only code that needs every byte at once holds the whole file.
 
-**Status**: Active (Legacy)
-**Best For**: Small files, existing tenants, development environments
+- **Database.** An upload sends the caller's stream as the insert's parameter (PostgreSQL and SQL Server stream it; SQLite, used only by tests, gets the bytes). A read holds the row open with sequential access and returns the column as a stream, which keeps its database connection until the reader disposes it. A download therefore holds one connection of the pool for as long as the client takes to receive the file, so many slow downloads at once can use up the pool.
+- **S3 and MinIO.** An upload sends the caller's stream with its length. A read returns the store's response stream.
+- **The size before the first byte.** Every read returns a `StoredObjectStream`, which cannot seek but knows the stored size. `RetrieveFileBytesAsync` uses it to allocate the whole file once, at that size, for code that needs every byte (a PDF renderer, the screening of an upload).
+- **Downloads.** `GET api/v1/files/{id}` and the admin app's `FileDownload` endpoints stream the file to the answer with its `Content-Length`. An error in the store after the first byte breaks the answer; it cannot become an error status any more.
 
-**Implementation**: `DatabaseStorageService`
+A store needs a stream's length before it sends it. A stream that can seek, or a `StoredObjectStream` read from another store, says it; `FileStorageManager` buffers any other stream once before the upload.
 
-**How It Works**:
-- Files stored as `byte[]` in the `Files` table
-- Metadata stored in `FileMetadata` table
-- `FileMetadata.ExternalStoragePath` contains the `File.Id` for lookup
-- `FileMetadata.StorageProvider` = `StorageProvider.Database` (enum value 1)
+## Moving files out of the database
 
-**Advantages**:
-- Simple setup, no external dependencies
-- ACID transactions for file operations
-- Backup/restore with database backups
+When the default store is not the database, the API runs `FileStorageMigrationService` once at startup. It moves every file whose row names the database, oldest first, one at a time, into its organization's store: the store its `TenantOverrides` entry names, or else the default store. An organization whose override names the database keeps its files there.
 
-**Limitations**:
-- Performance degrades with large files
-- Database bloat from binary data
-- Scalability concerns for high-volume file storage
-- Expensive to query metadata when loading file bytes
+1. It streams the file from the database into the default store, under the same key, as `documents`. No store but MinIO without a fixed bucket uses the category, and that layout finds a file in any category's bucket.
+2. It points the row at the new store, only if the row still names the database.
+3. It deletes the database copy.
 
-**Usage**:
-```csharp
-// Upload
-var path = await storageService.UploadAsync(
-    organizationId: "org-123",
-    category: StorageCategories.Documents,
-    key: fileId,
-    content: fileStream,
-    contentType: "application/pdf"
-);
+A file that fails is logged with its id and passed over, and the next start tries it again; a row with no storage key is passed over. The service waits 100 ms after each file so the database keeps room for the app's own work. Logs: `Starting file storage migration service - Database -> {Provider}`, `Migration progress: …` every 10 files, and `File storage migration completed! …` with the counts.
 
-// Download
-var stream = await storageService.DownloadAsync(
-    organizationId: "org-123",
-    category: StorageCategories.Documents,
-    key: fileId
-);
-```
+A crash between two steps leaves a copy that no row points at, which the [sweep](#the-sweep) removes.
 
----
+It then settles the database copies of files whose row names S3 or MinIO. Such a copy comes from a release older than this design, which recorded a store it did not have and wrote the bytes to the database, or from that release's move to MinIO, which kept the copy. A copy the row's store lacks is stored there first; then the database copy goes, unless a row of the Database store names it too. The log reads `Settled {CopyCount} database copies of files recorded in an object store`.
 
-### 2. MinIO Storage (Active)
+## Deleting files
 
-**Status**: Production-Ready
-**Best For**: Self-hosted deployments, S3-compatible workflows, cost-effective scaling
+A delete removes the rows first and then the stored file, after the rows commit: a file whose rows are gone cannot be read, and a document never becomes undeletable because its store failed. The cleanup job (`SoftDeleteCleanupService`) deletes the stored files of the rows it purges in the same way ([Soft-Delete Cleanup](../../operations/soft-delete-cleanup.md)).
 
-**Implementation**: `MinioStorageService`
+### Retries of a failed delete
 
-**How It Works**:
-- Files stored in MinIO buckets with naming: `{organizationId}-{category}`
-- Metadata stored in `FileMetadata` table
-- `FileMetadata.ExternalStoragePath` contains the object key/path in MinIO
-- `FileMetadata.StorageProvider` = `StorageProvider.MinIO` (enum value 3)
-- Automatic bucket creation on first upload
-- Upload verification via ETag validation
+A caller whose rows are already gone deletes the stored file through `FileStorageManager.ReleaseFileAsync`. When the store refuses, it records the file in the `StoredObjectDeletions` table and returns the failure, which the caller logs. A caller that keeps its row until the file is gone (a session bundle being released) uses `DeleteFileAsync`, which throws, and retries on its own. Every 15 minutes the API retries the deletes that are due (`StoredObjectDeletionRetryBackgroundService`): the first retry waits 15 minutes, and each failure doubles the wait, up to a day. From the 8th failed attempt on, each failure logs `StoredObjectDeletionStuck` with the store and the key, which an alarm can read; the retries go on.
 
-**Bucket Naming**:
-```
-Organization ID: "Contoso-Corp"
-Category: "Documents"
-Bucket Name: "contoso-corp-documents"
+### The sweep
 
-Organization ID: "Acme.Inc"
-Category: "Reports"
-Bucket Name: "acme-inc-reports"
-```
+Once a day the API removes stored files that no row points at (`StoredObjectSweep`), from the stores the platform owns:
 
-Both parts are lower-cased, and `_` and `.` become `-` (`Normalize` in `MinioStorageService`).
+- **Database:** a row of the `Files` table whose key no `FileMetadata` row and no session bundle holds, in batches of 500.
+- **S3:** an object of the stack's bucket whose key no `FileMetadata` row and no session bundle holds.
 
-**Category Mappings** (optional, `FileStorage:StorageBuckets` in `appsettings.json`): a category with an entry uses the mapped name as its bucket suffix, and every other category uses its own name. The categories are the [storage categories](#storage-categories):
-```json
-{
-  "FileStorage": {
-    "StorageBuckets": {
-      "documents": "docs",
-      "json2xlsx-templates": "templates"
-    }
-  }
-}
-```
+A row keeps its file whatever store it records: keys are unique across stores, and a row an older release recorded in one store can hold its bytes in another. The original of a PDF the platform repaired on upload is one such file with no row: the row points at the repaired copy, so the sweep removes the original a day after the upload.
 
-**Advantages**:
-- S3-compatible API for easy migration
-- Organization-level bucket isolation
-- Self-hosted control and data sovereignty
-- High performance for large files
-- Metadata queries don't load file bytes
+A row that is deleted but not purged yet still counts, so its file stays until the cleanup job purges it. A file younger than a day is left, so an upload whose row is not saved yet survives. The sweep logs `Stored file sweep removed {DatabaseCount} database copies and {BucketCount} bucket objects that no row points at`.
 
-**Limitations**:
-- Requires MinIO server infrastructure
-- Additional operational complexity
-- Network dependency for file access
+A MinIO bucket is not swept: the infrastructure team of the deployment provides it, and it can hold more than the platform's files.
 
-**Configuration**:
-```json
-{
-  "FileStorage": {
-    "DefaultProvider": "Minio",
-    "MinIO": {
-      "Endpoint": "localhost:9000",
-      "AccessKey": "minioadmin",
-      "SecretKey": "minioadmin",
-      "UseSSL": false,
-      "Region": null,
-      "BucketName": null
-    }
-  }
-}
-```
+## Health checks
 
-See [Fixed Bucket Mode (On-Premise)](#fixed-bucket-mode-on-premise) for the `BucketName` option.
+`/health` checks each object store that is set up, `S3 Storage` and `MinIO Storage`, with `ObjectStoreHealthCheck`, through the store's own client: it lists at most one object of the store's bucket, or the buckets when MinIO keeps a bucket per organization. So the check needs the same list right as the [sweep](#the-sweep). A store that does not answer within 3 seconds, or refuses, reports Degraded, which still answers HTTP 200: it shows on the health page without taking the host out of a load balancer, and every request that touches no file still works. The load balancer probes every 30 seconds, so an answer stands for a minute. The other checks are on [Multi-Tenant Deployment](../multi-tenant/deployment.md).
 
-**Usage**:
-```csharp
-// Upload creates bucket if needed
-var path = await storageService.UploadAsync(
-    organizationId: "contoso-corp",
-    category: StorageCategories.Documents,
-    key: "report-2024.pdf",
-    content: fileStream,
-    contentType: "application/pdf"
-);
-// Result: File stored in "contoso-corp-documents" bucket
+## Configuration
 
-// Download retrieves from organization-specific bucket
-var stream = await storageService.DownloadAsync(
-    organizationId: "contoso-corp",
-    category: StorageCategories.Documents,
-    key: "report-2024.pdf"
-);
-```
+Every key is under `FileStorage`, listed on [Application Configuration](../../operations/application-configuration.md). A deployment on the stack's bucket sets three:
 
----
-
-### 3. Amazon S3 Storage (Implemented, Disabled)
-
-**Status**: Implemented but not registered: the keyed registration of `S3StorageService` is commented out in `AddInfrastructure` and in the admin app's `ServicesConfigurator`. A deployment that sets `DefaultProvider` (or a tenant override) to `S3` gets the Database provider: the resolver logs `Failed to resolve storage provider 'S3': …` and falls back ([Fallback Strategy](#fallback-strategy)).
-
-**Implementation**: `S3StorageService` (`platform/IniaAi.Infrastructure/Storage/`)
-
-**What the class does**:
-- One bucket per organization and category, with an `org-` prefix (e.g., `org-contoso-corp-docs`), created on first upload (`EnsureBucketExistsAsync`)
-- Reads its category mappings from a top-level `StorageBuckets` section, not from `FileStorage:StorageBuckets`
-- Reports a missing object as `FileNotFoundException`, as the other providers do
-- Server-side encryption, lifecycle policies and CloudFront are not configured by the platform
-
-> [!WARNING]
-> S3 bucket naming uses an `org-` prefix (e.g., `org-contoso-corp-docs`), unlike MinIO which uses no prefix (e.g., `contoso-corp-docs`). This is intentional to avoid S3 bucket naming conflicts.
-
-**Configuration**:
 ```json
 {
   "FileStorage": {
     "DefaultProvider": "S3",
     "S3": {
-      "Region": "us-east-1",
-      "AccessKeyId": null,
-      "SecretAccessKey": null,
-      "ServiceUrl": null
+      "BucketName": "files-bucket-example",
+      "Region": "eu-west-2"
     }
   }
 }
 ```
 
----
+The keys are read once, at startup. On AWS and Azure the platform loads them, with the other settings, from the deployment's settings store ([Cloud-mode configuration sources](../../operations/application-configuration.md#cloud-mode-configuration-sources)).
 
-## Fixed Bucket Mode (On-Premise)
+## Database tables
 
-For on-premise / single-tenant deployments where the customer manages their own infrastructure, MinIO can be configured to use a single pre-created bucket instead of the default per-tenant bucket pattern.
+The UserData database holds the three tables; every column is on the [UserData database reference](../../reference/database/user-data-database.md).
 
-### When to Use
+- **`FileMetadata`:** one row per stored file, for every store: the organization, the name and extension, the size, `StorageProvider` (`NotDefined` 0, `Database` 1, `S3` 2, `MinIO` 3) and `ExternalStoragePath`, the key in that store. `NotDefined` reads as the database.
+- **`Files`:** the bytes of the files the Database store holds, by key (`Id`).
+- **`StoredObjectDeletions`:** a file whose rows are gone and whose delete failed, until a retry deletes it.
 
-- **On-premise deployments** where the customer's infrastructure team provisions and manages storage
-- **Single-tenant instances** where multi-tenancy is not required
-- **Environments with restricted bucket creation** where the application cannot create buckets at runtime (e.g., locked-down MinIO/S3-compatible storage with IAM policies that deny `s3:CreateBucket`)
+## Known issues
 
-### Configuration
+### .NET does not match a CIDR range in NO_PROXY
 
-Set the `BucketName` property in `MinIO` settings:
+.NET's `HttpClient` matches `NO_PROXY` entries only as literal host names, so a MinIO endpoint given as an internal IP address goes to a corporate proxy, which answers `502 Bad Gateway` or fails to resolve it. The MinIO client, which its health check uses too, skips the system proxy (`UseProxy = false`): MinIO is internal infrastructure, so no proxy is ever needed. To confirm the cause, check the proxy variables in the container and `curl` the MinIO health endpoint from it: curl matches CIDR ranges, so curl works where the app fails.
 
-```json
-{
-  "FileStorage": {
-    "DefaultProvider": "Minio",
-    "MinIO": {
-      "Endpoint": "minio.customer.local:9000",
-      "AccessKey": "...",
-      "SecretKey": "...",
-      "UseSSL": true,
-      "BucketName": "inia-platform-files"
-    }
-  }
-}
-```
+- [dotnet/runtime HttpEnvironmentProxy source](https://github.com/dotnet/runtime/blob/main/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpEnvironmentProxy.cs): string matching only
+- [HttpClient.DefaultProxy docs](https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient.defaultproxy)
 
-When `BucketName` is set, `ResolveBucketName()` returns this fixed value for all operations, bypassing the `{orgId}-{category}` naming convention. The bucket must already exist — the application will still auto-create it if missing, but on-premise environments typically pre-provision buckets.
+### S3-compatible servers and the SDK's checksums
 
-### Risks and Limitations
+The AWS SDK sends a CRC32 checksum with every upload and checks one on every download ([Data Integrity Protections for Amazon S3](https://docs.aws.amazon.com/sdkref/latest/guide/feature-dataintegrity.html)). Some S3-compatible servers reject those requests, so a client with a service URL, and the MinIO client, compute and check checksums only where an operation requires one. Amazon S3 itself keeps the default.
 
-> [!CAUTION]
-> **Not for shared multi-tenant deployments**
->
-> When `BucketName` is set, **per-organization bucket isolation is disabled**. All tenants' files are stored in the same bucket, with only the object key (path) distinguishing them. This is acceptable for single-tenant on-premise deployments where the customer is the sole tenant and is responsible for their own data protection.
->
-> **Do not enable this in shared multi-tenant environments.** Misconfiguration could lead to data co-mingling across organizations.
+## Related documentation
 
-- Category-based bucket separation (`documents`, `json2xlsx-templates`) is also collapsed into the single bucket
-- The `StorageBuckets` category mapping configuration is ignored when a fixed bucket is set
-- Object keys remain unchanged, so files from different categories coexist in the same bucket namespace
-
-### Deployment Responsibility
-
-In on-premise mode, the customer is responsible for:
-- **Bucket provisioning**: Creating the bucket before application deployment
-- **Access control**: Configuring MinIO/S3 IAM policies for the bucket
-- **Backup and disaster recovery**: Ensuring bucket data is backed up
-- **Data protection**: All regulatory and compliance obligations for stored data
-
----
-
-## Multi-Tenant Architecture
-
-### Organization-Based Isolation
-
-Each organization's files are isolated through:
-
-1. **Bucket/Table Scoping**:
-   - MinIO/S3: Separate buckets per organization
-   - Database: `OrganizationId` foreign key on `Files` and `FileMetadata`
-
-2. **Category-Based Segregation**:
-   - Documents, reports, embeddings stored in separate buckets/namespaces
-   - Configurable category-to-bucket mappings
-
-3. **Metadata-First Design**:
-   - All file metadata stored in `FileMetadata` table
-   - Fast queries without loading binary data
-   - Storage provider tracked per file
-
-### Storage Provider Selection
-
-**Current Implementation** (via `appsettings.json`): `FileStorageManager.GetProviderForTenant` reads `FileStorage:TenantOverrides` for the organization id and falls back to `DefaultProvider`. A provider name other than `Minio`/`MinIO`, `S3` or `Database` maps to `Database`.
-```json
-{
-  "FileStorage": {
-    "DefaultProvider": "Minio",
-    "TenantOverrides": {
-      "org-legacy-client": "Database"
-    }
-  }
-}
-```
-
-**Planned Implementation** (database-driven):
-- Add `StorageProvider` property to `Organization` entity
-- UI for administrators to configure storage per organization
-- Migration process for existing files
-- Automatic provider resolution based on organization settings
-
-### Fallback Strategy
-
-The `FileStorageResolver` implements automatic fallback. A provider that is not registered — `S3` always, `Minio` when `FileStorage:MinIO:Endpoint` is empty — resolves to the Database provider with the warning `Failed to resolve storage provider '{Name}': …`. A file whose `FileMetadata` says MinIO is then read from the Database provider and fails, so keep MinIO configured on every host while any row points at it. Simplified:
-
-```csharp
-public IFileStorageService Resolve(string providerName)
-{
-    try
-    {
-        return _serviceProvider.GetRequiredKeyedService<IFileStorageService>(providerName);
-    }
-    catch (InvalidOperationException)
-    {
-        // Fallback to Database if requested provider unavailable
-        return _serviceProvider.GetRequiredKeyedService<IFileStorageService>("Database");
-    }
-}
-```
-
----
-
-## Database Schema
-
-Both the `FileMetadata` and `Files` tables live in the **`UserDataDbContext`** (`DbSet<FileMetadata>`, `DbSet<File>`) under the **`UserData`** schema. Every column, with types and indexes, is on the [UserData database reference](../../reference/database/user-data-database.md); this section names what the storage layer relies on.
-
-### FileMetadata Table
-
-**Purpose**: One row per stored file, for all storage providers: `OrganizationId` (foreign key to `Organizations`), `DocumentId`, `Name` (up to 450 characters, without the extension), `Extension` (up to 10), `SizeBytes`, `StorageProvider` (`NotDefined` 0, `Database` 1, `S3` 2, `MinIO` 3), `ExternalStoragePath` (up to 36 characters), and the soft-delete and audit columns.
-
-**Key Fields**:
-- `StorageProvider`: Enum indicating which provider stores the file
-- `ExternalStoragePath`:
-  - Database: Contains `File.Id` to lookup blob data
-  - MinIO/S3: Contains object key/path in bucket
-- `Name` + `Extension`: Separated for easier querying
-- `SizeBytes`: File size for quota management
-
-### Files Table (Legacy)
-
-**Purpose**: Stores file binary data for Database storage provider: `Id`, `Bytes` (`bytea` on PostgreSQL), and the columns `File` marks "to be removed in future version" (`OrganizationId`, `DocumentId`, `Name`, `Extension`, `SizeBytes`), plus the soft-delete and audit columns.
-
-**Usage**:
-- Only used when `FileMetadata.StorageProvider = Database`
-- `FileMetadata.ExternalStoragePath` references `Files.Id`
-- Performance degrades with large blobs
-
----
-
-## Service Interfaces
-
-### IFileStorageService
-
-**Purpose**: Abstraction for all storage providers
-
-```csharp
-public interface IFileStorageService
-{
-    Task<string> UploadAsync(
-        string organizationId,
-        string category,
-        string key,
-        Stream content,
-        string contentType
-    );
-
-    Task<Stream> DownloadAsync(
-        string organizationId,
-        string category,
-        string key
-    );
-
-    Task DeleteAsync(
-        string organizationId,
-        string category,
-        string key
-    );
-}
-```
-
-### IFileStorageResolver
-
-**Purpose**: Resolves storage provider by name or enum
-
-```csharp
-public interface IFileStorageResolver
-{
-    IFileStorageService Resolve(string providerName);
-    IFileStorageService Resolve(StorageProvider provider);
-}
-```
-
-**Usage**:
-```csharp
-// Resolve by name
-var storage = _resolver.Resolve("Minio");
-
-// Resolve by enum
-var storage = _resolver.Resolve(StorageProvider.MinIO);
-
-// Resolve from FileMetadata
-var storage = _resolver.Resolve(fileMetadata.StorageProvider);
-```
-
----
-
-## Service Registration
-
-**File**: `platform/IniaAi.Infrastructure/InfrastructureServiceRegistration.cs`
-
-```csharp
-// Configure MinIO client
-var minioSettings = configuration.GetSection("FileStorage:MinIO").Get<MinioStorageSettings>();
-if (minioSettings != null && !string.IsNullOrEmpty(minioSettings.Endpoint))
-{
-    services.AddSingleton<IMinioClient>(sp =>
-    {
-        // MinIO client expects endpoint without protocol prefix
-        var endpoint = minioSettings.Endpoint;
-        if (endpoint.StartsWith("http://"))
-            endpoint = endpoint.Substring(7);
-        else if (endpoint.StartsWith("https://"))
-            endpoint = endpoint.Substring(8);
-
-        // Bypass system proxy — MinIO is always internal infrastructure.
-        // .NET doesn't support CIDR notation in NO_PROXY (see Known Issues).
-        var httpClient = new HttpClient(new HttpClientHandler { UseProxy = false });
-
-        var client = new MinioClient()
-            .WithEndpoint(endpoint)
-            .WithCredentials(minioSettings.AccessKey, minioSettings.SecretKey)
-            .WithHttpClient(httpClient);
-
-        if (minioSettings.UseSSL)
-            client = client.WithSSL();
-        if (!string.IsNullOrEmpty(minioSettings.Region))
-            client = client.WithRegion(minioSettings.Region);
-
-        return client.Build();
-    });
-}
-
-// Register storage services with keyed services
-services.AddKeyedSingleton<IFileStorageService, DatabaseStorageService>("Database");
-
-if (minioSettings != null && !string.IsNullOrEmpty(minioSettings.Endpoint))
-    services.AddKeyedSingleton<IFileStorageService, MinioStorageService>("Minio");
-
-// Register resolver and manager
-services.AddSingleton<IFileStorageResolver, FileStorageResolver>();
-services.AddSingleton<IFileStorageManager, FileStorageManager>();
-```
-
----
-
-## Storage Categories
-
-File categories determine the bucket suffix in MinIO/S3. All well-known categories are defined as constants in `StorageCategories` (`platform/IniaAi.Configuration/Storage/FileStorageSettings.cs`):
-
-```csharp
-public static class StorageCategories
-{
-    public const string Documents = "documents";                       // User-uploaded and processed documents
-    public const string Json2XlsxTemplates = "json2xlsx-templates";    // Json2Xlsx block templates (Excel or Word)
-    public const string AgentSessionBundles = "agent-session-bundles"; // Session bundles of finished agent runs
-}
-```
-
-Where a session bundle is stored, and why, is on [Agent Runtime Integration](../services/infrastructure/agent-runtime-integration.md).
-
-All code that stores or retrieves files **must** use these constants instead of string literals. This prevents category mismatches between upload and download paths (which would result in "bucket not found" errors).
-
----
-
-## Migration Strategy
-
-### Database to MinIO Migration
-
-**Implementation**: `FileStorageMigrationService` (`platform/IniaAi.Infrastructure/Services/FileStorageMigrationService.cs`)
-
-The migration runs as a `BackgroundService` that is registered on startup **only when `FileStorage.DefaultProvider` equals `"MinIO"`** (case-insensitive; the gate lives in `platform/IniaAi.WebApi/DependencyInjection.cs`, `AddPresentation`). Any other provider value — including `Database` — means the service is never registered.
-
-**How to trigger**:
-1. Set `FileStorage.DefaultProvider` to `"Minio"` in `appsettings.json`
-2. Restart the application — the migration service starts automatically
-3. Monitor logs for progress
-
-**How it works**:
-1. Queries `FileMetadata` where `StorageProvider == Database`, one file at a time (oldest first)
-2. Loads the file bytes from the `Files` table via `ExternalStoragePath`
-3. Uploads to MinIO via `FileStorageManager.StoreFileAsync` using the `StorageCategories.Documents` category
-4. Updates `FileMetadata.StorageProvider` to `MinIO` and `ExternalStoragePath` to the new key
-5. Original bytes remain in the `Files` table (dual mode) — the system continues to work during migration
-6. 100ms delay between files to avoid overwhelming the system
-7. Progress logged every 10 files
-
-**Registration** (`platform/IniaAi.WebApi/DependencyInjection.cs`):
-```csharp
-if (fileStorageSection?.DefaultProvider.Equals("MinIO", StringComparison.OrdinalIgnoreCase) == true)
-{
-    services.AddHostedService<FileStorageMigrationService>();
-}
-```
-
-> [!WARNING]
-> The `DefaultProvider` comparison is case-insensitive. Both `"Minio"` and `"MinIO"` will trigger the migration.
-
-**Log output example**:
-```
-[INF] Starting file storage migration service - Database -> Minio
-[INF] Starting migration scan for files with StorageProvider = Database
-[INF] Migration progress: 10 processed | 10 migrated | 0 skipped | 0 errors | Avg: 0.15s/file
-[INF] File storage migration completed! Total: 12 | Migrated: 12 | Skipped: 0 | Errors: 0 | Success Rate: 100.0% | Duration: 00:00:01.93
-[INF] File storage migration service completed successfully
-```
-
-**After migration**:
-- All `FileMetadata` records point to MinIO (`StorageProvider = 3`)
-- Files are accessible through the normal download paths
-- Original database blobs are untouched (can be cleaned up later if desired)
-
----
-
-## Performance Considerations
-
-### Metadata-First Architecture
-
-**Problem**: Loading file bytes when only metadata needed
-
-**Solution**:
-- Separate `FileMetadata` and `Files` tables
-- Query metadata without loading binary data
-- Lazy-load bytes only when required
-
-**Example**:
-```csharp
-// Fast: Query metadata only
-var files = await _unitOfWork.FileMetadata
-    .GetByOrganizationAsync(organizationId);
-// Returns: Name, Extension, SizeBytes, CreatedAt (no binary data)
-
-// Slow: Load bytes for specific file
-var fileMetadata = files.First();
-var storage = _resolver.Resolve(fileMetadata.StorageProvider);
-var stream = await storage.DownloadAsync(
-    organizationId,
-    category,
-    key: fileMetadata.ExternalStoragePath
-);
-```
-
-### Content Type Detection
-
-**Implementation**: The `FileMetadata.ContentType` property serves the type of the document the file belongs to, which the intake gate detected from the bytes ([file content inspection](../document-processing/file-content-inspector.md#where-it-runs)). Only a file whose document is not loaded falls back to the type its extension names (`Utils.DetermineMediaTypeFromExtension`):
-
-```csharp
-public string ContentType
-{
-    get
-    {
-        return (Document?.MediaType ?? Utils.DetermineMediaTypeFromExtension(Extension)).ToContentType();
-    }
-}
-```
-
-### Upload Verification
-
-**MinIO Implementation**:
-```csharp
-// 1. Upload file
-await _minioClient.PutObjectAsync(putObjectArgs);
-
-// 2. Verify upload by checking ETag
-var objectStat = await _minioClient.StatObjectAsync(statObjectArgs);
-if (string.IsNullOrEmpty(objectStat.ETag))
-{
-    throw new InvalidOperationException("Upload verification failed - no ETag found");
-}
-```
-
----
-
-## Security
-
-### Data Isolation
-
-- **MinIO/S3**: Separate buckets per organization, unless a [fixed bucket](#fixed-bucket-mode-on-premise) is set
-- **Database**: the `OrganizationId` column on each row; the application filters by it. There is no database row-level security ([Multi-Tenant data isolation](../multi-tenant/data-isolation.md))
-- **API**: Organization context enforced in all file operations
-
-### Access Control
-
-- Files accessible only through authenticated API
-- Organization membership verified before file access
-- No direct bucket/table access from frontend
-
-### Secrets Management
-
-- The MinIO access key and secret key are configuration values (`FileStorage:MinIO:AccessKey`, `SecretKey`). On AWS and Azure the platform loads them, with the other secrets, from AWS Secrets Manager or Azure Key Vault into the configuration at startup ([Cloud-mode configuration sources](../../operations/application-configuration.md#cloud-mode-configuration-sources)); they are read once, when the MinIO client is built.
-
----
-
-## Future Enhancements
-
-### Planned Features
-
-1. **Organization-Level Storage Selection**
-   - Add `StorageProvider` to `Organization` entity
-   - UI for administrators to configure storage
-   - Per-organization storage quotas
-
-2. **Amazon S3 Provider Enablement**
-   - Enable existing `S3StorageService` in DI registration
-   - End-to-end testing with AWS S3
-   - CloudFront integration for CDN
-
-3. **Storage Blob Cleanup**
-   - After migration is confirmed successful, clean up `Files` table blobs (currently kept in dual mode)
-
-A soft-deleted file's blob is not orphaned for good: `SoftDeleteCleanupService` hard-deletes soft-deleted rows past the retention window and then deletes each file from its provider, after the database transaction commits. A blob it fails to delete is logged (`SoftDeleteCleanup: Org {OrgId} — Failed to delete file …`) and left behind ([Soft-Delete Cleanup](../../operations/soft-delete-cleanup.md)).
-
-4. **File Versioning**
-   - Track file version history
-   - Restore previous versions
-   - Version-aware storage paths
-
-5. **Storage Analytics**
-   - Per-organization storage usage metrics
-   - Cost analysis and reporting
-   - Storage provider performance monitoring
-
-6. **Automatic Tiering**
-   - Move old files to cheaper storage (S3 Glacier)
-   - Lifecycle policies based on access patterns
-   - Automatic cleanup of deleted files
-
----
-
-## Known Issues
-
-### .NET HttpClient ignores CIDR notation in NO_PROXY
-
-**Affected environments**: Corporate/on-prem deployments with HTTP proxy (e.g., Zscaler)
-
-**Symptoms**: MinIO health check returns `502 Bad Gateway` from the proxy server. MinIO operations fail with DNS errors. `curl` from the same container works fine.
-
-**Root cause**: .NET's `HttpClient` does not support CIDR notation (e.g., `10.0.0.0/8`) in the `NO_PROXY` environment variable. It only performs literal string matching against hostnames. When MinIO is configured with a direct IP address (e.g., `http://<minio-internal-ip>:9000`), .NET cannot match it against the CIDR range and incorrectly routes the request through the corporate proxy.
-
-Tools like `curl` (v7.86.0+) support CIDR in `NO_PROXY`, which is why they work while .NET doesn't.
-
-**Fix**: Both the MinIO SDK client and the health check `HttpClient` are configured with `UseProxy = false`. Since MinIO is always internal infrastructure, proxy is never needed for these connections. This is a no-op in environments without a proxy.
-
-**Diagnosis steps**:
-
-1. Check proxy environment variables inside the container:
-   ```bash
-   kubectl exec -it <pod-name> -n <namespace> -- env | grep -i proxy
-   ```
-
-2. Test direct connectivity with curl:
-   ```bash
-   kubectl exec -it <pod-name> -n <namespace> -- curl -v http://<minio-endpoint>/minio/health/ready
-   ```
-
-3. If curl returns `200 OK` but the app health check fails, the issue is confirmed as the .NET proxy bypass bug.
-
-**References**:
-- [dotnet/runtime HttpEnvironmentProxy source](https://github.com/dotnet/runtime/blob/main/src/libraries/System.Net.Http/src/System/Net/Http/SocketsHttpHandler/HttpEnvironmentProxy.cs) — string-only matching, no CIDR support
-- [HttpClient.DefaultProxy docs](https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient.defaultproxy) — confirms NO_PROXY only supports hostnames
-
-
----
-
-## Related Documentation
-
-- [C4 Container Diagram](../c4-model/container.md) - File storage in system architecture
-- [Multi-Tenant Architecture](../multi-tenant/index.md) - Tenant isolation patterns
+- [C4 Container Diagram](../c4-model/container.md): file storage in the system
+- [Multi-Tenant Architecture](../multi-tenant/index.md): tenant isolation
+- [Soft-Delete Cleanup](../../operations/soft-delete-cleanup.md): when deleted rows and their files are purged

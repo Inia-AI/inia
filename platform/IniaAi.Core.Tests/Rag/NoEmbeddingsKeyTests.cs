@@ -234,7 +234,7 @@ public class NoEmbeddingsKeyTests : IClassFixture<WorkflowsFixture<NoEmbeddingsK
         for (int index = 0; index < texts.Length; index++)
         {
             string text = texts[index] ?? $"Page {index + 1}";
-            List<double[]> vectors = await embeddings.GetResponseAsync(text, TestContext.Current.CancellationToken);
+            List<double[]> vectors = (await embeddings.EmbedAsync([text], TestContext.Current.CancellationToken)).Vectors;
             _ = new Page(document, index + 1, index + 1)
             {
                 RawText = text,

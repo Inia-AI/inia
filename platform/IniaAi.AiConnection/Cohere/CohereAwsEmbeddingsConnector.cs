@@ -4,6 +4,7 @@ using Amazon.Util;
 using IniaAi.AiConnection.Abstractions;
 using IniaAi.AiConnection.AwsBedrock;
 using IniaAi.AiConnection.Cohere.ApiModel.Embeddings;
+using IniaAi.AiConnection.Common;
 using IniaAi.AiConnection.HttpHandling;
 using IniaAi.Common.Extensions;
 using IniaAi.Configuration;
@@ -34,7 +35,9 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
 {
     private readonly ILogger<IEmbeddingsConnector> _logger;
     private readonly Lazy<AmazonBedrockRuntimeClient> _bedrockClient;
+    private readonly BedrockInputTokenCounts _inputTokenCounts = new();
     private readonly PlatformSettings _platformSettings;
+    private readonly AiModel _embeddingsModel;
 
     /// <summary>
     /// Polly resilience pipeline for handling transient AWS Bedrock failures.
@@ -42,15 +45,11 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
     /// </summary>
     private readonly ResiliencePipeline<InvokeModelResponse> _resiliencePipeline;
 
-    public int TotalTokens { get; private set; }
+    public string Provider => ModelProviders.AWS_BEDROCK;
 
-    public string ModelName => $"Cohere: {GetEmbeddingsModel()}";
+    public string ModelName => $"Cohere: {_embeddingsModel}";
 
-    public string ModelId =>
-        // Return the actual API model ID (EnumMember value) for pricing lookup
-        // For AWS Bedrock models like "global.cohere.embed-v4:0", ModelIdNormalizer will handle normalization
-        GetEmbeddingsModel().GetEnumMember()
-                ?? GetEmbeddingsModel().ToString();
+    public string ModelId => _embeddingsModel.GetEnumMember();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CohereAwsEmbeddingsConnector"/> class.
@@ -70,6 +69,7 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
     {
         _logger = logger;
         _platformSettings = options.Value;
+        _embeddingsModel = CohereEmbeddingsRoute.BedrockForm(_platformSettings.Cohere.EmbeddingsModel);
 
         // Create retry policy from settings for both HTTP client factory and resilience pipeline.
         var retryPolicy = new RetryPolicy(_platformSettings.Cohere);
@@ -77,33 +77,22 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
         // The Bedrock client gets TCP keep-alive for long-running requests.
         // TCP keep-alive prevents network intermediaries from dropping idle connections.
         // Note: Retry logic is NOT in the HTTP client - it's handled at the application level.
-        _bedrockClient = BedrockHttpClientFactory.LazyRuntimeClient(retryPolicy, logger);
+        _bedrockClient = BedrockHttpClientFactory.LazyRuntimeClient(retryPolicy, logger, _inputTokenCounts);
 
         // Create resilience pipeline for handling transient failures with fresh signatures on each retry.
         // This operates above the AWS SDK signing layer, ensuring each retry gets a fresh SigV4 signature.
         _resiliencePipeline = BedrockResiliencePipelineFactory.Create(logger, retryPolicy);
     }
 
-    public async Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default)
-    {
-        var requestBody = new RequestBody(document)
-        {
-            Model = GetEmbeddingsModel(),
-            OutputDimension = _platformSettings.Cohere.EmbeddingsOutputDimension
-        };
-
-        return await GetResponseAsync(requestBody, cancellationToken);
-    }
-
-    public Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default)
+    public Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default)
     {
         var requestBody = new RequestBody(documents)
         {
-            Model = GetEmbeddingsModel(),
+            Model = _embeddingsModel,
             OutputDimension = _platformSettings.Cohere.EmbeddingsOutputDimension
         };
 
-        return GetResponseAsync(requestBody, cancellationToken);
+        return EmbedAsync(requestBody, cancellationToken);
     }
 
     /// <summary>
@@ -119,7 +108,7 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
     /// creates a new request with a fresh SigV4 signature.
     /// </para>
     /// </remarks>
-    private async Task<List<double[]>> GetResponseAsync(
+    private async Task<EmbeddingsAnswer> EmbedAsync(
         RequestBody requestBody,
         CancellationToken cancellationToken = default)
     {
@@ -163,29 +152,29 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
             {
                 case AccessDeniedException ade:
                     _logger.LogError(ade, "Access denied when calling Cohere embeddings API");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
                 case ResourceNotFoundException rne:
                     _logger.LogError(rne, "Model not found when calling Cohere embeddings API");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
                 case ValidationException ve:
                     _logger.LogError(ve, "Invalid request when calling Cohere embeddings API");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
                 case ThrottlingException te:
                     // If we get here, all retries have been exhausted
                     _logger.LogError(te, "Rate limit exceeded when calling Cohere embeddings API (all retries exhausted)");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
                 case ServiceUnavailableException sue:
                     // If we get here, all retries have been exhausted
                     _logger.LogError(sue, "Service unavailable when calling Cohere embeddings API (all retries exhausted)");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
                 case InternalServerException ise:
                     // If we get here, all retries have been exhausted
                     _logger.LogError(ise, "Internal server error when calling Cohere embeddings API (all retries exhausted)");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
                 case ModelTimeoutException mte:
                     // If we get here, all retries have been exhausted
                     _logger.LogError(mte, "Model timeout when calling Cohere embeddings API (all retries exhausted)");
-                    return [];
+                    return EmbeddingsAnswer.Empty;
             }
 
             throw;
@@ -201,40 +190,19 @@ public class CohereAwsEmbeddingsConnector : IEmbeddingsConnector
                 "Error response from Cohere embeddings API. Status code: {statusCode}, Response: {error}",
                 response.HttpStatusCode, response.HttpStatusCode is System.Net.HttpStatusCode.OK ? $"{responseJson?.Length ?? 0} characters" : responseJson);
 
-            return [];
+            return EmbeddingsAnswer.Empty;
         }
 
-        // Use BilledUnits for v2 API (primary), with Tokens as fallback for older API versions
-        int inputTokens = successResponse.Meta.BilledUnits.InputTokens > 0
-            ? successResponse.Meta.BilledUnits.InputTokens
-            : successResponse.Meta.Tokens.InputTokens;
-        int outputTokens = successResponse.Meta.BilledUnits.OutputTokens > 0
-            ? successResponse.Meta.BilledUnits.OutputTokens
-            : successResponse.Meta.Tokens.OutputTokens;
-        TotalTokens += inputTokens + outputTokens;
+        int inputTokens = _inputTokenCounts.Of(response);
 
         _logger.LogDebug(
-            "Cohere embeddings API usage. Total tokens: {totalTokens} (input: {inputTokens}, output: {outputTokens})",
-            TotalTokens, inputTokens, outputTokens);
+            "Cohere embeddings API usage. Input tokens: {inputTokens}",
+            inputTokens);
 
         _logger.LogDebug(
             "Cohere embeddings generated: {num}",
             successResponse.Embeddings.Length);
 
-        return [.. successResponse.Embeddings];
-    }
-
-    private AiModel GetEmbeddingsModel()
-    {
-        return _platformSettings.Cohere.EmbeddingsModel switch
-        {
-            AiModel.AwsEmbedEnglishV30 when !PlatformSettings.IsRunningInAws => AiModel.EmbedEnglishV30,
-            AiModel.AwsEmbedMultilingualV30 when !PlatformSettings.IsRunningInAws => AiModel.EmbedMultilingualV30,
-            AiModel.AwsEmbedV40 when !PlatformSettings.IsRunningInAws => AiModel.EmbedV40,
-            AiModel.EmbedEnglishV30 when PlatformSettings.IsRunningInAws => AiModel.AwsEmbedEnglishV30,
-            AiModel.EmbedMultilingualV30 when PlatformSettings.IsRunningInAws => AiModel.AwsEmbedMultilingualV30,
-            AiModel.EmbedV40 when PlatformSettings.IsRunningInAws => AiModel.AwsEmbedV40,
-            _ => _platformSettings.Cohere.EmbeddingsModel,
-        };
+        return new EmbeddingsAnswer([.. successResponse.Embeddings], inputTokens);
     }
 }

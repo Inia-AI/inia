@@ -1426,9 +1426,9 @@ public class WorkflowHandlerTests : IClassFixture<WorkflowsFixture<WorkflowHandl
             {
                 var batch = texts.Skip(i).Take(pagesInBatch).ToList();
 
-                List<double[]> batchEmbeddings = await embeddingsConnector
-                    .GetResponseAsync(batch)
-                    .ConfigureAwait(false);
+                List<double[]> batchEmbeddings = (await embeddingsConnector
+                    .EmbedAsync(batch)
+                    .ConfigureAwait(false)).Vectors;
 
                 allEmbeddings.AddRange(batchEmbeddings);
             }

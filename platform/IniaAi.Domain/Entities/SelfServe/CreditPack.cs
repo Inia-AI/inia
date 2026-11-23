@@ -9,6 +9,7 @@ namespace IniaAi.Domain.Entities.SelfServe;
 /// </summary>
 [Index(nameof(OrganizationId), nameof(ExpiresAt))]
 [Index(nameof(PaymentProvider), nameof(ProviderInvoiceId), IsUnique = true)]
+[Index(nameof(PersonKey), IsUnique = true)]
 public class CreditPack
 {
     public const int PAYMENT_PROVIDER_MAX_LENGTH = 50;
@@ -16,6 +17,7 @@ public class CreditPack
     public const int REASON_MAX_LENGTH = 500;
     public const int COUNTRY_MAX_LENGTH = 2;
     public const int STATE_MAX_LENGTH = 100;
+    public const int PERSON_KEY_LENGTH = 64;
 
     [Key]
     [StringLength(450)]
@@ -75,4 +77,11 @@ public class CreditPack
 
     [StringLength(REASON_MAX_LENGTH)]
     public string? Reason { get; set; }
+
+    /// <summary>
+    /// A keyed hash of the inbox a free credit went to. It outlives the account, so one person gets the
+    /// free credit once, and its unique index refuses a second grant that two sign-ups race to.
+    /// </summary>
+    [StringLength(PERSON_KEY_LENGTH)]
+    public string? PersonKey { get; set; }
 }

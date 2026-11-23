@@ -38,6 +38,12 @@ public class RagService : ITokenAccumulator
 
     #endregion
 
+    #region Public properties
+
+    public IEmbeddingsConnector EmbeddingsConnector => _embeddingsConnector;
+
+    #endregion
+
     #region ITokenAccumulator Implementation
 
     public int AccumulatedInputTokens => _accumulatedInputTokens;
@@ -46,7 +52,6 @@ public class RagService : ITokenAccumulator
     public int AccumulatedCacheReadTokens => 0;
     public int AccumulatedEmbeddingTokens => _accumulatedEmbeddingTokens;
     public string? LastUsedModelId { get; private set; }
-    public string? LastUsedEmbeddingModelId { get; private set; }
 
     /// <summary>
     /// Gets the individual LLM calls from the last RAG operation for granular tracking.
@@ -59,7 +64,6 @@ public class RagService : ITokenAccumulator
         _ = Interlocked.Exchange(ref _accumulatedOutputTokens, 0);
         _ = Interlocked.Exchange(ref _accumulatedEmbeddingTokens, 0);
         LastUsedModelId = null;
-        LastUsedEmbeddingModelId = null;
         LastLlmCalls = null;
     }
 
@@ -266,12 +270,6 @@ public class RagService : ITokenAccumulator
         if (!string.IsNullOrWhiteSpace(context.LastUsedModelId))
         {
             LastUsedModelId = context.LastUsedModelId;
-        }
-
-        // Capture embedding model ID from context
-        if (!string.IsNullOrWhiteSpace(context.LastUsedEmbeddingModelId))
-        {
-            LastUsedEmbeddingModelId = context.LastUsedEmbeddingModelId;
         }
 
         // Capture per-call LLM tracking for granular reporting

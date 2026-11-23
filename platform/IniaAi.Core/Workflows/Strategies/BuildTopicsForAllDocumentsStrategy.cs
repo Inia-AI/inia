@@ -1,6 +1,7 @@
 using IniaAi.AiConnection.Common;
 using IniaAi.Common.Interfaces.Services;
 using IniaAi.Core.Documents;
+using IniaAi.Core.Services.TokenUsage;
 using IniaAi.Core.Workflows.Interfaces;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.TokenUsage.Enums;
@@ -191,22 +192,19 @@ public class BuildTopicsForAllDocumentsStrategy : IBlockStrategy
 
         if (embeddingTokens > 0)
         {
-            string embeddingModelId = context.RagService.LastUsedEmbeddingModelId ?? "embed-english-v3.0";
-            var embeddingRecord = new EmbeddingUsageRecord
+            EmbeddingUsageRecord embeddingRecord = EmbeddingUsageRecordFactory.For(
+                context.RagService.EmbeddingsConnector,
+                embeddingTokens,
+                context.OrganizationId,
+                UsageType.EmbeddingQuery,
+                context.ExecutionContext,
+                $"RAG embedding query for block '{block.Name}'") with
             {
-                OrganizationId = context.OrganizationId,
                 UserId = context.UserId,
                 WorkflowTypeId = context.WorkflowTypeId,
                 WorkflowExecutionId = context.WorkflowExecutionId,
                 SectionId = context.SectionId,
-                BlockId = block.Id,
-                UsageType = UsageType.EmbeddingQuery,
-                ExecutionContext = context.ExecutionContext,
-                Provider = ModelIdNormalizer.GetProvider(embeddingModelId),
-                Family = ModelIdNormalizer.GetFamily(embeddingModelId),
-                ModelId = embeddingModelId,
-                Components = UsageComponentHelper.ForEmbedding(embeddingTokens),
-                Description = $"RAG embedding query for block '{block.Name}'"
+                BlockId = block.Id
             };
 
             _ = context.TokenUsageService.RecordEmbeddingUsageAsync(embeddingRecord, CancellationToken.None);

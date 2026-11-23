@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Common;
 using IniaAi.Common.Extensions;
 using IniaAi.Common.Interfaces.Persistence;
@@ -66,19 +67,9 @@ public class FileDownloadController : ControllerBase
                 return NotFound("File not found in storage.");
             }
 
-            byte[] fileBytes = await _fileStorageManager.RetrieveFileBytesAsync(
-                fileMetadata.StorageProvider.ToString(),
-                fileMetadata.OrganizationId,
-                StorageCategories.Documents,
-                fileMetadata.ExternalStoragePath);
-            if (fileBytes is null || fileBytes.Length == 0)
-            {
-                return NotFound("File content is empty.");
-            }
-
             string downloadName = document.MediaType.ServedFileName(fileName.TrimEnd().WithExtension(fileMetadata.Extension));
 
-            return File(fileBytes, document.MediaType.ToContentType(), downloadName);
+            return await StreamAsync(fileMetadata, document.MediaType.ToContentType(), downloadName);
         }
         catch (Exception ex)
         {
@@ -126,13 +117,7 @@ public class FileDownloadController : ControllerBase
 
             string contentType = await ContentTypeOfAsync(fileMetadata);
 
-            byte[] fileBytes = await _fileStorageManager.RetrieveFileBytesAsync(
-                fileMetadata.StorageProvider.ToString(),
-                fileMetadata.OrganizationId,
-                StorageCategories.Documents,
-                fileMetadata.ExternalStoragePath);
-
-            return fileBytes is null || fileBytes.Length == 0 ? NotFound("File content is empty.") : File(fileBytes, contentType, downloadName);
+            return await StreamAsync(fileMetadata, contentType, downloadName);
         }
         catch (Exception ex)
         {
@@ -233,6 +218,28 @@ public class FileDownloadController : ControllerBase
 
         var options = new JsonSerializerOptions { WriteIndented = true };
         return new JsonResult(info, options);
+    }
+
+    /// <summary>
+    /// Streams the stored file to the answer, with its size when the store gives it. An empty file
+    /// answers as not found, as before.
+    /// </summary>
+    private async Task<IActionResult> StreamAsync(FileMetadata fileMetadata, string contentType, string downloadName)
+    {
+        Stream content = await _fileStorageManager.RetrieveFileAsync(
+            fileMetadata.StorageProvider.ToString(),
+            fileMetadata.OrganizationId,
+            StorageCategories.Documents,
+            fileMetadata.ExternalStoragePath!);
+        long? length = StoredObjectStream.LengthOf(content);
+        if (length == 0)
+        {
+            await content.DisposeAsync();
+            return NotFound("File content is empty.");
+        }
+
+        Response.ContentLength = length;
+        return File(content, contentType, downloadName);
     }
 
     private async Task<string> ContentTypeOfAsync(FileMetadata fileMetadata)

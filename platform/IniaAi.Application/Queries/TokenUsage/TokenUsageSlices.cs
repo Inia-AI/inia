@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace IniaAi.Application.Queries.TokenUsage;
 
 /// <summary>
-/// An organization's token usage as rows to sum: the totals the usage-totals sweep keeps, plus every
+/// Token usage, of an organization or of chosen runs, as rows to sum: the totals the usage-totals sweep keeps, plus every
 /// ledger row it has not added yet, read in one statement. Under a snapshot read (PostgreSQL, or SQL
 /// Server with read-committed snapshot) each ledger row counts once. Under SQL Server's locking reads,
 /// a sweep batch that commits while the statement runs can be counted twice or not at all by that one
@@ -61,33 +61,17 @@ public static class TokenUsageSlices
     /// </summary>
     public static IQueryable<UsageExecutionSlice> ByExecution(IUserDataDbContext userData, string organizationId)
     {
-        IQueryable<UsageExecutionSlice> totals = userData.TokenUsageExecutionTotals
-            .AsNoTracking()
-            .Where(e => e.OrganizationId == organizationId)
-            .Select(e => new UsageExecutionSlice
-            {
-                WorkflowExecutionId = e.WorkflowExecutionId,
-                WorkflowTypeId = e.WorkflowTypeId,
-                FirstUsageAt = e.FirstUsageAt,
-                InputTokens = e.InputTokens,
-                OutputTokens = e.OutputTokens,
-                Cost = e.Cost,
-            });
+        return ExecutionSlices(
+            userData.TokenUsageExecutionTotals.Where(e => e.OrganizationId == organizationId),
+            userData.TokenUsages.Where(t => t.OrganizationId == organizationId));
+    }
 
-        IQueryable<UsageExecutionSlice> notYetInTotals = userData.TokenUsages
-            .AsNoTracking()
-            .Where(t => t.OrganizationId == organizationId && !t.IsInTotals && t.WorkflowExecutionId != null)
-            .Select(t => new UsageExecutionSlice
-            {
-                WorkflowExecutionId = t.WorkflowExecutionId!,
-                WorkflowTypeId = t.WorkflowTypeId,
-                FirstUsageAt = t.CreatedAt,
-                InputTokens = t.Components.AsQueryable().Where(TokenUsageTotalComponents.IsInput).Sum(c => (long)c.Units),
-                OutputTokens = t.Components.AsQueryable().Where(TokenUsageTotalComponents.IsOutput).Sum(c => (long)c.Units),
-                Cost = t.Components.Sum(c => c.Cost),
-            });
-
-        return totals.Concat(notYetInTotals);
+    /// <summary>The rows of <see cref="ByExecution"/> for <paramref name="executionIds"/>, whichever organization ran them.</summary>
+    public static IQueryable<UsageExecutionSlice> ForExecutions(IUserDataDbContext userData, IQueryable<string> executionIds)
+    {
+        return ExecutionSlices(
+            userData.TokenUsageExecutionTotals.Where(e => executionIds.Contains(e.WorkflowExecutionId)),
+            userData.TokenUsages.Where(t => t.WorkflowExecutionId != null && executionIds.Contains(t.WorkflowExecutionId)));
     }
 
     public static IQueryable<UsageExecutionSlice> PerExecution(this IQueryable<UsageExecutionSlice> slices)
@@ -103,6 +87,36 @@ public static class TokenUsageSlices
                 OutputTokens = g.Sum(e => e.OutputTokens),
                 Cost = g.Sum(e => e.Cost),
             });
+    }
+
+    private static IQueryable<UsageExecutionSlice> ExecutionSlices(IQueryable<TokenUsageExecutionTotal> executionTotals, IQueryable<Domain.Entities.TokenUsage.TokenUsage> usages)
+    {
+        IQueryable<UsageExecutionSlice> totals = executionTotals
+            .AsNoTracking()
+            .Select(e => new UsageExecutionSlice
+            {
+                WorkflowExecutionId = e.WorkflowExecutionId,
+                WorkflowTypeId = e.WorkflowTypeId,
+                FirstUsageAt = e.FirstUsageAt,
+                InputTokens = e.InputTokens,
+                OutputTokens = e.OutputTokens,
+                Cost = e.Cost,
+            });
+
+        IQueryable<UsageExecutionSlice> notYetInTotals = usages
+            .AsNoTracking()
+            .Where(t => !t.IsInTotals && t.WorkflowExecutionId != null)
+            .Select(t => new UsageExecutionSlice
+            {
+                WorkflowExecutionId = t.WorkflowExecutionId!,
+                WorkflowTypeId = t.WorkflowTypeId,
+                FirstUsageAt = t.CreatedAt,
+                InputTokens = t.Components.AsQueryable().Where(TokenUsageTotalComponents.IsInput).Sum(c => (long)c.Units),
+                OutputTokens = t.Components.AsQueryable().Where(TokenUsageTotalComponents.IsOutput).Sum(c => (long)c.Units),
+                Cost = t.Components.Sum(c => c.Cost),
+            });
+
+        return totals.Concat(notYetInTotals);
     }
 }
 

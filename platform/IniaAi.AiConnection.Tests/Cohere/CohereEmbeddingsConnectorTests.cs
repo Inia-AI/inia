@@ -38,7 +38,7 @@ public class CohereEmbeddingsConnectorTests : IClassFixture<TestsFixture<CohereE
         ];
 
         // Act
-        List<double[]> response = await connector.GetResponseAsync(messages, TestContext.Current.CancellationToken);
+        List<double[]> response = (await connector.EmbedAsync(messages, TestContext.Current.CancellationToken)).Vectors;
 
         // Assert
         Assert.NotNull(response);
@@ -79,7 +79,7 @@ public class CohereEmbeddingsConnectorTests : IClassFixture<TestsFixture<CohereE
             Options.Create(settings));
 
         ApiKeyNotSetException error = await Assert.ThrowsAsync<ApiKeyNotSetException>(
-            () => connector.GetResponseAsync(["Cat"], TestContext.Current.CancellationToken));
+            () => connector.EmbedAsync(["Cat"], TestContext.Current.CancellationToken));
 
         Assert.Equal("Cohere API key not set.", error.Message);
         Assert.Equal(0, cohere.PathHits(EMBED_PATH));

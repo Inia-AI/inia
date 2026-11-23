@@ -2313,6 +2313,10 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("PersonKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("ProviderInvoiceId")
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
@@ -2334,6 +2338,10 @@ namespace IniaAi.Migrations.Mssql.UserData
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PersonKey")
+                        .IsUnique()
+                        .HasFilter("[PersonKey] IS NOT NULL");
 
                     b.HasIndex("OrganizationId", "ExpiresAt");
 
@@ -2679,6 +2687,52 @@ namespace IniaAi.Migrations.Mssql.UserData
                     b.HasKey("UserId", "Method");
 
                     b.ToTable("UserSignInMethods", "UserData");
+                });
+
+            modelBuilder.Entity("IniaAi.Domain.Entities.Storage.StoredObjectDeletion", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt");
+
+                    b.ToTable("StoredObjectDeletions", "UserData");
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.Testing.RegressionTestResult", b =>

@@ -29,6 +29,7 @@ RUN apk upgrade --no-cache && nginx -v
 
 COPY --chmod=755 docker/40-proxy-backend.sh /docker-entrypoint.d/40-proxy-backend.sh
 COPY --chmod=755 docker/41-content-security-policy.sh /docker-entrypoint.d/41-content-security-policy.sh
+COPY --chmod=755 docker/42-aws-waf-integration.sh /docker-entrypoint.d/42-aws-waf-integration.sh
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \

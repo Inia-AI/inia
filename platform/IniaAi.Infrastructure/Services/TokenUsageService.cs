@@ -25,6 +25,12 @@ public class TokenUsageService : ITokenUsageService
     private readonly IMemoryCache _cache;
     private readonly ILogger<TokenUsageService> _logger;
 
+    /// <summary>
+    /// The marker of the warning an embedding usage record logs when no price row matches its
+    /// provider and model. An alarm reads it.
+    /// </summary>
+    public const string UNPRICED_EMBEDDING_LOG_MARKER = "EmbeddingUsageUnpriced";
+
     private const string PRICING_CACHE_KEY_PREFIX = "ModelPricing_";
     private static readonly TimeSpan PricingCacheDuration = TimeSpan.FromMinutes(30);
 
@@ -182,7 +188,7 @@ public class TokenUsageService : ITokenUsageService
             if (pricing is null)
             {
                 _logger.LogWarning(
-                    "No pricing found for embedding provider {Provider}, model {ModelId}. Recording usage without cost calculation",
+                    UNPRICED_EMBEDDING_LOG_MARKER + ": No pricing found for embedding provider {Provider}, model {ModelId}. Recording usage without cost calculation",
                     record.Provider,
                     record.ModelId);
             }

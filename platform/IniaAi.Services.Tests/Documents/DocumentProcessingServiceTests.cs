@@ -1,5 +1,6 @@
 using IniaAi.AiConnection.Abstractions;
 using IniaAi.AiConnection.Cohere;
+using IniaAi.AiConnection.Common;
 using IniaAi.Common.Enums;
 using IniaAi.Common.Extensions;
 using IniaAi.Common.Interfaces.Services;
@@ -13,6 +14,7 @@ using IniaAi.Core.Workflows.Interfaces;
 using IniaAi.Domain.DocumentAnalysis;
 using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.Documents.Enums;
+using IniaAi.Domain.Entities.TokenUsage.Enums;
 using IniaAi.Domain.Entities.Workflows;
 using IniaAi.Domain.Entities.Workflows.Blocks;
 using IniaAi.Domain.Entities.Workflows.Blocks.Properties;
@@ -44,6 +46,8 @@ namespace IniaAi.Services.Tests.Documents;
 public class DocumentProcessingServiceTests : IClassFixture<DocumentsFixture>
 {
     private const string PICTURE_TEXT = "Picture text.";
+    // "An overview of the page." in words, as the word-hash stand-in counts them.
+    private const int OVERVIEW_WORDS = 5;
     private static readonly TimeSpan _stallLimit = TimeSpan.FromMinutes(1);
     private readonly DocumentProcessingService _documentProcessing;
     private readonly IWorkflowHandler _workflowHandler;
@@ -416,6 +420,56 @@ public class DocumentProcessingServiceTests : IClassFixture<DocumentsFixture>
         Assert.Equal("ERROR", page.EmbeddingVector?.Model);
         Assert.Equal(0, cohere.PathHits(EMBED_PATH));
         Assert.Single(log.Entries, entry => entry.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_RecordsPageEmbeddings_UnderTheRouteAndTheModelThePriceListUsesAsync()
+    {
+        var tokenUsage = new TestTokenUsageService();
+        ScriptedChatConnector model = ScriptedChatConnector.Answering("<answer>An overview of the page.</answer>");
+        var workflow = new Workflow();
+        _ = new DocumentClass(workflow, "report");
+        Document document = TextDocument();
+
+        await CreateDocumentProcessing(
+            model,
+            new WordHashEmbeddingsConnector(),
+            TestsLogger.CreateLogger<DocumentProcessingService>(_testOutputHelper),
+            FileFormatsUnderTest.Pdf,
+            tokenUsage).ProcessDocumentsAsync(
+            [new DocumentInfo(document.Id) { Document = document, DocumentClass = "report" }],
+            userDataUnitOfWork,
+            WithDefault(workflow, OverviewPrompts("default system")),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        EmbeddingUsageRecord record = Assert.Single(tokenUsage.EmbeddingRecords);
+        Assert.Equal(UsageType.EmbeddingPage, record.UsageType);
+        Assert.Equal(ModelProviders.COHERE_API, record.Provider);
+        Assert.Equal("cohere", record.Family);
+        Assert.Equal("embed-v4.0", record.ModelId);
+        Assert.Equal(OVERVIEW_WORDS, record.Components.Sum(static component => component.Units));
+    }
+
+    [Fact]
+    public async Task ProcessDocumentsAsync_WhenTheModelCountsNoTokens_LogsTheMarkerTheAlarmReads_AndRecordsNothingAsync()
+    {
+        var tokenUsage = new TestTokenUsageService();
+        var log = new CapturingLogger<DocumentProcessingService>();
+        ScriptedChatConnector model = ScriptedChatConnector.Answering("<answer>An overview of the page.</answer>");
+        var workflow = new Workflow();
+        _ = new DocumentClass(workflow, "report");
+        Document document = TextDocument();
+
+        await CreateDocumentProcessing(model, new WordHashEmbeddingsConnector(countsTokens: false), log, FileFormatsUnderTest.Pdf, tokenUsage).ProcessDocumentsAsync(
+            [new DocumentInfo(document.Id) { Document = document, DocumentClass = "report" }],
+            userDataUnitOfWork,
+            WithDefault(workflow, OverviewPrompts("default system")),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(Assert.Single(document.Pages).EmbeddingVector);
+        Assert.Single(log.Entries, entry => entry.Level == LogLevel.Warning
+            && entry.Message.StartsWith(EmbeddingsAnswer.UNCOUNTED_LOG_MARKER, StringComparison.Ordinal));
+        Assert.Empty(tokenUsage.EmbeddingRecords);
     }
 
     [Fact]
@@ -1483,7 +1537,8 @@ public class DocumentProcessingServiceTests : IClassFixture<DocumentsFixture>
         IChatConnector chatConnector,
         IEmbeddingsConnector embeddingsConnector,
         ILogger<DocumentProcessingService> logger,
-        IPdfFormat pdfFormat)
+        IPdfFormat pdfFormat,
+        ITokenUsageService? tokenUsageService = null)
     {
         return new DocumentProcessingService(
             _fixture.PlatformSettings,
@@ -1498,7 +1553,7 @@ public class DocumentProcessingServiceTests : IClassFixture<DocumentsFixture>
             _fixture.GetOcrTranscriptionService(_testOutputHelper, _serviceScopeFactory, chatConnector, pdfFormat),
             DocumentsFixture.GetFileStorageManager(),
             _fixture.GetTenantModelFamilyResolver(_testOutputHelper),
-            Substitute.For<ITokenUsageService>());
+            tokenUsageService ?? Substitute.For<ITokenUsageService>());
     }
 
     private static Workflow WithDefault(Workflow workflow, PageOverviewPrompts prompts)

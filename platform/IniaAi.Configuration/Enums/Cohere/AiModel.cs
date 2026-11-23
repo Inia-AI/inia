@@ -39,4 +39,7 @@ public enum AiModel
 
     [EnumMember(Value = "us.cohere.embed-v4:0")]
     UsAwsEmbedV40 = 11,
+
+    [EnumMember(Value = "eu.cohere.embed-v4:0")]
+    EuAwsEmbedV40 = 12,
 }

@@ -9,6 +9,8 @@ using IniaAi.Domain.Entities.Workflows.Blocks;
 using IniaAi.Domain.Entities.Workflows.Enums;
 using IniaAi.Domain.Enums;
 using IniaAi.Domain.Core.Interfaces;
+using IniaAi.Testing;
+using IniaAi.Testing.DependencyInjection;
 using IniaAi.Testing.DependencyInjection.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -31,7 +33,7 @@ public class RagServiceTests : IClassFixture<RagFixture<RagService>>
     }
 
     [Fact]
-    public async Task GetFilteredPagesAsync_WithSmartFilterExpressions_ShouldPopulateLastUsedEmbeddingModelId()
+    public async Task GetFilteredPagesAsync_WithSmartFilterExpressions_CountsTheFilterCallsTokens()
     {
         // Arrange
         var ragSettings = new RagSettings(new Block(BlockTypes.SimpleRag, new Section("rag", new Workflow())))
@@ -48,11 +50,34 @@ public class RagServiceTests : IClassFixture<RagFixture<RagService>>
         // Act
         _ = await _ragService.GetFilteredPagesAsync(ragSettings, documents, WorkflowType.GENERIC, TestContext.Current.CancellationToken);
 
-        // Assert - Embedding model ID should be populated after using smart filter expressions
-        Assert.NotNull(_ragService.LastUsedEmbeddingModelId);
-        Assert.NotEmpty(_ragService.LastUsedEmbeddingModelId);
+        // Assert - "Page 5" is two words to the word-hash stand-in
+        Assert.Equal(2, _ragService.AccumulatedEmbeddingTokens);
+    }
 
-        _output.WriteLine($"LastUsedEmbeddingModelId: {_ragService.LastUsedEmbeddingModelId}");
+    [Fact]
+    public async Task GetFilteredPagesAsync_WhenTheModelCountsNoTokens_LogsTheMarkerTheAlarmReads_NamingTheBlock()
+    {
+        var log = new CapturingLogger<RagService>();
+        var ragService = new RagService(
+            log,
+            new WordHashEmbeddingsConnector(countsTokens: false),
+            ScriptedChatConnector.Answering("<answer>1</answer>"),
+            new ServiceScopeFactory());
+        var ragSettings = new RagSettings(new Block(BlockTypes.SimpleRag, new Section("rag", new Workflow())))
+        {
+            Type = RagTypes.TopNPages,
+            NumberOfPagesInput = "2",
+            SmartFilterExpressions = ["Page 5"],
+        };
+        List<Document> documents = await _fixture.GetDocumentsAsync();
+
+        _ = await ragService.GetFilteredPagesAsync(ragSettings, documents, WorkflowType.GENERIC, TestContext.Current.CancellationToken);
+
+        CapturedLogEntry warning = Assert.Single(log.Entries, entry => entry.Level == LogLevel.Warning
+            && entry.Message.StartsWith(EmbeddingsAnswer.UNCOUNTED_LOG_MARKER, StringComparison.Ordinal));
+        Assert.Equal(ragSettings.BlockId, warning.Value("BlockId"));
+        Assert.Equal(WorkflowType.GENERIC, warning.Value("WorkflowTypeId"));
+        Assert.Equal(0, ragService.AccumulatedEmbeddingTokens);
     }
 
     [Fact]

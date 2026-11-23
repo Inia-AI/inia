@@ -131,27 +131,48 @@ describe('the web image proxy', () => {
   )
 })
 
-// The script takes the config path and rewrites through a temp file so these tests can run it on a macOS host.
+// The scripts take the config and page paths and rewrite through a temp file so these tests can run them on a macOS host.
 const CSP_SCRIPT = path.join(ROOT, 'docker', '41-content-security-policy.sh')
-const POLICY_BEFORE_CONNECT_SRC =
-  "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src "
-const POLICY_AFTER_CONNECT_SRC =
-  "; frame-src 'self' blob: https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+const WAF_SCRIPT = path.join(ROOT, 'docker', '42-aws-waf-integration.sh')
 const DEFAULT_CONNECT_SRC = "'self' https:"
 const NARROW_CONNECT_SRC = "'self' https://accounts.google.com"
-const policyWith = (connectSrc: string) => `${POLICY_BEFORE_CONNECT_SRC}${connectSrc}${POLICY_AFTER_CONNECT_SRC}`
-const headerLine = (name: string, connectSrc: string) => `    add_header ${name} "${policyWith(connectSrc)}" always;`
+const WAF_URL = 'https://abc123.edge.sdk.awswaf.com/abc123/def456'
+const WAF_SOURCE = 'https://*.awswaf.com'
+const policyWith = (connectSrc: string, wafSource?: string) => {
+  const waf = wafSource ? ` ${wafSource}` : ''
+  return `default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client${waf}; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src ${connectSrc}${waf}; frame-src 'self' blob: https://accounts.google.com/gsi/; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`
+}
+const headerLine = (name: string, connectSrc: string, wafSource?: string) => `    add_header ${name} "${policyWith(connectSrc, wafSource)}" always;`
 const TODAYS_CSP_LINE = headerLine('Content-Security-Policy', DEFAULT_CONNECT_SRC)
+const TODAYS_PAGE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
 
-const applyCsp = (env: Record<string, string>) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'web-csp-test-'))
+// Runs the start-up scripts in the container's order, 41 then 42, on copies of the config and the page, once per
+// start. A script that refuses stops the rest, as it stops the container; a policy still holding a placeholder is not sent.
+const startUp = (env: Record<string, string>, starts = 1) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'web-start-up-test-'))
   onTestFinished(() => fs.rmSync(dir, { recursive: true, force: true }))
   const conf = path.join(dir, 'default.conf')
+  const page = path.join(dir, 'index.html')
   fs.copyFileSync(path.join(ROOT, 'docker', 'nginx.conf'), conf)
-  const result = spawnSync('sh', [CSP_SCRIPT, conf], { encoding: 'utf8', env: { PATH: process.env.PATH, ...env } })
+  fs.copyFileSync(path.join(ROOT, 'index.html'), page)
+  const scriptEnv = { PATH: process.env.PATH, ...env }
+  let result = spawnSync('sh', [CSP_SCRIPT, conf], { encoding: 'utf8', env: scriptEnv })
+  for (let start = 1; start <= starts && result.status === 0; start++) {
+    if (start > 1) {
+      result = spawnSync('sh', [CSP_SCRIPT, conf], { encoding: 'utf8', env: scriptEnv })
+    }
+    if (result.status === 0) {
+      result = spawnSync('sh', [WAF_SCRIPT, conf, page], { encoding: 'utf8', env: scriptEnv })
+    }
+  }
   const cspLines = fs.readFileSync(conf, 'utf8').split('\n')
     .filter((line) => line.includes('add_header Content-Security-Policy') && !line.includes('PLACEHOLDER'))
-  return { status: result.status, stderr: result.stderr, cspLines }
+  return { status: result.status, stderr: result.stderr, cspLines, page: fs.readFileSync(page, 'utf8') }
+}
+
+const applyCsp = (env: Record<string, string>) => {
+  const { status, stderr, cspLines } = startUp(env)
+  return { status, stderr, cspLines }
 }
 
 describe('the content security policy the container sends', () => {
@@ -212,7 +233,7 @@ describe('the content security policy the container sends', () => {
     },
   )
 
-  it.each(['CSP_CONNECT_SRC_PLACEHOLDER', 'PROXY_BACKEND_URL_PLACEHOLDER', 'RESOLVER_PLACEHOLDER'])(
+  it.each(['CSP_CONNECT_SRC_PLACEHOLDER', 'AWS_WAF_SOURCE_PLACEHOLDER', 'PROXY_BACKEND_URL_PLACEHOLDER', 'RESOLVER_PLACEHOLDER'])(
     'refuses CSP_CONNECT_SRC with the placeholder %s',
     (placeholder) => {
       const { status, stderr, cspLines } = applyCsp({ CSP_CONNECT_SRC: `'self' ${placeholder}` })
@@ -235,6 +256,52 @@ describe('the content security policy the container sends', () => {
     expect(applyCsp({ CSP_CONNECT_SRC: "'self' http:" }).stderr).toBe(
       `CSP_CONNECT_SRC is "'self' http:", and http: would allow more connections than 'self' https:. Give sources separated by spaces, such as 'self' https://accounts.google.com, or leave it unset to allow 'self' https:. The web container did not start. Correct the setting and start it again.\n`,
     )
+  })
+})
+
+describe('the AWS WAF integration the container adds', () => {
+  it('changes neither the policy nor the page when AWS_WAF_INTEGRATION_URL is unset or empty', () => {
+    for (const env of [{}, { AWS_WAF_INTEGRATION_URL: '' }]) {
+      expect(startUp(env)).toEqual({ status: 0, stderr: '', cspLines: [TODAYS_CSP_LINE], page: TODAYS_PAGE })
+    }
+  })
+
+  it.each([WAF_URL, `${WAF_URL}/`])('names the integration URL %s in the page and lets the challenge script load and reach AWS WAF', (url) => {
+    const { status, stderr, cspLines, page } = startUp({ AWS_WAF_INTEGRATION_URL: url })
+
+    expect({ status, stderr, cspLines }).toEqual({ status: 0, stderr: '', cspLines: [headerLine('Content-Security-Policy', DEFAULT_CONNECT_SRC, WAF_SOURCE)] })
+    expect(page).toBe(TODAYS_PAGE.replace('</head>', `<meta name="aws-waf-integration-url" content="${WAF_URL}"></head>`))
+  })
+
+  it('names the integration URL once and leaves the policy as it was when the container restarts', () => {
+    expect(startUp({ AWS_WAF_INTEGRATION_URL: WAF_URL }, 2)).toEqual(startUp({ AWS_WAF_INTEGRATION_URL: WAF_URL }))
+  })
+
+  it('adds AWS WAF to both policies in report-only mode', () => {
+    const { cspLines } = startUp({ AWS_WAF_INTEGRATION_URL: WAF_URL, CSP_MODE: 'report-only', CSP_CONNECT_SRC: NARROW_CONNECT_SRC })
+
+    expect(cspLines).toEqual([
+      headerLine('Content-Security-Policy', DEFAULT_CONNECT_SRC, WAF_SOURCE),
+      headerLine('Content-Security-Policy-Report-Only', NARROW_CONNECT_SRC, WAF_SOURCE),
+    ])
+  })
+
+  it.each([
+    ['plain HTTP', 'http://abc123.edge.sdk.awswaf.com/abc123/def456'],
+    ['another domain', 'https://abc123.example.com/abc123/def456'],
+    ['a domain that only starts like AWS WAF', 'https://abc123.awswaf.com.example.com/abc123'],
+    ['a quote', 'https://abc123.edge.sdk.awswaf.com/abc"123'],
+    ['a space', 'https://abc123.edge.sdk.awswaf.com/abc 123'],
+    ['a pipe', 'https://abc123.edge.sdk.awswaf.com/abc|123'],
+    ['a query', 'https://abc123.edge.sdk.awswaf.com/abc123?x=1'],
+  ])('refuses an AWS_WAF_INTEGRATION_URL with %s, sends no policy and leaves the page alone', (_, url) => {
+    const { status, stderr, cspLines, page } = startUp({ AWS_WAF_INTEGRATION_URL: url })
+
+    expect(status).not.toBe(0)
+    expect(stderr).toBe(
+      `AWS_WAF_INTEGRATION_URL is "${url}", which is not an AWS WAF integration URL. Copy it from the web ACL's application integration page, such as https://abc123.edge.sdk.awswaf.com/abc123/def456, or leave it unset. The web container did not start. Correct the setting and start it again.\n`,
+    )
+    expect({ cspLines, page }).toEqual({ cspLines: [], page: TODAYS_PAGE })
   })
 })
 

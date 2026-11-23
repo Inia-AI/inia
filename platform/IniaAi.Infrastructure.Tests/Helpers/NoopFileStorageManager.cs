@@ -18,6 +18,11 @@ internal sealed class NoopFileStorageManager : IFileStorageManager
         return Task.CompletedTask;
     }
 
+    public Task<Exception?> ReleaseFileAsync(string storageProvider, string organizationId, string category, string key)
+    {
+        return Task.FromResult<Exception?>(null);
+    }
+
     public StorageProvider GetProviderForTenant(string organizationId)
     {
         return StorageProvider.Database;
@@ -26,11 +31,6 @@ internal sealed class NoopFileStorageManager : IFileStorageManager
     public StorageProvider GetStorageProviderEnum(string providerName)
     {
         return StorageProvider.Database;
-    }
-
-    public Task<string> MigrateFileAsync(string organizationId, string category, string key, string targetProvider)
-    {
-        throw new NotSupportedException();
     }
 
     public Task<Stream> RetrieveFileAsync(string storageProvider, string organizationId, string category, string key)

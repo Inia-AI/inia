@@ -15,8 +15,8 @@ namespace IniaAi.Application.Commands.Documents.DeleteDocument;
 /// Handler for <see cref="DeleteDocumentCommand"/>. Removes the document and its
 /// FileMetadata in a single DB transaction, then attempts to delete each blob
 /// from external storage. Blob deletion failures are logged but do not roll back
-/// the DB removal — an orphan blob is preferable to an undeletable document, and
-/// existing cleanup jobs (<c>SoftDeleteCleanupService</c>) handle orphans. The copies made from the
+/// the DB removal — an orphan blob is preferable to an undeletable document. A failed delete is
+/// recorded for a retry, and the daily sweep removes any file no row points at. The copies made from the
 /// document go with it. A document that a running report reads, itself or through a copy, is refused,
 /// so the report never loses its input.
 /// </summary>
@@ -115,15 +115,7 @@ public class DeleteDocumentCommandHandler : IRequestHandler<DeleteDocumentComman
             return;
         }
 
-        try
-        {
-            await _fileStorageManager.DeleteFileAsync(
-                storageProvider,
-                organizationId,
-                StorageCategories.Documents,
-                storagePath);
-        }
-        catch (Exception ex)
+        if (await _fileStorageManager.ReleaseFileAsync(storageProvider, organizationId, StorageCategories.Documents, storagePath) is { } ex)
         {
             _logger.LogWarning(
                 ex,

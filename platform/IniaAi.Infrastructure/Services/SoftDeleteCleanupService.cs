@@ -295,20 +295,15 @@ public class SoftDeleteCleanupService : ISoftDeleteCleanupService
 
         foreach (FileMetadata fm in filesToDelete)
         {
-            try
-            {
-                await _fileStorageManager.DeleteFileAsync(
-                    fm.StorageProvider.ToString(),
-                    fm.OrganizationId,
-                    StorageCategories.Documents,
-                    fm.ExternalStoragePath!);
-                filesDeleted++;
-            }
-            catch (Exception ex)
+            if (await _fileStorageManager.ReleaseFileAsync(fm.StorageProvider.ToString(), fm.OrganizationId, StorageCategories.Documents, fm.ExternalStoragePath!) is { } ex)
             {
                 string error = $"Failed to delete file {fm.Id} from {fm.StorageProvider}: {ex.Message}";
                 _logger.LogWarning(ex, "SoftDeleteCleanup: Org {OrgId} — {Error}", organizationId, error);
                 errors.Add(error);
+            }
+            else
+            {
+                filesDeleted++;
             }
         }
 

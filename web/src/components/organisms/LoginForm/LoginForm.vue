@@ -13,6 +13,8 @@ import { extensionPoints } from '@/modules/extensionPoints'
 import type { SignInTokens } from '@/api/authentication/schema'
 import { signInRefusalText } from '@/lib/signInFailure'
 import { SESSION_ENDED_REASON } from '@/lib/sessionEnded'
+import { loadScript } from '@/lib/loadScript'
+import { loadFirewallScript } from '@/lib/firewallToken'
 
 const { t: $t } = useI18n()
 const props = defineProps<{ busy?: boolean }>()
@@ -69,34 +71,6 @@ const methodNotices = computed(() => signInMethods.value.flatMap(method => (meth
 const googleRefusalKeys = computed(() =>
   Object.assign({}, ...signInMethods.value.map(method => method.googleRefusalKeys ?? {})) as Record<string, string>
 )
-
-const scriptLoadCache = new Map<string, Promise<void>>()
-const loadScript = (src: string, checkLoaded: () => boolean): Promise<void> => {
-  if (checkLoaded()) {
-    return Promise.resolve()
-  }
-
-  const existing = scriptLoadCache.get(src)
-  if (existing) {
-    return existing
-  }
-
-  const promise = new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = src
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () => {
-      scriptLoadCache.delete(src)
-      reject(new Error(`Failed to load script: ${src}`))
-    }
-    document.head.appendChild(script)
-  })
-
-  scriptLoadCache.set(src, promise)
-  return promise
-}
 
 const initializeGoogleSignIn = async (clientId: string): Promise<boolean> => {
   try {
@@ -203,6 +177,7 @@ const handleOidcSignIn = async () => {
 }
 
 onMounted(async () => {
+  loadFirewallScript().catch(() => {})
   try {
     const response = await API.Authentication.getAuthProviders()
     providers.value = response.providers || []

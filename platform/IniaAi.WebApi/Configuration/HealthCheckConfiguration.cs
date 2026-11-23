@@ -1,11 +1,12 @@
-﻿using IniaAi.Configuration.Storage;
+﻿using IniaAi.Application.Common.Services;
+using IniaAi.Configuration.Storage;
 using IniaAi.Infrastructure.Persistence.Core.Contexts;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
-using IniaAi.WebApi.HealthChecks;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Serilog;
+using IniaAi.Infrastructure.Storage;
 using IniaAi.Services.FileDownload;
 using IniaAi.Services.Usage;
+using IniaAi.WebApi.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace IniaAi.WebApi.Configuration;
 
@@ -15,10 +16,10 @@ namespace IniaAi.WebApi.Configuration;
 public static class HealthCheckConfiguration
 {
     /// <summary>
-    /// Adds health checks for memory, database contexts, DbContext factories, and MinIO storage.
+    /// Adds health checks for memory, database contexts, DbContext factories, and the S3 and MinIO stores.
     /// </summary>
     /// <param name="services">The service collection to register health checks in.</param>
-    /// <param name="configuration">The configuration instance to read MinIO settings from.</param>
+    /// <param name="configuration">The configuration instance to read the file storage settings from.</param>
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddHealthChecksConfigured(this IServiceCollection services, IConfiguration configuration)
     {
@@ -30,44 +31,26 @@ public static class HealthCheckConfiguration
            .AddCheck<BrowserSandboxHealthCheck>("Browser sandbox", HealthStatus.Degraded, tags: new[] { "Browser" })
            .AddCheck<TokenUsageRecordingHealthCheck>(TokenUsageRecordingHealthCheck.NAME, HealthStatus.Degraded, tags: new[] { "Usage" });
 
-        // Add MinIO health check if MinIO is configured
-        IConfigurationSection fileStorageSection = configuration.GetSection(FileStorageSettings.SECTION_NAME);
-        MinioStorageSettings? minioSettings = fileStorageSection.GetSection("MinIO").Get<MinioStorageSettings>();
-
-        if (minioSettings is not null && !string.IsNullOrEmpty(minioSettings.Endpoint))
+        // Each object store is checked through its own S3 client, Degraded on a failure, so a store
+        // that does not answer shows on the health page without taking the host out of rotation.
+        FileStorageSettings fileStorage = configuration.GetSection(FileStorageSettings.SECTION_NAME).Get<FileStorageSettings>() ?? new();
+        foreach ((string store, string name, bool setUp) in new[]
         {
-            // Build the health check URL with the correct protocol
-            string endpoint = minioSettings.Endpoint.Trim();
-            string healthCheckUrl;
-
-            if (endpoint.StartsWith("http://") || endpoint.StartsWith("https://"))
+            (FileStorageProviders.S3, ObjectStoreHealthCheck.S3_NAME, FileStorageProviders.HasS3(fileStorage)),
+            (FileStorageProviders.MINIO, ObjectStoreHealthCheck.MINIO_NAME, FileStorageProviders.HasMinio(fileStorage)),
+        })
+        {
+            if (!setUp)
             {
-                // Endpoint already has protocol
-                healthCheckUrl = $"{endpoint}/minio/health/ready";
-            }
-            else
-            {
-                // Endpoint doesn't have protocol, add it based on UseSSL setting
-                string protocol = minioSettings.UseSSL ? "https" : "http";
-                healthCheckUrl = $"{protocol}://{endpoint}/minio/health/ready";
+                continue;
             }
 
-            Log.Information("MinIO health check configured with URL: {HealthCheckUrl}", healthCheckUrl);
-
-            // Bypass system proxy (e.g. Zscaler) — MinIO is always internal infrastructure
-            // and .NET doesn't support CIDR notation in NO_PROXY.
-            // The handler must be passed directly to AddUrlGroup because it internally calls
-            // ConfigurePrimaryHttpMessageHandler, which would overwrite any prior configuration.
-            _ = services.AddTransient<LoggingDelegatingHandler>();
-            _ = services.AddHttpClient("MinIO Storage")
-                .AddHttpMessageHandler<LoggingDelegatingHandler>();
-
-            _ = healthChecksBuilder.AddUrlGroup(new Uri(healthCheckUrl),
-                name: "MinIO Storage",
-                failureStatus: HealthStatus.Unhealthy,
-                tags: new[] { "Storage", "MinIO" },
-                timeout: TimeSpan.FromSeconds(10),
-                configurePrimaryHttpMessageHandler: _ => new HttpClientHandler { UseProxy = false });
+            _ = services.AddKeyedSingleton(store, (provider, key) => new ObjectStoreHealthCheck(provider.GetRequiredKeyedService<ObjectStorageService>(key)));
+            _ = healthChecksBuilder.Add(new HealthCheckRegistration(
+                name,
+                provider => provider.GetRequiredKeyedService<ObjectStoreHealthCheck>(store),
+                HealthStatus.Degraded,
+                ["Storage", store]));
         }
 
         return services;

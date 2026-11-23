@@ -139,6 +139,7 @@ public sealed class FilesController : ApiController
         return result.Match<IActionResult>(
             content =>
             {
+                Response.ContentLength = content.Length;
                 if (content.ContentDisposition == INLINE_DISPOSITION)
                 {
                     Response.Headers.ContentDisposition = INLINE_DISPOSITION;

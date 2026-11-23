@@ -57,7 +57,7 @@ Health checks are registered in `platform/IniaAi.WebApi/Configuration/HealthChec
 | `DbContextFactoryHealthCheck<UserDataDbContext>` ("UserDataDbContext Factory") | Unhealthy | The pooled `IDbContextFactory` produces a working context |
 | `BrowserSandboxHealthCheck` ("Browser sandbox") | Degraded | Degraded once a link from an email skipped the browser step because the Chrome sandbox does not start |
 | `TokenUsageRecordingHealthCheck` ("Token usage recording") | Degraded | Degraded once this process failed to save a token usage record, with the count, the time and the newest failure's usage type, model and kind of error. That spend is missing from usage and billing; the log line beside it names the workflow type and the execution. It stays Degraded until the process restarts |
-| `AddUrlGroup` "MinIO Storage" | Unhealthy | `…/minio/health/ready` — added only when `FileStorage:MinIO:Endpoint` is configured, and called without the system proxy |
+| `ObjectStoreHealthCheck` ("S3 Storage", "MinIO Storage") | Degraded | One per object store that is set up (`FileStorage:S3:BucketName`, `FileStorage:MinIO:Endpoint`): lists at most one object of the store's bucket through the store's own client, or the buckets when MinIO keeps a bucket per organization. Gives up after 3 seconds, and an answer stands for a minute ([File Storage](../file-storage/index.md#health-checks)) |
 
 `Degraded` still answers HTTP 200, so no probe restarts the container on it. The admin app registers the token usage check too and reports it on its own `/health`. There is no Redis health check (no Redis) and no generic "external APIs" check.
 

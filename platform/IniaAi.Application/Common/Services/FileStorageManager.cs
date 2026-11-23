@@ -9,22 +9,27 @@ namespace IniaAi.Application.Common.Services;
 
 /// <summary>
 /// High-level service for managing file storage across different providers.
-/// Demonstrates how to use the file storage abstraction with multiple storage options.
 /// </summary>
 public class FileStorageManager : IFileStorageManager
 {
     private readonly IFileStorageResolver _storageResolver;
     private readonly FileStorageSettings _fileStorageSettings;
+    private readonly IStoredObjectDeletionRetries? _deletionRetries;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FileStorageManager"/> class.
     /// </summary>
     /// <param name="storageResolver">The file storage resolver to get storage services.</param>
     /// <param name="fileStorageOptions">The file storage settings from configuration.</param>
-    public FileStorageManager(IFileStorageResolver storageResolver, IOptions<FileStorageSettings> fileStorageOptions)
+    /// <param name="deletionRetries">Keeps a released file whose delete failed for a later retry. Every app host has it; a test host may leave it out.</param>
+    public FileStorageManager(
+        IFileStorageResolver storageResolver,
+        IOptions<FileStorageSettings> fileStorageOptions,
+        IStoredObjectDeletionRetries? deletionRetries = null)
     {
         _storageResolver = storageResolver;
         _fileStorageSettings = fileStorageOptions.Value;
+        _deletionRetries = deletionRetries;
     }
 
     /// <summary>
@@ -55,19 +60,14 @@ public class FileStorageManager : IFileStorageManager
     }
 
     /// <summary>
-    /// Converts storage provider string to enum.
+    /// Converts storage provider string to enum, in any letter case (<see cref="FileStorageProviders.Parse"/>).
+    /// A name the platform does not know throws: startup refuses one in the settings, so it can only be a fault.
     /// </summary>
     /// <param name="providerName">The storage provider name.</param>
     /// <returns>The corresponding StorageProvider enum value.</returns>
     public StorageProvider GetStorageProviderEnum(string providerName)
     {
-        return providerName switch
-        {
-            "MinIO" or "Minio" => StorageProvider.MinIO,
-            "S3" => StorageProvider.S3,
-            "Database" => StorageProvider.Database,
-            _ => StorageProvider.Database,
-        };
+        return FileStorageProviders.ParseKnown(providerName);
     }
 
     /// <summary>
@@ -88,12 +88,12 @@ public class FileStorageManager : IFileStorageManager
         Stream fileContent,
         string contentType)
     {
-        IFileStorageService storageService = _storageResolver.Resolve(storageProvider);
-        return await storageService.UploadAsync(organizationId, category, key, fileContent, contentType);
+        return await StoreFileAsync(FileStorageProviders.NameOf(storageProvider), organizationId, category, key, fileContent, contentType);
     }
 
     /// <summary>
-    /// Stores a file using the specified storage provider.
+    /// Stores a file using the specified storage provider. A stream that cannot say its length is
+    /// buffered once here, because every store sends a file by its length.
     /// </summary>
     /// <param name="storageProvider">The storage provider to use ("Database", "S3", "Minio").</param>
     /// <param name="organizationId">Organization ID for file isolation.</param>
@@ -111,7 +111,15 @@ public class FileStorageManager : IFileStorageManager
         string contentType)
     {
         IFileStorageService storageService = _storageResolver.Resolve(storageProvider);
-        return await storageService.UploadAsync(organizationId, category, key, fileContent, contentType);
+        if (StoredObjectStream.LengthOf(fileContent) is not null)
+        {
+            return await storageService.UploadAsync(organizationId, category, key, fileContent, contentType);
+        }
+
+        await using var buffered = new MemoryStream();
+        await fileContent.CopyToAsync(buffered);
+        buffered.Position = 0;
+        return await storageService.UploadAsync(organizationId, category, key, buffered, contentType);
     }
 
     /// <summary>
@@ -161,21 +169,20 @@ public class FileStorageManager : IFileStorageManager
     /// <param name="organizationId">Organization ID for file isolation.</param>
     /// <param name="category">File category.</param>
     /// <param name="key">The file path/identifier returned from StoreFileAsync.</param>
-    /// <returns>The file content as byte array.</returns>
+    /// <returns>The file content as byte array, allocated once at the stored size when the store says it.</returns>
     public async Task<byte[]> RetrieveFileBytesAsync(
         string storageProvider,
         string organizationId,
         string category,
         string key)
     {
-        using Stream stream = await RetrieveFileAsync(storageProvider, organizationId, category, key);
-        using var memoryStream = new MemoryStream();
-        await stream.CopyToAsync(memoryStream);
-        return memoryStream.ToArray();
+        await using Stream stream = await RetrieveFileAsync(storageProvider, organizationId, category, key);
+        return await StoredObjectStream.ReadAllAsync(stream);
     }
 
     /// <summary>
-    /// Deletes a file using the specified storage provider.
+    /// Deletes a file using the specified storage provider. A delete that fails throws; a caller
+    /// whose rows no longer point at the file calls <see cref="ReleaseFileAsync"/> instead.
     /// </summary>
     /// <param name="storageProvider">The storage provider to use ("Database", "S3", "Minio").</param>
     /// <param name="organizationId">Organization ID for file isolation.</param>
@@ -193,31 +200,29 @@ public class FileStorageManager : IFileStorageManager
     }
 
     /// <summary>
-    /// Example method showing how to migrate from database storage to external storage.
+    /// Deletes a file that no row points at any more. A delete that fails is recorded, so a later
+    /// retry deletes it: no row is left to find it by.
     /// </summary>
-    /// <param name="organizationId">Organization ID.</param>
-    /// <param name="category">File category.</param>
-    /// <param name="key">Database file ID.</param>
-    /// <param name="targetProvider">Target storage provider.</param>
-    /// <returns>New file path in target storage.</returns>
-    public async Task<string> MigrateFileAsync(
+    /// <returns>Null when the file is gone, the failure when its delete waits for a retry. It never throws.</returns>
+    public async Task<Exception?> ReleaseFileAsync(
+        string storageProvider,
         string organizationId,
         string category,
-        string key,
-        string targetProvider)
+        string key)
     {
-        // Download from database
-        IFileStorageService databaseService = _storageResolver.Resolve("Database");
-        using Stream fileStream = await databaseService.DownloadAsync(organizationId, category, key);
+        try
+        {
+            await DeleteFileAsync(storageProvider, organizationId, category, key);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            if (_deletionRetries is not null)
+            {
+                await _deletionRetries.RecordAsync(storageProvider, organizationId, category, key, ex);
+            }
 
-        // Get file name (for database storage, we might need to construct it)
-        string fileName = $"migrated-{key}";
-
-        // Upload to target storage
-        IFileStorageService targetService = _storageResolver.Resolve(targetProvider);
-        string newPath = await targetService.UploadAsync(organizationId, category, fileName, fileStream, "application/octet-stream");
-
-        // Optionally delete from database after successful migration await databaseService.DeleteAsync(organizationId, category, filePath);
-        return newPath;
+            return ex;
+        }
     }
 }

@@ -1,7 +1,9 @@
+using IniaAi.Application.Common.Services;
 using IniaAi.Configuration;
 using IniaAi.Configuration.Storage;
 using IniaAi.Infrastructure.Hosting;
 using IniaAi.Infrastructure.Services;
+using IniaAi.Infrastructure.Storage;
 using IniaAi.Services.Jobs;
 using IniaAi.WebApi.BackgroundServices;
 using IniaAi.WebApi.Configuration;
@@ -50,7 +52,7 @@ public static class DependencyInjection
 
         FileStorageSettings? fileStorageSection = builder.Configuration.GetSection(FileStorageSettings.SECTION_NAME).Get<FileStorageSettings>();
 
-        if (fileStorageSection?.DefaultProvider.Equals("MinIO", StringComparison.OrdinalIgnoreCase) == true)
+        if (FileStorageProviders.Normalize(fileStorageSection?.DefaultProvider) != FileStorageProviders.DATABASE)
         {
             _ = services.AddHostedService<FileStorageMigrationService>();
         }
@@ -58,6 +60,8 @@ public static class DependencyInjection
         // Register background services
         _ = services.AddHostedService<ModelPricingSeedingService>();
         _ = services.AddHostedService<SoftDeleteCleanupBackgroundService>();
+        _ = services.AddHostedService<StoredObjectDeletionRetryBackgroundService>();
+        _ = services.AddHostedService<StoredObjectSweepBackgroundService>();
         _ = services.AddHostedService<StuckWorkflowExecutionJanitorService>();
         _ = services.AddHostedService<HostLossSweepService>();
         _ = services.AddHostBootHeartbeat();

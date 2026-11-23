@@ -1,7 +1,9 @@
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Configuration.Storage;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Infrastructure.Storage;
 using IniaAi.Infrastructure.Tests.Helpers;
+using IniaAi.Testing.Fixtures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -100,6 +102,60 @@ public class DatabaseStorageServiceTests : IDisposable
 
         string deleteCommand = Assert.Single(_interceptor.Commands);
         Assert.StartsWith("DELETE", deleteCommand);
+    }
+
+    [Fact]
+    public async Task UploadAsync_ThenDownloadAsync_ReturnsTheBytes_AsAStreamThatKnowsItsSize()
+    {
+        byte[] content = Enumerable.Range(0, 70_000).Select(index => (byte)(index % 251)).ToArray();
+
+        string key = await _service.UploadAsync(ORG_ID, StorageCategories.Documents, "file-round-trip", new MemoryStream(content), "application/pdf");
+
+        await using Stream download = await _service.DownloadAsync(ORG_ID, StorageCategories.Documents, key);
+        StoredObjectStream stored = Assert.IsType<StoredObjectStream>(download);
+        Assert.Equal(content.Length, stored.Length);
+        Assert.False(stored.CanSeek);
+        Assert.Equal(content, await StoredObjectStream.ReadAllAsync(stored, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UploadAsync_AStreamThatCannotSeek_IsStoredWhole()
+    {
+        byte[] content = Enumerable.Range(0, 20_000).Select(index => (byte)(index % 13)).ToArray();
+
+        string key = await _service.UploadAsync(ORG_ID, StorageCategories.Documents, "file-forward-only", new ForwardOnlyStream(content), "application/pdf");
+
+        await using var check = new SqliteUserDataDbContext(_options);
+        File stored = await check.Files.SingleAsync(file => file.Id == key, TestContext.Current.CancellationToken);
+        Assert.Equal(content, stored.Bytes);
+        Assert.Equal(ORG_ID, stored.OrganizationId);
+        Assert.False(stored.IsDeleted);
+    }
+
+    [Fact]
+    public async Task DownloadAsync_AFileSavedThroughTheModel_CopiesItsBytes()
+    {
+        byte[] content = [.. "Balance sheet of the customer's company."u8];
+        var stored = new File(content) { OrganizationId = ORG_ID };
+        await using (var seed = new SqliteUserDataDbContext(_options))
+        {
+            _ = await seed.Files.AddAsync(stored, TestContext.Current.CancellationToken);
+            _ = await seed.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using Stream download = await _service.DownloadAsync(ORG_ID, StorageCategories.Documents, stored.Id);
+        using var copy = new MemoryStream();
+        await download.CopyToAsync(copy, 81_920, TestContext.Current.CancellationToken);
+
+        Assert.Equal(content.Length, download.Length);
+        Assert.Equal(content, copy.ToArray());
+    }
+
+    [Fact]
+    public async Task DownloadAsync_AMissingKey_ThrowsFileNotFound()
+    {
+        _ = await Assert.ThrowsAsync<FileNotFoundException>(
+            () => _service.DownloadAsync(ORG_ID, StorageCategories.Documents, "no-such-file"));
     }
 
     private sealed class SqlCapturingInterceptor : DbCommandInterceptor

@@ -3,6 +3,10 @@ import { pathToFileURL } from 'node:url'
 
 export const IGNORED = new Map([
   [
+    'GHSA-fc5q-39xc-vjpf',
+    'picomatch: denial of service from repeated extglob patterns. No patched version exists (every release up to 4.0.7 is affected), and picomatch reaches this repo only through build tools (vite, vitest, unplugin, vue-tsc, eslint), never the bundle the browser loads. Remove this entry once a fixed picomatch ships.',
+  ],
+  [
     'GHSA-vfj7-8cjw-p6xm',
     'braces: stack-exhaustion denial of service from deeply nested patterns. No patched version exists, and braces reaches this repo only through @vue/eslint-config-typescript, a dev dependency (npm audit --omit=dev finds nothing). Remove this entry once braces ships a fix.',
   ],

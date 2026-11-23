@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
-import { defineComponent, h, type Ref } from 'vue'
+import { defineComponent, h, ref, type Ref } from 'vue'
 import { extensionPoints } from '@/modules/extensionPoints'
 
 import { EN } from '@/assets/locales/en'
@@ -103,6 +103,7 @@ vi.mock('@/api', async () => {
           data: vueRef([
             { id: 'monitoring', name: 'Monitoring', workflows: [workflow('hf-monthly', 'Hedge Fund Monthly'), workflow('pe-quarterly', 'PE Quarterly')] },
             { id: 'credit', name: 'Credit', workflows: [workflow('credit-memo', 'Credit Memo'), workflow('loan-check', 'Loan Check'), workflow('company-report', 'Company Report'), workflow('interim-report', 'Interim Report')] },
+            { id: 'funds', name: 'Funds', workflows: [workflow('fund-report', 'Fund Report'), workflow('fund-report-classified', 'Fund Report Classified')] },
           ]),
           isError: vueRef(false),
           refetch: vi.fn(),
@@ -116,7 +117,14 @@ vi.mock('@/api', async () => {
                   workflowTypeId: typeId.value,
                   isAvailable: true,
                   isCounterpartyRequired: typeId.value === 'company-report',
-                  documentClasses: documentClassesOf(typeId.value),
+                  classifiesDocuments: typeId.value === 'fund-report-classified',
+                  documentClasses: typeId.value.startsWith('fund-report')
+                    ? [
+                        { key: 'Prospectus', displayName: 'Prospectus', requirement: 'Optional', isOutputDocument: false },
+                        { key: 'AnnualReport', displayName: 'Annual Report', requirement: 'Optional', isOutputDocument: false },
+                        { key: 'Analysis', displayName: 'Analysis', requirement: 'Optional', isOutputDocument: true },
+                      ]
+                    : documentClassesOf(typeId.value),
                   variables: variablesOf(typeId.value),
                 }
               : null,
@@ -245,8 +253,10 @@ describe('CreateWorkflow report type step', () => {
       'loan-check',
       'company-report',
       'interim-report',
+      'fund-report',
+      'fund-report-classified',
     ])
-    expect(wrapper!.findAll('input[type="radio"]')).toHaveLength(6)
+    expect(wrapper!.findAll('input[type="radio"]')).toHaveLength(8)
   })
 
   it('still selects a report type when its radio is chosen', async () => {
@@ -600,6 +610,90 @@ describe('CreateWorkflow refused submission', () => {
     expect(currentStepText()).toContain('Documents')
     expect(wrapper!.text()).toContain('This report reads at most 2 documents, and 3 are attached.')
     expect(wrapper!.find('[data-testid="submit-refusal"]').exists()).toBe(false)
+  })
+})
+
+describe('CreateWorkflow documents step when a module has the customer name every document', () => {
+  const asksForAClass = () => ref(true)
+  const continueButton = () => wrapper!.findAll('button').find(candidate => candidate.text() === 'Continue')!
+
+  const openDocumentsStepWith = async (workflowTypeId: string, documentClass?: string) => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: workflowTypeId,
+      workflowTypeId,
+      variables: {},
+      documents: [{ fileId: 'file-1', documentClass, name: 'fund-prospectus', extension: '.pdf' }],
+      startStep: 'details',
+    })
+    await mountPage()
+    await press('Back')
+  }
+
+  beforeEach(() => {
+    sessionStorage.clear()
+    extensionPoints.documentsNeedAClass.push(asksForAClass)
+  })
+
+  afterEach(() => {
+    extensionPoints.documentsNeedAClass.splice(extensionPoints.documentsNeedAClass.indexOf(asksForAClass), 1)
+  })
+
+  it('names the accepted document types without a click and says to label each file', async () => {
+    await openDocumentsStepWith('fund-report')
+
+    expect(wrapper!.get('h2.step-title').text()).toBe('Upload and label your documents')
+    expect(wrapper!.get('[data-testid="accepted-document-types"]').text()).toBe(
+      'Accepted document types: Prospectus, Annual Report. Other document types are not supported.',
+    )
+    expect(wrapper!.find('.doc-req-toggle').exists(), 'the collapsed Optional row is replaced by the list').toBe(false)
+    expect(wrapper!.text()).toContain('Step 1: Drag and drop your files here, or')
+    expect(wrapper!.get('[data-testid="choose-class-step"]').text()).toBe('Step 2: Select a document type for each file')
+  })
+
+  it('holds Continue while a file has no document type, and says why', async () => {
+    await openDocumentsStepWith('fund-report')
+
+    expect(continueButton().attributes('disabled')).toBeDefined()
+    expect(wrapper!.get('[data-testid="documents-without-a-class"]').text()).toBe('Select a document type for each file to continue.')
+    expect(wrapper!.text()).toContain('Select document type')
+    expect(wrapper!.find('.file-class-field.is-unchosen').exists()).toBe(true)
+  })
+
+  it('lets the customer continue once every file has a document type', async () => {
+    await openDocumentsStepWith('fund-report', 'Prospectus')
+
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+    expect(wrapper!.find('[data-testid="documents-without-a-class"]').exists()).toBe(false)
+    expect(wrapper!.find('.file-class-field.is-unchosen').exists()).toBe(false)
+  })
+
+  it('leaves a report type whose documents the platform classifies as it was', async () => {
+    await openDocumentsStepWith('fund-report-classified')
+
+    expect(wrapper!.get('h2.step-title').text()).toBe('Upload documents')
+    expect(wrapper!.find('[data-testid="accepted-document-types"]').exists()).toBe(false)
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+  })
+})
+
+describe('CreateWorkflow documents step when no module has the customer name every document', () => {
+  beforeEach(() => sessionStorage.clear())
+
+  it('keeps the usual wording and lets a file go without a document type', async () => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'fund-report',
+      workflowTypeId: 'fund-report',
+      variables: {},
+      documents: [{ fileId: 'file-1', documentClass: undefined, name: 'fund-prospectus', extension: '.pdf' }],
+      startStep: 'details',
+    })
+    await mountPage()
+    await press('Back')
+
+    expect(wrapper!.get('h2.step-title').text()).toBe('Upload documents')
+    expect(wrapper!.find('[data-testid="accepted-document-types"]').exists()).toBe(false)
+    expect(wrapper!.find('.doc-req-toggle').exists()).toBe(true)
+    expect(wrapper!.findAll('button').find(candidate => candidate.text() === 'Continue')!.attributes('disabled')).toBeUndefined()
   })
 })
 

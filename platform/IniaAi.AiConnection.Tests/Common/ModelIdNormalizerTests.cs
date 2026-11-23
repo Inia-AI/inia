@@ -267,4 +267,40 @@ public class ModelIdNormalizerTests
     }
 
     #endregion
+
+    #region Cohere embeddings
+
+    [Theory]
+    [InlineData("global.cohere.embed-v4:0", "cohere.embed-v4")]
+    [InlineData("us.cohere.embed-v4:0", "cohere.embed-v4")]
+    [InlineData("eu.cohere.embed-v4:0", "cohere.embed-v4")]
+    [InlineData("cohere.embed-english-v3", "cohere.embed-english-v3")]
+    [InlineData("cohere.embed-multilingual-v3", "cohere.embed-multilingual-v3")]
+    [InlineData("embed-v4.0", "embed-v4.0")]
+    [InlineData("embed-english-v3.0", "embed-english-v3.0")]
+    public void Normalize_CohereEmbeddingIds_NameTheModelThePriceListNames(string input, string expected)
+    {
+        Assert.Equal(expected, ModelIdNormalizer.Normalize(input));
+    }
+
+    [Theory]
+    [InlineData("global.cohere.embed-v4:0", ModelProviders.AWS_BEDROCK)]
+    [InlineData("eu.cohere.embed-v4:0", ModelProviders.AWS_BEDROCK)]
+    [InlineData("cohere.embed-english-v3", ModelProviders.AWS_BEDROCK)]
+    [InlineData("embed-v4.0", ModelProviders.COHERE_API)]
+    public void GetProvider_CohereEmbeddingIds_ReportsTheRouteTheyRanOn(string input, string expected)
+    {
+        Assert.Equal(expected, ModelIdNormalizer.GetProvider(input));
+    }
+
+    [Theory]
+    [InlineData("global.cohere.embed-v4:0")]
+    [InlineData("eu.cohere.embed-v4:0")]
+    [InlineData("embed-v4.0")]
+    public void GetFamily_CohereEmbeddingIds_ReportsCohere(string input)
+    {
+        Assert.Equal("cohere", ModelIdNormalizer.GetFamily(input));
+    }
+
+    #endregion
 }

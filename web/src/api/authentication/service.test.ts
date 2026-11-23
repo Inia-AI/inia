@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import AuthenticationService from './service'
 
 describe('AuthenticationService token requests', () => {
@@ -25,5 +25,30 @@ describe('AuthenticationService token requests', () => {
     const form = postSpy.mock.calls[0][1] as URLSearchParams
     expect(form.has('client_id')).toBe(false)
     expect(form.has('client_secret')).toBe(false)
+  })
+
+  describe('with AWS WAF\'s script on the page', () => {
+    afterEach(() => {
+      delete window.AwsWafIntegration
+    })
+
+    it('a Google sign-in, which can create an account, posts only once the firewall has its token', async () => {
+      const order: string[] = []
+      window.AwsWafIntegration = { getToken: vi.fn(async () => { await Promise.resolve(); order.push('token'); return 'waf-token' }) }
+      postSpy.mockImplementation(async () => { order.push('post'); return { status: 200, data: {} } })
+
+      await service.verifyGoogleToken('google-credential')
+
+      expect(order).toEqual(['token', 'post'])
+    })
+
+    it('a Microsoft sign-in, which the firewall does not score, asks for no token', async () => {
+      const getToken = vi.fn(async () => 'waf-token')
+      window.AwsWafIntegration = { getToken }
+
+      await service.verifyOidcToken('oidc-credential')
+
+      expect(getToken).not.toHaveBeenCalled()
+    })
   })
 })

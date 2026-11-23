@@ -1,5 +1,6 @@
 using ErrorOr;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.Reports;
 using IniaAi.Application.Errors;
 using IniaAi.Common;
@@ -17,7 +18,7 @@ using Microsoft.Extensions.Logging;
 namespace IniaAi.Application.Queries.Files.GetFile;
 
 /// <summary>
-/// Handles <see cref="GetFileQuery"/> to retrieve file binary content.
+/// Handles <see cref="GetFileQuery"/> to stream a file's content from its store.
 /// </summary>
 public sealed class GetFileQueryHandler : IRequestHandler<GetFileQuery, ErrorOr<FileResult>>
 {
@@ -95,43 +96,17 @@ public sealed class GetFileQueryHandler : IRequestHandler<GetFileQuery, ErrorOr<
             return Error.NotFound(description: "File storage path not found.");
         }
 
+        string fileName = document.MediaType.ServedFileName(fileMetadata.Name.TrimEnd().WithExtension(fileMetadata.Extension));
+        string contentType = document.MediaType.ToContentType();
+
+        Stream content;
         try
         {
-            byte[] fileBytes = await _fileStorageManager.RetrieveFileBytesAsync(
+            content = await _fileStorageManager.RetrieveFileAsync(
                 fileMetadata.StorageProvider.ToString(),
                 fileMetadata.OrganizationId,
                 StorageCategories.Documents,
                 fileMetadata.ExternalStoragePath);
-
-            if (fileBytes is null || fileBytes.Length == 0)
-            {
-                _logger.LogWarning(
-                    "File content is empty for document {FileId}",
-                    LogSanitizer.ForLog(request.FileId));
-                return Error.NotFound(description: "File content is empty.");
-            }
-
-            string fileName = document.MediaType.ServedFileName(fileMetadata.Name.TrimEnd().WithExtension(fileMetadata.Extension));
-            string contentType = document.MediaType.ToContentType();
-
-            string contentDisposition = request.Disposition.Equals("preview", StringComparison.OrdinalIgnoreCase)
-                ? "inline"
-                : "attachment";
-
-            var result = new FileResult
-            {
-                Content = fileBytes,
-                ContentType = contentType,
-                FileName = fileName,
-                ContentDisposition = contentDisposition,
-            };
-
-            _logger.LogTrace(
-                "Successfully retrieved content for document {FileId}, size: {Size} bytes",
-                LogSanitizer.ForLog(request.FileId),
-                fileBytes.Length);
-
-            return result;
         }
         catch (Exception ex)
         {
@@ -141,6 +116,34 @@ public sealed class GetFileQueryHandler : IRequestHandler<GetFileQuery, ErrorOr<
                 LogSanitizer.ForLog(request.FileId));
             return Error.Failure(description: "Error retrieving document content.");
         }
+
+        long? length = StoredObjectStream.LengthOf(content);
+        if (length == 0)
+        {
+            await content.DisposeAsync();
+            _logger.LogWarning(
+                "File content is empty for document {FileId}",
+                LogSanitizer.ForLog(request.FileId));
+            return Error.NotFound(description: "File content is empty.");
+        }
+
+        string contentDisposition = request.Disposition.Equals("preview", StringComparison.OrdinalIgnoreCase)
+            ? "inline"
+            : "attachment";
+
+        _logger.LogTrace(
+            "Successfully retrieved content for document {FileId}, size: {Size} bytes",
+            LogSanitizer.ForLog(request.FileId),
+            length);
+
+        return new FileResult
+        {
+            Content = content,
+            Length = length,
+            ContentType = contentType,
+            FileName = fileName,
+            ContentDisposition = contentDisposition,
+        };
     }
 
     /// <summary>

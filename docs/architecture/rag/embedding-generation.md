@@ -43,11 +43,13 @@ public interface IEmbeddingsConnector
 {
     string ModelName { get; }
     string ModelId { get; }
-    int TotalTokens { get; }
+    string Provider { get; }
+    string? MissingSetting => null;
 
-    Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default);
-    Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default);
+    Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default);
 }
+
+public sealed record EmbeddingsAnswer(List<double[]> Vectors, int InputTokens);
 ```
 
 The concrete connector is registered by `AddModelConnectors` from `PlatformSettings.DeploymentMode`; the gateway mode's comes from the paid build's closed module:
@@ -100,7 +102,14 @@ Documents processed before the key was set keep the `ERROR` vector until they ar
 
 ## Token accounting
 
-The connector exposes a running `TotalTokens`. `GetEmbeddingsAsync` reads it before and after each batch to attribute embedding-token usage back to the originating document (`RecordEmbeddingUsage`), so embedding cost is tracked the same way model-call cost is.
+Each call returns its vectors with the input tokens counted for that call alone (`EmbedAsync` answers an `EmbeddingsAnswer`). `GetEmbeddingsAsync` adds up its batches' counts and records them against the originating document (`RecordEmbeddingUsage`), and retrieval adds its filter calls to the run, so embedding cost is tracked the same way model-call cost is.
+
+Each connector reads the count where its service sends it. Cohere's API and Azure put it in the answer body. Bedrock puts it only in the `X-Amzn-Bedrock-Input-Token-Count` response header, which the AWS SDK does not map onto the response, so the Bedrock connector reads it from the client's response event (`BedrockInputTokenCounts`).
+
+
+A usage record carries the provider of the route the call ran on, which each connector names (`Provider`), and the model name the price list uses, as model-call records do. `EmbeddingUsageRecordFactory` builds it from the connector's `ModelId` through `ModelIdNormalizer`, for page embeddings and for retrieval queries alike. `eu.cohere.embed-v4:0`, `us.cohere.embed-v4:0` and `global.cohere.embed-v4:0` all record as `aws-bedrock` with the model `cohere.embed-v4`; `embed-v4.0` on Cohere's API records as `cohere-api` with `embed-v4.0`, and an Azure call as `azure-foundry` with `embed-v4.0`. Each has its own price row.
+
+A call that answers vectors and counts no tokens logs a warning that starts with `EmbeddingTokensUncounted`, and records nothing. A record that matches no price row logs one that starts with `EmbeddingUsageUnpriced`. The AWS stack alarms on both when it has an alert email.
 
 ## Related pages
 

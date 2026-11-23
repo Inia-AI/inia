@@ -544,20 +544,21 @@ The platform can persist uploaded documents and generated artifacts in the datab
 
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
-| `FileStorage:DefaultProvider` | `Database` | `Database`, `S3`, or `MinIO`. |
-| `FileStorage:S3:Region` | `<aws-region>` | S3 region. |
+| `FileStorage:DefaultProvider` | `Database` | `Database`, `S3` or `Minio`, in any letter case: the store for new files. A store that is not set up stops startup. |
+| `FileStorage:S3:BucketName` | `<bucket-name>` | The bucket the stack created; it sets up the S3 store. Every file goes under its organization's prefix, and the platform never creates a bucket. |
+| `FileStorage:S3:Region` | `<aws-region>` | The bucket's region. With `BucketName` and no `ServiceUrl`, startup stops without it. |
 | `FileStorage:S3:AccessKeyId` | `<s3-access-key-id>` | S3 access key (omit to use the ambient AWS credential chain). |
 | `FileStorage:S3:SecretAccessKey` | `<s3-secret-access-key>` | S3 secret key. |
-| `FileStorage:S3:ServiceUrl` | `<https://s3-endpoint>` | Override endpoint (for S3-compatible stores). |
-| `FileStorage:MinIO:Endpoint` | `<minio-endpoint>` | MinIO server endpoint. |
+| `FileStorage:S3:ServiceUrl` | `<https://s3-endpoint>` | Override endpoint (for S3-compatible stores). With it the client uses path-style addresses and sends checksums only where an operation requires one. |
+| `FileStorage:MinIO:Endpoint` | `<minio-endpoint>` | MinIO server endpoint; it sets up the MinIO store. |
 | `FileStorage:MinIO:AccessKey` | `<minio-access-key>` | MinIO access key. |
 | `FileStorage:MinIO:SecretKey` | `<minio-secret-key>` | MinIO secret key. |
 | `FileStorage:MinIO:UseSSL` | `false` | Connect to MinIO over TLS. |
 | `FileStorage:MinIO:Region` | `""` | MinIO region, optional. |
 | `FileStorage:MinIO:BucketName` | `<bucket-name>` | One fixed, pre-created bucket for every file, for an on-premises single-tenant deployment. Unset, each organization gets its own `{orgId}-{category}` bucket; set, that per-organization isolation is off. |
-| `FileStorage:TenantOverrides:<orgId>` | `S3` | The provider for one organization, instead of `DefaultProvider`. See [File Storage](../architecture/file-storage/index.md). |
-| `FileStorage:StorageBuckets:documents` | `docs` | Bucket/prefix for documents. The shipped file also maps `images` (`imgs`), `uploads` (`uploads`) and `temp` (`temp`). |
-| `FileStorage:StorageBuckets:agent-session-bundles` | `agent-session-bundles` | Bucket/prefix for agent [session bundles](../reference/database/user-data-database.md#agentrunsessionbundles). Under the default `Database` provider each bundle is one row in the UserData `Files` table, materialized whole on store, on read and on delete — which is affordable only because the rows are short-lived and the runtime caps a bundle at 64 MiB. |
+| `FileStorage:TenantOverrides:<orgId>` | `S3` | The store for one organization's new files, instead of `DefaultProvider`. A store that is not set up stops startup. See [File Storage](../architecture/file-storage/index.md). |
+| `FileStorage:StorageBuckets:documents` | `docs` | Bucket suffix for documents, for MinIO without a fixed bucket only; no other store puts the category in a location. The shipped file also maps `images` (`imgs`), `uploads` (`uploads`) and `temp` (`temp`). |
+| `FileStorage:StorageBuckets:agent-session-bundles` | `agent-session-bundles` | Bucket suffix for agent [session bundles](../reference/database/user-data-database.md#agentrunsessionbundles), for MinIO without a fixed bucket only. Under the default `Database` store each bundle is one row in the UserData `Files` table, read whole when a run continues — which is affordable only because the rows are short-lived and the runtime caps a bundle at 64 MiB. |
 
 ## Email
 

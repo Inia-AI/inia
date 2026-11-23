@@ -1,3 +1,4 @@
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.Capabilities;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Configuration;
@@ -99,9 +100,9 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadDocument(document.Id);
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
         Assert.Equal("application/pdf", file.ContentType);
-        Assert.Equal(testContent, file.FileContents);
+        Assert.Equal(testContent, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -123,8 +124,8 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await ControllerFor(WebAppCallers.SignedInRequest(_member.Id, Roles.SUPER_ADMIN)).DownloadDocument(document.Id);
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
-        Assert.Equal(content, file.FileContents);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal(content, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -136,8 +137,8 @@ public class FileDownloadControllerTests : IDisposable
         Document foreign = await StoreDocumentAsync(_testOrganization.Id, "member-only.pdf", "test/member-only", Encoding.UTF8.GetBytes("member"));
         FileDownloadController apiKeyClient = ControllerFor(WebAppCallers.ApiKeyRequest(_serviceProvider.GetRequiredService<IOptions<PlatformSettings>>().Value));
 
-        FileContentResult file = Assert.IsType<FileContentResult>(await apiKeyClient.DownloadDocument(own.Id));
-        Assert.Equal(content, file.FileContents);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(await apiKeyClient.DownloadDocument(own.Id));
+        Assert.Equal(content, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
         _ = Assert.IsType<NotFoundObjectResult>(await apiKeyClient.DownloadDocument(foreign.Id));
     }
 
@@ -178,9 +179,9 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadFileByName("valid-file.pdf");
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
         Assert.Equal("application/pdf", file.ContentType);
-        Assert.Equal(testContent, file.FileContents);
+        Assert.Equal(testContent, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -221,8 +222,8 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadFileByName("report.pdf");
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
-        Assert.Equal(own, file.FileContents);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal(own, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -235,8 +236,8 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadFileByName("shared-name.pdf");
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
-        Assert.Equal(newer, file.FileContents);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal(newer, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -247,7 +248,7 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadDocument(document.Id);
 
-        FileContentResult fileResult = Assert.IsType<FileContentResult>(result);
+        FileStreamResult fileResult = Assert.IsType<FileStreamResult>(result);
         Assert.Equal("application/pdf", fileResult.ContentType);
         Assert.Equal("statement-by-id.pdf", fileResult.FileDownloadName);
     }
@@ -260,7 +261,7 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadDocument(document.Id);
 
-        FileContentResult fileResult = Assert.IsType<FileContentResult>(result);
+        FileStreamResult fileResult = Assert.IsType<FileStreamResult>(result);
         Assert.Equal("Q3 results v1.2.pdf", fileResult.FileDownloadName);
     }
 
@@ -272,7 +273,7 @@ public class FileDownloadControllerTests : IDisposable
 
         IActionResult result = await _controller.DownloadFileByName("statement-by-name.dat");
 
-        FileContentResult fileResult = Assert.IsType<FileContentResult>(result);
+        FileStreamResult fileResult = Assert.IsType<FileStreamResult>(result);
         Assert.Equal("application/pdf", fileResult.ContentType);
         Assert.Equal("statement-by-name.dat", fileResult.FileDownloadName);
     }

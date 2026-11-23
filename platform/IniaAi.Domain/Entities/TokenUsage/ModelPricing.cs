@@ -12,7 +12,8 @@ namespace IniaAi.Domain.Entities.TokenUsage;
 public class ModelPricing : Entity<ModelPricing>
 {
     /// <summary>
-    /// The AI provider identifier matching ModelIdNormalizer.GetProvider() output.
+    /// The AI provider identifier: ModelIdNormalizer.GetProvider() output for a model call, and
+    /// the connector's Provider for an embeddings call.
     /// Examples: "anthropic-api", "aws-bedrock", "cohere-api".
     /// </summary>
     public string Provider { get; set; } = string.Empty;

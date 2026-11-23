@@ -165,7 +165,7 @@ The shape is checked at startup, in `AddAgentRuntimeClient` (`BindAllowedModelsT
 
 ### Pricing rows
 
-`ModelPricing` rows are keyed by `(Provider, ModelId)`, and the `azure-foundry` rows are keyed on the **deployment name** (`ModelPricingSeedingService`). The seeded set, each carrying the same list rates as the Bedrock row for the same model (the Bedrock rows add a 1.1 multiplier for a regional endpoint; the Foundry rows have none):
+`ModelPricing` rows are keyed by `(Provider, ModelId)`. The `azure-foundry` rows of the Claude models are keyed on the **deployment name**, and the embeddings row on the **model name** (`ModelPricingSeedingService`). The seeded Claude set, each carrying the same list rates as the Bedrock row for the same model (the Bedrock rows add a 1.1 multiplier for a regional endpoint; the Foundry rows have none):
 
 | Deployment name | Alias | Model priced as |
 |-----------------|-------|-----------------|
@@ -178,9 +178,11 @@ The shape is checked at startup, in `AddAgentRuntimeClient` (`BindAllowedModelsT
 | `claude-haiku-5-5` | — | Claude Haiku 5.5 ($0.10 / $0.50 per MTok for prompts up to 100,000 tokens; the row carries a long-prompt tier, so a single request with a longer prompt is priced at $0.50 / $2.50) |
 | `claude-haiku-4-5-20251001` | `claude-haiku-4-5` | Claude Haiku 4.5 (either name resolves to the row) |
 
+The embeddings row is `embed-v4.0`, Cohere Embed 4 at $0.12 per million input tokens, the Global Standard price that the Azure stack deploys. It is keyed on the model name whatever the deployment is called: `AzureCohereEmbeddingsConnector` sends the deployment name (`cohere-embed-v4` on the Azure stack) only in the request, and its usage records carry the configured model in its Cohere API form.
+
 Two consequences, both deliberate:
 
-- **A deployment name that does not identify the model it serves needs its own row.** The row is keyed on the configured name, so a deployment called `claude-sonnet-5` is priced as Sonnet 5 whatever it actually serves. If a stack names a deployment after a different model, add a `ModelPricing` row for that exact name under provider `azure-foundry` through the model-pricing API — and prefer naming the deployment after the model it serves, because the seeder re-applies the seeded price for every seeded `(provider, name)` pair on each start.
+- **A Claude deployment name that does not identify the model it serves needs its own row.** The row is keyed on the configured name, so a deployment called `claude-sonnet-5` is priced as Sonnet 5 whatever it actually serves. If a stack names a deployment after a different model, add a `ModelPricing` row for that exact name under provider `azure-foundry` through the model-pricing API — and prefer naming the deployment after the model it serves, because the seeder re-applies the seeded price for every seeded `(provider, name)` pair on each start.
 - **No row is seeded for a model that has no list price in the seed.** Such a deployment records usage with no cost until an operator adds its row.
 
 These rows also price agent runs. `AgentRunBilling` prices a run's tokens from the trace pack, model by model and request by request, against the rows of the configured model's provider — `azure-foundry` on an Azure stack, because the configured model is a registered deployment name. The runtime's own cost figure is billed only for what no row covers (a model with no row, or a run without a trace pack), on a spend record with provider `agent-runtime` — see [Agent Runtime Integration](../services/infrastructure/agent-runtime-integration.md).

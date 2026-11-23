@@ -8,16 +8,16 @@ public interface IEmbeddingsConnector
     string ModelName { get; }
 
     /// <summary>
-    /// Gets the actual model ID used for API calls and pricing lookup.
-    /// This should return the normalized model ID that matches ModelPricing records
-    /// (e.g., "embed-english-v3.0").
+    /// Gets the model the connector calls, such as "eu.cohere.embed-v4:0" or "embed-v4.0". A usage
+    /// record takes the price list's model name from it, also on Azure, where the request names the
+    /// deployment instead.
     /// </summary>
     string ModelId { get; }
 
     /// <summary>
-    /// Gets the total number of tokens consumed by this connector instance.
+    /// The route the connector calls, as usage records name it: one of <c>ModelProviders</c>.
     /// </summary>
-    int TotalTokens { get; }
+    string Provider { get; }
 
     /// <summary>
     /// The setting this connector needs and does not have, so it embeds nothing; null when it can
@@ -25,6 +25,9 @@ public interface IEmbeddingsConnector
     /// </summary>
     string? MissingSetting => null;
 
-    Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default);
-    Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Embeds <paramref name="documents"/> in one call. The answer carries this call's own token
+    /// count, so callers running at the same time never count each other's tokens.
+    /// </summary>
+    Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default);
 }

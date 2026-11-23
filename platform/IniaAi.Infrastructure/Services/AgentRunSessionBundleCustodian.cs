@@ -120,14 +120,10 @@ public class AgentRunSessionBundleCustodian : IAgentRunSessionBundleCustodian
     }
 
     /// <summary>
-    /// Every deployment shipped from this repository resolves the Database provider here: S3 is
-    /// registered in neither <c>InfrastructureServiceRegistration</c> nor
-    /// <c>ServicesConfigurator</c>, and <c>FileStorageResolver</c> falls back to Database for a
-    /// provider it cannot resolve — so a bundle becomes one row in the UserData <c>Files</c>
-    /// table, materialized whole on store and on read. Affordable only because bundles are
-    /// short-lived (every non-Failed terminal deletes the execution's lot, the retention sweep
-    /// takes the rest) and capped at 64 MiB by the runtime. An on-premise deployment that
-    /// configures MinIO stores them as objects instead.
+    /// A bundle goes to the organization's store: one row in the UserData <c>Files</c> table under
+    /// the Database store, an object in the bucket under S3 or MinIO. The read takes it whole,
+    /// which is affordable only because bundles are short-lived (every non-Failed terminal deletes
+    /// the execution's lot, the retention sweep takes the rest) and capped at 64 MiB by the runtime.
     /// </summary>
     private async Task<bool> StoreAsync(
         AgentRunSessionBundleAnchor anchor,

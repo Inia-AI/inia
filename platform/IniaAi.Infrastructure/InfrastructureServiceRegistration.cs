@@ -31,7 +31,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using Minio;
 using System.Net.Http.Headers;
 
 namespace IniaAi.Infrastructure;
@@ -68,66 +67,37 @@ public static class InfrastructureServiceRegistration
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         });
 
-        // Configure MinIO client
-        IConfigurationSection fileStorageSection = configuration.GetSection(FileStorageSettings.SECTION_NAME);
-        MinioStorageSettings? minioSettings = fileStorageSection.GetSection("MinIO").Get<MinioStorageSettings>();
-        if (minioSettings is not null && !string.IsNullOrEmpty(minioSettings.Endpoint))
+        // File stores: the database always, S3 when its bucket is set, MinIO when its endpoint is
+        // set. A default or an override that names a store not set up stops startup here.
+        FileStorageSettings fileStorage = configuration.GetSection(FileStorageSettings.SECTION_NAME).Get<FileStorageSettings>() ?? new();
+        FileStorageProviders.ThrowIfMisconfigured(fileStorage);
+        _ = services.AddKeyedSingleton<IFileStorageService, DatabaseStorageService>(FileStorageProviders.DATABASE);
+        if (FileStorageProviders.HasS3(fileStorage))
         {
-            _ = services.AddSingleton(sp =>
-            {
-                // MinIO client expects endpoint without protocol prefix
-                string endpoint = minioSettings.Endpoint;
-                if (endpoint.StartsWith("http://"))
-                {
-                    endpoint = endpoint[7..]; // Remove "http://"
-                }
-                else if (endpoint.StartsWith("https://"))
-                {
-                    endpoint = endpoint[8..]; // Remove "https://"
-                }
-
-                // Bypass system proxy (e.g. Zscaler) for MinIO — it's always internal infrastructure.
-                // .NET doesn't support CIDR notation in NO_PROXY, so direct IP endpoints
-                // get incorrectly routed through the proxy.
-                var httpClient = new HttpClient(new HttpClientHandler { UseProxy = false });
-
-                IMinioClient client = new MinioClient()
-                    .WithEndpoint(endpoint)
-                    .WithCredentials(minioSettings.AccessKey, minioSettings.SecretKey)
-                    .WithHttpClient(httpClient);
-
-                if (minioSettings.UseSSL)
-                {
-                    client = client.WithSSL();
-                }
-
-                if (!string.IsNullOrEmpty(minioSettings.Region))
-                {
-                    client = client.WithRegion(minioSettings.Region);
-                }
-
-                return client.Build();
-            });
+            _ = services.AddKeyedSingleton(FileStorageProviders.S3, (_, _) => new ObjectStorageService(
+                ObjectStorageClients.ForS3(fileStorage.S3!),
+                new SharedBucketLayout(fileStorage.S3!.BucketName!)));
+            _ = services.AddKeyedSingleton<IFileStorageService>(FileStorageProviders.S3, (provider, key) => provider.GetRequiredKeyedService<ObjectStorageService>(key));
         }
 
-        // Register file storage services using keyed services as singleton to match resolver lifetime
-        _ = services.AddKeyedSingleton<IFileStorageService, DatabaseStorageService>("Database");
-
-        // Only register MinIO storage service if MinIO client is configured
-        if (minioSettings is not null && !string.IsNullOrEmpty(minioSettings.Endpoint))
+        if (FileStorageProviders.HasMinio(fileStorage))
         {
-            _ = services.AddKeyedSingleton<IFileStorageService, MinioStorageService>("Minio");
+            MinioStorageSettings minio = fileStorage.MinIO!;
+            IObjectLayout layout = string.IsNullOrEmpty(minio.BucketName)
+                ? new BucketPerOrganizationLayout(fileStorage.StorageBuckets ?? [])
+                : new FixedBucketLayout(minio.BucketName);
+            _ = services.AddKeyedSingleton(FileStorageProviders.MINIO, (_, _) => new ObjectStorageService(ObjectStorageClients.ForMinio(minio), layout));
+            _ = services.AddKeyedSingleton<IFileStorageService>(FileStorageProviders.MINIO, (provider, key) => provider.GetRequiredKeyedService<ObjectStorageService>(key));
         }
-        //  services.AddKeyedScoped<IFileStorageService, S3StorageService>("S3");
-
-        // Only register S3 if IAmazonS3 is available (to avoid migration issues)
-        // This will be registered in the main application startup where AWS services are configured
 
         // Register the file storage resolver
         _ = services.AddSingleton<IFileStorageResolver, FileStorageResolver>();
 
         // Add file storage services
+        _ = services.AddSingleton<StoredObjectDeletionRetries>();
+        _ = services.AddSingleton<IStoredObjectDeletionRetries>(provider => provider.GetRequiredService<StoredObjectDeletionRetries>());
         _ = services.AddSingleton<IFileStorageManager, FileStorageManager>();
+        _ = services.AddSingleton<StoredObjectSweep>();
 
         // Add database exception analyzer
         _ = services.AddScoped<IDbExceptionAnalyzer, DbExceptionAnalyzer>();

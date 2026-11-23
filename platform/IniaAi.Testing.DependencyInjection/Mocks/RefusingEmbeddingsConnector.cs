@@ -1,4 +1,5 @@
 using IniaAi.AiConnection.Abstractions;
+using IniaAi.AiConnection.Common;
 using IniaAi.Testing.XunitAttributes;
 
 namespace IniaAi.Testing.DependencyInjection.Mocks;
@@ -13,14 +14,9 @@ public sealed class RefusingEmbeddingsConnector : IEmbeddingsConnector
 
     public string ModelId => nameof(RefusingEmbeddingsConnector);
 
-    public int TotalTokens => 0;
+    public string Provider => ModelProviders.UNKNOWN;
 
-    public Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default)
-    {
-        throw Refusal();
-    }
-
-    public Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default)
+    public Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default)
     {
         throw Refusal();
     }

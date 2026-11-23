@@ -42,6 +42,13 @@ public static partial class ModelIdNormalizer
     // Optional version suffix (-v1:0, -v2:0, etc.)
     private static readonly Regex BedrockModelPattern = BedrockModelRegex();
 
+    // A Cohere model on Bedrock, as a foundation model (cohere.embed-english-v3) or through an
+    // inference profile (eu.cohere.embed-v4:0). The price list names it without the profile's
+    // region and the ":0" revision. On Cohere's own API the name carries its version after a
+    // dot (embed-v4.0), so it is already the name the price list uses.
+    private static readonly Regex CohereBedrockPattern = CohereBedrockRegex();
+    private const string COHERE_API_MODEL_PREFIX = "embed-";
+
     private static readonly Lock _deploymentsLock = new();
     private static volatile ModelDeploymentTable _deployments = ModelDeploymentTable.Empty;
 
@@ -85,6 +92,17 @@ public static partial class ModelIdNormalizer
         }
 
         if (deployments.TryGetProvider(modelId, out _))
+        {
+            return modelId;
+        }
+
+        Match cohereMatch = CohereBedrockPattern.Match(modelId);
+        if (cohereMatch.Success)
+        {
+            return cohereMatch.Groups["model"].Value;
+        }
+
+        if (modelId.StartsWith(COHERE_API_MODEL_PREFIX, StringComparison.OrdinalIgnoreCase))
         {
             return modelId;
         }
@@ -166,7 +184,8 @@ public static partial class ModelIdNormalizer
     {
         return !string.IsNullOrWhiteSpace(modelId) && (modelId.Contains("anthropic.") ||
                modelId.Contains("-v1:") ||
-               modelId.Contains("-v2:"));
+               modelId.Contains("-v2:") ||
+               CohereBedrockPattern.IsMatch(modelId));
     }
 
     /// <summary>
@@ -207,7 +226,7 @@ public static partial class ModelIdNormalizer
         return modelId.StartsWith("claude", StringComparison.OrdinalIgnoreCase)
             ? ModelProviders.ANTHROPIC_API
             : modelId.StartsWith("cohere", StringComparison.OrdinalIgnoreCase) ||
-            modelId.StartsWith("embed", StringComparison.OrdinalIgnoreCase)
+            modelId.StartsWith(COHERE_API_MODEL_PREFIX, StringComparison.OrdinalIgnoreCase)
             ? ModelProviders.COHERE_API
             : ModelProviders.UNKNOWN;
     }
@@ -241,7 +260,7 @@ public static partial class ModelIdNormalizer
             modelId.Contains("anthropic.", StringComparison.OrdinalIgnoreCase)
             ? "anthropic"
             : normalizedId.StartsWith("cohere", StringComparison.OrdinalIgnoreCase) ||
-            normalizedId.StartsWith("embed", StringComparison.OrdinalIgnoreCase)
+            normalizedId.StartsWith(COHERE_API_MODEL_PREFIX, StringComparison.OrdinalIgnoreCase)
             ? "cohere"
             : ModelProviders.UNKNOWN;
     }
@@ -255,4 +274,9 @@ public static partial class ModelIdNormalizer
         @"^(?:(?<region>\w+)\.)?(?:anthropic\.)?(?<model>claude-[\w\-]+?)(?:-v\d+(?::\d+)?)?$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex BedrockModelRegex();
+
+    [GeneratedRegex(
+        @"^(?:[a-z]+\.)?(?<model>cohere\.[\w\-]+?)(?::\d+)?$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    private static partial Regex CohereBedrockRegex();
 }

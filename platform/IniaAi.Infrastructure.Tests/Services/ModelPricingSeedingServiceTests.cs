@@ -1,15 +1,24 @@
+using IniaAi.AiConnection.Abstractions;
+using IniaAi.AiConnection.Cohere;
 using IniaAi.AiConnection.Common;
 using IniaAi.Common.Interfaces.Persistence;
 using IniaAi.Common.Interfaces.Services;
+using IniaAi.Configuration;
+using IniaAi.Configuration.LLMProviders;
+using IniaAi.Core.Services.TokenUsage;
 using IniaAi.Domain.Entities.TokenUsage;
 using IniaAi.Domain.Entities.TokenUsage.Enums;
 using IniaAi.Infrastructure.Persistence.Core.Contexts;
 using IniaAi.Infrastructure.Persistence.UserData.Contexts;
 using IniaAi.Infrastructure.Services;
+using IniaAi.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using CohereModel = IniaAi.Configuration.Enums.Cohere.AiModel;
 using TokenExecutionContext = IniaAi.Domain.Entities.TokenUsage.Enums.ExecutionContext;
 
 namespace IniaAi.Infrastructure.Tests.Services;
@@ -35,6 +44,21 @@ public class ModelPricingSeedingServiceTests : IDisposable
     private const string HAIKU_5_5 = "claude-haiku-5-5";
     private const string ORGANIZATION_ID = "org-1";
     private const int ONE_MILLION_TOKENS = 1_000_000;
+
+    // Cohere Embed 4: $0.12 per million input tokens on Bedrock in us-west-2, us-east-1 and
+    // eu-west-2 (AWS Price List API, AmazonBedrockFoundationModels, 18 November 2026), as on
+    // Cohere's own API.
+    private const decimal EMBED_V4_COST = 0.12m;
+
+    // Cohere models no deployment configures, so no price is seeded for them.
+    private static readonly CohereModel[] _unpricedCohereModels =
+    [
+        CohereModel.EmbedEnglishLightV30,
+        CohereModel.EmbedMultilingualLightV30,
+        CohereModel.EmbedEnglishV20,
+        CohereModel.EmbedEnglishLightV20,
+        CohereModel.EmbedMultilingualV20,
+    ];
 
     private static readonly string[] _foundryDeployedModels = [OPUS_4_8, OPUS_5, OPUS_5_5, SONNET_5, SONNET_5_5, SONNET_4_6, HAIKU_4_5_DATED, HAIKU_5_5];
 
@@ -102,7 +126,7 @@ public class ModelPricingSeedingServiceTests : IDisposable
     public void AzureFoundryRows_CarryTheBedrockRowsPricesUnchanged()
     {
         List<ModelPricing> defaults = Defaults();
-        List<ModelPricing> foundryRows = [.. defaults.Where(static row => row.Provider == ModelProviders.AZURE_FOUNDRY)];
+        List<ModelPricing> foundryRows = [.. defaults.Where(static row => row.Provider == ModelProviders.AZURE_FOUNDRY && row.PricingType == PricingType.Llm)];
 
         Assert.Equal(_foundryDeployedModels.Length, foundryRows.Count);
 
@@ -186,12 +210,12 @@ public class ModelPricingSeedingServiceTests : IDisposable
         _ = Row(rows, ModelProviders.AZURE_FOUNDRY, HAIKU_4_5_DATED);
     }
 
-    private TokenUsageService CreateTokenUsageService()
+    private TokenUsageService CreateTokenUsageService(ILogger<TokenUsageService>? logger = null)
     {
         return new TokenUsageService(
             _services,
             new MemoryCache(new MemoryCacheOptions()),
-            NullLogger<TokenUsageService>.Instance);
+            logger ?? NullLogger<TokenUsageService>.Instance);
     }
 
     private static LlmUsageRecord FoundryUsage(string modelId, PricingComponentType componentType)
@@ -319,5 +343,102 @@ public class ModelPricingSeedingServiceTests : IDisposable
             BedrockHaiku55Usage(singleRequest: false, input: 200_000, output: 1_000), TestContext.Current.CancellationToken);
 
         Assert.Equal((200_000m * 0.10m + 1_000m * 0.50m) / ONE_MILLION_TOKENS, cost);
+    }
+
+    /// <summary>
+    /// Every route and model a deployment can configure. Azure AI Foundry offers Cohere's Embed v4
+    /// only, as the deployment the Azure stack creates.
+    /// </summary>
+    public static TheoryData<string, CohereModel> PricedCohereRoutes()
+    {
+        TheoryData<string, CohereModel> routes = [];
+        foreach (CohereModel model in Enum.GetValues<CohereModel>().Except(_unpricedCohereModels))
+        {
+            routes.Add(ModelProviders.AWS_BEDROCK, model);
+            routes.Add(ModelProviders.COHERE_API, model);
+            if (CohereEmbeddingsRoute.CohereApiForm(model) == CohereModel.EmbedV40)
+            {
+                routes.Add(ModelProviders.AZURE_FOUNDRY, model);
+            }
+        }
+
+        return routes;
+    }
+
+    [Theory]
+    [InlineData(ModelProviders.AWS_BEDROCK, CohereModel.AwsEmbedV40)]
+    [InlineData(ModelProviders.AWS_BEDROCK, CohereModel.UsAwsEmbedV40)]
+    [InlineData(ModelProviders.AWS_BEDROCK, CohereModel.EuAwsEmbedV40)]
+    [InlineData(ModelProviders.COHERE_API, CohereModel.EmbedV40)]
+    [InlineData(ModelProviders.AZURE_FOUNDRY, CohereModel.EmbedV40)]
+    public async Task EmbeddingUsage_OfEachEmbedV4Route_IsPricedAtItsListRate(string route, CohereModel model)
+    {
+        await SeedAsync();
+
+        await CreateTokenUsageService().RecordEmbeddingUsageAsync(EmbeddingUsage(Connector(route, model)), TestContext.Current.CancellationToken);
+
+        TokenUsage usage = await _userData.TokenUsages.Include(static row => row.Components)
+            .SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(EMBED_V4_COST, usage.Components.Sum(static component => component.Cost));
+    }
+
+    [Theory]
+    [MemberData(nameof(PricedCohereRoutes))]
+    public async Task EmbeddingUsage_OfEveryConfigurableRouteAndModel_FindsItsPrice(string route, CohereModel model)
+    {
+        await SeedAsync();
+
+        await CreateTokenUsageService().RecordEmbeddingUsageAsync(EmbeddingUsage(Connector(route, model)), TestContext.Current.CancellationToken);
+
+        TokenUsage usage = await _userData.TokenUsages.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(usage.ModelPricingId);
+    }
+
+    [Fact]
+    public async Task EmbeddingUsage_WithNoPriceRow_LogsTheMarkerTheAlarmReads()
+    {
+        await SeedAsync();
+        var log = new CapturingLogger<TokenUsageService>();
+
+        await CreateTokenUsageService(log).RecordEmbeddingUsageAsync(
+            EmbeddingUsage(Connector(ModelProviders.AWS_BEDROCK, CohereModel.EmbedEnglishLightV30)),
+            TestContext.Current.CancellationToken);
+
+        Assert.Single(log.Entries, static entry => entry.Level == LogLevel.Warning
+            && entry.Message.StartsWith(TokenUsageService.UNPRICED_EMBEDDING_LOG_MARKER, StringComparison.Ordinal));
+    }
+
+    private static IEmbeddingsConnector Connector(string route, CohereModel model)
+    {
+        var settings = new PlatformSettings
+        {
+            Cohere = new CohereSettings { EmbeddingsModel = model },
+            AzureFoundry = new AzureFoundrySettings
+            {
+                CohereApiUrl = "https://test.services.ai.azure.com/models/embeddings",
+                CohereApiKey = "test-api-key",
+                CohereDeploymentName = "cohere-embed-v4",
+            },
+        };
+        ILogger<IEmbeddingsConnector> logger = NullLogger<IEmbeddingsConnector>.Instance;
+
+        return route switch
+        {
+            ModelProviders.AWS_BEDROCK => new CohereAwsEmbeddingsConnector(logger, Options.Create(settings)),
+            ModelProviders.COHERE_API => new CohereEmbeddingsConnector(logger, Options.Create(settings)),
+            ModelProviders.AZURE_FOUNDRY => new AzureCohereEmbeddingsConnector(logger, Options.Create(settings)),
+            _ => throw new ArgumentOutOfRangeException(nameof(route), route, null),
+        };
+    }
+
+    private static EmbeddingUsageRecord EmbeddingUsage(IEmbeddingsConnector connector)
+    {
+        return EmbeddingUsageRecordFactory.For(
+            connector,
+            ONE_MILLION_TOKENS,
+            ORGANIZATION_ID,
+            UsageType.EmbeddingPage,
+            TokenExecutionContext.DocumentUpload,
+            "Page embeddings for document 'Annual report.pdf'");
     }
 }

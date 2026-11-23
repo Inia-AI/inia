@@ -1,4 +1,4 @@
-import { defineComponent, h, type Component } from 'vue'
+import { defineComponent, h, type Component, type Ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import type { ColumnDef } from '@tanstack/vue-table'
 import type { WorkflowReportSummary } from '@/api/workflowReports/schema'
@@ -91,6 +91,8 @@ export const extensionPoints = {
   documentClassNotes: [] as Component[],
   /** Rows at the end of the new report flow's review step; each gets the chosen type as `workflow` and the uploaded files as `documents`, each with `countedPages` as the pages the run reads from it, may emit `holds` with a reason that keeps Submit off, or null to release it, and may emit `submit-label` with Submit's name, such as one with the price, or null for the usual one. */
   reviewDetails: [] as Component[],
+  /** Each says whether the customer names the class of every document themselves on the new report flow's documents step; the flow asks only for a report type whose documents the platform does not classify. */
+  documentsNeedAClass: [] as (() => Readonly<Ref<boolean>>)[],
 }
 
 // The reports list calls each extension in setup, so a module's code has to arrive before the list mounts.

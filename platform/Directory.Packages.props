@@ -9,7 +9,6 @@
         <PackageVersion Include="Ardalis.Specification" Version="9.3.1" />
         <PackageVersion Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.0.0" />
         <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
-        <PackageVersion Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
         <PackageVersion Include="AutoFixture" Version="4.18.1" />
         <PackageVersion Include="AWSSDK.BedrockRuntime" Version="4.0.21.2" />
         <PackageVersion Include="AWSSDK.CloudWatch" Version="4.0.12.5" />
@@ -82,7 +81,6 @@
         <PackageVersion Include="Microsoft.SemanticKernel" Version="1.77.0" />
         <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
         <PackageVersion Include="MimeKit" Version="4.17.0" />
-        <PackageVersion Include="Minio" Version="7.0.0" />
         <PackageVersion Include="Moq" Version="4.20.72" />
         <PackageVersion Include="MudBlazor" Version="9.12.0" />
         <PackageVersion Include="MudBlazor.Markdown" Version="9.0.0" />

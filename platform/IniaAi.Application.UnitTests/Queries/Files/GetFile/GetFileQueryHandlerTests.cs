@@ -1,4 +1,5 @@
 using ErrorOr;
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Application.Common.Reports;
 using IniaAi.Application.Queries.Files.GetFile;
 using IniaAi.Common.Interfaces.Persistence;
@@ -50,7 +51,8 @@ public sealed class GetFileQueryHandlerTests : IDisposable
         IUserDataUnitOfWork unitOfWork = _serviceProvider.GetRequiredService<IUserDataUnitOfWork>();
         await unitOfWork.Documents.AddAsync(document);
         _ = await unitOfWork.CompleteAsync(TestContext.Current.CancellationToken);
-        _ = _fileStorageManager.RetrieveFileBytesAsync(Arg.Any<string>(), ORGANIZATION_ID, StorageCategories.Documents, STORAGE_KEY).Returns(pdf);
+        _ = _fileStorageManager.RetrieveFileAsync(Arg.Any<string>(), ORGANIZATION_ID, StorageCategories.Documents, STORAGE_KEY)
+            .Returns(new StoredObjectStream(new MemoryStream(pdf), pdf.Length));
         var handler = new GetFileQueryHandler(NullLogger<GetFileQueryHandler>.Instance, unitOfWork, _fileStorageManager, new EveryReportContent());
 
         ErrorOr<FileResult> result = await handler.Handle(new GetFileQuery(ORGANIZATION_ID, USER_ID, document.Id), TestContext.Current.CancellationToken);
@@ -58,7 +60,8 @@ public sealed class GetFileQueryHandlerTests : IDisposable
         Assert.False(result.IsError);
         Assert.Equal("application/pdf", result.Value.ContentType);
         Assert.Equal("statement.pdf", result.Value.FileName);
-        Assert.Equal(pdf, result.Value.Content);
+        Assert.Equal(pdf.Length, result.Value.Length!.Value);
+        Assert.Equal(pdf, await StoredObjectStream.ReadAllAsync(result.Value.Content, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -77,6 +80,6 @@ public sealed class GetFileQueryHandlerTests : IDisposable
 
         Assert.Equal(ErrorType.NotFound, foreign.FirstError.Type);
         Assert.Equal(missing.FirstError.Description, foreign.FirstError.Description);
-        _ = await _fileStorageManager.DidNotReceiveWithAnyArgs().RetrieveFileBytesAsync(default!, default!, default!, default!);
+        _ = await _fileStorageManager.DidNotReceiveWithAnyArgs().RetrieveFileAsync(default!, default!, default!, default!);
     }
 }

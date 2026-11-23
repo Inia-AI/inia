@@ -49,6 +49,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  everyDocumentNeedsAClass: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // Use the composable for upload management
@@ -351,7 +355,7 @@ const fileIcon = (fileName: string | undefined) => {
         <IniaIcon name="file-lines" />
       </span>
       <span class="dropzone-title">
-        {{ $t('shared.components.fileControl.dragOrBrowse') }}
+        {{ $t(everyDocumentNeedsAClass ? 'shared.components.fileControl.stepOneDragOrBrowse' : 'shared.components.fileControl.dragOrBrowse') }}
         <span class="dropzone-link">{{ $t('shared.components.fileControl.browse') }}</span>
       </span>
       <span class="dropzone-hint">
@@ -392,6 +396,10 @@ const fileIcon = (fileName: string | undefined) => {
         </Button>
       </div>
     </div>
+
+    <p v-if="everyDocumentNeedsAClass && displayDocuments?.length" class="file-list-step" data-testid="choose-class-step">
+      {{ $t('shared.components.fileControl.stepTwoChooseClass') }}
+    </p>
 
     <div v-if="displayDocuments?.length" class="file-list">
       <div
@@ -448,13 +456,17 @@ const fileIcon = (fileName: string | undefined) => {
           class="file-actions"
         >
           <FormField :name="`${name}[${index}].class`">
-            <FormItem class="file-class-field">
+            <FormItem
+              class="file-class-field"
+              :class="{ 'is-unchosen': everyDocumentNeedsAClass && !file.class?.trim() }"
+            >
               <FormControl>
                 <IniaSelect
                   :aria-label="$t('shared.components.fileControl.classOf', { name: file.name })"
                   :model-value="file.class ?? ''"
                   @update:model-value="(val) => onUpdateClass(file.ref, val)"
                   :options="props.documentClassOptions"
+                  :placeholder="everyDocumentNeedsAClass ? $t('shared.components.fileControl.chooseClass') : undefined"
                 />
               </FormControl>
               <FormMessage />
@@ -775,6 +787,18 @@ const fileIcon = (fileName: string | undefined) => {
 .file-class-field {
   width: 16rem;
   min-width: 0;
+}
+
+.file-class-field.is-unchosen :deep(button) {
+  border-color: var(--accent-indigo-from);
+  box-shadow: 0 0 0 1px var(--accent-indigo-from);
+}
+
+.file-list-step {
+  margin-top: var(--spacing-md);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .file-remove {

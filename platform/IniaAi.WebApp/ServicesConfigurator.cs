@@ -183,11 +183,6 @@ public class ServicesConfigurator
         _ = _services.AddTransient<IExecutionFreezeSourceResolver, ExecutionFreezeSourceResolver>();
         _ = _services.AddTransient<IContentRefinementService, ContentRefinementService>();
 
-        // Register S3 storage service with placeholder AWS client for now
-        // TODO: Configure proper AWS S3 client when AWS integration is needed
-        // _services.AddAWSService<IAmazonS3>();
-        // _services.AddKeyedScoped<IFileStorageService, S3StorageService>("S3");
-
         _ = _services.AddScoped<AppState>();
         _ = _services.AddSingleton<CircuitServicesAccessor>();
         _ = _services.AddScoped<CircuitHandler, CircuitServicesAccessorHandler>();

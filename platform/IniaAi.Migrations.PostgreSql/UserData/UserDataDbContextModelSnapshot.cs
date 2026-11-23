@@ -2312,6 +2312,10 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("PersonKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ProviderInvoiceId")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -2333,6 +2337,9 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PersonKey")
+                        .IsUnique();
 
                     b.HasIndex("OrganizationId", "ExpiresAt");
 
@@ -2677,6 +2684,52 @@ namespace IniaAi.Migrations.PostgreSql.UserData
                     b.HasKey("UserId", "Method");
 
                     b.ToTable("UserSignInMethods", "UserData");
+                });
+
+            modelBuilder.Entity("IniaAi.Domain.Entities.Storage.StoredObjectDeletion", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OrganizationId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt");
+
+                    b.ToTable("StoredObjectDeletions", "UserData");
                 });
 
             modelBuilder.Entity("IniaAi.Domain.Entities.Testing.RegressionTestResult", b =>

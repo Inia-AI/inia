@@ -49,9 +49,9 @@ See [File Storage Architecture](../file-storage/index.md) for complete implement
 
 **Database Storage (Legacy)**: the bytes sit in the shared `Files` table and the row of `FileMetadata` carries the `OrganizationId`. Isolation is the application filtering by that column.
 
-**MinIO**: one bucket per organization and category, `{organizationId}-{category}` (for example `acme-corp-documents`), so a key read under one organization's id looks in that organization's bucket only. The storage call takes the organization id from the caller, so the caller's own scoping still decides which organization's bucket is read.
+**S3**: one bucket that the stack creates, with every file under its organization's prefix, `{organizationId}/{key}`, so a key read under one organization's id looks under that organization's prefix only. The storage call takes the organization id from the caller, so the caller's own scoping still decides which organization's files are read. The app's role is the only one that reaches the objects; isolation between organizations is the application's.
 
-A [fixed bucket](../file-storage/index.md#fixed-bucket-mode-on-premise) (`FileStorage:MinIO:BucketName`) puts every organization's files in one bucket: there the object key is the only separation, and the application's scoping is the whole of it.
+**MinIO**: with a fixed bucket (`FileStorage:MinIO:BucketName`) every organization's files share one bucket at their bare keys, and the application's scoping is the whole of the separation. Without one, each organization and category has a bucket, `{organizationId}-{category}` (for example `acme-corp-documents`). See [Where a file lives](../file-storage/index.md#where-a-file-lives).
 
 ---
 

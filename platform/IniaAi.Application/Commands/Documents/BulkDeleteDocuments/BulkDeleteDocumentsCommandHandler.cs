@@ -120,15 +120,7 @@ public class BulkDeleteDocumentsCommandHandler
 
         foreach ((string provider, string path) in blobsToDelete)
         {
-            try
-            {
-                await _fileStorageManager.DeleteFileAsync(
-                    provider,
-                    request.OrganizationId,
-                    StorageCategories.Documents,
-                    path);
-            }
-            catch (Exception ex)
+            if (await _fileStorageManager.ReleaseFileAsync(provider, request.OrganizationId, StorageCategories.Documents, path) is { } ex)
             {
                 _logger.LogWarning(
                     ex,

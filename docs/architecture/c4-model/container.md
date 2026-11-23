@@ -150,7 +150,7 @@ The workflow engine has 18 block types (`BlockTypes`): `AiQuery`, `Agent`, `Veri
 
 - **Core Database** — workflow templates and authoring configuration (schema `Core`): templates, sections and blocks, workflow types and categories, version history, organization access to types, document categories, model pricing, signature overrides. Provider per context via `PlatformSettings:CoreDbProvider`. Tables: [Core database](../../reference/database/core-database.md).
 - **UserData Database** — organization-scoped user and execution data (schema `UserData`): organizations and memberships, executed workflow copies, executions and their logs, block responses, documents, pages and embeddings, counterparties, file metadata, usage records. Provider per context via `PlatformSettings:UserDataDbProvider`. Tables: [UserData database](../../reference/database/user-data-database.md).
-- **File storage** — the `Database` or `MinIO` provider, chosen by `FileStorage:DefaultProvider` (default `Database`); an S3 provider is implemented but not registered, so `S3` falls back to `Database`: [File Storage](../file-storage/index.md).
+- **File storage** — the `Database`, `S3` or `MinIO` store, chosen by `FileStorage:DefaultProvider` (default `Database`); a store that the deployment does not set up stops startup: [File Storage](../file-storage/index.md).
 
 ## Communication Patterns
 

@@ -54,7 +54,7 @@ public class RagFixture<T> : TestsBaseFixture<T>
         foreach (Document document in _documents)
         {
             var pageTexts = document.Pages.OrderBy(p => p.PageNumber).Select(p => p.Text).ToList();
-            List<double[]> vectors = await embeddingsConnector.GetResponseAsync(pageTexts!);
+            List<double[]> vectors = (await embeddingsConnector.EmbedAsync(pageTexts!)).Vectors;
 
             for (int i = 0; i < document.Pages.Count; i++)
             {

@@ -1,5 +1,6 @@
 using IniaAi.Application;
 using IniaAi.Application.Common.Dispatching;
+using IniaAi.Application.Common.Interfaces.Services;
 using IniaAi.Common.Enums;
 using IniaAi.Configuration.Storage;
 using IniaAi.Domain.Entities.Documents;
@@ -43,11 +44,12 @@ public sealed class FilesControllerTests : ReadPathTests
 
         IActionResult result = await controller.GetFileAsync(DOCUMENT_ID, "preview");
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
         Assert.Equal(CONTENT_TYPE, file.ContentType);
-        Assert.Equal(_content, file.FileContents);
+        Assert.Equal(_content, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
         Assert.Empty(file.FileDownloadName);
         Assert.Equal("inline", controller.Response.Headers.ContentDisposition.ToString());
+        Assert.Equal(_content.Length, controller.Response.ContentLength);
     }
 
     [Fact]
@@ -58,9 +60,10 @@ public sealed class FilesControllerTests : ReadPathTests
 
         IActionResult result = await controller.GetFileAsync(DOCUMENT_ID);
 
-        FileContentResult file = Assert.IsType<FileContentResult>(result);
+        FileStreamResult file = Assert.IsType<FileStreamResult>(result);
         Assert.Equal(CONTENT_TYPE, file.ContentType);
         Assert.Equal(FILE_NAME, file.FileDownloadName);
+        Assert.Equal(_content, await StoredObjectStream.ReadAllAsync(file.FileStream, TestContext.Current.CancellationToken));
     }
 
     private async Task SeedFileAsync()

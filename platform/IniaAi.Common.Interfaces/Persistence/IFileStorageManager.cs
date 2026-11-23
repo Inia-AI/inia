@@ -8,9 +8,9 @@ public interface IFileStorageManager
     StorageProvider DefaultProviderEnum { get; }
 
     Task DeleteFileAsync(string storageProvider, string organizationId, string category, string key);
+    Task<Exception?> ReleaseFileAsync(string storageProvider, string organizationId, string category, string key);
     StorageProvider GetProviderForTenant(string organizationId);
     StorageProvider GetStorageProviderEnum(string providerName);
-    Task<string> MigrateFileAsync(string organizationId, string category, string key, string targetProvider);
     Task<Stream> RetrieveFileAsync(string storageProvider, string organizationId, string category, string key);
     Task<byte[]> RetrieveFileBytesAsync(string storageProvider, string organizationId, string category, string key);
     Task<string> StoreFileAsync(StorageProvider storageProvider, string organizationId, string category, string key, Stream fileContent, string contentType);

@@ -9,6 +9,7 @@ using IniaAi.Domain.Entities.Documents;
 using IniaAi.Domain.Entities.ReportFeedback;
 using IniaAi.Domain.Entities.Screening;
 using IniaAi.Domain.Entities.SelfServe;
+using IniaAi.Domain.Entities.Storage;
 using IniaAi.Domain.Entities.Testing;
 using IniaAi.Domain.Entities.TokenUsage;
 using IniaAi.Domain.Entities.Tools;
@@ -147,6 +148,7 @@ public class UserDataDbContext(DbContextOptions<UserDataDbContext> options)
     public DbSet<EmailCodeLockout> EmailCodeLockouts { get; set; } = default!;
     public DbSet<UserSignInMethod> UserSignInMethods { get; set; } = default!;
     public DbSet<DailyAllowanceUse> DailyAllowanceUses { get; set; } = default!;
+    public DbSet<StoredObjectDeletion> StoredObjectDeletions { get; set; } = default!;
 
     // These are needed by OpenIddict
     public DbSet<OpenIddictEntityFrameworkCoreApplication> Applications => Set<OpenIddictEntityFrameworkCoreApplication>();

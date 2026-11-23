@@ -45,14 +45,23 @@ internal sealed class BedrockHttpClientFactory : HttpClientFactory
     /// <summary>
     /// A Bedrock runtime client on this factory, built on the first call. The client resolves its
     /// AWS region when it is built, so a connector that never calls Bedrock needs no AWS
-    /// configuration, and a build that fails is tried again on the next call.
+    /// configuration, and a build that fails is tried again on the next call. With
+    /// <paramref name="inputTokenCounts"/>, the client records each answer's input token count there.
     /// </summary>
-    public static Lazy<AmazonBedrockRuntimeClient> LazyRuntimeClient(RetryPolicy policy, ILogger logger)
+    public static Lazy<AmazonBedrockRuntimeClient> LazyRuntimeClient(
+        RetryPolicy policy,
+        ILogger logger,
+        BedrockInputTokenCounts? inputTokenCounts = null)
     {
         var httpClientFactory = new BedrockHttpClientFactory(policy, logger);
 
         return new Lazy<AmazonBedrockRuntimeClient>(
-            () => new AmazonBedrockRuntimeClient(new AmazonBedrockRuntimeConfig { HttpClientFactory = httpClientFactory }),
+            () =>
+            {
+                var client = new AmazonBedrockRuntimeClient(new AmazonBedrockRuntimeConfig { HttpClientFactory = httpClientFactory });
+
+                return inputTokenCounts is null ? client : inputTokenCounts.Track(client);
+            },
             LazyThreadSafetyMode.PublicationOnly);
     }
 

@@ -13,6 +13,7 @@ import type {
 } from './schema'
 import type { ServiceParams } from '../schema'
 import { getGrantType, getScope } from '@/config/auth'
+import { awaitFirewallToken } from '@/lib/firewallToken'
 
 export default class Service extends BaseService {
   constructor(params?: ServiceParams) {
@@ -182,6 +183,7 @@ export default class Service extends BaseService {
 
   // Google Sign-In verification
   async verifyGoogleToken(credential: string) {
+    await awaitFirewallToken()
     return this.exchangeToken('google', { credential })
   }
 

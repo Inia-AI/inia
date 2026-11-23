@@ -40,7 +40,6 @@ internal class RagExecutionContext
     public int AccumulatedOutputTokens => _accumulatedOutputTokens;
     public int AccumulatedEmbeddingTokens => _accumulatedEmbeddingTokens;
     public string? LastUsedModelId { get; private set; }
-    public string? LastUsedEmbeddingModelId { get; private set; }
 
     /// <summary>
     /// Gets all individual LLM calls tracked during this RAG operation.
@@ -94,16 +93,6 @@ internal class RagExecutionContext
     public void AccumulateEmbeddingTokens(int tokens)
     {
         _ = Interlocked.Add(ref _accumulatedEmbeddingTokens, tokens);
-    }
-
-    public void AccumulateEmbeddingTokens(int tokens, string? modelId)
-    {
-        AccumulateEmbeddingTokens(tokens);
-
-        if (!string.IsNullOrWhiteSpace(modelId))
-        {
-            LastUsedEmbeddingModelId = modelId;
-        }
     }
 
     #endregion
@@ -181,19 +170,19 @@ internal class RagExecutionContext
 
         if (ranksByEmbeddings && FilterExpressions.Count > 0)
         {
-            // Track embedding tokens before the call
-            int tokensBefore = EmbeddingsConnector.TotalTokens;
-
-            FilterVectors = await EmbeddingsConnector
-                .GetResponseAsync(FilterExpressions, cancellationToken)
+            EmbeddingsAnswer answer = await EmbeddingsConnector
+                .EmbedAsync(FilterExpressions, cancellationToken)
                 .ConfigureAwait(false);
+            FilterVectors = answer.Vectors;
 
-            // Calculate and accumulate embedding tokens consumed
-            int tokensAfter = EmbeddingsConnector.TotalTokens;
-            int tokensConsumed = tokensAfter - tokensBefore;
-            if (tokensConsumed > 0)
+            AccumulateEmbeddingTokens(answer.InputTokens);
+            if (answer.IsUncounted)
             {
-                AccumulateEmbeddingTokens(tokensConsumed, EmbeddingsConnector.ModelId);
+                Logger.LogWarning(
+                    EmbeddingsAnswer.UNCOUNTED_LOG_MARKER + ": The embeddings model answered {VectorCount} filter vectors for block {BlockId} of workflow type {WorkflowTypeId} and counted no tokens, so no usage is recorded",
+                    answer.Vectors.Count,
+                    RagSettings.BlockId,
+                    WorkflowTypeId);
             }
         }
         else

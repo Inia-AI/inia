@@ -787,7 +787,7 @@ The exclusion columns are platform vocabulary, not screening fields, and stay wh
 `ContentType` is derived from `Extension` (not a stored column). `FileMetadata` holds no bytes: the `Database` provider keeps them in [`Files`](#files), S3 and MinIO in their buckets.
 
 ### Files
-**Purpose**: The bytes of a file kept in the database: the `Database` storage provider writes here. `FileMetadata.ExternalStoragePath` names the row for such a file; an S3 or MinIO file has no row here.
+**Purpose**: The bytes of a file kept in the database: the `Database` storage provider writes here, streaming the bytes in and out. `FileMetadata.ExternalStoragePath` names the row for such a file; an S3 or MinIO file has no row here. A row that no file and no session bundle points at is removed by the daily sweep once it is a day old.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -800,6 +800,21 @@ The exclusion columns are platform vocabulary, not screening fields, and stay wh
 | `SizeBytes` | bigint | (nullable) |
 
 Audit columns: `CreatedAt`, `DeletedAt`, `DeletedByUserId`, `IsDeleted`, `UpdatedAt`, `UpdatedByUserId`.
+
+### StoredObjectDeletions
+**Purpose**: A stored file whose rows are gone but whose delete from its store failed, kept until a retry deletes it ([Deleting files](../../architecture/file-storage/index.md#deleting-files)). Nothing else points at the file any more.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `Id` | string (≤36, PK) | Primary key |
+| `OrganizationId` | string (≤450) | The organization the file was stored for |
+| `StorageProvider` | string (≤50) | The store, as a file's row names it: `Database`, `S3` or `Minio` |
+| `Category` | string (≤100) | The category the delete named |
+| `StorageKey` | string (≤450) | The file's key in the store |
+| `Attempts` | integer | Failed deletes so far |
+| `LastError` | string (≤1000) | What the last failed attempt answered, shortened (nullable) |
+| `CreatedAt` | datetime | When the first delete failed |
+| `NextAttemptAt` | datetime | When the next retry is due (indexed) |
 
 ### Pages
 **Purpose**: A page extracted from a document.

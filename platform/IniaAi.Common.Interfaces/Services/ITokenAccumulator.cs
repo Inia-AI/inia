@@ -34,12 +34,6 @@ public interface ITokenAccumulator
     string? LastUsedModelId => null;
 
     /// <summary>
-    /// Gets the last embedding model ID used by this service.
-    /// Used for embedding token usage tracking.
-    /// </summary>
-    string? LastUsedEmbeddingModelId => null;
-
-    /// <summary>
     /// Resets all accumulated token counts to zero.
     /// Call this before starting a new operation to get clean counts.
     /// </summary>

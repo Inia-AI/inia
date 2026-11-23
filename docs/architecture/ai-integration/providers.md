@@ -81,15 +81,14 @@ The two thinking-mode methods have **default interface implementations that thro
 
 ### IEmbeddingsConnector
 
-`platform/IniaAi.AiConnection/Abstractions/IEmbeddingsConnector.cs`. Embeddings expose the model identity (for pricing lookup), a running token counter, and single- or batch-document calls:
+`platform/IniaAi.AiConnection/Abstractions/IEmbeddingsConnector.cs`. Embeddings expose the model identity, the route the connector calls, and one call that embeds a batch and returns that call's own token count:
 
 ```csharp
 string ModelName { get; }   // e.g. "Cohere: EmbedV40"
-string ModelId { get; }     // normalized id matching ModelPricing
-int TotalTokens { get; }
+string ModelId { get; }     // the id the connector sends, e.g. "eu.cohere.embed-v4:0"
+string Provider { get; }    // e.g. "aws-bedrock", "cohere-api", "azure-foundry"
 
-Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default);
-Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default);
+Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default);
 ```
 
 ## Chat providers
@@ -317,6 +316,9 @@ A workflow exported from an instance on this version stores plain names. On an A
 | `EmbedV40` | `embed-v4.0` | Direct Cohere public API |
 | `AwsEmbedV40` | `global.cohere.embed-v4:0` | AWS Bedrock (global profile) |
 | `UsAwsEmbedV40` | `us.cohere.embed-v4:0` | AWS Bedrock (US profile) |
+| `EuAwsEmbedV40` | `eu.cohere.embed-v4:0` | AWS Bedrock (EU profile) |
+
+The global profile may process a request in any AWS region; a stack that has to keep document text in one geography names that geography's profile. Off AWS, every Bedrock form of a model calls its direct Cohere API name: `AwsEmbedV40`, `UsAwsEmbedV40` and `EuAwsEmbedV40` all call `embed-v4.0`. On Azure the request names the Foundry deployment (`AzureFoundry:CohereDeploymentName`), and the plain name is what the platform records as the model.
 
 The `embed-*-v3.0` / `embed-*-v2.0` entries (and their `cohere.embed-*-v3` Bedrock equivalents) remain valid for older deployments but are superseded by v4. `EmbeddingsOutputDimension` (256 / 512 / 1024 / 1536) applies only to v4+.
 

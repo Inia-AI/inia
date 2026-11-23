@@ -1,6 +1,7 @@
 using IniaAi.AiConnection.Abstractions;
 using IniaAi.AiConnection.Azure;
 using IniaAi.AiConnection.Azure.ApiModel;
+using IniaAi.AiConnection.Common;
 using IniaAi.AiConnection.HttpHandling;
 using IniaAi.Common.Extensions;
 using IniaAi.Configuration;
@@ -28,13 +29,13 @@ public class AzureCohereEmbeddingsConnector : IEmbeddingsConnector
     private readonly HttpClient _httpClient;
     private readonly ILogger<IEmbeddingsConnector> _logger;
     private readonly PlatformSettings _platformSettings;
+    private readonly AiModel _embeddingsModel;
 
-    public int TotalTokens { get; private set; }
+    public string Provider => ModelProviders.AZURE_FOUNDRY;
 
-    public string ModelName => $"Cohere (Azure): {GetEmbeddingsModel()}";
+    public string ModelName => $"Cohere (Azure): {_embeddingsModel}";
 
-    public string ModelId => GetEmbeddingsModel().GetEnumMember()
-                ?? GetEmbeddingsModel().ToString();
+    public string ModelId => _embeddingsModel.GetEnumMember();
 
     public AzureCohereEmbeddingsConnector(
         ILogger<IEmbeddingsConnector> logger,
@@ -42,6 +43,7 @@ public class AzureCohereEmbeddingsConnector : IEmbeddingsConnector
         IAzureTokenProvider? azureTokenProvider = null)
     {
         _platformSettings = options.Value;
+        _embeddingsModel = CohereEmbeddingsRoute.CohereApiForm(_platformSettings.Cohere.EmbeddingsModel);
         _logger = logger;
 
         _apiUrl = options.Value.AzureFoundry.CohereApiUrl
@@ -72,19 +74,7 @@ public class AzureCohereEmbeddingsConnector : IEmbeddingsConnector
         _httpClient = CreateHttpClient(options.Value.AzureFoundry.CohereApiKey);
     }
 
-    public async Task<List<double[]>> GetResponseAsync(string document, CancellationToken cancellationToken = default)
-    {
-        return await GetResponseAsync([document], cancellationToken);
-    }
-
-    public Task<List<double[]>> GetResponseAsync(List<string> documents, CancellationToken cancellationToken = default)
-    {
-        return GetResponseInternalAsync(documents, cancellationToken);
-    }
-
-    private async Task<List<double[]>> GetResponseInternalAsync(
-        List<string> documents,
-        CancellationToken cancellationToken = default)
+    public async Task<EmbeddingsAnswer> EmbedAsync(List<string> documents, CancellationToken cancellationToken = default)
     {
         var requestBody = new EmbeddingsRequest
         {
@@ -136,38 +126,23 @@ public class AzureCohereEmbeddingsConnector : IEmbeddingsConnector
                 "Error response from Azure AI Inference embeddings API. Status code: {statusCode}, Response: {error}",
                 response.StatusCode, response.IsSuccessStatusCode ? $"{responseJson.Length} characters" : responseJson);
 
-            return [];
+            return EmbeddingsAnswer.Empty;
         }
 
-        TotalTokens += successResponse.Usage.TotalTokens;
+        int inputTokens = successResponse.Usage.TotalTokens;
 
         _logger.LogDebug(
-            "Azure AI Inference embeddings API usage. Total tokens: {totalTokens} (prompt: {promptTokens})",
-            TotalTokens, successResponse.Usage.PromptTokens);
+            "Azure AI Inference embeddings API usage. Input tokens: {inputTokens} (prompt: {promptTokens})",
+            inputTokens, successResponse.Usage.PromptTokens);
 
         _logger.LogDebug(
             "Azure AI Inference embeddings generated: {num}",
             successResponse.Data.Length);
 
         // Return embeddings ordered by index to match input order
-        return [.. successResponse.Data
-            .OrderBy(d => d.Index)
-            .Select(d => d.Embedding)];
-    }
-
-    /// <summary>
-    /// Normalizes the configured embeddings model — maps AWS-specific variants
-    /// to their standard equivalents since Azure is not AWS.
-    /// </summary>
-    private AiModel GetEmbeddingsModel()
-    {
-        return _platformSettings.Cohere.EmbeddingsModel switch
-        {
-            AiModel.AwsEmbedEnglishV30 => AiModel.EmbedEnglishV30,
-            AiModel.AwsEmbedMultilingualV30 => AiModel.EmbedMultilingualV30,
-            AiModel.AwsEmbedV40 => AiModel.EmbedV40,
-            _ => _platformSettings.Cohere.EmbeddingsModel,
-        };
+        return new EmbeddingsAnswer(
+            [.. successResponse.Data.OrderBy(d => d.Index).Select(d => d.Embedding)],
+            inputTokens);
     }
 
     private HttpClient CreateHttpClient(string? apiKey)

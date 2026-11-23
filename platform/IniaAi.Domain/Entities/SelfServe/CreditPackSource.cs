@@ -6,4 +6,7 @@ public enum CreditPackSource
     Subscription,
     Operator,
     TopUp,
+
+    /// <summary>The free credit a new account gets at sign-up; not a payment.</summary>
+    FreeCredit,
 }

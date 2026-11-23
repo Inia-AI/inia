@@ -28,36 +28,32 @@ internal static class AgentRunSessionBundleStorage
     }
 
     /// <summary>
-    /// Null when the bytes are gone, the stranding fault when they are not. The fault is logged
-    /// either way, so a caller with nothing to do about a stranded blob ignores the answer.
+    /// Deletes the bytes of a bundle whose pointer row is gone. Null when the bytes are gone, the
+    /// fault when they are not: the delete is then recorded for a retry, and the fault is logged, so
+    /// a caller with nothing to do about it ignores the answer.
     /// </summary>
     internal static async Task<Exception?> DeleteBytesQuietlyAsync(
         IFileStorageManager storage,
         StoredBytes bundle,
         ILogger logger)
     {
-        try
-        {
-            await storage.DeleteFileAsync(
-                bundle.StorageProvider,
-                bundle.OrganizationId,
-                StorageCategories.AgentSessionBundles,
-                bundle.StorageKey);
-
-            return null;
-        }
-        catch (Exception exception)
+        Exception? failure = await storage.ReleaseFileAsync(
+            bundle.StorageProvider,
+            bundle.OrganizationId,
+            StorageCategories.AgentSessionBundles,
+            bundle.StorageKey);
+        if (failure is not null)
         {
             logger.LogWarning(
-                exception,
+                failure,
                 "Deleting the session bundle bytes of run {RunExecutionId} at {StorageProvider}/{StorageKey} failed; "
-                    + "the pointer row is gone and the bytes are stranded",
+                    + "the pointer row is gone, and the delete is retried later",
                 bundle.RunExecutionId,
                 bundle.StorageProvider,
                 bundle.StorageKey);
-
-            return exception;
         }
+
+        return failure;
     }
 
     /// <summary>
@@ -82,16 +78,26 @@ internal static class AgentRunSessionBundleStorage
         bool allBytesGone = true;
         foreach (AgentRunSessionBundle bundle in bundles)
         {
-            if (await DeleteBytesQuietlyAsync(storage, StoredBytes.Of(bundle), logger) is null)
+            try
             {
-                _ = await context.Set<AgentRunSessionBundle>()
-                    .Where(row => row.Id == bundle.Id)
-                    .ExecuteDeleteAsync(cancellationToken);
+                await storage.DeleteFileAsync(bundle.StorageProvider, bundle.OrganizationId, StorageCategories.AgentSessionBundles, bundle.StorageKey);
             }
-            else
+            catch (Exception exception)
             {
+                logger.LogWarning(
+                    exception,
+                    "Deleting the session bundle bytes of run {RunExecutionId} at {StorageProvider}/{StorageKey} failed; "
+                        + "the pointer row stays for the next release to retry",
+                    bundle.RunExecutionId,
+                    bundle.StorageProvider,
+                    bundle.StorageKey);
                 allBytesGone = false;
+                continue;
             }
+
+            _ = await context.Set<AgentRunSessionBundle>()
+                .Where(row => row.Id == bundle.Id)
+                .ExecuteDeleteAsync(cancellationToken);
         }
 
         return allBytesGone;
