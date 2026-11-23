@@ -247,8 +247,8 @@ public class ClientEdgeTests
             return next();
         });
         _ = app.UseForwardedHeaders();
-        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
         _ = app.UseRouting();
+        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
         _ = app.UseRateLimiter();
         _ = app.MapControllers();
         await app.StartAsync(TestContext.Current.CancellationToken);

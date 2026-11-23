@@ -79,10 +79,11 @@ public class Program
                 });
         }
 
-        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
-
         // Routing must come before endpoint metadata checks in middleware
         _ = app.UseRouting();
+
+        // After routing, so an endpoint's own CORS policy wins over the API's.
+        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
 
         _ = app.UseRateLimiter();
 

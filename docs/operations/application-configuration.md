@@ -604,9 +604,10 @@ ASP.NET Data Protection keys are stored in the database (default) or in AWS SSM 
 
 | Key | Placeholder | Description |
 |-----|-------------|-------------|
-| `Cors:AllowedOrigins` | `[]` | API only. Origins allowed to call the API from a browser, as [indexed keys](#how-configuration-is-layered). Empty (the default) allows no cross-origin call. A `*` entry stops startup with a message that names the key, and so does a list set as one value (`Cors__AllowedOrigins=...`), which would bind to an empty list. |
+| `Cors:AllowedOrigins` | `[]` | API only. Origins allowed to call the API from a browser, at every endpoint without a CORS policy of its own, as [indexed keys](#how-configuration-is-layered). Empty (the default) allows no cross-origin call. A `*` entry stops startup with a message that names the key, and so does a list set as one value (`Cors__AllowedOrigins=...`), which would bind to an empty list. |
 
 The deployed analyst app calls the API on its own origin through its nginx, so a standard deployment lists no origin. The local launch profiles list the Vue dev server, `https://localhost:8080`. The admin app has no CORS policy: nothing calls it from another origin.
+
 
 ## Response headers of the API
 

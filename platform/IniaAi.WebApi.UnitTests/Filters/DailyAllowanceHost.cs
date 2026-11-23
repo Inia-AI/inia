@@ -102,8 +102,8 @@ public sealed class DailyAllowanceHost : IAsyncDisposable
 
             return next();
         });
-        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
         _ = app.UseRouting();
+        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
         _ = app.MapControllers();
         await app.StartAsync(TestContext.Current.CancellationToken);
         return new DailyAllowanceHost(app, finished);

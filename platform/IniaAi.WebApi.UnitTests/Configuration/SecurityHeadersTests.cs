@@ -173,8 +173,8 @@ public class SecurityHeadersTests(SecurityHeadersTests.DefaultHost host) : IClas
         _ = app.UseForwardedHeaders();
         _ = app.UseSecurityHeaders();
         _ = app.UseExceptionHandler();
-        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
         _ = app.UseRouting();
+        _ = app.UseCors(CorsConfiguration.POLICY_NAME);
         _ = app.UseRateLimiter();
         _ = app.UseAuthentication();
         _ = app.UseAuthorization();

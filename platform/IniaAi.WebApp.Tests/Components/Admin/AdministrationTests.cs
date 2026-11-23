@@ -177,6 +177,9 @@ public class AdministrationTests : SignedInRenderTest
         _ = await SignInAsync(STAFF, Roles.USER, Roles.SUPER_ADMIN);
 
         IRenderedComponent<Administration> page = RenderInApp<Administration>();
+        // The page's first load must finish before the test ends: disposing the test's database
+        // connection while that load still queries it throws.
+        page.WaitForAssertion(() => Assert.True(Shows(page, $"Edit tenant {ORGANIZATION_NAME}")));
 
         Assert.True(Shows(page, RESTART));
     }
