@@ -59,6 +59,15 @@ public static partial class PdfFixtures
         return Written([new PageContent($"{TextLines(text)}\n{drawing}", HasImage: true)]);
     }
 
+    /// <summary>
+    /// Pages of <paramref name="pageTexts"/> set in 1pt type, so one page holds far more text than a
+    /// printed page does, as a page with a dense hidden text layer can.
+    /// </summary>
+    public static byte[] PagesInTinyType(params string[] pageTexts)
+    {
+        return Written([.. pageTexts.Select(static text => new PageContent(TextLines(text, fontSize: 1, leading: 1.2)))]);
+    }
+
     /// <summary>One page with a visible line and a second line in white 1pt text: no reader sees it, every text extractor reads it.</summary>
     public static byte[] WithHiddenLine(string visibleText, string hiddenText)
     {
@@ -194,10 +203,10 @@ public static partial class PdfFixtures
     }
 
     /// <summary>The text as lines from the top of the page, each line of the text wrapped to fit the page's width.</summary>
-    private static string TextLines(string text)
+    private static string TextLines(string text, double fontSize = 12, double leading = 14)
     {
         IEnumerable<string> lines = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').SelectMany(static line => Wrapped(line, LINE_CHARACTERS));
-        return $"BT /F1 12 Tf 14 TL 72 750 Td {string.Join(" T* ", lines.Select(line => $"({Escaped(line)}) Tj"))} ET";
+        return FormattableString.Invariant($"BT /F1 {fontSize} Tf {leading} TL 72 750 Td {string.Join(" T* ", lines.Select(line => $"({Escaped(line)}) Tj"))} ET");
     }
 
     private static string LandscapeLines(LaidOutPage page)

@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Text;
 
 namespace IniaAi.FileFormats.Pdf;
 
@@ -13,29 +12,30 @@ public class PdfExtractor
     }
 
     /// <summary>
-    /// The text layer page by page, for a reader that can work with part of a file: a page that
-    /// fails is skipped with a warning, and reading stops once the text holds
-    /// <paramref name="characterBudget"/> characters. The anonymiser reads a file whole and fails on
-    /// a bad page instead, because it must not pass a page it could not read.
+    /// The text layer of the first <paramref name="maxPages"/> pages, one entry per page, for a reader
+    /// that can work with part of a file: a page that fails is skipped with a warning and has no text.
+    /// The anonymiser reads a file whole and fails on a bad page instead, because it must not pass a
+    /// page it could not read.
     /// </summary>
-    public static string ExtractTextSkippingFailedPages(IPdfDocument pdf, int characterBudget, ILogger logger)
+    public static IReadOnlyList<string?> ExtractPageTextsSkippingFailedPages(IPdfDocument pdf, int maxPages, ILogger logger)
     {
-        var text = new StringBuilder();
+        int pageCount = Math.Min(maxPages, pdf.PageCount);
+        var pageTexts = new List<string?>(pageCount);
 
-        for (int pageNumber = 1; pageNumber <= pdf.PageCount && text.Length < characterBudget; pageNumber++)
+        for (int pageNumber = 1; pageNumber <= pageCount; pageNumber++)
         {
             try
             {
-                string pageText = pdf.Text(pageNumber);
-                _ = text.Append("\n\n").Append(pageText);
+                pageTexts.Add(pdf.Text(pageNumber));
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Text extraction skips page {PageNumber}: it does not parse.", pageNumber);
+                pageTexts.Add(null);
             }
         }
 
-        return text.ToString().Trim();
+        return pageTexts;
     }
 
     /// <summary>

@@ -11,6 +11,8 @@ import useCreateWorkflowPrefillStore from '@/store/createWorkflowPrefill'
 
 const { createExecution } = vi.hoisted(() => ({ createExecution: vi.fn() }))
 
+const classifier = vi.hoisted(() => ({ classesToChoose: [] as string[] }))
+
 vi.mock('@/api', async () => {
   const { ref: vueRef, computed: vueComputed } = await vi.importActual<typeof import('vue')>('vue')
   const variablesOf = (typeId: string) =>
@@ -118,10 +120,11 @@ vi.mock('@/api', async () => {
                   isAvailable: true,
                   isCounterpartyRequired: typeId.value === 'company-report',
                   classifiesDocuments: typeId.value === 'fund-report-classified',
+                  classesToChoose: typeId.value === 'fund-report-classified' ? classifier.classesToChoose : undefined,
                   documentClasses: typeId.value.startsWith('fund-report')
                     ? [
-                        { key: 'Prospectus', displayName: 'Prospectus', requirement: 'Optional', isOutputDocument: false },
-                        { key: 'AnnualReport', displayName: 'Annual Report', requirement: 'Optional', isOutputDocument: false },
+                        { key: 'Prospectus', displayName: 'Prospectus', requirement: 'Optional', shouldBeSingular: typeId.value === 'fund-report-classified', isOutputDocument: false },
+                        { key: 'AnnualReport', displayName: 'Annual Report', requirement: classifier.classesToChoose.includes('AnnualReport') ? 'Required' : 'Optional', isOutputDocument: false },
                         { key: 'Analysis', displayName: 'Analysis', requirement: 'Optional', isOutputDocument: true },
                       ]
                     : documentClassesOf(typeId.value),
@@ -161,6 +164,7 @@ let wrapper: VueWrapper | null = null
 beforeEach(() => {
   setActivePinia(createPinia())
   createExecution.mockReset()
+  classifier.classesToChoose = []
 })
 
 afterEach(() => {
@@ -673,6 +677,63 @@ describe('CreateWorkflow documents step when a module has the customer name ever
     expect(wrapper!.get('h2.step-title').text()).toBe('Upload documents')
     expect(wrapper!.find('[data-testid="accepted-document-types"]').exists()).toBe(false)
     expect(continueButton().attributes('disabled')).toBeUndefined()
+  })
+
+  it('asks for no document type when the platform classifies every document', async () => {
+    await openDocumentsStepWith('fund-report-classified')
+
+    expect(wrapper!.find('.file-class-field').exists()).toBe(false)
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+  })
+
+  it('lets two files carried with the same single-file type continue when the platform classifies every document', async () => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'fund-report-classified',
+      workflowTypeId: 'fund-report-classified',
+      variables: {},
+      documents: [
+        { fileId: 'file-1', documentClass: 'Prospectus', name: 'prospectus-2025', extension: '.pdf' },
+        { fileId: 'file-2', documentClass: 'Prospectus', name: 'prospectus-2024', extension: '.pdf' },
+      ],
+      startStep: 'details',
+    })
+    await mountPage()
+    await press('Back')
+
+    expect(continueButton().attributes('disabled')).toBeUndefined()
+  })
+
+  it('sends no input document type the customer cannot see, and keeps an output document type', async () => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'fund-report-classified',
+      workflowTypeId: 'fund-report-classified',
+      variables: {},
+      documents: [
+        { fileId: 'file-1', documentClass: 'AnnualReport', name: 'annual-report', extension: '.pdf' },
+        { fileId: 'file-2', documentClass: 'Analysis', name: 'analysis', extension: '.xlsx' },
+      ],
+      startStep: 'details',
+    })
+    await mountPage()
+    await press('Continue')
+    await vi.waitFor(() => expect(wrapper!.get('[aria-current="step"]').text()).toContain('Review'))
+
+    expect(wrapper!.findAll('.review-doc-class').map(documentClass => documentClass.text())).toEqual(['We decide', 'Analysis'])
+
+    await press('Submit')
+    await vi.waitFor(() => expect(createExecution).toHaveBeenCalled())
+    expect(createExecution.mock.calls[0]![0].files).toEqual([
+      expect.objectContaining({ fileId: 'file-1', documentClass: undefined }),
+      expect.objectContaining({ fileId: 'file-2', documentClass: 'Analysis' }),
+    ])
+  })
+
+  it('keeps the document type list when the platform leaves a class for the customer to choose', async () => {
+    classifier.classesToChoose = ['AnnualReport']
+
+    await openDocumentsStepWith('fund-report-classified')
+
+    expect(wrapper!.find('.file-class-field').exists()).toBe(true)
   })
 })
 

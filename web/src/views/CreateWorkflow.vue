@@ -325,7 +325,7 @@ const handleSubmit = form.handleSubmit(async data => {
       files: documents?.map(x => {
         return {
           fileId: x.id,
-          documentClass: x.class?.trim() || undefined,
+          documentClass: classTheFormSends(x.class),
           documentTags: [],
         }
       }),
@@ -387,7 +387,7 @@ const optionalDocuments = computed(() => {
 
 const documentClassOptions = computed(() => {
   const docClasses = selectedWorkflow?.value?.documentClasses
-  if (!docClasses?.length) return undefined
+  if (!docClasses?.length || platformClassifiesEveryDocument.value) return undefined
 
   const documentClassList = docClasses
     .filter(x => !x.isOutputDocument)
@@ -799,6 +799,18 @@ const classesTheUserChooses = computed(() =>
   requiredClassesToChoose(requiredDocuments.value, selectedWorkflow.value),
 )
 
+const platformClassifiesEveryDocument = computed(
+  () => platformClassifies.value && !classesTheUserChooses.value.length,
+)
+
+// A class a re-run or a kept draft carries for an input the platform classifies would reach the
+// run as a pin the customer cannot see or clear. An output document's class is never judged, so it stays.
+const classTheFormSends = (documentClass: string | undefined) => {
+  const key = documentClass?.trim()
+  if (!key) return undefined
+  return platformClassifiesEveryDocument.value && !outputClassKeys.value.has(key) ? undefined : key
+}
+
 const missingRequiredDocuments = computed(() =>
   missingRequiredDocumentClasses(classesTheUserChooses.value, formData.value.documents ?? []),
 )
@@ -810,7 +822,7 @@ const requiredDocumentsSatisfied = computed(
 const singularViolations = computed(() =>
   singularClassViolations(
     selectedWorkflow.value?.documentClasses?.filter(x => !x.isOutputDocument) ?? [],
-    formData.value.documents ?? [],
+    (formData.value.documents ?? []).map(document => ({ class: classTheFormSends(document.class) })),
   ),
 )
 
@@ -956,7 +968,7 @@ const reviewDocuments = computed(() =>
     name: doc.name,
     className: documentClassDisplayName(
       selectedWorkflow?.value?.documentClasses ?? [],
-      doc.class,
+      classTheFormSends(doc.class),
     ),
   })),
 )
@@ -1222,10 +1234,9 @@ const reviewVariables = computed(() => {
                   </FormItem>
                 </FormField>
 
-                <div v-if="platformClassifies" class="inline-note">
+                <div v-if="platformClassifies && !platformClassifiesEveryDocument" class="inline-note">
                   <IniaIcon name="circle-info" />
                   <i18n-t
-                    v-if="classesTheUserChooses.length"
                     keypath="page.createWorkflow.documentsStep.classPartlyOptionalNote"
                     :plural="classesTheUserChooses.length"
                     tag="span"
@@ -1234,7 +1245,6 @@ const reviewVariables = computed(() => {
                       <strong>{{ classesTheUserChooses.map(doc => doc.displayName).join(', ') }}</strong>
                     </template>
                   </i18n-t>
-                  <span v-else>{{ $t('page.createWorkflow.documentsStep.classOptionalNote') }}</span>
                 </div>
 
                 <div v-if="documentsWithoutAClass.length" class="doc-gate-note" data-testid="documents-without-a-class">

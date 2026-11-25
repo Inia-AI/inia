@@ -35,7 +35,6 @@
     "acceptedTypes": "Accepted document types: {types}. Other document types are not supported.",
     "unlabelledNote": "Select a document type for each file to continue.",
     "letUsDecide": "Let us decide",
-    "classOptionalNote": "You do not need to choose a class. We read each document and decide what it is. Choose one only when you are sure.",
     "classPartlyOptionalNote": "After you upload a document, we work out its type for you. We cannot do this for {documents}. When you upload one, choose its type yourself in the list next to the file. | After you upload a document, we work out its type for you. We cannot do this for these types: {documents}. When you upload one of them, choose its type yourself in the list next to the file."
   },
   "reRunChanges": {

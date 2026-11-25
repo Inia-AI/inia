@@ -16,9 +16,14 @@ import WorkflowFileUploader from './WorkflowFileUploader.vue'
 const passwordRequiredError = () =>
   badRequest({ 'file.Password.Required': ['The file is password-protected.'] })
 
-function mountUploader(): VueWrapper {
+const documentTypes = [
+  { label: 'Let us decide', value: ' ' },
+  { label: 'Annual Report', value: 'AnnualReport' },
+]
+
+function mountUploader(documentClassOptions = documentTypes): VueWrapper {
   return mount(WorkflowFileUploader, {
-    props: { name: 'files', modelValue: [] },
+    props: { name: 'files', modelValue: [], documentClassOptions },
   })
 }
 
@@ -328,6 +333,17 @@ describe('WorkflowFileUploader class select', () => {
 
     const select = wrapper.findComponent({ name: 'inia-selectStub' })
     expect(select.vm.$attrs['model-value']).toBe('')
+    wrapper.unmount()
+  })
+
+  it('shows no document type list when there is no type to choose', async () => {
+    uploadMutateMock.mockResolvedValueOnce({ id: 'doc-1', filename: 'statement.pdf', mediaType: 'application/pdf' })
+    const wrapper = mountUploader([])
+
+    await selectFiles(wrapper, ['statement.pdf'])
+
+    expect(wrapper.text()).toContain('statement.pdf')
+    expect(wrapper.find('.file-class-field').exists()).toBe(false)
     wrapper.unmount()
   })
 })

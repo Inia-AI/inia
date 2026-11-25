@@ -97,7 +97,7 @@ Tests get their implementation from `AddFileFormatsUnderTest()` in `IniaAi.Testi
 | Type | Project | Responsibility |
 |------|---------|----------------|
 | `IPdfFormat`, `IPdfDocument`, `PdfBox` | open | The PDF interface, described above |
-| `PdfExtractor` | open | Text through `IPdfDocument`: `ExtractTextSkippingFailedPages`, which skips a page that fails and stops at a character budget, and `ExtractPaginatedText`, which reads a scan of two facing pages as two halves |
+| `PdfExtractor` | open | Text through `IPdfDocument`: `ExtractPageTextsSkippingFailedPages`, which reads the first pages one by one and gives no text for a page that fails, and `ExtractPaginatedText`, which reads a scan of two facing pages as two halves |
 | `PdfUtils` | open | Byte-level checks and the `startxref` rebuild; it uses no PDF library |
 | `PdfiumPdfFormat`, `PdfiumPdfDocument`, `PdfiumWorker` | open | The free implementation: each call is one request to the document's worker process. Text is laid out in rows as Aspose's pure text mode lays it out, and text outside the page's crop box stays out |
 

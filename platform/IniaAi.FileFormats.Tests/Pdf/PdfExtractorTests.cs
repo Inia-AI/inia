@@ -15,40 +15,41 @@ public class PdfExtractorTests
     }
 
     [Fact]
-    public void ExtractTextSkippingFailedPages_ReadsTheTextLayer()
+    public void ExtractPageTextsSkippingFailedPages_ReadsTheTextLayer()
     {
         // Arrange
         BinaryData pdfBytes = new(File.ReadAllBytes(Path.Combine("TestResources", "SimpleTestSearchableWithTextOnImage.pdf")));
         using IPdfDocument pdf = FileFormatsUnderTest.Pdf.Open(pdfBytes.ToStream(), "SimpleTestSearchableWithTextOnImage.pdf");
 
         // Act
-        string extractedText = PdfExtractor.ExtractTextSkippingFailedPages(pdf, int.MaxValue, NullLogger.Instance);
+        IReadOnlyList<string?> pageTexts = PdfExtractor.ExtractPageTextsSkippingFailedPages(pdf, int.MaxValue, NullLogger.Instance);
 
         // Assert
-        Assert.Contains("Inia-Ai", extractedText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(pageTexts, text => text?.Contains("Inia-Ai", StringComparison.OrdinalIgnoreCase) == true);
     }
 
     [Fact]
-    public void ExtractTextSkippingFailedPages_StopsOnceTheTextReachesTheBudget()
+    public void ExtractPageTextsSkippingFailedPages_StopsAfterTheLastPageAskedFor()
     {
         using IPdfDocument pdf = FileFormatsUnderTest.Pdf.Open(new MemoryStream(PdfFixtures.Pages("alpha page", "bravo page", "charlie page")), "pages.pdf");
 
-        string text = PdfExtractor.ExtractTextSkippingFailedPages(pdf, characterBudget: 5, NullLogger.Instance);
+        IReadOnlyList<string?> pageTexts = PdfExtractor.ExtractPageTextsSkippingFailedPages(pdf, maxPages: 2, NullLogger.Instance);
 
-        Assert.Contains("alpha page", text);
-        Assert.DoesNotContain("bravo", text);
+        Assert.Equal(2, pageTexts.Count);
+        Assert.Contains("alpha page", pageTexts[0]);
+        Assert.Contains("bravo page", pageTexts[1]);
     }
 
     [Fact]
-    public void ExtractTextSkippingFailedPages_SkipsAPageThatDoesNotParse_AndReadsTheRest()
+    public void ExtractPageTextsSkippingFailedPages_GivesNoTextForAPageThatDoesNotParse_AndReadsTheRest()
     {
         using IPdfDocument pdf = FileFormatsUnderTest.Pdf.Open(new MemoryStream(PdfFixtures.WithUnresolvablePage(2, "one", "two", "three")), "unresolvable.pdf");
 
-        string text = PdfExtractor.ExtractTextSkippingFailedPages(pdf, characterBudget: 1_000, NullLogger.Instance);
+        IReadOnlyList<string?> pageTexts = PdfExtractor.ExtractPageTextsSkippingFailedPages(pdf, maxPages: 3, NullLogger.Instance);
 
-        Assert.Contains("one", text);
-        Assert.Contains("three", text);
-        Assert.DoesNotContain("two", text);
+        Assert.Contains("one", pageTexts[0]);
+        Assert.Null(pageTexts[1]);
+        Assert.Contains("three", pageTexts[2]);
     }
 
     [Fact]

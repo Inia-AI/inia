@@ -455,7 +455,7 @@ const fileIcon = (fileName: string | undefined) => {
           v-if="file.progress === 100 && !file.isUploading && !file.error"
           class="file-actions"
         >
-          <FormField :name="`${name}[${index}].class`">
+          <FormField v-if="props.documentClassOptions.length" :name="`${name}[${index}].class`">
             <FormItem
               class="file-class-field"
               :class="{ 'is-unchosen': everyDocumentNeedsAClass && !file.class?.trim() }"
