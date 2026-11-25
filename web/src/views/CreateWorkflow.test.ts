@@ -92,11 +92,27 @@ vi.mock('@/api', async () => {
                 ],
               },
             ]
-          : []
+          : typeId === 'report-start'
+            ? [
+                { replacementTag: 'Second', displayName: '2. Second', type: 'String', isRequired: true, description: 'What the second setting holds.', options: {} },
+                { replacementTag: 'Tenth', displayName: '10. Tenth', type: 'String', isRequired: true, options: {} },
+                { replacementTag: 'First', displayName: '1. First', type: 'String', isRequired: true, options: {} },
+                { replacementTag: 'Notes', displayName: 'Notes', type: 'String', isRequired: false, options: {} },
+                { replacementTag: 'Later', displayName: '3.10 Later', type: 'String', isRequired: false, options: {} },
+                { replacementTag: 'Earlier', displayName: '3.9 Earlier', type: 'String', isRequired: false, options: {} },
+              ]
+            : []
   const documentClassesOf = (typeId: string) =>
     typeId === 'interim-report'
       ? [{ key: 'QuarterlyReport', displayName: 'Quarterly Report', description: '', requirement: 'Optional', shouldBeSingular: false, isOutputDocument: false }]
-      : []
+      : typeId === 'report-start'
+        ? [
+            { key: 'Deck', displayName: 'Investor presentation', description: 'Recent results slides.', requirement: 'Optional', shouldBeSingular: false, isOutputDocument: false },
+            { key: 'Annual', displayName: 'Annual report', description: 'The latest annual report.', requirement: 'Required', shouldBeSingular: false, isOutputDocument: false },
+            { key: 'Questionnaire', displayName: 'Questionnaire', description: '', requirement: 'Suggested', shouldBeSingular: false, isOutputDocument: false },
+            { key: 'Spread', displayName: 'Spread', description: 'Made by the run.', requirement: 'Optional', shouldBeSingular: false, isOutputDocument: true },
+          ]
+        : []
   const workflow = (id: string, workflowTypeName: string) => ({ id, workflowTypeId: id, workflowTypeName, isAvailable: true })
   return {
     default: {
@@ -104,7 +120,7 @@ vi.mock('@/api', async () => {
         useGetWorkflowCategorySummaries: () => ({
           data: vueRef([
             { id: 'monitoring', name: 'Monitoring', workflows: [workflow('hf-monthly', 'Hedge Fund Monthly'), workflow('pe-quarterly', 'PE Quarterly')] },
-            { id: 'credit', name: 'Credit', workflows: [workflow('credit-memo', 'Credit Memo'), workflow('loan-check', 'Loan Check'), workflow('company-report', 'Company Report'), workflow('interim-report', 'Interim Report')] },
+            { id: 'credit', name: 'Credit', workflows: [workflow('credit-memo', 'Credit Memo'), workflow('loan-check', 'Loan Check'), workflow('company-report', 'Company Report'), workflow('interim-report', 'Interim Report'), workflow('report-start', 'Report Start')] },
             { id: 'funds', name: 'Funds', workflows: [workflow('fund-report', 'Fund Report'), workflow('fund-report-classified', 'Fund Report Classified')] },
           ]),
           isError: vueRef(false),
@@ -257,10 +273,11 @@ describe('CreateWorkflow report type step', () => {
       'loan-check',
       'company-report',
       'interim-report',
+      'report-start',
       'fund-report',
       'fund-report-classified',
     ])
-    expect(wrapper!.findAll('input[type="radio"]')).toHaveLength(8)
+    expect(wrapper!.findAll('input[type="radio"]')).toHaveLength(9)
   })
 
   it('still selects a report type when its radio is chosen', async () => {
@@ -649,7 +666,7 @@ describe('CreateWorkflow documents step when a module has the customer name ever
     expect(wrapper!.get('[data-testid="accepted-document-types"]').text()).toBe(
       'Accepted document types: Prospectus, Annual Report. Other document types are not supported.',
     )
-    expect(wrapper!.find('.doc-req-toggle').exists(), 'the collapsed Optional row is replaced by the list').toBe(false)
+    expect(wrapper!.find('[data-testid="doc-list-optional"]').exists(), 'the accepted types are listed once').toBe(false)
     expect(wrapper!.text()).toContain('Step 1: Drag and drop your files here, or')
     expect(wrapper!.get('[data-testid="choose-class-step"]').text()).toBe('Step 2: Select a document type for each file')
   })
@@ -683,6 +700,7 @@ describe('CreateWorkflow documents step when a module has the customer name ever
     await openDocumentsStepWith('fund-report-classified')
 
     expect(wrapper!.find('.file-class-field').exists()).toBe(false)
+    expect(wrapper!.get('p.step-lead').text()).toBe('Upload the files below. We read each one and work out what it is.')
     expect(continueButton().attributes('disabled')).toBeUndefined()
   })
 
@@ -752,8 +770,9 @@ describe('CreateWorkflow documents step when no module has the customer name eve
     await press('Back')
 
     expect(wrapper!.get('h2.step-title').text()).toBe('Upload documents')
+    expect(wrapper!.get('p.step-lead').text()).toBe('Upload the files below.')
     expect(wrapper!.find('[data-testid="accepted-document-types"]').exists()).toBe(false)
-    expect(wrapper!.find('.doc-req-toggle').exists()).toBe(true)
+    expect(wrapper!.find('[data-testid="doc-list-optional"]').exists()).toBe(true)
     expect(wrapper!.findAll('button').find(candidate => candidate.text() === 'Continue')!.attributes('disabled')).toBeUndefined()
   })
 })
@@ -888,5 +907,67 @@ describe('CreateWorkflow input rules on the details step', () => {
     expect(wrapper!.get('#input-rules-held').text()).toBe('')
     expect(continueButton().attributes('disabled')).toBeUndefined()
     expect(continueButton().attributes('aria-describedby')).toBeUndefined()
+  })
+})
+
+describe('CreateWorkflow report start layout', () => {
+  beforeEach(() => sessionStorage.clear())
+
+  const openDetailsStep = async () => {
+    useCreateWorkflowPrefillStore().set({
+      workflowId: 'report-start',
+      workflowTypeId: 'report-start',
+      variables: {},
+      documents: [{ fileId: 'file-1', documentClass: 'Annual', name: 'annual-report', extension: '.pdf' }],
+      startStep: 'details',
+    })
+    await mountPage()
+  }
+
+  it('lists each document type with its description, the needed ones first and the suggested before the optional', async () => {
+    await mountPage()
+    await chooseType('report-start')
+    await press('Continue')
+
+    const required = wrapper!.get('[data-testid="doc-list-required"]')
+    expect(required.get('h3').text()).toBe('Needed for this report')
+    expect(required.findAll('.doc-row-name')).toHaveLength(1)
+    expect(required.get('.doc-row-name').text()).toContain('Annual report')
+    expect(required.get('.doc-row-tag').text()).toBe('Required')
+    expect(required.get('.doc-row-hint').text()).toBe('The latest annual report.')
+
+    const optional = wrapper!.get('[data-testid="doc-list-optional"]')
+    expect(optional.get('h3').text()).toBe('Also useful (optional)')
+    expect(optional.findAll('.doc-row-name').map(row => row.text())).toEqual(['Questionnaire', 'Investor presentation'])
+    expect(optional.findAll('.doc-row-hint').map(hint => hint.text())).toEqual(['Recent results slides.'])
+    expect(wrapper!.text()).not.toContain('Made by the run.')
+  })
+
+  it('groups the details under headings and orders each group by its numbering, without the numbers', async () => {
+    await openDetailsStep()
+
+    expect(wrapper!.findAll('h3.details-group-title').map(heading => heading.text())).toEqual(['Report settings', 'Optional settings'])
+    const labels = wrapper!.findAll('.details-column label').map(label => label.text()).filter(text => text !== 'Company')
+    expect(labels).toEqual(['First*', 'Second*', 'Tenth*', 'Earlier', 'Later', 'Notes'])
+  })
+
+  it('shows a field description under the field and links it to the control', async () => {
+    await openDetailsStep()
+
+    const label = wrapper!.findAll('.details-column label').find(candidate => candidate.text() === 'Second*')!
+    const input = wrapper!.get(`#${label.attributes('for')}`)
+    const description = wrapper!.findAll('p.field-hint').find(hint => hint.text() === 'What the second setting holds.')!
+    expect(input.attributes('aria-describedby')?.split(' ')).toContain(description.attributes('id'))
+  })
+
+  it('scrolls to the top of the page when the step changes', async () => {
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView')
+    await openDetailsStep()
+    scrolled.mockClear()
+
+    await press('Back')
+
+    expect(scrolled).toHaveBeenCalledWith({ block: 'start' })
+    scrolled.mockRestore()
   })
 })

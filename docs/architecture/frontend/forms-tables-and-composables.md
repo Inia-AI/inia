@@ -221,7 +221,8 @@ Composables live in `src/composables/`. They own reusable reactive behaviour and
 | `useReportDescription.ts` | a describer of a report row | The type, counterparty and date added that name a report's row controls (see [Row actions and selection](#row-actions-and-selection)) |
 | `usePageImage.ts` | the page's image or, for a file type with none, its text | Loads a page's rendered image while `active` holds; shared by the page reader and `PagePreviewDialog` |
 | `usePeerCandidates.ts` | the peer-candidate query | Searches the counterparties a run can name as peers ([API layer](api-layer.md#module-inventory)) |
-| `useInlineCounterpartyCreation.ts` | `{ searchTerm, mergedOptions, visibleOptions, hiddenOptionCount, ... }` | Shared search/create logic for the counterparty selects; also caps rendered options (see [dropdown render cap](components-and-design-system.md#dropdown-option-list-render-cap)) |
+| `useCappedOptionSearch.ts` | `{ searchTerm, normalizedSearchTerm, filteredOptions, visibleOptions, hiddenOptionCount }` | The search and the render cap of the searchable dropdowns (see [dropdown render cap](components-and-design-system.md#dropdown-option-list-render-cap)) |
+| `useInlineCounterpartyCreation.ts` | `{ searchTerm, mergedOptions, visibleOptions, hiddenOptionCount, showCreateDialog, ... }` | The company picker's search with inline creation: created options and the create dialog's state on top of `useCappedOptionSearch` |
 | `useDocumentUpload.ts`, `useReferenceId.ts`, `useCurrentUserId.ts`, `useMyReviewCounts.ts`, `useFactTooltip.ts` | varies | Feature-specific helpers |
 
 

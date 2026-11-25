@@ -12,6 +12,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command'
 import {
   Popover,
@@ -21,10 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { PeerOptionType } from '@/types'
-import { useInlineCounterpartyCreation } from '@/composables/useInlineCounterpartyCreation'
-import InlineCounterpartyCreation from '@/components/molecules/InlineCounterpartyCreation/InlineCounterpartyCreation.vue'
-
-import CreateCounterpartyDialog from '@/components/molecules/CreateCounterpartyDialog/CreateCounterpartyDialog.vue'
+import { useCappedOptionSearch } from '@/composables/useCappedOptionSearch'
 
 const { t: $t } = useI18n()
 
@@ -35,10 +33,6 @@ defineOptions({
 const props = defineProps({
   options: {
     type: Array as PropType<PeerOptionType[]>,
-    default: () => [],
-  },
-  counterpartyTypeIds: {
-    type: Array as PropType<string[]>,
     default: () => [],
   },
   loadFailed: {
@@ -58,18 +52,8 @@ const open = ref(false)
 const attrs = useAttrs()
 const triggerAttrs = computed(() => splitTriggerAttrs(attrs).trigger)
 
-const optionsRef = computed(() => props.options ?? [])
-const {
-  searchTerm,
-  showCreateDialog,
-  mergedOptions,
-  visibleOptions,
-  hiddenOptionCount,
-  hasFilteredResults,
-  showCreateOption,
-  handleCreateOptionClick: createOptionClick,
-  addCreatedOption,
-} = useInlineCounterpartyCreation(optionsRef)
+const optionList = computed(() => props.options ?? [])
+const { searchTerm, visibleOptions, hiddenOptionCount } = useCappedOptionSearch(optionList)
 
 const buttonClass = computed(() =>
   cn(
@@ -78,31 +62,13 @@ const buttonClass = computed(() =>
 )
 
 const badgeList = computed(() =>
-  mergedOptions.value.filter(x => selected.value.includes(x.value)),
-)
-
-const peerOptionByValue = computed(
-  () => new Map(props.options.map(option => [option.value, option])),
-)
-
-const listedOptions = computed<PeerOptionType[]>(() =>
-  visibleOptions.value.map(
-    option =>
-      peerOptionByValue.value.get(option.value) ?? {
-        ...option,
-        unavailableReason: $t('shared.components.peerCompanySelect.justCreated'),
-      },
-  ),
+  optionList.value.filter(x => selected.value.includes(x.value)),
 )
 
 watch(searchTerm, term => emit('update:search', term))
 
 function unselect(item: string) {
   selected.value = selected.value.filter(i => i !== item)
-}
-
-const closePopover = () => {
-  open.value = false
 }
 
 const handleSelect = (option: PeerOptionType) => {
@@ -115,15 +81,6 @@ const handleSelect = (option: PeerOptionType) => {
   } else {
     selected.value = [...selected.value, option.value]
   }
-}
-
-function onCreateOptionClick() {
-  createOptionClick(closePopover)
-}
-
-function handleCounterpartyCreated(payload: { id: string; name: string }) {
-  addCreatedOption(payload)
-  open.value = true
 }
 </script>
 
@@ -185,25 +142,17 @@ function handleCounterpartyCreated(payload: { id: string; name: string }) {
             $t('shared.components.counterpartySelect.searchPrompt')
           "
         />
-        <InlineCounterpartyCreation
-          :search-term="searchTerm"
-          :show-create-option="showCreateOption"
-          :has-filtered-results="hasFilteredResults"
-          @create="onCreateOptionClick"
-        >
+        <CommandList>
           <div v-if="loadFailed" class="peer-load-failed">
             {{ $t('shared.components.peerCompanySelect.loadFailed') }}
           </div>
           <ScrollArea class="max-h-36 p-1">
-            <CommandEmpty v-if="!showCreateOption">
+            <CommandEmpty>
               {{ $t('shared.components.multiSelect.emptySearchText') }}
             </CommandEmpty>
-            <p v-else-if="!hasFilteredResults" class="py-6 text-center text-sm">
-              {{ $t('shared.components.counterpartySelect.noResults', { name: searchTerm }) }}
-            </p>
             <CommandGroup>
               <CommandItem
-                v-for="option in listedOptions"
+                v-for="option in visibleOptions"
                 :key="option.value"
                 :value="option.label"
                 :disabled="!!option.unavailableReason"
@@ -247,18 +196,10 @@ function handleCounterpartyCreated(payload: { id: string; name: string }) {
               }}
             </div>
           </ScrollArea>
-        </InlineCounterpartyCreation>
+        </CommandList>
       </Command>
     </PopoverContent>
   </Popover>
-
-  <CreateCounterpartyDialog
-    :open="showCreateDialog"
-    :initial-name="searchTerm"
-    :counterparty-type-ids="counterpartyTypeIds"
-    @update:open="showCreateDialog = $event"
-    @created="handleCounterpartyCreated"
-  />
 </template>
 
 <style scoped>

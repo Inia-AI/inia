@@ -1,13 +1,8 @@
 import { computed, ref, type Ref } from 'vue'
 import type { OptionType } from '@/types'
-import { DROPDOWN_RENDER_CAP } from '@/constants/dropdown'
+import { useCappedOptionSearch } from '@/composables/useCappedOptionSearch'
 
-/**
- * Shared logic for inline counterparty creation within dropdown selectors.
- * Used by both CounterpartySearchableSelect (single) and PeerCompanyMultiSelect (multi).
- */
 export function useInlineCounterpartyCreation(options: Ref<OptionType[]>) {
-  const searchTerm = ref('')
   const showCreateDialog = ref(false)
   const localCreatedOptions = ref<OptionType[]>([])
 
@@ -18,25 +13,8 @@ export function useInlineCounterpartyCreation(options: Ref<OptionType[]>) {
     return [...propOptions, ...newOnly]
   })
 
-  const normalizedSearchTerm = computed(() =>
-    searchTerm.value.trim().toLowerCase(),
-  )
-
-  const filteredOptions = computed(() => {
-    const term = normalizedSearchTerm.value
-    if (!term) return mergedOptions.value
-    return mergedOptions.value.filter(o =>
-      (o.searchText || o.label).toLowerCase().includes(term),
-    )
-  })
-
-  const visibleOptions = computed(() =>
-    filteredOptions.value.slice(0, DROPDOWN_RENDER_CAP),
-  )
-
-  const hiddenOptionCount = computed(
-    () => filteredOptions.value.length - visibleOptions.value.length,
-  )
+  const { searchTerm, normalizedSearchTerm, filteredOptions, visibleOptions, hiddenOptionCount } =
+    useCappedOptionSearch(mergedOptions)
 
   const hasFilteredResults = computed(
     () => !normalizedSearchTerm.value || filteredOptions.value.length > 0,

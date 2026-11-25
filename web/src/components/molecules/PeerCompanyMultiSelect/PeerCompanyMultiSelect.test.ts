@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({ t: (key: string) => key }),
@@ -20,24 +19,8 @@ vi.mock('@lucide/vue', async () =>
     'Check',
     'X',
     'ChevronsUpDown',
-    'Plus',
   ]),
 )
-
-vi.mock('@/components/molecules/CreateCounterpartyDialog/CreateCounterpartyDialog.vue', () => ({
-  default: defineComponent({
-    name: 'CreateCounterpartyDialogStub',
-    props: ['open', 'initialName', 'counterpartyTypeIds'],
-    emits: ['update:open', 'created'],
-    setup(props) {
-      return () =>
-        h('div', {
-          'data-stub': 'CreateCounterpartyDialog',
-          'data-open': String(props.open),
-        })
-    },
-  }),
-}))
 
 import PeerCompanyMultiSelect from './PeerCompanyMultiSelect.vue'
 import { Badge } from '@/components/ui/badge'
@@ -185,47 +168,6 @@ describe('PeerCompanyMultiSelect peer availability', () => {
     await wrapper.find('[data-stub="CommandInput"]').setValue('glob')
 
     expect(wrapper.emitted('update:search')?.at(-1)).toEqual(['glob'])
-  })
-})
-
-describe('PeerCompanyMultiSelect inline counterparty creation', () => {
-  const created = { id: 'new-1', name: 'Newco' }
-
-  const createDialog = (wrapper: ReturnType<typeof mountSelect>) =>
-    wrapper.findComponent({ name: 'CreateCounterpartyDialogStub' })
-
-  it('offers a freshly created counterparty with the same unusable verdict', async () => {
-    const wrapper = mountSelect({ options: [] })
-
-    createDialog(wrapper).vm.$emit('created', created)
-    await wrapper.vm.$nextTick()
-
-    const item = wrapper
-      .findAll('[data-stub="CommandItem"]')
-      .find(el => el.text().includes('Newco'))!
-    expect(item.attributes('data-disabled')).toBe('true')
-    expect(item.text()).toContain(
-      'shared.components.peerCompanySelect.justCreated',
-    )
-  })
-
-  it('reopens the list so the created counterparty and its verdict are visible', async () => {
-    const wrapper = mountSelect({ options: [] })
-    expect(wrapper.find('[role="combobox"]').attributes('aria-expanded')).toBe('false')
-
-    createDialog(wrapper).vm.$emit('created', created)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[role="combobox"]').attributes('aria-expanded')).toBe('true')
-  })
-
-  it('does not select a freshly created counterparty it cannot use', async () => {
-    const wrapper = mountSelect({ options: [] })
-
-    createDialog(wrapper).vm.$emit('created', created)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 })
 

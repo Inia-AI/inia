@@ -18,6 +18,7 @@ defineProps<{ documentClass: DocumentClass; empty: boolean }>()
 
 <style scoped>
 .doc-req-note {
+  margin-left: 4px;
   font-style: italic;
   color: var(--text-muted);
 }

@@ -21,11 +21,9 @@
   },
   "documentsStep": {
     "title": "Upload documents",
-    "lead": "Add the source files for {name}. We'll classify and process them for you.",
+    "lead": "Upload the files below.",
+    "leadClassified": "Upload the files below. We read each one and work out what it is.",
     "required": "Required",
-    "needed": "This report needs",
-    "suggested": "Suggested",
-    "optional": "Optional",
     "singleOnly": "· 1 only",
     "reviewFollowing": "Please review the following:",
     "missingRequiredNote": "Upload and classify the required document to continue: | Upload and classify the required documents to continue:",
@@ -35,7 +33,9 @@
     "acceptedTypes": "Accepted document types: {types}. Other document types are not supported.",
     "unlabelledNote": "Select a document type for each file to continue.",
     "letUsDecide": "Let us decide",
-    "classPartlyOptionalNote": "After you upload a document, we work out its type for you. We cannot do this for {documents}. When you upload one, choose its type yourself in the list next to the file. | After you upload a document, we work out its type for you. We cannot do this for these types: {documents}. When you upload one of them, choose its type yourself in the list next to the file."
+    "classPartlyOptionalNote": "After you upload a document, we work out its type for you. We cannot do this for {documents}. When you upload one, choose its type yourself in the list next to the file. | After you upload a document, we work out its type for you. We cannot do this for these types: {documents}. When you upload one of them, choose its type yourself in the list next to the file.",
+    "neededHeading": "Needed for this report",
+    "optionalHeading": "Also useful (optional)"
   },
   "reRunChanges": {
     "title": "This workflow has changed since the original run",
@@ -54,7 +54,11 @@
   "detailsStep": {
     "title": "Configure the details",
     "lead": "Set the @:{'terms.company'}, peers and any parameters this report needs.",
-    "inputRulesHeld": "Change the fields marked on this step before you continue."
+    "inputRulesHeld": "Change the fields marked on this step before you continue.",
+    "groups": {
+      "required": "Report settings",
+      "optional": "Optional settings"
+    }
   },
   "reviewStep": {
     "title": "Review & generate",
@@ -77,6 +81,10 @@
         "status": "Status"
       }
     },
+    "optional": "(optional)",
+    "companyHint": "The @:{'terms.company'} the documents are about. Pick one you have used before, or add a new one.",
+    "comparePeers": "Compare with peers",
+    "peerHint": "Compare this @:{'terms.company'} with others. You can choose a @:{'terms.company'} once we hold its financial analysis; the list says why the others cannot be chosen.",
     "submitLabel": "Submit",
     "errors": {
       "counterpartyRequired": "Choose a @:{'terms.company'} for this report.",

@@ -62,14 +62,12 @@
     "moreResults": "{n} more — keep typing to narrow down"
   },
   "listFormField": {
-    "about": "About {list}",
     "addItem": "Add to {list}",
     "removeItem": "Remove item {n}"
   },
   "peerCompanySelect": {
     "none": "No peers chosen",
     "notAnalysed": "No financial analysis yet",
-    "justCreated": "Just created \u2014 run financial analysis before it can be a peer",
     "loadFailed": "Couldn't load the list of @:{'terms.companies'}. Try again in a moment.",
     "unreadable": "Its stored financials can't be read \u2014 run the analysis again",
     "noUsablePeriods": "Its financial analysis has no dated periods to compare",

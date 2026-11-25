@@ -1,21 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { ref } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { EN } from '@/assets/locales/en'
-
-const createCounterparty = vi.fn(async () => undefined)
-
-vi.mock('@/api', () => ({
-  default: {
-    CounterpartyTypes: {
-      useGetCounterpartyTypes: () => ({ data: ref({ value: [{ id: 'listed-company', name: 'Listed company' }] }) }),
-    },
-    Counterparties: {
-      useCreateCounterparty: () => ({ mutateAsync: createCounterparty }),
-    },
-  },
-}))
 
 import PeerCompanyMultiSelect from './PeerCompanyMultiSelect.vue'
 
@@ -56,7 +42,6 @@ const clickOn = async (element: Element) => {
 const searchBox = () =>
   document.querySelector<HTMLInputElement>(`input[placeholder="${i18n.global.t('shared.components.counterpartySelect.searchPrompt')}"]`)
 const peerList = () => searchBox()?.closest('[role="dialog"]') ?? null
-const createDialog = () => document.querySelector('[role="dialog"] form')?.closest('[role="dialog"]') ?? null
 const optionNamed = (text: string) =>
   Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(option => option.textContent?.includes(text))
 
@@ -78,7 +63,6 @@ const openPeerList = async () => {
 
 afterEach(() => {
   mounted.splice(0).forEach(wrapper => wrapper.unmount())
-  createCounterparty.mockClear()
   document.body.innerHTML = ''
 })
 
@@ -150,25 +134,16 @@ describe('PeerCompanyMultiSelect list from the keyboard and pointer', () => {
     expect(peerList()).not.toBeNull()
   })
 
-  it('reopens the list once a counterparty is created from the search, and keeps it open', async () => {
+  it('offers no way to create a company, because a peer needs a report of its own', async () => {
     await openPeerList()
     const search = searchBox()!
-    search.value = 'Initech'
+    search.value = 'Zyx keyboard probe'
     search.dispatchEvent(new Event('input', { bubbles: true }))
     await settle()
 
-    await clickOn(optionNamed('Initech')!)
-
-    expect(peerList()).toBeNull()
-    expect(createDialog()).not.toBeNull()
-
-    createDialog()!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    await settle()
-    await settle()
-
-    expect(createCounterparty).toHaveBeenCalledTimes(1)
-    expect(createDialog()).toBeNull()
-    expect(peerList()).not.toBeNull()
-    expect(optionNamed('Initech')?.textContent).toContain(EN.shared.components.peerCompanySelect.justCreated)
+    const listText = document.querySelector('[role="listbox"]')?.textContent ?? ''
+    expect(listText).toContain(i18n.global.t('shared.components.multiSelect.emptySearchText'))
+    expect(listText).not.toContain('Zyx keyboard probe')
+    expect(Array.from(document.querySelectorAll('button')).some(button => button.textContent?.includes(i18n.global.t('shared.components.counterpartySelect.addNew')))).toBe(false)
   })
 })

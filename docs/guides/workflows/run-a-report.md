@@ -21,10 +21,10 @@ Pick the kind of analysis you want. The next steps follow from it: the documents
 
 ## 2. Upload the documents
 
-Add the source files. The step lists the document classes of the report type:
+Add the source files. The step lists the document classes of the report type, each with its description when the report type gives one:
 
-- **Required**: the report cannot run without a document of this class. Its name stays in the list until you upload and classify one.
-- **Suggested** and **Optional**: the report runs without them.
+- **Needed for this report**: the classes marked **Required**. The report cannot run without a document of this class.
+- **Also useful (optional)**: the report runs without them.
 - **· 1 only**: the report takes one document of this class. Remove the extras to continue.
 
 Each uploaded file gets a class. **Let us decide** leaves it to the platform, which reads each document and decides what it is. Choose a class yourself only when you are sure. When the platform cannot decide for a class, the step says so, and you choose the class for those files.
@@ -32,6 +32,8 @@ Each uploaded file gets a class. **Let us decide** leaves it to the platform, wh
 ## 3. Set the details
 
 Set the company the report is about, its peer companies when the report type compares with peers, and any parameters the report type has. A parameter you leave alone keeps the default of the report type.
+
+Each field shows its description under it. The fields come in groups: **Report settings** for the ones the report needs, **Optional settings**, and **Compare with peers**. **Add new company**, at the foot of the company list, adds a company the platform does not know yet. The peer list shows the companies the report type can compare with, but you can choose only one whose financial analysis the platform already holds; the list says why the others cannot be chosen. It has no way to add a company.
 
 ## 4. Review and submit
 

@@ -37,12 +37,13 @@ import {
   requiredClassesToChoose,
   singularClassViolations,
 } from '@/lib/documentRequirements'
-import { checkInputRules } from '@/lib/inputRules/variableInputRuleCheck'
+import { checkInputRules, compareNumbering, nameOfVariable } from '@/lib/inputRules/variableInputRuleCheck'
 
 import {
   FormItem,
   FormLabel,
   FormControl,
+  FormDescription,
   FormMessage,
 } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
@@ -51,13 +52,8 @@ import { ListFormField, IniaSelect, MultiSelect, CounterpartySearchableSelect, P
 import { usePeerCandidates } from '@/composables/usePeerCandidates'
 import { IniaLoader } from '@/components/atoms'
 import { Input } from '@/components/ui/input'
-
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import VariableFormField from '@/components/molecules/VariableFormField/VariableFormField.vue'
+import type { VariableFieldDefinition } from '@/components/molecules/VariableFormField/types'
 
 const router = useRouter()
 const { t: $t } = useI18n()
@@ -98,17 +94,6 @@ const documentValidationError = computed(() =>
   documentValidationErrors.value.length > 0 ? documentValidationErrors.value : null
 )
 const submitRefusal = ref<string | null>(null)
-
-
-interface VariableFieldDefinition {
-  component: any
-  componentProps?: Record<string, any>
-  name: string
-  label?: string
-  type: WorkflowVariableTypes
-  description?: string
-  isRequired?: boolean
-}
 
 const formData = ref<WorkflowFormData>({
   documents: undefined,
@@ -375,14 +360,19 @@ const requiredDocuments = computed(() => {
     ?.filter(x => x.requirement === 'Required' && !x.isOutputDocument) || []
 })
 
-const suggestedDocuments = computed(() => {
-  return selectedWorkflow?.value?.documentClasses
-    ?.filter(x => x.requirement === 'Suggested' && !x.isOutputDocument) || []
-})
-
-const optionalDocuments = computed(() => {
-  return selectedWorkflow?.value?.documentClasses
-    ?.filter(x => x.requirement === 'Optional' && !x.isOutputDocument) || []
+const documentGroups = computed(() => {
+  const inputClasses = selectedWorkflow.value?.documentClasses?.filter(x => !x.isOutputDocument) ?? []
+  return [
+    { key: 'required', heading: 'page.createWorkflow.documentsStep.neededHeading', documents: requiredDocuments.value },
+    {
+      key: 'optional',
+      heading: 'page.createWorkflow.documentsStep.optionalHeading',
+      documents: [
+        ...inputClasses.filter(x => x.requirement === 'Suggested'),
+        ...inputClasses.filter(x => x.requirement === 'Optional'),
+      ],
+    },
+  ].filter(group => group.documents.length > 0 && !(group.key === 'optional' && everyDocumentNeedsAClass.value))
 })
 
 const documentClassOptions = computed(() => {
@@ -492,17 +482,18 @@ const getOptionsEntries = (options: Record<string, string> | undefined) => {
   return Object.entries(options)
 }
 
+const byNumberingThenName = (a: WorkflowVariable, b: WorkflowVariable) =>
+  compareNumbering(a.displayName, b.displayName) || nameOfVariable(a).localeCompare(nameOfVariable(b))
+
 const buildVariableFieldDefinition = (variable: WorkflowVariable): VariableFieldDefinition => {
   const prop: Partial<VariableFieldDefinition> = {}
 
   switch (variable.type) {
     case WorkflowVariableTypes.String:
       prop.component = Input
-      prop.label = variable.displayName
       break
     case WorkflowVariableTypes.Dropdown:
       prop.component = IniaSelect
-      prop.label = variable.displayName
       prop.componentProps = {
         options: getOptionsEntries(variable.options).map(
           ([internalValue, displayName]) => ({
@@ -517,18 +508,15 @@ const buildVariableFieldDefinition = (variable: WorkflowVariable): VariableField
       prop.componentProps = {
         type: 'number',
       }
-      prop.label = variable.displayName
       break
     case WorkflowVariableTypes.DateTime:
       prop.component = Input
       prop.componentProps = {
         type: 'date',
       }
-      prop.label = variable.displayName
       break
     case WorkflowVariableTypes.MultiSelect:
       prop.component = MultiSelect
-      prop.label = variable.displayName
       prop.componentProps = {
         options: getOptionsEntries(variable.options).map(
           ([internalValue, displayName]) => ({
@@ -540,13 +528,10 @@ const buildVariableFieldDefinition = (variable: WorkflowVariable): VariableField
       break
     case WorkflowVariableTypes.List:
       prop.component = ListFormField
-      prop.componentProps = {
-        name: variable.replacementTag,
-        header: variable.displayName,
-      }
       break
   }
 
+  prop.label = nameOfVariable(variable)
   prop.name = variable.replacementTag
   prop.type = variable.type
   prop.description = variable.description
@@ -560,12 +545,7 @@ const variableFieldDefinitions = computed(() => {
 
   const variables = [...(selectedWorkflow.value?.variables || [])]
     .filter(v => !ALL_PARENT_COMPANY_TAGS.includes(v.replacementTag))
-    .sort((a, b) => {
-      if (a.isRequired !== b.isRequired) {
-        return a.isRequired ? -1 : 1
-      }
-      return (a.displayName || '').localeCompare(b.displayName || '')
-    })
+    .sort((a, b) => Number(!!b.isRequired) - Number(!!a.isRequired) || byNumberingThenName(a, b))
 
   for (const variable of variables) {
     if (variable.isHidden) {
@@ -577,12 +557,17 @@ const variableFieldDefinitions = computed(() => {
   return variableFields
 })
 
+const variableFieldGroups = computed(() => [
+  { key: 'required', fields: variableFieldDefinitions.value.filter(field => field.isRequired) },
+  { key: 'optional', fields: variableFieldDefinitions.value.filter(field => !field.isRequired) },
+].filter(group => group.fields.length > 0))
+
 const parentCompanyVariableFieldDefinitions = computed(() => {
   const variableFields: VariableFieldDefinition[] = []
 
   const variables = [...(selectedWorkflow.value?.variables || [])]
     .filter(v => ALL_PARENT_COMPANY_TAGS.includes(v.replacementTag))
-    .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''))
+    .sort(byNumberingThenName)
 
   for (const variable of variables) {
     if (variable.isHidden) {
@@ -772,17 +757,19 @@ onMounted(() => window.addEventListener('pagehide', keepFormForReturn))
 onBeforeUnmount(() => window.removeEventListener('pagehide', keepFormForReturn))
 
 const uploaderUploading = ref(false)
-const showOptionalDocs = ref(false)
 
 const canLeaveCurrentStep = computed(
   () => !(currentStepKey.value === 'documents' && uploaderUploading.value),
 )
+
+const pageTopEl = ref<HTMLElement | null>(null)
 
 const goToStep = (index: number) => {
   if (index < 0 || index > stepKeys.length - 1) return
   if (index !== currentStepIndex.value && !canLeaveCurrentStep.value) return
   if (index !== currentStepIndex.value) {
     submitRefusal.value = null
+    pageTopEl.value?.scrollIntoView({ block: 'start' })
   }
   currentStepIndex.value = index
 }
@@ -793,7 +780,7 @@ const goToStep = (index: number) => {
 const dropStoredFieldErrors = () => Object.keys(form.errors.value).forEach(path => form.setFieldError(path as never, undefined))
 
 const stepContentEl = ref<HTMLElement | null>(null)
-const focusStepContent = () => stepContentEl.value?.focus()
+const focusStepContent = () => stepContentEl.value?.focus({ preventScroll: true })
 
 const classesTheUserChooses = computed(() =>
   requiredClassesToChoose(requiredDocuments.value, selectedWorkflow.value),
@@ -882,6 +869,11 @@ const inputRuleMessagesWithoutField = computed(() =>
 const inputRulesHold = computed(() => inputRuleViolations.value.length > 0)
 
 const fieldMessageId = (fieldName: string) => `field-notes-${fieldName}`
+
+const reRunBadgeOf = (fieldName: string) => {
+  const reason = reRunReasonByField.value.get(fieldName)
+  return reason ? $t(`page.createWorkflow.reRunChanges.badge.${reason}`) : undefined
+}
 
 const fieldNotesOf = (fieldName: string) => [
   ...new Set([
@@ -989,7 +981,8 @@ const reviewVariables = computed(() => {
       const appliedDefault = definition && appliedTemplateDefault(definition, raw)
       const shown = isBlankVariableValue(value) ? '' : String(value)
       return {
-        label: field.label ?? field.componentProps?.header ?? field.name,
+        name: field.name,
+        label: field.label,
         value: appliedDefault
           ? $t('page.createWorkflow.reviewStep.templateDefault', { value: appliedDefault })
           : shown,
@@ -1001,7 +994,7 @@ const reviewVariables = computed(() => {
 </script>
 
 <template>
-  <div class="page-view">
+  <div ref="pageTopEl" class="page-view">
     <div class="page-container">
       <div class="page-header">
         <h1 class="page-title">{{ $t('page.createWorkflow.title') }}</h1>
@@ -1157,54 +1150,27 @@ const reviewVariables = computed(() => {
               <section v-else-if="currentStep.key === 'documents'" class="step-section">
                 <header class="step-heading">
                   <h2 class="step-title">{{ $t(everyDocumentNeedsAClass ? 'page.createWorkflow.documentsStep.labelTitle' : 'page.createWorkflow.documentsStep.title') }}</h2>
-                  <p class="step-lead">{{ $t(everyDocumentNeedsAClass ? 'page.createWorkflow.documentsStep.labelLead' : 'page.createWorkflow.documentsStep.lead', { name: selectedTypeMeta?.name }) }}</p>
+                  <p class="step-lead">{{ $t(everyDocumentNeedsAClass ? 'page.createWorkflow.documentsStep.labelLead' : platformClassifiesEveryDocument ? 'page.createWorkflow.documentsStep.leadClassified' : 'page.createWorkflow.documentsStep.lead', { name: selectedTypeMeta?.name }) }}</p>
                   <p v-if="everyDocumentNeedsAClass && acceptedDocumentTypes" class="step-lead" data-testid="accepted-document-types">
                     {{ $t('page.createWorkflow.documentsStep.acceptedTypes', { types: acceptedDocumentTypes }) }}
                   </p>
                 </header>
 
-                <div
-                  v-if="requiredDocuments.length > 0 || suggestedDocuments.length > 0 || (optionalDocuments.length > 0 && !everyDocumentNeedsAClass)"
-                  class="doc-requirements"
-                >
-                  <div v-if="requiredDocuments.length > 0" class="doc-req-group">
-                    <span class="doc-req-label doc-req-required">{{ $t(platformClassifies ? 'page.createWorkflow.documentsStep.needed' : 'page.createWorkflow.documentsStep.required') }}</span>
-                    <div class="doc-req-chips">
-                      <span
-                        v-for="doc in requiredDocuments"
-                        :key="doc.key"
-                        class="doc-chip"
-                        :class="{ 'doc-chip--rerun': reRunDocumentClassKeys.has(doc.key) }"
-                      >
+                <div v-for="group in documentGroups" :key="group.key" class="doc-list" :data-testid="`doc-list-${group.key}`">
+                  <h3 class="doc-list-heading" :class="{ 'doc-list-heading--required': group.key === 'required' }">{{ $t(group.heading) }}</h3>
+                  <div
+                    v-for="doc in group.documents"
+                    :key="doc.key"
+                    class="doc-row"
+                    :class="{ 'doc-row--required': group.key === 'required', 'doc-row--rerun': group.key === 'required' && reRunDocumentClassKeys.has(doc.key) }"
+                  >
+                    <span class="doc-row-mark" aria-hidden="true"><IniaIcon name="file-lines" /></span>
+                    <div>
+                      <p class="doc-row-name">
                         <DocumentClassChipLabel :document-class="doc" :empty="!attachedClassKeys.has(doc.key)" />
-                      </span>
-                    </div>
-                  </div>
-
-                  <div v-if="suggestedDocuments.length > 0" class="doc-req-group">
-                    <span class="doc-req-label doc-req-suggested">{{ $t('page.createWorkflow.documentsStep.suggested') }}</span>
-                    <div class="doc-req-chips">
-                      <span v-for="doc in suggestedDocuments" :key="doc.key" class="doc-chip">
-                        <DocumentClassChipLabel :document-class="doc" :empty="!attachedClassKeys.has(doc.key)" />
-                      </span>
-                    </div>
-                  </div>
-
-                  <div v-if="optionalDocuments.length > 0 && !everyDocumentNeedsAClass" class="doc-req-group">
-                    <button
-                      type="button"
-                      class="doc-req-toggle"
-                      :aria-expanded="showOptionalDocs"
-                      @click="showOptionalDocs = !showOptionalDocs"
-                    >
-                      <span class="doc-req-label doc-req-optional">{{ $t('page.createWorkflow.documentsStep.optional') }}</span>
-                      <span class="doc-req-count">{{ optionalDocuments.length }}</span>
-                      <IniaIcon :name="showOptionalDocs ? 'chevron-down' : 'chevron-right'" class="doc-req-caret" />
-                    </button>
-                    <div v-if="showOptionalDocs" class="doc-req-chips">
-                      <span v-for="doc in optionalDocuments" :key="doc.key" class="doc-chip">
-                        <DocumentClassChipLabel :document-class="doc" :empty="!attachedClassKeys.has(doc.key)" />
-                      </span>
+                        <span v-if="group.key === 'required'" class="doc-row-tag">{{ $t('page.createWorkflow.documentsStep.required') }}</span>
+                      </p>
+                      <p v-if="doc.description" class="doc-row-hint">{{ doc.description }}</p>
                     </div>
                   </div>
                 </div>
@@ -1296,86 +1262,46 @@ const reviewVariables = computed(() => {
                             :counterparty-type-ids="selectedWorkflow?.counterpartyTypeMappings ?? []"
                           />
                         </FormControl>
+                        <FormDescription class="field-hint">{{ $t('page.createWorkflow.form.companyHint') }}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     </FormField>
 
-                    <FormField v-if="supportsPeerCompanies" v-slot="{ componentField }" name="peerCompanyIds">
-                      <FormItem>
-                        <FormLabel>{{ $t('page.createWorkflow.form.labels.peerCompanies') }}</FormLabel>
-                        <FormControl>
-                          <PeerCompanyMultiSelect
-                            v-model="formData.peerCompanyIds"
-                            v-bind="componentField"
-                            :options="peerCompaniesOptions"
-                            :counterparty-type-ids="selectedWorkflow?.counterpartyTypeMappings ?? []"
-                            :load-failed="peerCandidatesFailed"
-                            @update:search="peerSearch = $event"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    </FormField>
-
-                    <div
-                      v-for="field in variableFieldDefinitions"
-                      :key="field.name"
-                      :data-rerun-field="reRunReasonByField.has(field.name) ? field.name : undefined"
-                    >
-                      <ListFormField
-                        v-if="field.type === WorkflowVariableTypes.List"
-                        :name="`variables.${field.name}`"
-                        :header="field.componentProps?.header"
-                        :description="field.description"
-                        :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
-                        :invalid="fieldNotesOf(field.name).length > 0"
+                    <template v-for="group in variableFieldGroups" :key="group.key">
+                      <h3 class="details-group-title">{{ $t(`page.createWorkflow.detailsStep.groups.${group.key}`) }}</h3>
+                      <VariableFormField
+                        v-for="field in group.fields"
+                        :key="field.name"
+                        :class="{ 'details-full': field.type === WorkflowVariableTypes.List }"
+                        :field="field"
+                        :notes="fieldNotesOf(field.name)"
+                        :notes-id="fieldMessageId(field.name)"
+                        :re-run-badge="reRunBadgeOf(field.name)"
+                        :show-control="!!formData.variables"
                       />
+                    </template>
 
-                      <FormField
-                        v-else
-                        v-slot="{ componentField }"
-                        :name="`variables.${field.name}`"
-                      >
+                    <template v-if="supportsPeerCompanies">
+                      <h3 class="details-group-title">{{ $t('page.createWorkflow.form.comparePeers') }}</h3>
+                      <FormField v-slot="{ componentField }" name="peerCompanyIds">
                         <FormItem>
-                          <FormLabel>
-                            <div class="flex items-center space-x-2">
-                              <span>{{ field.label }}<span v-if="field.isRequired" class="text-error ml-1">*</span></span><span v-if="reRunReasonByField.has(field.name)" class="rerun-field-badge"><span class="sr-only">, </span>{{ $t(`page.createWorkflow.reRunChanges.badge.${reRunReasonByField.get(field.name)}`) }}</span>
-                              <TooltipProvider v-if="field.description">
-                                <Tooltip>
-                                  <TooltipTrigger as-child>
-                                    <IniaIcon name="circle-info" class="text-md" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{{ field.description }}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </FormLabel>
-                          <FormControl
-                            :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
-                            :invalid="fieldNotesOf(field.name).length > 0"
-                          >
-                            <component
-                              v-if="formData.variables"
-                              :is="field.component"
-                              v-bind="{ ...componentField, ...field.componentProps }"
+                          <FormLabel>{{ $t('page.createWorkflow.form.labels.peerCompanies') }} <span class="field-optional">{{ $t('page.createWorkflow.form.optional') }}</span></FormLabel>
+                          <FormControl>
+                            <PeerCompanyMultiSelect
+                              v-model="formData.peerCompanyIds"
+                              v-bind="componentField"
+                              :options="peerCompaniesOptions"
+                              :load-failed="peerCandidatesFailed"
+                              @update:search="peerSearch = $event"
                             />
                           </FormControl>
+                          <FormDescription class="field-hint">{{ $t('page.createWorkflow.form.peerHint') }}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       </FormField>
-                      <ul
-                        v-if="fieldNotesOf(field.name).length"
-                        :id="fieldMessageId(field.name)"
-                        class="field-rule-messages"
-                        data-testid="field-rule-messages"
-                      >
-                        <li v-for="message in fieldNotesOf(field.name)" :key="message">{{ message }}</li>
-                      </ul>
-                    </div>
+                    </template>
 
-                    <div id="input-rules-held" role="status" class="field-rule-held" data-testid="input-rules-held">
+                    <div id="input-rules-held" role="status" class="field-rule-held details-full" data-testid="input-rules-held">
                       <template v-if="inputRulesHold">
                         <p>{{ $t('page.createWorkflow.detailsStep.inputRulesHeld') }}</p>
                         <ul v-if="inputRuleMessagesWithoutField.length">
@@ -1391,63 +1317,15 @@ const reviewVariables = computed(() => {
                         <h3 class="url-section-title">{{ $t('page.createWorkflow.form.labels.organizationalStructure') }}</h3>
                       </div>
                       <div class="parent-company-fields">
-                        <div
+                        <VariableFormField
                           v-for="field in parentCompanyVariableFieldDefinitions"
                           :key="field.name"
-                          :data-rerun-field="reRunReasonByField.has(field.name) ? field.name : undefined"
-                        >
-                          <ListFormField
-                            v-if="field.type === WorkflowVariableTypes.List"
-                            :name="`variables.${field.name}`"
-                            :header="field.componentProps?.header"
-                            :description="field.description"
-                            :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
-                            :invalid="fieldNotesOf(field.name).length > 0"
-                          />
-
-                          <FormField
-                            v-else
-                            v-slot="{ componentField }"
-                            :name="`variables.${field.name}`"
-                          >
-                            <FormItem>
-                              <FormLabel>
-                                <div class="flex items-center space-x-2">
-                                  <span>{{ field.label }}<span v-if="field.isRequired" class="text-error ml-1">*</span></span><span v-if="reRunReasonByField.has(field.name)" class="rerun-field-badge"><span class="sr-only">, </span>{{ $t(`page.createWorkflow.reRunChanges.badge.${reRunReasonByField.get(field.name)}`) }}</span>
-                                  <TooltipProvider v-if="field.description">
-                                    <Tooltip>
-                                      <TooltipTrigger as-child>
-                                        <IniaIcon name="circle-info" class="text-md" />
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{{ field.description }}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </FormLabel>
-                              <FormControl
-                                :described-by="fieldNotesOf(field.name).length ? fieldMessageId(field.name) : undefined"
-                                :invalid="fieldNotesOf(field.name).length > 0"
-                              >
-                                <component
-                                  v-if="formData.variables"
-                                  :is="field.component"
-                                  v-bind="{ ...componentField, ...field.componentProps }"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          </FormField>
-                          <ul
-                            v-if="fieldNotesOf(field.name).length"
-                            :id="fieldMessageId(field.name)"
-                            class="field-rule-messages"
-                            data-testid="field-rule-messages"
-                          >
-                            <li v-for="message in fieldNotesOf(field.name)" :key="message">{{ message }}</li>
-                          </ul>
-                        </div>
+                          :field="field"
+                          :notes="fieldNotesOf(field.name)"
+                          :notes-id="fieldMessageId(field.name)"
+                          :re-run-badge="reRunBadgeOf(field.name)"
+                          :show-control="!!formData.variables"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1505,7 +1383,7 @@ const reviewVariables = computed(() => {
                     <dd class="review-value">{{ selectedPeerNames.join(', ') }}</dd>
                   </div>
 
-                  <div v-for="entry in reviewVariables" :key="entry.label" class="review-row">
+                  <div v-for="entry in reviewVariables" :key="entry.name" class="review-row">
                     <dt class="review-label">{{ entry.label }}</dt>
                     <dd class="review-value">{{ entry.value }}</dd>
                   </div>
@@ -1570,6 +1448,89 @@ const reviewVariables = computed(() => {
 </template>
 
 <style scoped>
+.doc-list {
+  margin-bottom: 18px;
+}
+
+.doc-list-heading,
+.details-group-title,
+.type-group-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.doc-list-heading {
+  margin: 0 0 8px;
+}
+
+.doc-list-heading--required {
+  color: var(--accent-warning);
+}
+
+.doc-row {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 11px 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.doc-row--required {
+  border: 1.5px solid var(--accent-warning);
+}
+
+.doc-row--rerun {
+  box-shadow: 0 0 0 2px var(--stroke-info);
+}
+
+.doc-row-mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.doc-row--required .doc-row-mark {
+  color: var(--accent-warning);
+}
+
+.doc-row-name {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.doc-row-hint {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.doc-row-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid var(--accent-warning);
+  color: var(--accent-warning);
+  vertical-align: 1px;
+}
+
+.field-optional {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
 .workflow-form {
   display: flex;
   flex-direction: column;
@@ -1740,11 +1701,6 @@ button.step-rail-entry:enabled {
 
 .type-group-eyebrow {
   display: block;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
 }
 
 .type-group-desc {
@@ -1825,87 +1781,6 @@ button.step-rail-entry:enabled {
   transform: scale(1);
 }
 
-.doc-requirements {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius-card);
-  background: var(--bg-2);
-}
-
-.doc-req-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.doc-req-label {
-  align-self: flex-start;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: var(--radius-small);
-}
-
-.doc-req-required {
-  color: var(--accent-error);
-  background: var(--accent-error-light);
-}
-
-.doc-req-suggested {
-  color: var(--accent-warning);
-  background: var(--accent-warning-light);
-}
-
-.doc-req-optional {
-  color: var(--text-secondary);
-  background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
-}
-
-.doc-req-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  align-self: flex-start;
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.doc-req-count {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.doc-req-caret {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.doc-req-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.doc-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  font-size: 12px;
-  color: var(--text-primary);
-  background: var(--bg-1);
-  border: 1px solid var(--stroke);
-  border-radius: 999px;
-}
-
 .doc-gate-note {
   display: flex;
   align-items: flex-start;
@@ -1970,36 +1845,33 @@ button.step-rail-entry:enabled {
   color: var(--text-primary);
 }
 
-.rerun-field-badge {
-  display: inline-block;
-  padding: 0 8px;
-  border: 1px solid var(--accent-warning-border);
-  border-radius: 999px;
-  background: var(--accent-warning-light);
-  color: var(--accent-warning);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.doc-chip--rerun {
-  border-color: var(--accent-warning-border);
-  background: var(--accent-warning-light);
-  font-weight: 600;
-}
-
 .form-bottom-grid {
   display: grid;
-  grid-template-columns: 1fr minmax(320px, 380px);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--spacing-md);
   align-items: start;
 }
 
+.form-bottom-grid:has(.form-right-column) {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+}
+
 .details-column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  max-width: 32rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 32px;
+  align-items: start;
+}
+
+.details-full {
+  grid-column: 1 / -1;
+}
+
+.details-group-title {
+  grid-column: 1 / -1;
+  margin: 10px 0 -8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--divider);
 }
 
 .form-right-column {
@@ -2156,7 +2028,6 @@ button.step-rail-entry:enabled {
   color: var(--accent-error);
 }
 
-.field-rule-messages,
 .field-rule-held {
   display: flex;
   flex-direction: column;
@@ -2187,7 +2058,8 @@ button.step-rail-entry:enabled {
 }
 
 @media (max-width: 768px) {
-  .form-bottom-grid {
+  .form-bottom-grid,
+  .form-bottom-grid:has(.form-right-column) {
     grid-template-columns: 1fr;
   }
 
@@ -2196,12 +2068,18 @@ button.step-rail-entry:enabled {
   }
 
   .details-column {
-    max-width: none;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .review-row {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .form-bottom-grid:has(.form-right-column) .details-column {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

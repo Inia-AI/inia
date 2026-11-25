@@ -12,13 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-
 const { t: $t } = useI18n()
 
 const props = defineProps({
@@ -80,6 +73,11 @@ onMounted(() => {
 
 const isAtLimit = computed(() => fields.value.length >= props.limit)
 
+const descriptionId = computed(() => `${props.name}-description`)
+const describedByWithDescription = computed(
+  () => [props.description && descriptionId.value, props.describedBy].filter(Boolean).join(' ') || undefined,
+)
+
 const onAdd = () => {
   if (fields.value.length >= props.limit) {
     return
@@ -93,26 +91,7 @@ const onAdd = () => {
   <div>
     <slot name="header" :onAdd="onAdd" :isAtLimit="isAtLimit">
       <div class="flex space-x-4 items-center mb-4 w-max">
-        <div class="flex items-center space-x-2">
-          <span class="text-sm">{{ header }}</span>
-
-          <TooltipProvider v-if="description">
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  class="button-reset focus-ring hit-target"
-                  :aria-label="$t('shared.components.listFormField.about', { list: header })"
-                >
-                  <IniaIcon name="circle-info" class="text-md" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{{ description }}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        <span class="text-sm">{{ header }}</span>
         <button
           type="button"
           class="hit-target cursor-pointer"
@@ -120,11 +99,12 @@ const onAdd = () => {
           :disabled="isAtLimit"
           @click="onAdd"
           :aria-label="$t('shared.components.listFormField.addItem', { list: header })"
-          :aria-describedby="describedBy"
+          :aria-describedby="describedByWithDescription"
         >
           <IniaIcon name="plus" />
         </button>
       </div>
+      <p v-if="description" :id="descriptionId" class="field-hint -mt-3 mb-4">{{ description }}</p>
     </slot>
     <p v-if="isAtLimit" class="text-sm text-muted-foreground mt-1">
       Maximum of {{ props.limit }} URLs allowed.
@@ -141,7 +121,7 @@ const onAdd = () => {
             >{{ label }} {{ index + 1 }}</FormLabel
           >
           <div class="flex items-center space-x-4">
-            <FormControl :described-by="describedBy" :invalid="invalid">
+            <FormControl :described-by="describedByWithDescription" :invalid="invalid">
               <Input v-bind="componentField" :placeholder="placeholder" />
             </FormControl>
 

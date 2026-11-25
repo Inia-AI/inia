@@ -9,6 +9,7 @@ defineProps<{
   searchTerm: string
   showCreateOption: boolean
   hasFilteredResults: boolean
+  dialogOpen: boolean
   listClass?: HTMLAttributes['class']
 }>()
 
@@ -40,20 +41,33 @@ const CREATE_OPTION_VALUE = '__create-counterparty__'
       </CommandItem>
     </template>
   </CommandList>
-  <p v-if="!showCreateOption" class="inline-creation-hint">
+  <button
+    v-if="!showCreateOption"
+    type="button"
+    class="button-reset focus-ring focus-ring--inset inline-creation-add"
+    aria-haspopup="dialog"
+    :aria-expanded="dialogOpen"
+    @click="emit('create')"
+  >
     <Plus class="mr-2 h-4 w-4 shrink-0" />
     {{ $t('shared.components.counterpartySelect.addNew') }}
-  </p>
+  </button>
 </template>
 
 <style scoped>
-.inline-creation-hint {
+.inline-creation-add {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 8px 12px;
   font-size: 13px;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
   border-top: 1px solid var(--stroke);
+}
+
+.inline-creation-add:hover {
+  background-color: var(--bg-2);
 }
 
 .inline-creation-option {

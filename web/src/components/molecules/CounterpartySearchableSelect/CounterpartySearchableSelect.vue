@@ -178,6 +178,7 @@ function onEditClick(event: MouseEvent, optionValue: string) {
           :search-term="searchTerm"
           :show-create-option="showCreateOption"
           :has-filtered-results="hasFilteredResults"
+          :dialog-open="showCreateDialog"
           @create="onCreateOptionClick"
         >
           <ScrollArea class="h-56">

@@ -47,4 +47,23 @@ describe('ListFormField', () => {
     expect(wrapper.find('button[aria-label^="shared.components.listFormField.removeItem"]').exists()).toBe(false)
     wrapper.unmount()
   })
+
+  it('links its description to the add button and to every item', async () => {
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          useForm({ initialValues: { urls: ['https://a.example'] } })
+          return () => h(ListFormField, { name: 'urls', header: 'Websites', description: 'Pages about the company.', describedBy: 'notes' })
+        },
+      }),
+      { global: { stubs: { IniaIcon: true } }, attachTo: document.body },
+    )
+    await flushPromises()
+
+    const description = wrapper.get('p.field-hint')
+    expect(description.attributes('id')).toBe('urls-description')
+    expect(wrapper.get('button[aria-label^="shared.components.listFormField.addItem"]').attributes('aria-describedby')).toBe('urls-description notes')
+    expect(wrapper.get('input').attributes('aria-describedby')?.split(' ')).toEqual(expect.arrayContaining(['urls-description', 'notes']))
+    wrapper.unmount()
+  })
 })

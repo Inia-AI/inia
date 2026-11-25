@@ -43,6 +43,23 @@ export const withoutNumbering = (displayName: string): string => {
   return stripped.length === 0 ? displayName.trim() : stripped
 }
 
+const numberingOf = (displayName: string): number[] =>
+  displayName.match(LEADING_NUMBERING)?.[0].match(/[0-9]+/g)?.map(Number) ?? []
+
+export const compareNumbering = (a: string, b: string): number => {
+  const left = numberingOf(a)
+  const right = numberingOf(b)
+  if (left.length === 0 || right.length === 0) {
+    return Number(left.length === 0) - Number(right.length === 0)
+  }
+  for (let index = 0; index < Math.min(left.length, right.length); index++) {
+    if (left[index] !== right[index]) {
+      return left[index] - right[index]
+    }
+  }
+  return left.length - right.length
+}
+
 export const comparesWithValue = (type: WorkflowVariableTypes) =>
   type === WorkflowVariableTypes.String || type === WorkflowVariableTypes.Dropdown
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useAttrs, watch, type PropType } from 'vue'
 import { cn } from '@/lib/utils'
-import { DROPDOWN_RENDER_CAP } from '@/constants/dropdown'
+import { useCappedOptionSearch } from '@/composables/useCappedOptionSearch'
 import { splitTriggerAttrs } from '@/lib/triggerAttrs'
 
 import { Check, X, ChevronsUpDown } from '@lucide/vue'
@@ -52,7 +52,8 @@ const props = defineProps({
 
 const selected = defineModel<string[]>({ default: () => [] })
 const open = ref(false)
-const searchTerm = ref('')
+const optionList = computed(() => props.options ?? [])
+const { searchTerm, filteredOptions, visibleOptions, hiddenOptionCount } = useCappedOptionSearch(optionList)
 const attrs = useAttrs()
 const triggerAttrs = computed(() => splitTriggerAttrs(attrs).trigger)
 
@@ -66,23 +67,6 @@ const buttonClass = computed(() =>
   ),
 )
 
-const optionList = computed(() => props.options ?? [])
-
-const filteredOptions = computed(() => {
-  const query = searchTerm.value.trim().toLowerCase()
-  if (!query) return optionList.value
-  return optionList.value.filter(option =>
-    (option.searchText || option.label).toLowerCase().includes(query),
-  )
-})
-
-const visibleOptions = computed(() =>
-  filteredOptions.value.slice(0, DROPDOWN_RENDER_CAP),
-)
-
-const hiddenOptionCount = computed(
-  () => filteredOptions.value.length - visibleOptions.value.length,
-)
 
 function unselect(item: string) {
   selected.value = selected.value.filter(i => i !== item)
